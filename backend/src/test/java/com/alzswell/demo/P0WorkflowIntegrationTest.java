@@ -286,6 +286,32 @@ class P0WorkflowIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
     }
 
+    @Test
+    void generatesOnlyAStaffReviewedDeterministicCopilotDraftWithoutExternalEgress() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p1-copilot-ingest-0001");
+        applyBranchB(session, "p1-copilot-context-0001");
+        String request = """
+                {"draftType":"CONSULTATION_NOTE"}
+                """;
+
+        mockMvc.perform(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/copilot-drafts", session.sessionId(), CASE)
+                .contentType(APPLICATION_JSON).content(request), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("COPILOT_DRAFT_GENERATED"))
+                .andExpect(jsonPath("$.data.draft.generatedBy").value("DETERMINISTIC_TEMPLATE"))
+                .andExpect(jsonPath("$.data.draft.modelInvoked").value(false))
+                .andExpect(jsonPath("$.data.draft.externalEgressAttempted").value(false))
+                .andExpect(jsonPath("$.data.safety.containsDirectIdentifiers").value(false))
+                .andExpect(jsonPath("$.data.safety.externalActionCreated").value(false))
+                .andExpect(jsonPath("$.data.safety.humanReviewRequired").value(true));
+
+        mockMvc.perform(client.customer(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/copilot-drafts", session.sessionId(), CASE)
+                .contentType(APPLICATION_JSON).content(request), session))
+                .andExpect(status().isForbidden());
+    }
+
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {
         String request = """
                 {
