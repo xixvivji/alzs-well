@@ -1,0 +1,47 @@
+# macOS and editor metadata
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Local credentials and keys
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+
+# Java and Gradle build output
+**/.gradle/
+**/build/
+**/out/
+*.log
+
+# Python local environments and caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated reports, renders, caches, bundled fonts, and local models
+/tmp/
+/output/
+/analysis/
+/models/
+*.safetensors
+*.onnx
+*.pt
+
+# Superseded project documents kept only in the local archive
+/Ansim_Rhythm_Project_Final_Direction.md
+/Ansim_Rhythm_Project_Final_Summary.md
+/PROJECT_DIRECTION.md
+/안심리듬_프로젝트_최종방향.md
+/docs/API_SPEC.md

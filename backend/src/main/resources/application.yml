@@ -1,0 +1,67 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  application:
+    name: alzs-well-backend
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/alzs_well}
+    username: ${DB_USERNAME:alzswell}
+    password: ${DB_PASSWORD:alzs_well_local_password}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: 3000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+  jackson:
+    default-property-inclusion: always
+    time-zone: UTC
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: 금융생활 변화 조기알림 및 행원 보호업무 코파일럿
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  guardrails:
+    synthetic-data-only: ${SYNTHETIC_DATA_ONLY:true}
+    external-actions-enabled: ${EXTERNAL_ACTIONS_ENABLED:false}
+
+logging:
+  pattern:
+    level: "%5p [traceId:%X{traceId:-}]"
