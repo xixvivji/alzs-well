@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 24개 |
+| `IMPLEMENTED` | 25개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 222개 |
+| 카탈로그·백로그 | 221개 |
 
-`IMPLEMENTED` 24개는 P0 23개와 P1 결정론적 코파일럿 초안 1개다. P0는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개, 행원 사건 4개다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 33개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
+`IMPLEMENTED` 25개는 P0 23개와 P1 사건 근거 묶음·결정론적 코파일럿 초안 2개다. P0는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개, 금융생활 읽기 6개, 알림 4개, 행원 사건 4개다.
 
 여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 구현은 P0 23개와 P1 결정론적 코파일럿 초안 1개로 총 24개다. 나머지 222개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 구현은 P0 23개와 P1 사건 근거 묶음·결정론적 코파일럿 초안 2개로 총 25개다. 나머지 221개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1159,7 +1159,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | GET | /api/v1/staff/cases/{caseId} | 운영 사건 상세 | OWNED |
 | P1 | PUT | /api/v1/staff/cases/{caseId}/assignment | 담당자·팀 배정 | OWNED |
 | P1 | GET | /api/v1/staff/cases/{caseId}/timeline | 사건·신호·맥락 타임라인 | OWNED |
-| P1 | GET | /api/v1/staff/cases/{caseId}/evidence | 근거 거래·문서 묶음 | OWNED |
+| P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/evidence | 합성 근거 거래·신호·공식 출처 묶음 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/reviews | 검토 상태전이 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/notes | 행원 내부 메모 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-drafts | 결정론적 질문·상담기록 초안 생성 | OWNED |
@@ -2215,7 +2215,19 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 
 `protectionCandidates`는 공식 조건과 상담 경로만 제공한다. `executionType`은 P0에서 항상 `GUIDANCE_ONLY`다.
 
-#### 5.4.2.1 결정론적 코파일럿 초안
+#### 5.4.2.1 사건 근거 묶음
+
+`IMPLEMENTED-P1`
+
+```http
+GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}/evidence
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: {current-demo-run-id}
+```
+
+현재 run에 고정된 합성 신호, 근거 거래, 생활맥락 근거 ID와 공식 보호수단 출처를 반환한다. 응답은 `syntheticData=true`, `externalFetchPerformed=false`를 명시하며 고객 capability로는 접근할 수 없다. 코파일럿과 행원은 이 묶음의 `reasonCode`, `evidenceIds`, `snapshotHash`, 공식 출처만 근거로 사용한다.
+
+#### 5.4.2.2 결정론적 코파일럿 초안
 
 `IMPLEMENTED-P1`
 
