@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 23개 |
+| `IMPLEMENTED` | 24개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 223개 |
+| 카탈로그·백로그 | 222개 |
 
-`IMPLEMENTED` 23개는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개(목록, 상세, 맥락 재평가, 감사이력), 행원 사건 4개(큐, 상세, 검토, 안내계획 승인)다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 32개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
+`IMPLEMENTED` 24개는 P0 23개와 P1 결정론적 코파일럿 초안 1개다. P0는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개, 행원 사건 4개다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 33개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
 
 여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개로 총 23개다. 나머지 223개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 구현은 P0 23개와 P1 결정론적 코파일럿 초안 1개로 총 24개다. 나머지 222개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1162,7 +1162,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | GET | /api/v1/staff/cases/{caseId}/evidence | 근거 거래·문서 묶음 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/reviews | 검토 상태전이 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/notes | 행원 내부 메모 | OWNED |
-| P1 | POST | /api/v1/staff/cases/{caseId}/copilot-drafts | 질문·상담기록 초안 생성 | OWNED |
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-drafts | 결정론적 질문·상담기록 초안 생성 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/follow-ups | 재확인 일정만 등록 | OWNED |
 | P1 | PATCH | /api/v1/staff/follow-ups/{followUpId} | 후속 일정·결과 갱신 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/guidance-plans | 안내계획 승인, 실제 조치 아님 | OWNED |
@@ -2214,6 +2214,21 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 ```
 
 `protectionCandidates`는 공식 조건과 상담 경로만 제공한다. `executionType`은 P0에서 항상 `GUIDANCE_ONLY`다.
+
+#### 5.4.2.1 결정론적 코파일럿 초안
+
+`IMPLEMENTED-P1`
+
+```http
+POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-drafts
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: {current-demo-run-id}
+Content-Type: application/json
+
+{"draftType":"CONSULTATION_NOTE"}
+```
+
+응답은 `summary`, `suggestedQuestions`, `checklist`, `basisReasonCodes`와 안전 메타데이터를 반환한다. 현재 구현은 `CopilotPort` 뒤의 `DETERMINISTIC_TEMPLATE`이며 `modelInvoked=false`, `externalEgressAttempted=false`, `humanReviewRequired=true`를 강제한다. 직접식별자를 포트 입력으로 전달하지 않고 실제 연락·거래조치·상태전이를 만들지 않는다.
 
 #### 5.4.3 행원 검토 상태전이
 

@@ -3,6 +3,8 @@ package com.alzswell.demo.api;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
 import com.alzswell.common.security.DemoCapabilityService;
+import com.alzswell.copilot.application.CopilotDraftService;
+import com.alzswell.demo.api.P0WorkflowRequests.CopilotDraftCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
@@ -28,9 +30,11 @@ public class P0WorkflowController {
     public static final String DEMO_RUN_HEADER = "X-Demo-Run-Id";
 
     private final P0WorkflowService workflowService;
+    private final CopilotDraftService copilotDraftService;
 
-    public P0WorkflowController(P0WorkflowService workflowService) {
+    public P0WorkflowController(P0WorkflowService workflowService, CopilotDraftService copilotDraftService) {
         this.workflowService = workflowService;
+        this.copilotDraftService = copilotDraftService;
     }
 
     @GetMapping("/customers/{customerId}/alerts")
@@ -131,6 +135,19 @@ public class P0WorkflowController {
                 sessionId, demoRunId, caseId, capabilityHash, idempotencyKey, request
         );
         return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);
+    }
+
+    @PostMapping("/cases/{caseId}/copilot-drafts")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> generateCopilotDraft(
+            @PathVariable UUID sessionId,
+            @PathVariable String caseId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId,
+            @Valid @RequestBody CopilotDraftCommand request
+    ) {
+        return withRun(ApiResponses.ok(
+                "COPILOT_DRAFT_GENERATED", "행원 검토용 상담 초안을 생성했습니다.",
+                copilotDraftService.generate(sessionId, demoRunId, caseId, request.draftType())
+        ), demoRunId);
     }
 
     @PostMapping("/cases/{caseId}/guidance-plan")

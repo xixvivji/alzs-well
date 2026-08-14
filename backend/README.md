@@ -37,7 +37,7 @@ gateway만 `127.0.0.1`에 공개된다. gateway↔Spring은 `alzs-well-app`, Spr
 
 이 명령은 Spring의 외부 HTTPS 실패, Spring→DB 성공, gateway→DB 실패를 확인한다. 이 구성은 공모전용 망분리 모사이며 금융회사 운영환경의 규정 준수 완료를 뜻하지 않는다.
 
-## P0 구현 API — 23개
+## 구현 API — P0 23개 + P1 1개
 
 ```text
 # 시스템 4
@@ -110,4 +110,6 @@ A 경로는 네 종류의 검증된 T1 구조적 근거가 모두 있을 때만 
 docker compose --env-file .env.example config --quiet
 ```
 
-현재 단위·PostgreSQL Testcontainers 통합시험 32개가 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사 hash 체인·append-only 제약, 조회 입력·cursor 검증과 OpenAPI 23개 계약을 검증한다.
+P1 첫 API는 `POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-drafts`다. 현재는 `CopilotPort` 뒤의 결정론적 템플릿만 사용하며 외부 모델·외부망·실제 실행을 호출하지 않는다.
+
+현재 단위·PostgreSQL Testcontainers 통합시험 33개는 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사 hash 체인·append-only 제약, 조회 입력·cursor 검증, 코파일럿 격리와 OpenAPI 24개 계약을 검증한다.

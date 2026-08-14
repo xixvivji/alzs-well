@@ -11,6 +11,9 @@ import java.util.List;
 
 public final class P0WorkflowRequests {
 
+    public record CopilotDraftCommand(@NotBlank String draftType) {
+    }
+
     private P0WorkflowRequests() {
     }
 
