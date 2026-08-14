@@ -33,7 +33,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 223개 |
 
-`IMPLEMENTED` 23개는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개(목록, 상세, 맥락 재평가, 감사이력), 행원 사건 4개(큐, 상세, 검토, 안내계획 승인)다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 30개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
+`IMPLEMENTED` 23개는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개(목록, 상세, 맥락 재평가, 감사이력), 행원 사건 4개(큐, 상세, 검토, 안내계획 승인)다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 32개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
 
 여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -1383,6 +1383,8 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 - `limit` 기본값 `20`, 최댓값 `100`
 - `cursor`는 서버가 발급한 불투명 문자열이며 클라이언트가 해석하지 않는다.
+- `limit` 범위를 벗어나거나 cursor가 Base64URL·내부 자료형 규칙을 만족하지 않으면 `400 COMMON_INVALID_INPUT`을 반환한다.
+- 거래 `direction`은 `IN|OUT`, 사건 `reviewPriority`는 `HIGH|MEDIUM|LOW`만 허용하며 알 수 없는 필터 값은 빈 목록으로 묵인하지 않는다.
 
 ---
 

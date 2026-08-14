@@ -266,7 +266,11 @@ public class SyntheticFinanceQueryService {
         try {
             String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
             int separator = decoded.lastIndexOf('|');
-            return new Cursor(OffsetDateTime.parse(decoded.substring(0, separator)), decoded.substring(separator + 1));
+            String transactionId = decoded.substring(separator + 1);
+            if (separator < 1 || transactionId.isBlank()) {
+                throw new IllegalArgumentException("cursor payload is incomplete");
+            }
+            return new Cursor(OffsetDateTime.parse(decoded.substring(0, separator)), transactionId);
         } catch (RuntimeException exception) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT, "cursor가 올바르지 않습니다.");
         }

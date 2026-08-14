@@ -1348,6 +1348,9 @@ public class P0WorkflowService {
         try {
             String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
             int separator = decoded.lastIndexOf('|');
+            if (separator < 1 || separator == decoded.length() - 1) {
+                throw new IllegalArgumentException("cursor payload is incomplete");
+            }
             return new CaseCursor(OffsetDateTime.parse(decoded.substring(0, separator)),
                     decoded.substring(separator + 1));
         } catch (RuntimeException exception) {

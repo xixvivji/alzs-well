@@ -110,4 +110,4 @@ A 경로는 네 종류의 검증된 T1 구조적 근거가 모두 있을 때만 
 docker compose --env-file .env.example config --quiet
 ```
 
-현재 단위·PostgreSQL Testcontainers 통합시험 30개가 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사 hash 체인·append-only 제약과 OpenAPI 23개 계약을 검증한다.
+현재 단위·PostgreSQL Testcontainers 통합시험 32개가 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사 hash 체인·append-only 제약, 조회 입력·cursor 검증과 OpenAPI 23개 계약을 검증한다.
