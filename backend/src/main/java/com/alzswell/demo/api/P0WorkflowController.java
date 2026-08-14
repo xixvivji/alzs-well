@@ -134,6 +134,18 @@ public class P0WorkflowController {
         ), demoRunId);
     }
 
+    @GetMapping("/cases/{caseId}/timeline")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> caseTimeline(
+            @PathVariable UUID sessionId,
+            @PathVariable String caseId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId
+    ) {
+        return withRun(ApiResponses.ok(
+                "CASE_TIMELINE_RETRIEVED", "사건 타임라인을 조회했습니다.",
+                workflowService.caseTimeline(sessionId, demoRunId, caseId)
+        ), demoRunId);
+    }
+
     @PostMapping("/cases/{caseId}/review")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reviewCase(
             @PathVariable UUID sessionId,

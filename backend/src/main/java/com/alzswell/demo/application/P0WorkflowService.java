@@ -479,6 +479,24 @@ public class P0WorkflowService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> caseTimeline(UUID sessionId, UUID demoRunId, String caseId) {
+        requireCurrentRun(sessionId, demoRunId);
+        CaseRow row = requireCase(sessionId, demoRunId, caseId, false);
+        Map<String, Object> audit = alertAudit(sessionId, demoRunId, row.alertId(), null, 100);
+        return map(
+                "demoRunId", demoRunId,
+                "caseId", caseId,
+                "alertId", row.alertId(),
+                "currentState", row.incidentState(),
+                "caseVersion", row.caseVersion(),
+                "phases", timeline(sessionId, demoRunId, row),
+                "auditTrail", audit.get("items"),
+                "hasMore", audit.get("hasMore"),
+                "externalActionCreated", false
+        );
+    }
+
     @Transactional
     public P0WorkflowResult reviewCase(
             UUID sessionId,

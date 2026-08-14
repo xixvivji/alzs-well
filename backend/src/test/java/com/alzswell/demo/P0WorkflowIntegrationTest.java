@@ -333,6 +333,27 @@ class P0WorkflowIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void returnsAStaffOnlyCaseTimelineWithImmutableAuditEvents() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p1-timeline-ingest-0001");
+        applyBranchB(session, "p1-timeline-context-0001");
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/timeline", session.sessionId(), CASE), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("CASE_TIMELINE_RETRIEVED"))
+                .andExpect(jsonPath("$.data.currentState").value("PENDING_BANK_REVIEW"))
+                .andExpect(jsonPath("$.data.phases.length()").value(2))
+                .andExpect(jsonPath("$.data.phases[0].phase").value("T0_ALERT"))
+                .andExpect(jsonPath("$.data.phases[1].phase").value("T1_CONTEXT"))
+                .andExpect(jsonPath("$.data.auditTrail.length()").value(4))
+                .andExpect(jsonPath("$.data.externalActionCreated").value(false));
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/timeline", session.sessionId(), CASE), session))
+                .andExpect(status().isForbidden());
+    }
+
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {
         String request = """
                 {
