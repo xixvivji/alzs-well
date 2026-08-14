@@ -122,6 +122,18 @@ public class P0WorkflowController {
         ), demoRunId);
     }
 
+    @GetMapping("/cases/{caseId}/evidence")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> caseEvidence(
+            @PathVariable UUID sessionId,
+            @PathVariable String caseId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId
+    ) {
+        return withRun(ApiResponses.ok(
+                "CASE_EVIDENCE_RETRIEVED", "사건 근거 묶음을 조회했습니다.",
+                workflowService.caseEvidence(sessionId, demoRunId, caseId)
+        ), demoRunId);
+    }
+
     @PostMapping("/cases/{caseId}/review")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reviewCase(
             @PathVariable UUID sessionId,

@@ -447,6 +447,38 @@ public class P0WorkflowService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> caseEvidence(UUID sessionId, UUID demoRunId, String caseId) {
+        requireCurrentRun(sessionId, demoRunId);
+        CaseRow row = requireCase(sessionId, demoRunId, caseId, false);
+        List<SignalRow> signalRows = signals(sessionId, demoRunId, row.alertId());
+        List<Map<String, Object>> signalItems = signalRows.stream().map(signal -> map(
+                "signalId", signalId(signal.reasonCode()),
+                "reasonCode", signal.reasonCode(),
+                "observedCount", signal.observedCount(),
+                "windowSeconds", signal.windowSeconds(),
+                "algorithmVersion", signal.algorithmVersion(),
+                "detectedAt", signal.detectedAt(),
+                "snapshotHash", signal.snapshotHash(),
+                "evidenceIds", signalEvidenceIds(signal.reasonCode())
+        )).toList();
+        return map(
+                "demoRunId", demoRunId,
+                "caseId", caseId,
+                "alertId", row.alertId(),
+                "immutableT0", true,
+                "signals", signalItems,
+                "transactions", evidenceTransactions(sessionId, demoRunId),
+                "contextEvidenceIds", contextEvidenceIds(sessionId, demoRunId, row.alertId()),
+                "officialSources", protectionCandidates(),
+                "provenance", map(
+                        "syntheticData", true,
+                        "sourceProvider", "SYNTHETIC_PROVIDER",
+                        "externalFetchPerformed", false
+                )
+        );
+    }
+
     @Transactional
     public P0WorkflowResult reviewCase(
             UUID sessionId,

@@ -312,6 +312,27 @@ class P0WorkflowIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void returnsAStaffOnlyEvidenceBundleWithoutExternalFetch() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p1-evidence-ingest-0001");
+        applyBranchB(session, "p1-evidence-context-0001");
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/evidence", session.sessionId(), CASE), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("CASE_EVIDENCE_RETRIEVED"))
+                .andExpect(jsonPath("$.data.immutableT0").value(true))
+                .andExpect(jsonPath("$.data.signals.length()").value(3))
+                .andExpect(jsonPath("$.data.transactions.length()").value(4))
+                .andExpect(jsonPath("$.data.officialSources.length()").value(2))
+                .andExpect(jsonPath("$.data.provenance.syntheticData").value(true))
+                .andExpect(jsonPath("$.data.provenance.externalFetchPerformed").value(false));
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/evidence", session.sessionId(), CASE), session))
+                .andExpect(status().isForbidden());
+    }
+
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {
         String request = """
                 {
