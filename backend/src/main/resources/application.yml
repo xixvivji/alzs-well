@@ -1,14 +1,19 @@
 server:
   port: ${SERVER_PORT:8080}
+  max-http-request-header-size: 16KB
   shutdown: graceful
   forward-headers-strategy: framework
   error:
     include-message: never
     include-stacktrace: never
+  tomcat:
+    max-http-form-post-size: 32KB
+    max-swallow-size: 32KB
 
 spring:
   application:
     name: alzs-well-backend
+    version: ${APPLICATION_VERSION:0.0.1-SNAPSHOT}
   lifecycle:
     timeout-per-shutdown-phase: 20s
   datasource:
@@ -35,6 +40,9 @@ spring:
   jackson:
     default-property-inclusion: always
     time-zone: UTC
+  servlet:
+    multipart:
+      enabled: false
 
 management:
   endpoints:
@@ -50,6 +58,16 @@ management:
     db:
       enabled: true
 
+springdoc:
+  api-docs:
+    version: openapi_3_1
+  swagger-ui:
+    path: /swagger-ui.html
+    try-it-out-enabled: false
+    supported-submit-methods: []
+    operations-sorter: method
+    tags-sorter: alpha
+
 info:
   app:
     name: ${spring.application.name}
@@ -61,6 +79,21 @@ app:
   guardrails:
     synthetic-data-only: ${SYNTHETIC_DATA_ONLY:true}
     external-actions-enabled: ${EXTERNAL_ACTIONS_ENABLED:false}
+    network-mode: ${NETWORK_MODE:AIR_GAPPED_DEMO}
+    external-egress-enabled: ${EXTERNAL_EGRESS_ENABLED:false}
+    remote-model-enabled: ${REMOTE_MODEL_ENABLED:false}
+    synthetic-provider-only: ${SYNTHETIC_PROVIDER_ONLY:true}
+  demo:
+    session-ttl-seconds: ${DEMO_SESSION_TTL_SECONDS:7200}
+    max-active-sessions: ${DEMO_MAX_ACTIVE_SESSIONS:1000}
+    default-locale: ${DEMO_DEFAULT_LOCALE:ko-KR}
+  versions:
+    api: v1
+    schema: "7"
+    fixture: fin-mgmt-ab-v2.0.0
+    algorithm: baseline-rules-v2.0.0
+    policy: context-policy-v1.0.0
+    source-catalog-checked-at: 2026-08-14
 
 logging:
   pattern:
