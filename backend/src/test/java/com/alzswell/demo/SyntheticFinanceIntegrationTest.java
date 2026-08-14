@@ -110,6 +110,41 @@ class SyntheticFinanceIntegrationTest {
     }
 
     @Test
+    void rejectsInvalidTransactionFiltersLimitsAndTamperedCursors() throws Exception {
+        DemoTestClient.Session session = createAndIngest("finance-invalid-query-0001");
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
+                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                .param("from", "2026-08-01").param("to", "2026-07-01"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
+                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                .param("direction", "SIDEWAYS"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        for (String invalidLimit : List.of("0", "101")) {
+            mockMvc.perform(client.customer(get(
+                            "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
+                            session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                    .param("limit", invalidLimit), session))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+        }
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
+                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                .param("cursor", "MjAyNi0wOC0xNFQwMDowMDowMFp8"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+    }
+
+    @Test
     void blocksCrossSessionTokensAndRejectsIncompleteCurrentRun() throws Exception {
         DemoTestClient.Session first = createAndIngest("finance-first-0001");
         DemoTestClient.Session second = createAndIngest("finance-second-0001");

@@ -256,6 +256,36 @@ class P0WorkflowIntegrationTest {
         assertThat(isolatedRuns).isEqualTo(2);
     }
 
+    @Test
+    void rejectsInvalidCaseQueueAndAuditPaginationInputs() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p0-invalid-query-ingest-0001");
+        applyBranchB(session, "p0-invalid-query-context-0001");
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/staff/cases", session.sessionId())
+                .param("state", "UNKNOWN"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/staff/cases", session.sessionId())
+                .param("reviewPriority", "URGENT"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/staff/cases", session.sessionId())
+                .param("cursor", "MjAyNi0wOC0xNFQwMDowMDowMFp8"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/alerts/{a}/audit", session.sessionId(), ALERT)
+                .param("limit", "101"), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+    }
+
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {
         String request = """
                 {
