@@ -20,6 +20,15 @@ docker compose --env-file .env up -d --build
 curl -i http://localhost:8080/api/v1/system/health
 ```
 
+OpenAPI 3.1 JSON과 조회 전용 Swagger UI:
+
+```text
+http://localhost:8080/v3/api-docs
+http://localhost:8080/swagger-ui.html
+```
+
+Swagger UI의 요청 실행 기능은 비활성화되어 있다. 프론트 타입 생성은 `/v3/api-docs`를 입력으로 사용한다.
+
 gateway만 `127.0.0.1`에 공개된다. gateway↔Spring은 `alzs-well-app`, Spring↔PostgreSQL은 `alzs-well-data` 내부망을 사용하며 gateway와 DB는 네트워크를 공유하지 않는다.
 
 ```bash
@@ -101,4 +110,4 @@ A 경로는 네 종류의 검증된 T1 구조적 근거가 모두 있을 때만 
 docker compose --env-file .env.example config --quiet
 ```
 
-현재 단위·PostgreSQL Testcontainers 통합시험 29개가 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사 hash 체인과 append-only 제약을 검증한다.
+현재 단위·PostgreSQL Testcontainers 통합시험 30개가 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사 hash 체인·append-only 제약과 OpenAPI 23개 계약을 검증한다.

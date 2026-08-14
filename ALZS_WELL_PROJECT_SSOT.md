@@ -811,6 +811,7 @@ LLM은 `reasonCodes`, 사건 상태, 우선순위, 연락권한, `actionCode`를
 - Docker 기반 배포
 - Actuator·Micrometer 기반 헬스체크
 - Testcontainers 기반 통합시험 권장
+- OpenAPI 3.1 자동 계약과 실행이 비활성화된 Swagger UI
 
 정확한 라이브러리 버전은 실제 `build.gradle` 또는 `pom.xml`을 최종 기준으로 삼고 문서와 동기화한다.
 

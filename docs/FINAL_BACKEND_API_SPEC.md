@@ -33,7 +33,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 223개 |
 
-`IMPLEMENTED` 23개는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개(목록, 상세, 맥락 재평가, 감사이력), 행원 사건 4개(큐, 상세, 검토, 안내계획 승인)다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 29개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
+`IMPLEMENTED` 23개는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개(목록, 상세, 맥락 재평가, 감사이력), 행원 사건 4개(큐, 상세, 검토, 안내계획 승인)다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 30개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
 
 여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -44,7 +44,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 3. `REFERENCE_ONLY`는 Spring Controller나 실행 버튼을 생성하지 않는다.
 4. 실제 이체·주문·대출·계좌개설·지급정지·한도변경·외부 연락은 공개 데모에서 실행하지 않는다.
 5. API 수가 많아도 현재 구조는 MSA가 아니라 도메인 패키지로 분리한 모듈형 모놀리스다.
-6. P0 요청·응답 계약은 본 문서에 모두 통합했으며, OpenAPI 3.1 파일은 이 계약에서 후속 생성한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
+6. P0 요청·응답 계약은 본 문서에 통합하고 Spring 코드에서 OpenAPI 3.1로 자동 생성한다. `/v3/api-docs`는 프론트 타입 생성용이며 Swagger UI의 요청 실행 기능은 비활성화한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
 
 ## AIR_GAPPED_DEMO 네트워크 격리 결정
 
@@ -3112,6 +3112,6 @@ OPEN
 
 1. API path 또는 필드의 제거·의미 변경은 `/api/v2` 또는 명시적 마이그레이션 기간을 둔다.
 2. enum 추가는 하위호환 변경이지만 프론트의 unknown fallback을 필수로 한다.
-3. 이 문서, Spring DTO, OpenAPI, 프론트 TypeScript 타입의 명칭을 함께 변경한다. 현재 OpenAPI/Swagger 생성기는 아직 설치되지 않았다.
+3. 이 문서, Spring DTO, `/v3/api-docs` OpenAPI 계약과 프론트 TypeScript 타입의 명칭을 함께 변경한다. Swagger UI는 조회 전용이며 `Try it out` 실행을 허용하지 않는다.
 4. 구현 완료 시 엔드포인트 상태를 `CONTRACT`에서 `IMPLEMENTED`로 변경하고 테스트 링크를 기록한다.
 5. 최종 제출 전 공식 보호수단 URL과 기준일을 다시 확인한다.

@@ -14,6 +14,7 @@ import com.alzswell.common.security.DemoCapabilityService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.stream.StreamSupport;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -160,6 +161,38 @@ class PostgreSqlIntegrationTest {
                         "Access-Control-Allow-Headers",
                         containsString("X-Demo-Capability")
                 ));
+    }
+
+    @Test
+    void openApiPublishesExactlyTheP0ContractAsReadOnlyDocumentation() throws Exception {
+        MvcResult result = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openapi").value("3.1.0"))
+                .andReturn();
+
+        JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
+        assertThat(specification.path("paths").size()).isEqualTo(23);
+
+        JsonNode alertParameters = specification.path("paths")
+                .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")
+                .path("get")
+                .path("parameters");
+        List<String> parameterNames = StreamSupport.stream(alertParameters.spliterator(), false)
+                .map(parameter -> parameter.path("name").asText())
+                .toList();
+        assertThat(parameterNames).contains("X-Demo-Capability", "X-Demo-Run-Id");
+
+        JsonNode createHeaders = specification.path("paths")
+                .path("/api/v1/demo/sessions")
+                .path("post")
+                .path("responses")
+                .path("201")
+                .path("headers");
+        assertThat(createHeaders.has("X-Demo-Customer-Capability")).isTrue();
+        assertThat(createHeaders.has("X-Demo-Staff-Capability")).isTrue();
+
+        mockMvc.perform(get("/swagger-ui/index.html"))
+                .andExpect(status().isOk());
     }
 
     @Test

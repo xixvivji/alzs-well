@@ -58,6 +58,16 @@ management:
     db:
       enabled: true
 
+springdoc:
+  api-docs:
+    version: openapi_3_1
+  swagger-ui:
+    path: /swagger-ui.html
+    try-it-out-enabled: false
+    supported-submit-methods: []
+    operations-sorter: method
+    tags-sorter: alpha
+
 info:
   app:
     name: ${spring.application.name}
