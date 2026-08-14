@@ -1,19 +1,12 @@
 # ALZ's well 프로젝트 최종 통합 기준서
 
 > 문서 상태: **최종 통합본 · Single Source of Truth (SSOT)**  
-> 버전: **1.0**  
+> 버전: **1.2**
 > 기준일: **2026-08-14**  
 > 참가 대회: [2026 금융 AI Challenge](https://daker.ai/public/hackathons/2026-finance-ai-challenge)  
 > 제출 마감: **2026-09-07 10:00 KST**
 
-이 문서는 아래 네 문서를 비교·통합하고 충돌 항목을 하나로 확정한 프로젝트 최상위 기준서다.
-
-- `안심리듬_프로젝트_최종방향.md`
-- `Ansim_Rhythm_Project_Final_Direction.md`
-- `Ansim_Rhythm_Project_Final_Summary.md`
-- `PROJECT_DIRECTION.md`
-
-앞으로 기획서, 기능명세서, 화면, 코드, 발표자료의 용어·범위·상태값이 충돌하면 이 문서를 따른다. 네 원본은 조사·의사결정 이력을 보존하는 참고자료로만 사용한다.
+이 문서는 프로젝트의 확정된 결론만 담는 최상위 기준서다. 앞으로 기획서, 기능명세서, 화면, 코드, 발표자료의 용어·범위·상태값이 충돌하면 이 문서를 따른다. 과거 방향 문서는 `archive`에 보존되며 현행 기준이 아니다.
 
 ---
 
@@ -33,7 +26,7 @@
 
 ### 한 문장 정의
 
-> **ALZ's well은 치매를 진단하는 AI가 아니라, 고객 동의로 개인별 금융생활 기준선을 형성하고 평소와 다른 변화를 생활맥락으로 재확인한 뒤, 정상 변화는 종결하고 설명이 필요한 사건만 행원의 보호업무로 연결하는 B2B2C 금융안전 코파일럿이다.**
+> **ALZ's well은 치매를 진단하는 AI가 아니라, 고객 동의로 정기납부 누락·중복거래·업무 미완료·반복확인 등 개인별 금융관리 행동변화를 조기에 발견하고, 공모전 MVP에서는 결정론적 규칙·템플릿·공식 공개근거 카탈로그로 행원의 확인·상담·기록·사후관리를 지원하는 B2B2C 금융안전 플랫폼이다. 자체 호스팅 금융특화 AI와 은행 내부문서 RAG는 금융회사 PoC 이후의 목표 구조다.**
 
 ### 핵심 메시지
 
@@ -52,59 +45,59 @@
 | 사업 구조 | B2B2C, 금융회사 도입 중심 |
 | MVP 주 사용자 | 은행 행원·소비자보호 담당자 |
 | 공동 사용자·최종 수혜자 | 금융생활 변화 확인에 동의한 고객 |
-| 핵심 가치 | 개인 기준선 → 생활맥락 확인 → 행원 보호업무 연결 |
-| 기존 체계와 관계 | FDS·ASAP·안심차단·신탁·후견을 대체하지 않고 연결 |
+| 핵심 가치 | 개인 기준선 → 금융관리 변화 확인 → 행원 코파일럿 → 고객 일정·생활비 지원 → 동의 기반 신뢰연락인 연결 |
+| 기존 체계와 관계 | 보이스피싱·부정거래 FDS를 대체하거나 중복 탐지하지 않고, 장기 금융관리 행동변화와 후속 보호업무에 집중 |
 | 탐지 | Java 기반 규칙·통계·시계열 분석 |
-| 생성형 AI | 쉬운 설명·중립 질문·상담기록 초안만 담당 |
+| 생성형 AI | P0는 검증된 템플릿으로 동작하고, P1·PoC부터 자체 호스팅 모델이 쉬운 설명·중립 질문·상담기록·사후관리의 표현 개선만 담당 |
 | 최종 판단·실행 | 고객, 행원, 법적 권한이 있는 금융회사 |
 | MVP 구조 | Spring Boot 모듈형 모놀리스 |
 | MVP 데이터 | 12개월 완전 합성데이터만 사용 |
-| 핵심 데모 | 동일 거래·동일 경보에 맥락 패키지만 달리한 A/B 비교 |
+| 핵심 데모 | 동일한 T0 경보 스냅샷에서 T1 검증맥락만 달리한 반사실적 정책 분기 비교 |
 | 추가학습 | MVP에서는 하지 않음. 평가로 필요성이 확인된 뒤 LoRA/QLoRA 검토 |
-| RAG | P0는 공식 근거 카탈로그, 벡터 RAG는 P1 |
+| RAG | P0는 공식 공개근거 카탈로그, P1·PoC부터 사용 허가된 은행 내부 규정·매뉴얼 기반 권한형 벡터 RAG |
 | LLM 장애 | 템플릿 폴백으로 전체 핵심 흐름 완주 |
-| 실서비스 배치 | 내부망 또는 승인된 전용환경, 읽기 전용 분석부터 시작 |
+| 실서비스 배치 | 외부 상용 AI API 없이 은행 내부망·은행 통제 전용환경에 자체 호스팅, 읽기 전용 분석부터 시작 |
 
 ---
 
 ## 2. 문제 정의와 서비스의 위치
 
-금융권에는 이미 FDS·ASAP 같은 금융사기 탐지수단과 안심차단·지연이체·신탁·후견 같은 보호수단이 있다. 문제는 제도가 없다는 것이 아니라 다음 과정이 분절돼 있다는 점이다.
+금융권에는 이미 FDS·ASAP 같은 금융사기 탐지수단과 여러 금융보호 절차가 있다. ALZ's well이 해결하는 문제는 보이스피싱 탐지가 아니라, 고객의 반복·누락·미완료·재확인 행동을 장기간 발견하고 행원의 확인·상담·기록·사후관리까지 이어지는 과정이 분절돼 있다는 점이다.
 
 1. 고객 본인의 평소 금융생활에서 장기적인 변화를 발견한다.
-2. 변화가 정상적인 생활사건인지 추가 확인이 필요한 사건인지 구분한다.
+2. 변화가 정상적인 생활·처리 맥락으로 설명되는지 추가 확인이 필요한지 구분한다.
 3. 고객에게 이유와 선택지를 이해하기 쉬운 말로 설명한다.
 4. 설명이 필요한 사건만 행원의 보호업무로 연결한다.
-5. 공식 보호수단의 적용조건을 확인하고 후속 상담·기록·재연락까지 관리한다.
+5. MVP에서는 공식 공개근거와 합성 데모 업무규칙으로, 금융회사 PoC에서는 사용 허가된 내부 규정으로 후속 상담·기록·재확인 일정을 관리한다.
 
 ### 고객의 어려움
 
 - 여러 계좌·카드·자동이체에 흩어진 작은 변화를 장기 추세로 보기 어렵다.
-- 중복결제, 반복송금, 신규 수취인, 공과금 누락을 서로 연결된 사건으로 이해하기 어렵다.
-- 정상적인 입원·이사·여행·가족지원도 위험거래처럼 보일 수 있다.
-- 안심차단, 지연이체, 신탁, 후견 등 여러 수단 중 무엇을 언제 선택할지 어렵다.
+- 정기납부 누락, 중복결제·중복송금, 업무 미완료, 반복문의와 반복확인을 서로 연결된 변화로 이해하기 어렵다.
+- 데이터 단절, 처리지연, 취소·환불, 앱 오류도 금융관리 변화처럼 보일 수 있다.
+- 필수 납부일정과 월 생활비를 스스로 관리하고, 문제가 반복될 때 누구의 도움을 받을지 미리 정하기 어렵다.
 - 복잡한 금융용어와 정보량이 많은 비대면 화면은 고령층과 인지 부담이 있는 고객에게 특히 어렵다.
 - 가족에게 계좌 통제권을 주지 않으면서 필요한 순간에 도움받을 방법이 제한적이다.
 
 ### 금융회사의 어려움
 
-- FDS 경보 이후 거래 조회, 고객 연락, 사실확인, 질문 구성, 제도 검색, 기록, 재연락이 반복된다.
+- 금융관리 변화 사건마다 거래 조회, 고객 연락, 사실확인, 질문 구성, 내부 규정 검색, 기록, 재연락이 반복된다.
 - 여러 거래 경보를 고객 단위 사건 하나로 묶어 파악하기 어렵다.
 - 모든 동의 고객의 장기 금융생활을 직원이 전수검토할 수 없다.
 - 거래정보, 고객서류, 내부 규정, 약관, 법률자료가 서로 다른 형태로 파편화돼 있다.
-- 외부 AI와 모델 변경에는 보안성 평가, 승인, 검증 부담이 따른다.
+- 외부 상용 AI API는 고객정보·내부문서 통제와 모델 변경 검증 부담이 크다.
 
 ### FDS·ASAP과의 경계
 
-ALZ's well은 FDS를 대체하지 않는다. 사기형 탐지와 장기 재산관리 제도 사이에 `확인과 보호계획`이라는 조기 대응층을 추가한다.
+ALZ's well은 FDS를 대체하지 않는다. FDS가 사기·계정탈취 같은 급성 위험을 다룬다면, ALZ's well은 고객 본인의 장기 금융관리 행동변화와 그 이후의 확인·지원 업무를 다룬다.
 
 | 구분 | FDS·ASAP | ALZ's well |
 |---|---|---|
-| 주요 목적 | 사기·계정탈취·의심계좌 탐지와 조치 | 개인 금융생활 변화 확인과 보호업무 지원 |
+| 주요 목적 | 사기·계정탈취·의심계좌 탐지와 조치 | 반복·누락·미완료·재확인 등 금융관리 행동변화와 보호업무 지원 |
 | 시간축 | 실시간·거래사건 중심 | 7·30·90일 및 6~12개월 개인 추세 |
-| 주요 입력 | 거래·접속·기관 공유 사기정보 | 동의된 거래·정기납부·생활맥락 |
+| 주요 입력 | 거래·접속·기관 공유 사기정보 | 동의된 거래·정기납부·업무진행·상담이력·생활맥락 |
 | 판단 기준 | 사기 패턴과 위험거래 규칙 | 고객 본인의 평소 금융생활 기준선 |
-| 후속업무 | 확인·차단·신고 절차 | 질문·보호수단 조건·기록·재연락 초안 |
+| 후속업무 | 확인·차단·신고 절차 | 사건요약·중립질문·내부규정·기록·재확인 초안 |
 | 최종 결정 | 금융회사 정책과 담당자 | 고객과 권한 있는 금융회사 직원 |
 
 ### 차별점
@@ -112,12 +105,13 @@ ALZ's well은 FDS를 대체하지 않는다. 사기형 탐지와 장기 재산�
 차별점은 단일 이상탐지 모델, 다계좌 통합 또는 가족 알림 하나가 아니다. 다음 요소를 하나의 닫힌 업무 흐름으로 결합하는 데 있다.
 
 1. 연령집단 평균이 아닌 고객 개인의 장기 기준선
-2. 탐지 후 고객의 생활맥락과 구조적 근거를 통한 재평가
+2. 탐지 후 고객 응답과 검증된 생활·처리 맥락을 통한 재평가
 3. 동일 경보에도 맥락에 따라 달라지는 다음 행동
 4. 강한 신호와 증거 불일치 시 정상종결을 막는 정책 가드레일
 5. 고객용 쉬운 설명과 행원용 질문·기록·후속관리의 연결
-6. 공식 보호수단의 적용조건과 최신 근거 연결
-7. 동의·권한·감사로그 및 망분리 환경을 고려한 구조
+6. P0의 결정론적 템플릿·공식 공개근거와 P1·PoC 목표인 자체 호스팅 금융특화 모델·권한형 내부 규정 RAG
+7. 고객의 일정·필수생활비 지원과 단계적 신뢰연락인 연결
+8. 동의·권한·감사로그 및 망분리 환경을 고려한 구조
 
 `국내 최초`, `유일`, `금융권에 없던 기술`이라는 표현은 사용하지 않는다. EverSafe, Carefull 등 해외 서비스도 개인 기준선과 선택적 가족 알림을 제공하므로, ALZ's well의 차별성은 기능 하나가 아니라 위 조합과 국내 행원 업무의 폐루프에 둔다.
 
@@ -133,7 +127,7 @@ ALZ's well은 FDS를 대체하지 않는다. 사기형 탐지와 장기 재산�
 
 ### 주 사용자: 행원·소비자보호 담당자
 
-AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호수단 조건, 상담기록 초안을 검토하고 최종 판단한다.
+P0 엔진이 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 공개근거·합성 데모 규칙, 상담기록과 재확인 일정 초안을 검토하고 최종 판단한다. 사용 허가된 내부 규정 검색은 P1·PoC 목표다.
 
 **제공 가치**
 
@@ -150,7 +144,7 @@ AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호�
 
 - 무엇이 평소와 달라졌는지 쉬운 말로 이해
 - 정상 생활변화를 직접 설명하고 불필요한 상향을 줄임
-- 필요한 경우 사람 상담과 공식 보호수단을 선택
+- 납부일정·필수생활비 현황을 쉬운 말로 확인하고 필요한 경우 사람 상담 선택
 - 동의·철회·이의제기·재검토 권한 유지
 
 ### 보조 참여자: 신뢰연락인
@@ -162,11 +156,11 @@ AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호�
 | 단계 | 범위 | 우선 가치 |
 |---|---|---|
 | 1. 공모전 MVP | 고객 맥락확인 최소 채널 + 행원 코파일럿 | 작동성·안전성·업무 연결 증명 |
-| 2. 행원용 예방 AI | 비식별 사건, 규정검색, 기록·재연락 | 금융회사 업무효율 검증 |
-| 3. 고객용 쉬운 금융 모드 | 큰 글씨, 고대비, 한 번에 한 질문, 읽어주기 | 금융접근성과 자기결정 지원 |
-| 4. 안심지원 모드 | 고객 선택 또는 적법한 대리권 확인 후 공동관리 | 필수생활비·기억노트·공식 제도 연결 |
+| 2. 행원용 예방 AI | 사건 분류·요약, 규정검색, 상담기록·재확인 | 금융회사 업무효율 검증 |
+| 3. 고객용 일정·생활비 모드 | 납부일정, 필수지출, 중복거래, 가용생활비, 쉬운 설명 | 금융접근성과 자기관리 지원 |
+| 4. 신뢰연락인 연결 | 본인 우선 알림, 반복 시 최소정보 알림, 공동확인 | 계좌 통제권 없이 단계적 금융안전망 제공 |
 
-모든 고객용 장기 비전에는 금융생활 요약, 중복결제·구독 정리, 자연어 거래검색, 금융 기억노트, 하루 브리핑을 포함할 수 있다. 이 기능들은 공모전 P0가 아니다.
+고객용 장기 비전은 납부일정, 필수생활비, 중복거래 확인과 동의 기반 신뢰연락인 연결에 집중한다. 자연어 거래검색, 돌봄·의료·복지기관 연결, 광범위한 자산관리 추천은 현재 제품 범위에서 제외한다.
 
 ---
 
@@ -180,7 +174,8 @@ AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호�
 - 고객 동의 없이 가족 또는 신뢰연락인에게 연락하거나 정보를 제공
 - 가족에게 별도 법적 권한 없이 송금·해지·동결 권한을 부여
 - 탐지 신호를 대출·보험·마케팅·추심에 재사용
-- 실제 고객 원문 거래내역이나 개인신용정보를 공개 외부 LLM에 전송
+- 실제 고객 원문 거래내역이나 개인신용정보를 외부 상용 LLM API에 전송
+- 치매안심센터·요양·복지·주거 등 돌봄서비스를 직접 중개하거나 의료기관처럼 진단·검사 권유를 자동화
 - 근거 없는 금융상품 추천, 법률·의료 판단, 가입 적합성 최종판정
 - MVP에서 실제 마이데이터·여러 금융회사·실거래를 연결했다고 주장
 - 합성데이터 성능을 실제 고객 대상 정확도나 임상 효과로 표현
@@ -196,7 +191,7 @@ AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호�
 | 인지취약성을 판별한다 | 평소와 다른 금융생활 변화를 확인한다 |
 | AI가 보호조치를 결정한다 | 규칙 엔진이 후보를 제시하고 사람이 최종 결정한다 |
 | 가족에게 자동으로 알린다 | 별도 동의한 신뢰연락인에게 최소정보 공동확인을 요청한다 |
-| FDS를 대체한다 | FDS 이후 맥락확인·설명·후속업무를 보완한다 |
+| FDS를 대체한다 | FDS와 별도로 장기 금융관리 행동변화와 후속업무를 지원한다 |
 | 국내 최초·유일 | 기존 수단을 하나의 사용자 여정으로 결합한다 |
 | 마이데이터로 전 금융사를 연결했다 | 표준 구조를 참고한 완전 합성 JSON을 사용했다 |
 | 합성데이터 정확도는 실제 성능이다 | 코드 회귀와 설계 비교를 위한 합성 시나리오 결과다 |
@@ -232,7 +227,7 @@ AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호�
 | 오프라인 발표 심사 | 2026-10-13 |
 | 최종 결과 발표 | 2026-10-23 |
 | 발표 대상 | 본선 상위 11팀 내외 |
-| 발표 형식 | 15분 발표 + 5분 질의응답 |
+| 발표 형식 | 최신 본선 공지 확인 필요(`TBD`) |
 
 대회에서 별도 데이터를 제공하지 않으므로 MVP는 자체 생성한 완전 합성데이터만 사용한다.
 
@@ -243,42 +238,43 @@ AI가 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 보호�
 ```mermaid
 flowchart LR
     A["고객 동의·합성 거래 입력"] --> B["개인별 금융생활 기준선"]
-    B --> C["규칙·통계 변화 탐지"]
+    B --> C["반복·누락·미완료·재확인 탐지"]
     C --> D["사유코드·불변 근거"]
     D --> E["고객 생활맥락 확인"]
     E --> F["정책·동의 엔진 재평가"]
     F --> G["정상 변화 종결"]
     F --> H["행원 사건큐"]
-    H --> I["공식 보호수단·질문·기록 초안"]
+    H --> I["사건요약·질문·P0 공개근거·기록·재확인 초안"]
     I --> J["고객·행원의 최종 판단"]
     J --> K["재연락·종결·감사로그"]
 ```
 
 | 구성요소 | 담당 역할 | 담당하지 않는 일 |
 |---|---|---|
-| 변화탐지 엔진 | 개인 기준선, MAD, 신규성, 반복·누락·추세, 사유코드 | 질병 추론 |
+| 변화탐지 엔진 | 개인 기준선, 반복 누락·중복·재시도·미완료·반복문의·재확인, 사유코드 | 질병·사기 추론 |
 | 사건·맥락 엔진 | 신호 병합, 고객 답변과 구조적 근거 반영 | 자유문장 생성 |
-| 정책·동의 엔진 | 상태전이, 연락권한, 보호수단 후보, 사람 승인 조건 | 법적 권한의 임의 생성 |
-| 생성형 AI | 쉬운 설명, 중립 질문, 상담기록·체크리스트 초안 | 점수·상태·실행 결정 |
+| 정책·동의 엔진 | 상태전이, 연락권한, P0 공식 공개근거·합성 데모 업무조치 후보, 사람 승인 조건 | 법적 권한의 임의 생성 |
+| 설명 생성기 | P0 템플릿과 P1 자체 모델로 쉬운 설명, 중립 질문, 상담기록·체크리스트 초안 | 점수·상태·실행 결정 |
 | 고객 | 본인거래·생활맥락 확인, 동의·철회, 도움 선택 | AI 판단의 수동적 수용 강요 |
 | 행원 | 사실확인, 질문, 조치안 검토, 후속관리, 종결 | AI 초안의 무검토 실행 |
 | 금융회사 | 내부정책과 법적 근거에 따른 실제 조치 | MVP의 모의 버튼을 실제 조치로 오인 |
 
-핵심 원칙은 **탐지는 규칙·통계가, 설명 초안은 생성형 AI가, 중요한 판단과 실행은 사람이 담당한다**는 것이다.
+핵심 원칙은 **탐지는 규칙·통계가, 설명 초안은 P0 템플릿과 선택형 P1 자체 모델이, 중요한 판단과 실행은 사람이 담당한다**는 것이다.
 
 ---
 
 ## 7. 공모전 MVP 최종 범위
 
-MVP는 **세 화면, 한 개의 동일조건 A/B 데모, 결정론적 안전장치**에 집중한다.
+MVP는 **세 화면, 한 개의 반사실적 정책 분기 비교 데모, 결정론적 안전장치**에 집중한다.
 
 ### 공통 데모 조건
 
 - 첫 화면에서 로그인 없이 `90초 비교 데모 시작` 가능
-- 각 익명 세션은 다른 세션과 완전히 분리
-- `Reset`은 같은 seed와 같은 원시 스냅샷을 멱등적으로 복원
+- 무로그인은 무권한을 뜻하지 않는다. 생성 시 발급한 세션 capability로 모든 세션 API의 소유권·역할·만료를 검증
+- 각 익명 세션과 각 `demoRunId`는 다른 세션·실행과 완전히 분리
+- `Reset`은 같은 seed와 같은 원시 스냅샷을 복원하되 새 실행은 새 `demoRunId`로 분리하고, 동일 멱등키·동일 요청의 재시도에는 같은 결과를 반환
 - 화면 상단에 `모든 데이터는 합성데이터입니다` 고정 표시
-- 외부 LLM API 키가 없어도 전 과정 동작
+- 외부 상용 LLM API를 사용하지 않으며, 자체 모델이 없어도 템플릿 폴백으로 전 과정 동작
 - 공모전 공개 경로만 무로그인이고, PoC·운영 행원 화면은 RBAC를 적용
 
 ### 화면 1. 고객 금융생활 변화
@@ -286,12 +282,12 @@ MVP는 **세 화면, 한 개의 동일조건 A/B 데모, 결정론적 안전장�
 - 12개월 완전 합성 금융생활 표시
 - 최초 9개월 기준선, 최근 3개월 관찰구간
 - 개인별 평소값과 현재값 비교
-- 신규 수취인·반복송금·정기납부 누락 등 사유코드 표시
+- 정기납부 반복 누락·중복결제·중복송금·업무 재시도·미완료·반복확인 등 사유코드 표시
 - 계산점수보다 `무엇이 얼마나 달라졌는지`를 사실로 설명
 - 질병·인지상태 라벨 없음
-- 동일 비교 데모의 `alertId`, 알고리즘 버전, 근거 거래 확인
+- 동일 비교 데모의 `alertId`, 알고리즘 버전, 거래·정기납부 의무·상호작용 등 typed 근거 확인
 
-### 화면 2. 생활맥락 확인
+### 화면 2. 고객 응답과 검증맥락 확인
 
 - 큰 글씨, 높은 명암, 명확한 버튼
 - 한 화면에 질문 하나만 표시
@@ -300,6 +296,7 @@ MVP는 **세 화면, 한 개의 동일조건 A/B 데모, 결정론적 안전장�
   - `내가 알고 한 거래예요`
   - `생활변화가 있었어요`
   - `본인 거래인지 확인하기 어려워요`
+  - `내가 하지 않은 거래예요`
   - `나중에 확인할게요`
   - `은행에 문의할게요`
 - 강한 신호는 고객의 단순 확인만으로 자동 해제하지 않음
@@ -310,12 +307,15 @@ MVP는 **세 화면, 한 개의 동일조건 A/B 데모, 결정론적 안전장�
 ### 화면 3. 행원 사건큐와 코파일럿
 
 - 여러 변화신호를 고객 사건 하나로 묶은 타임라인
-- 검토 우선순위, 사유코드, 평소값, 현재값, 근거 거래
+- 긴급도, 생활영향도, 반복성, 재발 여부에 따른 검토 우선순위
+- 사유코드, 평소값, 현재값, 거래·정기납부 의무·상호작용·상담·업무이력 근거
 - 고객 답변, 확인된 맥락, 미확인 항목
-- 고객에게 물어볼 중립 질문 초안
-- 공식 출처·기준일·적용조건이 있는 보호수단 후보
-- 상담기록 및 재연락 일정 초안
-- 비식별 LLM 입력과 `왜 이렇게 판단했나요?` 영역
+- 과거 기준선과 최근 변화를 한 화면에 보여주는 사건 자동요약
+- 고객에게 물어볼 비낙인·중립 질문 초안
+- 공식 공개출처·기준일·조항과 버전 고정된 합성 데모 업무규칙에 근거한 업무조치 후보
+- 고객 확인결과·거래 의도·시행조치가 포함된 상담기록 자동작성 초안
+- 7일·30일 재확인, 동일 패턴 재발 감시, 미완료 사건 재배정 등 사후관리 초안
+- P0 템플릿에 사용한 최소화·가명화 구조화 사실과 `왜 이렇게 판단했나요?` 영역. P1 모델 입력 미리보기는 목표 기능으로 명시
 - 직원 버튼:
   - `검토 시작`
   - `추가 확인 필요`
@@ -337,59 +337,61 @@ MVP는 **세 화면, 한 개의 동일조건 A/B 데모, 결정론적 안전장�
 
 ---
 
-## 8. 단일 기준 A/B 데모 명세
+## 8. 단일 기준 반사실적 정책 분기 데모 명세
 
-네 문서에 있던 `병원비 180만 원`과 `이사·부동산 송금` 시나리오 중 **이사·부동산 송금 시나리오 하나로 고정한다**. 계약·주소변경과 같은 구조적 근거를 사용할 수 있어 자기신고만으로 경보를 해제하는 문제를 피하기 쉽기 때문이다.
+데모는 **정기납부 반복 누락·중복송금·거래완료 반복확인이라는 금융관리 행동변화 시나리오 하나로 고정한다**. 동일한 최초 경보에 검증된 정상 맥락이 들어온 경우와 들어오지 않은 경우의 정책 결과를 나란히 보여준다.
+
+이 비교는 사용자를 무작위 배정해 효과를 추정하는 통계적 A/B 실험이 아니다. **동일한 T0 경보 스냅샷에서 T1 검증맥락만 달리한 반사실적 정책 분기 데모**이며, 발표에서도 인과효과를 증명했다고 표현하지 않는다.
 
 ### 비교 통제 원칙
 
-A와 B는 두 고객이 아니다. 같은 익명 데모 세션을 Reset해 재생하는 동일 사건이다.
+A와 B는 두 고객이 아니다. 하나의 익명 `sessionId`에서 Reset으로 각각 새 `demoRunId`를 만든 뒤 재생하는 동일 논리사건이다.
 
-다음 값은 완전히 고정한다.
+T0 `alertSnapshotAt` 시점에 다음 값은 완전히 고정한다.
 
-- `scenarioSeed`
-- `alertId`
-- 12개월 원시 거래 스냅샷
-- 기준선·특징값·사유코드
-- 알고리즘·정책 버전
+- `scenarioSeed`, `snapshotHash`, `fixtureVersion`
+- 논리 `alertId`와 12개월 원시 거래·상호작용 스냅샷
+- `alertEvidenceIds`, 기준선·특징값·사유코드
+- 알고리즘·정책·스키마 버전
 - `preDecision`
 
-달라지는 것은 **후속 맥락 패키지**, 즉 고객 응답과 이를 검증할 구조적 근거뿐이다.
+T1에는 고객 응답과 그 응답을 검증하는 `contextEvidenceIds`만 분기별로 달라진다. 각 맥락 근거는 `effectiveAt`, `observedAt`, `ingestedAt`, `sourceType`, `integrityHash`를 가지며 T0 경보 근거를 소급해 바꾸지 않는다. 따라서 API와 화면은 `alertEvidenceIds`와 `contextEvidenceIds`를 서로 다른 필드로 표시한다.
 
-### 공통 최초 경보
+분기 코드는 A=`FIN_MGMT_A_NORMAL_CONTEXT`, B=`FIN_MGMT_B_NO_CONTEXT`로 고정한다.
+
+### 공통 T0 최초 경보 fixture
 
 | 항목 | 고정 내용 |
 |---|---|
-| 시나리오 ID | `MOVE_AB_001` |
-| 경보 ID | `ALERT_MOVE_001` |
+| 시나리오 ID | `FIN_MGMT_AB_001` |
+| 논리 경보 ID | `ALERT_FIN_MGMT_001` |
 | 사전 판단 | `NEEDS_CONTEXT` |
-| 신규 수취인 | 1명 |
-| 반복송금 | 2회, 합계 1,850만 원 |
-| 정기납부 누락 | 공과금 1건 |
-| 핵심 사유코드 | `NEW_PAYEE`, `REPEATED_TRANSFER`, `MISSED_RECURRING` |
+| 정기납부 누락 | 최근 60일간 예상 정기납부 3건 미발생, `missedRecurringCount60d=3` |
+| 중복송금 | 같은 합성 수취인·금액의 10분 이내 완료 송금 2건, `duplicateTransferCount=2` |
+| 거래완료 반복확인 | 동일 거래 결과를 1시간 내 7회 조회, `repeatedConfirmationCount1h=7` |
+| 핵심 사유코드 | `MISSED_RECURRING`, `DUPLICATE_TRANSFER`, `REPEATED_CONFIRMATION` |
 | 신뢰연락인 동의 | `false` |
 
-실제 화면에는 합성 수취인명과 합성 거래일자를 표시할 수 있지만 LLM에는 아래와 같은 범주화된 사건요약만 보낸다.
+`NEW_PAYEE`와 `REPEATED_TRANSFER`는 이 고정 fixture의 사유코드로 사용하지 않는다. 화면에는 합성 수취인명과 합성 거래일자를 표시할 수 있지만, P1 자체 모델을 연결할 때도 모델에는 아래 §12의 최소화·가명화된 구조화 사건요약만 전달한다.
 
-### A 경로: 검증된 정상 생활변화
+### A 경로: 검증된 정상 시스템·처리 맥락
 
-1. 고객이 `생활변화가 있었어요`를 선택한다.
-2. 이사 보증금 분할송금이라고 설명한다.
-3. 합성 임대차 계약 식별자와 주소변경 이벤트가 거래기간과 일치한다.
-4. 공과금 누락도 주소이전 시점과 일치한다.
-5. 정책엔진이 강한 신호와 구조적 근거의 정합성을 확인한다.
-6. `postDecision=CLOSE_AS_NORMAL_CONTEXT`, 상태 `CLOSED_NORMAL`로 종결한다.
-7. 자동 차단·외부 통보 없이 자동이체 재등록 체크리스트만 제공한다.
+1. 새 `demoRunId`에서 고객이 `KNOWN_AND_INTENTIONAL`(`내가 알고 한 거래예요`)을 선택한다.
+2. T1 맥락 패키지에 `PAYMENT_PROVIDER_DELAY_VERIFIED`, `ACCOUNT_CONNECTION_OUTAGE_VERIFIED`, `DUPLICATE_TRANSFER_REFUNDED`, `RESULT_SCREEN_DELAY_VERIFIED`가 들어온다.
+3. 정책엔진이 세 사유코드 각각에 대해 고객 응답과 신뢰 가능한 구조적 근거의 정합성을 확인한다.
+4. 설명되지 않은 강한 신호가 하나라도 남으면 정상종결하지 않는다.
+5. 모든 가드가 충족되면 `postDecision=CLOSE_AS_NORMAL_CONTEXT`, 상태 `CLOSED_NORMAL`로 종결한다. 이는 불이익이나 계좌조치가 없는 워크플로 자동종결이며, 새 모순 근거가 들어오면 재개할 수 있다.
+6. 자동 차단·외부 통보 없이 확인된 처리결과와 다음 확인방법만 제공한다.
 
 ### B 경로: 본인 거래 확인 불가
 
-1. 같은 사건을 Reset한다.
-2. 고객이 `본인 거래인지 확인하기 어려워요`를 선택한다.
-3. 계약·주소변경 등 정상 생활맥락의 구조적 근거가 없다.
-4. 신규 수취인·반복송금·정기납부 누락 근거를 그대로 유지한다.
+1. Reset으로 같은 T0 스냅샷을 가진 새 `demoRunId`를 만든다.
+2. 고객이 `UNABLE_TO_CONFIRM`(`본인 거래인지 확인하기 어려워요`)을 선택한다.
+3. `contextEvidenceIds`에는 처리지연·취소·환불·데이터 단절을 검증하는 적격 근거가 없다.
+4. T0의 정기납부 반복 누락·중복송금·반복확인 근거는 A와 동일하게 유지한다.
 5. `postDecision=REQUIRE_BANK_REVIEW`, 상태 `PENDING_BANK_REVIEW`로 전환한다.
-6. 신뢰연락인 미동의이므로 연락 시도는 `BLOCKED_BY_CONSENT`로 거절한다.
-7. 행원 화면에 근거, 중립 질문, 보호수단 후보, 상담기록 초안을 표시한다.
+6. 신뢰연락인 미동의이므로 연락 게이트는 평가하되 외부 발송은 시도하지 않고 `BLOCKED_BY_CONSENT`를 기록한다.
+7. 행원 화면에는 사건요약, 근거, 중립 질문, **공식 공개근거와 버전 고정된 합성 데모 업무규칙** 기반 조치후보, 상담기록·재확인 초안을 표시한다.
 8. 행원 승인 전 실제 거래차단·한도변경은 발생하지 않는다.
 
 ### 90초 시연 시간표
@@ -398,22 +400,22 @@ A와 B는 두 고객이 아니다. 같은 익명 데모 세션을 Reset해 재�
 |---|---|
 | 0~15초 | 무로그인 데모 시작, 고객 홈에서 고정 경보 선택 |
 | 15~38초 | A 맥락과 구조적 근거 확인 후 정상종결 |
-| 38~48초 | 같은 seed·snapshot으로 Reset |
+| 38~48초 | 같은 seed·snapshot으로 Reset하고 새 `demoRunId` 생성 |
 | 48~63초 | B 본인 거래 확인 불가 선택 후 행원 검토 전환 |
 | 63~78초 | 미동의 연락 차단과 감사로그 확인 |
-| 78~90초 | 행원 화면에서 근거·질문·보호수단·기록 초안 확인 |
+| 78~90초 | 행원 화면에서 근거·질문·공식 공개근거·합성 데모 규칙·기록·재확인 초안 확인 |
 
 ### 데모 수용기준
 
 - 로그인 0회
 - 첫 상호작용 5초 이내
-- 외부 API 키 0개로도 완주
+- 외부 상용 AI API 호출 0건으로 완주
 - 동일 seed·버전 결과 재현율 100%
 - 미동의 신뢰연락인 실제 호출 0건
 - 행원 승인 전 실제 계좌조치 0건
 - LLM 장애 시 템플릿 폴백 100%
 - 익명 세션 간 상태 누출 0건
-- Reset 멱등성 보장
+- 동일 멱등키·동일 요청의 Reset 결과 재현과 새 `demoRunId` 중복생성 방지
 
 ---
 
@@ -424,12 +426,15 @@ A와 B는 두 고객이 아니다. 같은 익명 데모 세션을 Reset해 재�
 ```text
 OPEN
   → AWAITING_CONTEXT
-      → CONTEXT_DEFERRED → AWAITING_CONTEXT
+      → CONTEXT_DEFERRED → AWAITING_CONTEXT | PENDING_BANK_REVIEW
       → CLOSED_NORMAL
+          → REOPENED → PENDING_BANK_REVIEW
       → PENDING_BANK_REVIEW
           → IN_BANK_REVIEW
               → FOLLOW_UP_REQUIRED
-              → CLOSED_GUIDANCE_PROVIDED
+                  → IN_BANK_REVIEW
+              → GUIDANCE_PLAN_APPROVED
+                  → CLOSED_GUIDANCE_DELIVERED
               → CLOSED_FALSE_POSITIVE
 ```
 
@@ -437,23 +442,77 @@ OPEN
 |---|---|
 | `OPEN` | 변화신호가 사건으로 생성됨 |
 | `AWAITING_CONTEXT` | 고객의 본인거래·생활맥락 확인 대기 |
-| `CONTEXT_DEFERRED` | 고객이 나중에 확인을 선택함 |
-| `CLOSED_NORMAL` | 구조적 근거와 일치한 정상 생활변화로 종결 |
+| `CONTEXT_DEFERRED` | 고객이 나중에 확인을 선택했고 `deferredUntil`과 재시도 횟수가 설정됨 |
+| `CLOSED_NORMAL` | 고객 응답과 검증된 생활·처리 근거가 일치한 정상 맥락으로 종결 |
+| `REOPENED` | 종결 뒤 모순되거나 더 강한 새 근거가 들어와 사건을 재개함 |
 | `PENDING_BANK_REVIEW` | 설명이 필요해 행원 큐에 등록됨 |
 | `IN_BANK_REVIEW` | 행원이 검토를 시작함 |
 | `FOLLOW_UP_REQUIRED` | 추가 고객확인·재연락 필요 |
-| `CLOSED_GUIDANCE_PROVIDED` | 안내계획 제공 후 종결 |
+| `GUIDANCE_PLAN_APPROVED` | 행원이 안내계획을 승인했으나 아직 고객에게 제공하지 않음 |
+| `CLOSED_GUIDANCE_DELIVERED` | 승인된 안내가 고객에게 실제 제공된 사실을 기록한 뒤 종결 |
 | `CLOSED_FALSE_POSITIVE` | 데이터·규칙상 오탐으로 종결 |
 
 `BLOCKED_BY_CONSENT`는 사건 상태가 아니라 **연락·정보제공 시도의 거절 결과 코드**다.
+
+미동의 신뢰연락인 경로의 표준 결과는 `gateEvaluated=true`, `dispatchAttempted=false`, `resultCode=BLOCKED_BY_CONSENT`다. 정책 게이트 평가와 실제 외부 발송 시도를 같은 `attempted` 필드로 표현하지 않는다.
+
+### 상태 전이 권한과 가드
+
+| From → To | 허용 actor | 필수 가드 | 필수 감사 이벤트 |
+|---|---|---|---|
+| `OPEN → AWAITING_CONTEXT` | `SYSTEM` | T0 스냅샷·사유코드·불변 근거·버전 저장 완료 | `ALERT_OPENED` |
+| `AWAITING_CONTEXT → CLOSED_NORMAL` | `POLICY_ENGINE` | 응답이 `KNOWN_AND_INTENTIONAL` 또는 `LIFE_CONTEXT_CHANGED`이고, 모든 강한 신호에 유효한 T1 구조적 근거가 일치하며 모순근거가 없음 | `CONTEXT_EVALUATED`, `INCIDENT_CLOSED_NORMAL` |
+| `AWAITING_CONTEXT → PENDING_BANK_REVIEW` | `POLICY_ENGINE` | 확인 불가·은행검토 요청·본인 미실행 응답, 근거 불일치, 강한 미설명 신호 중 하나 이상 | `CONTEXT_EVALUATED`, `BANK_REVIEW_QUEUED` |
+| `AWAITING_CONTEXT → CONTEXT_DEFERRED` | `CUSTOMER` | `DEFERRED`, `deferredUntil`, `retryCount`, `maxRetries` 저장 | `CONTEXT_DEFERRED` |
+| `CONTEXT_DEFERRED → AWAITING_CONTEXT` | `CUSTOMER` 또는 `SYSTEM` | 유효기간 내 고객 재진입 또는 예약 재확인 시점 도달 | `CONTEXT_REOPENED` |
+| `CONTEXT_DEFERRED → PENDING_BANK_REVIEW` | `SYSTEM` | 유효기간 만료 또는 `maxRetries` 초과 뒤에도 강한 신호가 남음 | `CONTEXT_TIMEOUT_ESCALATED` |
+| `PENDING_BANK_REVIEW → IN_BANK_REVIEW` | `STAFF` | `DEMO_STAFF` 권한, 사건 버전 일치, 담당자 기록 | `STAFF_REVIEW_STARTED` |
+| `IN_BANK_REVIEW → FOLLOW_UP_REQUIRED` | `STAFF` | 후속사유와 `followUpAt` 존재 | `FOLLOW_UP_SCHEDULED` |
+| `FOLLOW_UP_REQUIRED → IN_BANK_REVIEW` | `STAFF` | 후속결과 저장, 사건 버전 일치 | `FOLLOW_UP_COMPLETED` |
+| `IN_BANK_REVIEW → GUIDANCE_PLAN_APPROVED` | `STAFF` | 조치후보 근거·승인자·승인시각 저장, 실제 금융실행 없음 | `GUIDANCE_PLAN_APPROVED` |
+| `GUIDANCE_PLAN_APPROVED → CLOSED_GUIDANCE_DELIVERED` | `STAFF` | 고객 제공 채널·시각·결과가 별도 이벤트로 확인됨 | `GUIDANCE_DELIVERED`, `INCIDENT_CLOSED` |
+| `IN_BANK_REVIEW → CLOSED_FALSE_POSITIVE` | `STAFF` | 오탐 근거와 검토 메모 존재 | `INCIDENT_CLOSED_FALSE_POSITIVE` |
+| 종결상태 → `REOPENED → PENDING_BANK_REVIEW` | `STAFF` 또는 `SYSTEM` | 새 모순근거·재발신호 ID와 재개사유 존재 | `INCIDENT_REOPENED`, `BANK_REVIEW_QUEUED` |
+
+정상종결은 금융상 불이익이나 계좌조치가 없는 워크플로 종결에 한해서만 정책엔진이 수행한다. 금융회사의 실제 판단·연락·거래조치는 권한 있는 사람이 승인한다. `alert_incident.state`를 사건 생명주기의 단일 기준으로 삼고, `protection_case`에는 배정·검토 작업상태만 저장해 두 상태가 서로 경쟁하지 않게 한다.
+
+P0 데모의 미루기 정책은 `deferredUntil=응답시각+24시간`, `maxRetries=1`로 고정하며 실제 대기 대신 고정 데모시계로 만료를 재현한다. 운영값은 금융회사 정책으로 별도 승인한다.
+
+### 고객 응답과 검증맥락 코드
+
+`ContextResponseCode`는 다음 값으로 고정한다.
+
+| 코드 | 화면 문구 | 기본 정책 결과 |
+|---|---|---|
+| `KNOWN_AND_INTENTIONAL` | 내가 알고 한 거래예요 | 적격 구조적 근거가 모든 강한 신호를 설명할 때만 정상종결 후보 |
+| `LIFE_CONTEXT_CHANGED` | 생활변화가 있었어요 | 유효기간·출처가 있는 구조적 근거 확인 후 정상종결 후보 |
+| `UNABLE_TO_CONFIRM` | 본인 거래인지 확인하기 어려워요 | `PENDING_BANK_REVIEW` |
+| `NOT_MY_TRANSACTION` | 내가 하지 않은 거래예요 | `PENDING_BANK_REVIEW` 및 기존 FDS·긴급 은행연락 경로 안내. ALZ's well은 사기 여부를 판정하지 않음 |
+| `DEFERRED` | 나중에 확인할게요 | `CONTEXT_DEFERRED` |
+| `REQUEST_BANK_REVIEW` | 은행에 문의할게요 | `PENDING_BANK_REVIEW` |
+
+고정 fixture에서 허용하는 `ContextEvidenceCode`는 다음 네 값이다.
+
+| 코드 | 의미 |
+|---|---|
+| `PAYMENT_PROVIDER_DELAY_VERIFIED` | 합성 납부기관의 처리지연이 출처·시간·무결성값으로 확인됨 |
+| `ACCOUNT_CONNECTION_OUTAGE_VERIFIED` | 데이터 연결장애가 해당 누락 관찰기간과 일치함 |
+| `DUPLICATE_TRANSFER_REFUNDED` | 중복송금 한 건의 취소·환불 완료가 T1 상태이력으로 확인됨 |
+| `RESULT_SCREEN_DELAY_VERIFIED` | 반복확인 시간대의 앱 결과화면 지연이 시스템 이벤트로 확인됨 |
+
+고객 응답은 사실 주장이고 구조적 근거는 별도 검증자료다. 응답 코드만으로 `CLOSED_NORMAL`을 만들지 않으며, 근거 없음은 별도의 긍정적 증거코드로 만들지 않는다.
 
 ### 판단 필드
 
 - `preDecision`: 생활맥락 확인 전 판단
 - `postDecision`: 생활맥락 확인 후 판단
-- `contextSource`: 고객 응답, 합성 계약, 주소변경 등 출처
+- `contextSource`: `USER_RESPONSE`, `SYSTEM_EVENT`, `PAYMENT_PROVIDER_EVENT`, `STAFF_VERIFICATION` 중 출처
 - `contextValidFrom`, `contextValidTo`: 맥락 유효기간
-- `evidenceIds`: 판단에 사용된 불변 근거 ID
+- `alertSnapshotAt`: 최초 경보의 T0 기준시각
+- `alertEvidenceIds`: 최초 판단에 사용된 불변 T0 근거
+- `contextEvidenceIds`: 재평가에 사용된 T1 검증근거
+- `effectiveAt`, `observedAt`, `ingestedAt`: 실제 효력·관측·시스템 수집 시각
+- 근거 참조 형식: `{type, id, version, integrityHash}`
 - `algorithmVersion`, `policyVersion`: 계산·정책 버전
 
 최초 판단을 덮어쓰지 않고 전후 판단과 근거를 모두 보존한다.
@@ -463,23 +522,23 @@ OPEN
 | 판단 코드 | 사용 시점 | 의미 |
 |---|---|---|
 | `NEEDS_CONTEXT` | `preDecision` | 생활맥락 확인이 필요함 |
-| `CLOSE_AS_NORMAL_CONTEXT` | `postDecision` | 구조적 근거가 일치한 정상 생활변화 |
+| `CLOSE_AS_NORMAL_CONTEXT` | `postDecision` | 고객 응답과 구조적 근거가 일치한 정상 생활·처리 맥락 |
 | `REQUIRE_BANK_REVIEW` | `postDecision` | 설명이 더 필요해 행원 검토로 전환 |
 
 ### 표준 사유코드
 
 | 코드 | 의미 |
 |---|---|
-| `NEW_PAYEE` | 과거 기준선에 없던 신규 수취인 |
-| `REPEATED_TRANSFER` | 동일·유사 수취인·금액의 반복송금 |
 | `DUPLICATE_PAYMENT` | 시간창 내 중복 가능성이 있는 결제 |
+| `DUPLICATE_TRANSFER` | 동일 수취인·금액·시간창 내 중복 가능성이 있는 송금 |
 | `MISSED_RECURRING` | 예상 정기납부의 유예기간 내 미발생 |
-| `CASH_WITHDRAWAL_TREND` | 현금인출 금액·빈도의 지속 증가 |
-| `UNUSUAL_AMOUNT` | 개인 기준선 대비 금액 변화 |
-| `UNUSUAL_TIME` | 개인 기준선 대비 이용시간 변화 |
-| `TREND_SHIFT` | 일정 기간 지속된 수준·추세 변화 |
+| `REPEATED_RETRY` | 동일 금융업무의 취소·재시도 반복 |
+| `UNFINISHED_TASK` | 시작한 납부·송금·조회 업무의 미완료 증가 |
+| `REPEATED_INQUIRY` | 같은 내용의 고객센터·영업점 문의 반복 |
+| `POST_EXPLANATION_RECURRENCE` | 행원 설명·상담 후 동일 질문·행동 재발 |
+| `REPEATED_CONFIRMATION` | 완료된 거래·납부 결과의 단시간 반복 확인 |
 
-과거 문서의 `MISSED_RECURRING_PAYMENT`는 구현과 문서에서 `MISSED_RECURRING`으로 통일한다.
+정기납부 누락 사유코드는 모든 구현과 현행 문서에서 `MISSED_RECURRING`만 사용한다.
 
 각 신호에는 최소한 다음을 저장한다.
 
@@ -487,7 +546,7 @@ OPEN
 - 평소값과 비교기간
 - 현재값과 관찰기간
 - 기여도 또는 사실 근거
-- 근거 거래 ID
+- 근거 거래·정기납부 의무·상호작용·시스템 이벤트의 typed 참조
 - 준비상태 `READY`, `LOW_CONFIDENCE`, `COLD_START`
 - 규칙·알고리즘 버전
 - 계산시각
@@ -502,13 +561,14 @@ LLM은 수치 거래의 이상 여부를 판단하지 않는다. Java 기반 규
 
 | 신호 | 기본 방식 | 예외·안전처리 |
 |---|---|---|
-| 금액·횟수 급증 | 일·주 중앙값과 MAD 기반 단측 modified z | MAD=0·희소값이면 IQR·분위수·절대규칙 또는 `LOW_CONFIDENCE` |
-| 신규 수취인 | 정규화된 수취인 사전과 최초 등장 규칙 | 본인계좌·표기변형·은행명 변형 구분 |
-| 반복송금·중복결제 | 수취인·금액·시간창의 결정적 규칙 | 취소·환불·pending 거래 분리 |
+| 중복송금·중복결제 | 수취인·금액·시간창의 결정적 규칙 | 취소·환불·pending 거래 분리 |
 | 정기납부 누락 | 주기 추정과 grace period | 데이터 단절·연결장애를 미납으로 오인하지 않음 |
-| 점진 추세 | 연속 기간 증가 규칙, 필요 시 Theil–Sen 비교 | 명절·이사·여행·급여일 변화 반례 검증 |
-| 수준 전환 | P1에서 온라인 변화점 탐지 비교 | 미래정보를 보는 오프라인 누수 금지 |
-| 사건 융합 | 사유코드·기간·수취인 기반 정책표 | 중복억제, cooldown, 고객별 경보예산 |
+| 취소·재시도 | 동일 업무 ID·목적·시간창의 반복 규칙 | 네트워크 오류·인증 장애·앱 오류 분리 |
+| 업무 미완료 | 시작·진행·완료 이벤트의 상태전이와 중단율 | 정상 취소·세션 만료·채널 전환 분리 |
+| 반복문의 | 정규화된 문의주제·기간·상담결과의 반복 규칙 | 민원 후속문의·미해결 사건 분리 |
+| 설명 후 재발 | 상담 완료시각 이후 동일 주제·행동 재발 규칙 | 안내 불충분·직원 재연락 요청 분리 |
+| 거래결과 반복확인 | 완료 거래 ID의 단시간 조회횟수와 개인 기준선 비교 | 결과화면 지연·푸시 미수신·앱 오류 분리 |
+| 사건 융합 | 사유코드·기간·업무목적 기반 정책표 | 중복억제, cooldown, 고객별 경보예산 |
 
 Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비교실험 후보로만 사용한다.
 
@@ -526,7 +586,7 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 ### 안전한 맥락 재평가
 
 - 고객의 `괜찮아요` 또는 `내가 한 거래예요` 응답만으로 강한 신호를 해제하지 않는다.
-- 정상종결은 고객 응답과 계약·주소변경 등 구조적 근거가 일치할 때만 허용한다.
+- 정상종결은 고객 응답과 처리상태·취소·환불·데이터품질·시스템 이벤트 등 출처가 검증된 구조적 근거가 일치할 때만 허용한다.
 - 답변과 거래증거가 불일치하면 `PENDING_BANK_REVIEW`로 보낸다.
 - 거래 사실 정합성은 LLM이 아니라 DB 조회와 결정론적 규칙으로 확인한다.
 - 고객에게는 보정되지 않은 질병·위험 확률 대신 확인 가능한 사실을 보여준다.
@@ -550,24 +610,21 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 
 ### 반드시 포함할 정상 반례
 
-- 이사 계약금·잔금과 주소이전
-- 입원·의료비
-- 여행·해외사용
-- 가족지원
-- 명절 지출
-- 큰 합법 구매
-- 급여일·소득 변화
-- 신규 계좌 연결
 - 데이터 수집 단절
 - 결제 취소·환불·pending
+- 은행·납부기관 처리지연
+- 네트워크·인증·앱 장애
+- 상담 미해결에 따른 정당한 반복문의
+- 고객이 요청한 재연락과 채널 전환
+- 자동이체 계좌 변경·만료·재등록
 
 ### 비교실험
 
 | 비교군 | 구성 | 검증 목적 |
 |---|---|---|
 | A. 전역 규칙 | 모든 고객에 공통 금액·횟수 임계값 | 개인차로 발생하는 과다 경보 측정 |
-| B. 개인 기준선 | A + 중앙값·MAD + 신규성 + 정기납부 주기 | 개인화의 추가가치 측정 |
-| C. 기준선 + 맥락 | B + 검증된 정상 생활사건 | 위험사건 검토를 유지하며 불필요한 상향 감소 측정 |
+| B. 개인 기준선 | A + 개인별 반복·누락·미완료·재확인 기준선 | 개인화의 추가가치 측정 |
+| C. 기준선 + 맥락 | B + 검증된 정상 생활·처리 맥락 | 위험사건 검토를 유지하며 불필요한 상향 감소 측정 |
 
 ### 평가 지표
 
@@ -579,10 +636,10 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 - 변화 시작부터 첫 경보까지 탐지 지연
 - cold-start coverage
 - 정상맥락 종결률
-- 위험사건 unsafe downgrade rate
-- 근거 거래 ID 정확도와 허구 근거 수
+- 위험사건 unsafe downgrade rate = `검토필요 골든사건 중 CLOSED_NORMAL로 잘못 하향된 수 / 검토필요 골든사건 수`
+- typed 근거 참조 정확도와 허구 근거 수
 
-**생성형 AI·RAG**
+**P1 생성형 AI·RAG**
 
 - 구조화 JSON 유효률
 - 근거와 설명의 일치율
@@ -605,15 +662,18 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 
 아래 값은 달성 결과가 아니라 개발 목표·수용기준이다. 제출본에는 실제 측정값과 목표값을 구분한다.
 
+`unsafe downgrade rate=0%`는 다른 평균지표보다 먼저 적용하는 **출시 안전 게이트**다. 단 한 건이라도 검토필요 골든사건이 `CLOSED_NORMAL`로 내려가면 정상맥락 해제율이나 업무시간 목표를 달성했더라도 해당 빌드는 출시 실패다. 각 비율은 분자·분모·평가 seed·fixture 버전·데이터 manifest checksum을 함께 기록한다.
+
 | 지표 | 목표 |
 |---|---:|
+| 위험사건 unsafe downgrade rate | **0% — 위반 시 출시 실패** |
 | 검토 필요 사건 재현율 | 90% 이상 |
-| 정상 생활맥락 오경보 해제율 | 80% 이상 |
+| 검증된 정상맥락 오경보 해제율 | 80% 이상 |
 | 맥락 확인 후 불필요한 상향 감소 | 50% 이상 |
 | 사유코드·화면 설명 추적 가능률 | 100% |
 | 미동의 연락·자동조치 차단률 | 100% |
-| LLM 입력 개인정보 노출 | 0건 |
-| 근거 없는 보호수단 안내 | 0건 |
+| P1 모델 입력 직접식별자 노출 | 0건 |
+| 근거 없는 공식·합성 데모 업무조치 안내 | 0건 |
 | 행원 사건 검토시간 | 수기 대비 30% 단축 목표 |
 | 핵심 데모 E2E | 100회 중 99회 이상 성공 |
 
@@ -627,24 +687,27 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 
 기반모델을 처음부터 만들지 않는다. 4명 팀과 공모전 일정에서 데이터, GPU, 평가, 보안을 감당하기 어렵고 서비스의 핵심 가치도 아니다.
 
+실서비스 목표 원칙은 **외부 상용 생성형 AI API를 호출하지 않고, 은행 내부망 또는 은행이 통제하는 전용환경에 오픈웨이트 기반 금융특화 모델과 권한형 RAG를 자체 호스팅하는 것**이다. 공모전 MVP의 현재 구현 범위는 GPU·LLM·벡터 RAG 없이도 완주하는 결정론적 규칙·템플릿·공식 공개근거 카탈로그다. 이후 문장에서 자체 모델이나 내부 RAG를 언급할 때는 `P1·PoC 목표`라고 명시하며, MVP에 이미 구현됐다고 발표하지 않는다.
+
 우선순위는 다음과 같다.
 
 1. 결정론적 탐지·정책·템플릿 경로 구현
 2. 승인된 공식자료 카탈로그와 근거 표시
 3. 고정 평가세트로 안전성과 실패 유형 측정
-4. 선택형 생성형 AI로 표현 개선
-5. 반복 실패가 증명될 때만 RAG 고도화·LoRA/QLoRA 검토
+4. 자체 호스팅 오픈웨이트 금융특화 모델로 표현 개선
+5. 은행 내부 규정·매뉴얼의 권한형 벡터 RAG 고도화
+6. 반복 실패가 증명될 때만 LoRA/QLoRA 검토
 
 ### 구성요소별 역할
 
 | 구성요소 | 역할 | MVP 우선순위 |
 |---|---|---|
 | Java 규칙·통계·시계열 | 수치 거래 변화 탐지 | P0 |
-| 정책·동의 엔진 | 상태·권한·보호수단 후보 강제 | P0 |
+| 정책·동의 엔진 | 상태·권한·공식 공개근거 및 합성 데모 업무규칙 기반 조치후보 강제 | P0 |
 | 템플릿 생성기 | 키 없이 쉬운 설명·질문·기록 생성 | P0 |
-| 공식 근거 카탈로그 | 구조화 조건·출처·기준일 제공 | P0 |
-| 외부 또는 오픈웨이트 LLM | 문장 표현 개선, 구조화 초안 | P1 |
-| 벡터 RAG | 공식 문서 검색 고도화 | P1 |
+| 공식 공개근거 카탈로그 | 공개된 공식자료의 구조화 조건·출처·기준일 제공 | P0 |
+| 자체 호스팅 오픈웨이트 금융특화 LLM | 문장 표현 개선, 사건요약·질문·상담기록·사후관리 구조화 초안 | P1 |
+| 권한형 벡터 RAG | 은행 내부 규정·매뉴얼과 공식 문서 검색 고도화 | P1 |
 | KoBERT·KLUE-RoBERTa·KoELECTRA | 의도·위험표현·PII 분류 보조 | P2 |
 | KR-FinBERT 계열 | 금융 문서·상담 텍스트 분류 보조 | P2 |
 | LoRA/QLoRA | 반복 실패 업무의 제한적 개선 | 대회 이후 |
@@ -653,7 +716,7 @@ KoBERT 계열은 생성형 sLLM이 아니다. 여러 BERT 모델을 결합한다
 
 ### 오픈웨이트 sLLM 선정 기준
 
-P1 또는 PoC에서 내부형 모델을 검토할 경우 다음 기준으로 선정하고 특정 모델명은 기술검증 후 확정한다.
+P1 또는 PoC에서 자체 호스팅 모델을 선정할 때 다음 기준을 적용하고 특정 모델명은 기술검증 후 확정한다.
 
 - 한국어 성능
 - 상업적 이용조건
@@ -665,16 +728,11 @@ P1 또는 PoC에서 내부형 모델을 검토할 경우 다음 기준으로 선
 
 LoRA는 문체 흉내가 아니라 쉬운 설명, 정해진 상담기록 형식, 근거 필드가 있는 JSON, 금지행동 거부처럼 반복 측정 가능한 실패에만 사용한다. 실제 고객정보가 아니라 공개자료, 전문가 검토 문장, 완전 합성 사례만 학습에 쓴다.
 
-### 공식 근거 카탈로그와 RAG
+### 공식 공개근거 카탈로그와 RAG
 
-MVP P0는 벡터DB가 없어도 동작하는 구조화 공식 근거 카탈로그다. P1에서 pgvector 등 벡터검색을 추가할 수 있다.
+MVP P0는 벡터DB가 없어도 동작하는 구조화 공식 공개근거 카탈로그다. P0에서 허용하는 근거는 금융위원회·금융감독원·금융보안원 등 공식기관이 공개한 자료와 출처·버전이 고정된 **합성 데모 업무규칙**뿐이다. 합성 규칙은 화면과 응답에서 `실제 은행 내부규정이 아닌 데모용 규칙`으로 표시한다.
 
-허용 자료:
-
-- 금융위원회·금융감독원·금융보안원 등 공식 자료
-- 국민연금공단 등 공공기관의 공식 제도 안내
-- 사용 허가를 받은 은행 내부 업무매뉴얼과 소비자보호 지침
-- 승인된 FDS 경보 처리절차, 상담문구, 민원 대응 기준
+사용 허가를 받은 은행 내부 업무매뉴얼·소비자보호 지침·상담문구·민원 대응 기준은 실제 금융회사와의 P1·PoC에서만 적재한다. 그때도 문서별 접근권한을 강제하는 보안 필터와 pgvector 등 권한형 검색을 적용하며, 공개 공모전 데이터에 실제 내부문서가 포함됐다고 주장하지 않는다.
 
 각 문서는 다음 메타데이터를 가진다.
 
@@ -687,16 +745,18 @@ MVP P0는 벡터DB가 없어도 동작하는 구조화 공식 근거 카탈로�
 
 정책엔진이 적용 가능한 후보를 먼저 고르고, LLM은 그 후보만 쉬운 말로 설명한다. URL과 페이지는 LLM이 생성하지 않고 검색 메타데이터에서 서버가 조립한다. 근거나 최신성을 확인할 수 없으면 `확인 불가·행원 재확인 필요`로 남긴다.
 
-### 비식별 LLM 입력
+### P1 최소화·가명화 모델 입력
+
+아래는 P1 자체 호스팅 모델을 연결할 때의 허용 예시다. P0에서는 같은 구조를 `TemplateExplanationGenerator`가 사용하며 모델 호출은 없다. 가명화 정보도 개인정보·신용정보가 될 수 있으므로 `비식별이라 안전하다`고 단정하지 않는다.
 
 ```json
 {
-  "alertId": "ALERT_MOVE_001",
-  "reasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER", "MISSED_RECURRING"],
-  "newPayeeCount": 1,
-  "totalTransferAmountBand": "10M_20M_KRW",
-  "repeatedTransferCount": 2,
-  "missedRecurringCount": 1,
+  "demoRunId": "RUN-A-001",
+  "alertId": "ALERT_FIN_MGMT_001",
+  "reasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"],
+  "missedRecurringCount60d": 3,
+  "duplicateTransferCount": 2,
+  "repeatedConfirmationCount1h": 7,
   "confirmedLifeContext": false,
   "trustedContactConsent": false,
   "allowedEvidenceIds": ["DOC-POLICY-001"]
@@ -712,7 +772,8 @@ LLM은 정해진 스키마의 다음 필드만 초안으로 반환한다.
 - 고객용 쉬운 설명
 - 중립 확인질문
 - 행원 상담기록 초안
-- 후속 체크리스트
+- 정책엔진이 허용한 공식 공개근거·합성 데모 규칙 기반 업무조치 후보
+- 재확인 일정·사후관리 체크리스트
 - 사용한 `evidenceIds`
 
 LLM은 `reasonCodes`, 사건 상태, 우선순위, 연락권한, `actionCode`를 변경할 수 없다. 자연어 출력을 실행 명령으로 사용하지 않는다.
@@ -724,10 +785,10 @@ LLM은 `reasonCodes`, 사건 상태, 우선순위, 연락권한, `actionCode`를
 → 정책결정
 → 구조화 ExplanationFacts
 → TemplateExplanationGenerator
-→ 선택적으로 LLM이 표현만 개선
+→ 선택적으로 자체 호스팅 LLM이 표현만 개선
 ```
 
-API 키 없음, timeout, 429, 5xx, malformed JSON, schema 오류, 금지표현 탐지 시 즉시 템플릿으로 전환한다. LLM이 없어도 탐지, 맥락확인, 동의차단, 행원검토, 감사로그가 모두 작동해야 한다.
+자체 모델 미배치, timeout, 5xx, malformed JSON, schema 오류, 금지표현 탐지 시 즉시 템플릿으로 전환한다. LLM이 없어도 탐지, 맥락확인, 동의차단, 행원검토, 감사로그가 모두 작동해야 한다.
 
 ---
 
@@ -745,7 +806,7 @@ API 키 없음, timeout, 429, 5xx, malformed JSON, schema 오류, 금지표현 �
 - Spring Data JPA를 기본 데이터 접근으로 사용
 - 복잡한 분석 조회가 실제로 필요할 때만 JDBC 또는 jOOQ 보조
 - PostgreSQL, Flyway
-- Thymeleaf + HTMX
+- React 또는 Vue 기반 프론트엔드와 JSON REST API 계약
 - Spring AI는 선택 사용
 - Docker 기반 배포
 - Actuator·Micrometer 기반 헬스체크
@@ -757,7 +818,7 @@ API 키 없음, timeout, 429, 5xx, malformed JSON, schema 오류, 금지표현 �
 
 ```mermaid
 flowchart LR
-    A["Thymeleaf·HTMX 3개 화면"] --> B["Spring Boot 모듈형 모놀리스"]
+    A["React 또는 Vue 3개 화면"] --> B["Spring Boot JSON REST API"]
     B --> C["ledger"]
     B --> D["detection"]
     B --> E["case·consent·policy"]
@@ -767,7 +828,7 @@ flowchart LR
     C --> I["PostgreSQL"]
     D --> I
     E --> I
-    F --> J["템플릿 / 선택 LLM / 공식 근거"]
+    F --> J["P0 템플릿·공식 공개근거 / P1 자체 LLM·권한형 RAG"]
     G --> I
     H --> I
 ```
@@ -780,9 +841,9 @@ flowchart LR
 | `detection` | feature, baseline, MAD, 추세, reasonCodes |
 | `case` | 사건 병합, 맥락 이벤트, 상태기계, 직원 검토 |
 | `consent` | 분석·신뢰연락인 동의, 철회, 최소정보 정책 |
-| `policy` | 우선순위, 정상종결 조건, 보호수단 후보, 실행 금지 |
-| `explanation` | 템플릿, 선택 LLM, 공식 근거검색, 출력검증 |
-| `demo` | 익명 세션, 시나리오 seed, Reset, 3개 화면 |
+| `policy` | 우선순위, 정상종결 조건, 공식 공개근거·합성 데모 업무조치 후보, 실행 금지 |
+| `explanation` | P0 템플릿·공식 공개근거, P1 자체 금융특화 LLM·권한형 내부 규정검색, 출력검증 |
+| `demo` | 익명 세션 capability, 시나리오 seed, `demoRunId`, Reset, 3개 화면 |
 | `audit` | 사건·근거·결정·모델·문서·직원 override 이력 |
 
 의존방향은 가능한 한 `demo → case → detection → ledger`, `case → consent·policy·explanation`, 모든 중요 이벤트 → `audit`로 유지한다.
@@ -790,43 +851,59 @@ flowchart LR
 ### 핵심 API 초안
 
 ```http
-POST /demo/sessions
-POST /demo/sessions/{sessionId}/reset
-POST /demo/sessions/{sessionId}/scenarios/MOVE_AB_001/ingest
+POST /api/v1/demo/sessions
+POST /api/v1/demo/sessions/{sessionId}/reset
+POST /api/v1/demo/sessions/{sessionId}/scenarios/FIN_MGMT_AB_001/ingest
 
-GET  /demo/sessions/{sessionId}/customers/{customerId}/alerts
-GET  /demo/sessions/{sessionId}/alerts/{alertId}
-POST /demo/sessions/{sessionId}/alerts/{alertId}/context
-GET  /demo/sessions/{sessionId}/alerts/{alertId}/audit
+GET  /api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts
+GET  /api/v1/demo/sessions/{sessionId}/alerts/{alertId}
+POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context
+GET  /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit
 
-GET  /demo/sessions/{sessionId}/staff/cases
-GET  /demo/sessions/{sessionId}/cases/{caseId}
-POST /demo/sessions/{sessionId}/cases/{caseId}/review
-POST /demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
+GET  /api/v1/demo/sessions/{sessionId}/staff/cases
+GET  /api/v1/demo/sessions/{sessionId}/cases/{caseId}
+POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/review
+POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 ```
 
 ### 최소 데이터 구조
 
 | 테이블 | 핵심 필드 |
 |---|---|
-| `demo_session` | session_id, scenario_seed, expires_at, reset_version |
+| `demo_session` | session_id, capability_hash, scenario_seed, expires_at, reset_version |
+| `demo_run` | demo_run_id, session_id, run_sequence, branch_code, snapshot_hash, context_package_hash, fixture_version, created_at |
 | `customer` | synthetic_customer_id, profile_type |
 | `account` | synthetic_account_id, customer_id, account_type |
 | `transaction` | occurred_at, posted_at, amount, payee_key, channel, status |
+| `transaction_status_history` | transaction_id, status, effective_at, observed_at, ingested_at, source_type |
+| `interaction_event` | event_id, transaction_id, event_type, occurred_at, channel, integrity_hash |
+| `system_context_event` | event_id, context_evidence_code, effective_from/to, observed_at, ingested_at, source_type, integrity_hash |
 | `recurring_obligation` | obligation_code, expected_cycle, grace_period |
 | `baseline_snapshot` | feature_code, window, median, mad, readiness, algorithm_version |
-| `anomaly_signal` | reason_code, baseline_value, current_value, evidence_ids |
-| `alert_incident` | alert_id, pre_decision, post_decision, state, reason_codes |
-| `context_event` | context_code, source, evidence_period, expiry, user_response |
-| `consent_snapshot` | purpose, recipient, fields, duration, granted_at, revoked_at |
-| `protection_case` | case_id, alert_id, priority, assigned_role, state |
+| `anomaly_signal` | demo_run_id, reason_code, baseline_value, current_value, alert_evidence_ids |
+| `alert_incident` | demo_run_id, alert_id, alert_snapshot_at, pre_decision, post_decision, state, reason_codes |
+| `context_event` | demo_run_id, response_code, context_evidence_code, source, effective_at, observed_at, ingested_at, valid_to |
+| `consent_snapshot` | purpose, recipient, fields, duration, status, proof_hash, granted_at, revoked_at |
+| `protection_case` | case_id, demo_run_id, alert_id, priority, assigned_role, work_state |
 | `action_catalog` | action_code, eligibility_rule, source_document_id |
-| `staff_review` | reviewer, decision, note, follow_up_at |
+| `staff_review` | reviewer, decision, note, follow_up_at, expected_incident_version |
+| `guidance_plan` | case_id, plan_version, status, approved_by, approved_at, delivered_at |
+| `follow_up_task` | case_id, task_type, due_at, assigned_role, status, completed_at |
 | `source_document` | issuer, source_url, version, effective_from/to, access_class, sha256 |
 | `knowledge_chunk` | document_id, page, section, text, embedding_version |
-| `decision_audit` | trace_id, event_type, policy/model/prompt/schema version, override |
+| `decision_audit` | audit_id, demo_run_id, trace_id, actor_type/id, target_type/id, event_type, before/after_state, versions, evidence_hash, occurred_at |
 
 `occurredAt`과 `postedAt`, 문서 효력시간과 시스템 수집시간을 분리한다. 원본 근거와 판단 snapshot은 불변 버전으로 관리한다.
+
+### `demoRunId`, Reset, 감사 의미
+
+- `sessionId`는 브라우저 데모 컨테이너, `demoRunId`는 그 안에서 한 번 재생한 불변 실행이다.
+- 논리 `alertId=ALERT_FIN_MGMT_001`은 재현성을 위해 유지하되, 저장·조회 키는 `(sessionId, demoRunId, alertId)`로 한다.
+- Reset은 기존 실행을 수정·삭제하지 않고 같은 `scenarioSeed`, `snapshotHash`, `fixtureVersion`으로 새 실행을 만든다.
+- `snapshotHash`는 seed 문자열이 아니라 정렬·정규화한 T0 fixture manifest와 실제 원시 이벤트 내용으로 계산한다. T1 분기 맥락은 별도 `contextPackageHash`로 계산해 A/B의 T0 hash 동일성을 훼손하지 않는다.
+- 멱등 범위는 `(capabilitySubject, operation, Idempotency-Key)`이며 요청 본문 hash까지 같을 때만 기존 응답을 재생한다. 같은 키에 다른 본문이면 `409 IDEMPOTENCY_CONFLICT`를 반환한다.
+- 감사로그는 append-only로 `DEMO_RESET_REQUESTED`, `DEMO_RUN_CREATED`, 상태전이, 동의 게이트 평가, 직원행위를 기록한다. 세션·fixture 정리와 함께 cascade 삭제하지 않으며 보존기간 종료는 별도 정책 이벤트로 남긴다.
+- 각 감사행은 actor와 인증맥락, 대상, 전후 상태, 근거·정책·스키마 버전, 이전 감사 hash와 현재 hash를 저장해 사후 변조를 탐지한다.
 
 ---
 
@@ -866,6 +943,19 @@ POST /demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 - 미동의 상태에서는 UI뿐 아니라 서버 정책에서 연락을 차단한다.
 - 이 설계가 모든 법적 요건을 충족한다고 단정하지 않는다. 실제 도입 전 법무·준법·정보보호·신용정보관리 부서가 검토한다.
 
+### 공개 익명 데모 세션 보안 계약
+
+공개 데모는 사용자 계정 로그인을 생략할 뿐, `sessionId`를 아는 사람에게 권한을 주는 구조가 아니다.
+
+- 세션 생성 시 최소 128bit 엔트로피의 일회성 capability를 발급하고 서버에는 원문이 아닌 hash만 저장한다. 원문은 URL·응답로그·감사로그에 남기지 않는다.
+- 공모전 구현은 capability를 `X-Demo-Capability` 헤더로 전달하고 브라우저 메모리에만 보관한다. URL, `localStorage`, `sessionStorage`, 쿠키, 응답·접근로그에 저장하지 않으며 페이지 이탈·세션 만료 시 폐기한다.
+- 고객 API는 `CUSTOMER_DEMO`, 모의 행원 API는 별도 `DEMO_STAFF` capability를 요구한다. 고객 capability만으로 `/staff/**`, `/cases/**`를 조회·변경할 수 없다.
+- 모든 세션 하위 API는 capability subject, `sessionId`, 역할, 만료시각, `demoRunId` 소유권을 객체 단위로 확인한다. UUID 자체를 접근권한으로 취급하지 않는다.
+- 초기 운영 제한값은 세션 생성 `IP당 분당 10회`, 조회 `capability당 분당 120회`, 상태변경 `capability당 분당 30회`, 요청 본문 `32KiB`다. 환경설정으로 더 엄격하게 조정할 수 있고 초과 시 `429`와 `Retry-After`를 반환한다.
+- 상태변경 요청은 정확한 `Origin` allowlist를 검증한다. CORS는 허용 출처만 등록하고 `allowCredentials=false`로 고정하며 wildcard origin을 금지한다. 현재 header 기반 무쿠키 경로에는 CSRF 토큰을 사용하지 않지만, 향후 쿠키 인증으로 바꾸면 `Secure`·`HttpOnly`·`SameSite`와 CSRF 토큰 검증을 함께 적용한다. Gateway와 애플리케이션 양쪽에 연결·읽기·전체 요청 timeout을 둔다.
+- 만료·폐기된 capability는 즉시 거절하고, 만료 세션의 업무데이터는 보존정책에 따라 정리하되 감사로그는 cascade 삭제하지 않는다.
+- 오류 응답에는 capability, 세션 존재 여부, DB·스택 정보가 노출되지 않는다. 교차세션 IDOR, 역할상승, 비허용 Origin, 향후 쿠키 경로의 CSRF, 멱등충돌, 과다요청을 공개 배포 전 자동시험한다.
+
 ### MVP 보안 원칙
 
 - 완전 합성 거래·고객·음성만 사용
@@ -878,6 +968,7 @@ POST /demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 - 중요 직원행위에 역할별 접근통제와 운영환경 추가인증
 - kill switch, 템플릿 모드, 감사 가능한 직원 override
 - 익명 세션 만료·격리·Reset 테스트
+- guardrail 설정이 위험한 조합이면 readiness를 실패시키는 fail-closed 기동검사
 
 ---
 
@@ -892,7 +983,7 @@ flowchart LR
     C --> D["정규화·기준선·탐지·사건"]
     D --> E["정책·권한·감사"]
     E --> F["가명화·최소화 AI 중계"]
-    F --> G["내부 또는 승인된 전용 LLM"]
+    F --> G["자체 호스팅 금융특화 LLM"]
     H["승인된 공식·내부 문서"] --> I["권한형 RAG"]
     I --> G
     G --> J["출력검증"]
@@ -907,19 +998,19 @@ flowchart LR
 - 행동코드와 연락 가능 여부 결정
 - 행원 사건큐와 감사로그
 
-### 내부 또는 승인된 전용 LLM 업무
+### 자체 호스팅 금융특화 LLM 업무
 
 - 고객 거래의 쉬운 설명
 - 행원 사건요약과 중립 질문
 - 상담기록 초안
 - 내부 규정·약관 검색
 
-### 승인된 외부 환경을 검토할 수 있는 업무
+### 외부 상용 AI API 비사용 원칙
 
-- 실제 고객정보가 없는 금융용어 쉬운 말 변환
-- 공개 제도·법령·약관 요약
-- 완전 합성데이터 기반 데모
-- 직원 교육용 가상사례
+- 운영·PoC에서는 고객정보 유무와 관계없이 외부 상용 생성형 AI API를 제품 경로에 사용하지 않는다.
+- 공개 제도·법령·약관은 내부 수집·검증 후 권한형 RAG에 적재한다.
+- 공모전의 완전 합성데이터 데모도 외부 API 없이 완주한다.
+- 직원 교육용 가상사례 역시 내부 모델 또는 템플릿 경로를 사용한다.
 
 검색 문서가 입력보다 더 민감하면 데이터 등급을 상향한다.
 
@@ -927,16 +1018,16 @@ flowchart LR
 effectiveDataClass = max(inputDataClass, retrievedDocumentDataClass)
 ```
 
-실거래 원문과 식별정보는 금융회사 통제영역에 남긴다. 외부 생성형 AI와 고객정보 전송이 자동 허용된다고 표현하지 않으며, 서비스 목적·데이터·배치구조별 보안성 평가와 법적 검토를 전제로 한다.
+실거래 원문과 식별정보는 금융회사 통제영역에 남긴다. 자체 모델에도 최소화·가명화된 구조화 사실만 전달하며, 서비스 목적·데이터·배치구조별 보안성 평가와 법적 검토를 전제로 한다.
 
 ### 단계별 배치
 
 | 단계 | 배치 방식 |
 |---|---|
 | 공모전 | 공개 URL의 단일 Spring 앱, 합성데이터만 사용 |
-| 은행 PoC | 은행 전용 VPC·내부망, 가상·비식별 사건, 직원 RBAC |
+| 은행 PoC | 은행 전용 VPC·내부망, 합성·가명화 사건, 직원 RBAC |
 | 제한 실증 | 한 금융회사, 동의 고객, 읽기 전용 분석, 실행권한 제외 |
-| 운영 | 내부 또는 승인된 전용 배치, 기존 업무시스템과 제한 연계 |
+| 운영 | 은행 내부망 또는 은행 통제 전용환경의 자체 호스팅 배치, 기존 업무시스템과 제한 연계 |
 
 ### 선택형 GCP·GPU 참고안
 
@@ -958,42 +1049,43 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 ### P0 — 제출 전 반드시 구현
 
 - 무로그인 익명 데모 세션과 멱등 Reset
-- 12개월 합성 거래와 고정 A/B fixture
+- 12개월 합성 거래와 고정 반사실적 정책 분기 fixture
 - 개인 중앙값·MAD 기준선과 cold-start 처리
-- 신규 수취인·반복송금·정기납부 누락 탐지
+- 정기납부 반복 누락·중복송금·반복확인 탐지
 - 동일 `alertId`의 맥락 재평가
 - 세 개 화면의 end-to-end 동작
 - 정상종결과 행원검토 상태전이
 - 미동의 신뢰연락인 hard block
 - 행원 승인 전 실행 이벤트 0건
 - 템플릿 설명과 no-key 폴백
-- 공식 보호수단 카탈로그와 출처·기준일 표시
+- 공식 공개근거 카탈로그와 버전 고정된 합성 데모 업무규칙의 출처·기준일·데모 표식 표시
 - 사건·근거·동의·결정·직원행위 감사로그
-- 공개 URL, 헬스체크, 시크릿모드 smoke test
+- 공개 URL, 헬스체크, baseline 모니터링, 세션 정리, rate limit, 시크릿모드 smoke test
+- capability 기반 세션 소유권·역할 검증과 교차세션 IDOR·비허용 Origin·멱등충돌 시험
 - 기획서·기능명세서·화면·코드의 용어·수치 일치
 
 ### P1 — 완성도 향상
 
-- 선택형 LLM의 쉬운 설명·질문·상담기록 생성
-- 공식문서 벡터 RAG와 pgvector
+- 자체 호스팅 금융특화 LLM의 사건요약·쉬운 설명·질문·상담기록·사후관리 생성
+- 내부 규정·공식문서 권한형 벡터 RAG와 pgvector
 - 큰 글씨·고대비·읽어주기
-- 금융 기억노트
+- 납부일정·필수생활비·중복거래 확인
 - 비교군 A/B/C 평가 대시보드
 - 탐지 결과 설명 시각화
 - 평가 리포트 자동 생성
-- 익명 세션 모니터링과 복구 자동화
+- 고급 모니터링 대시보드와 복구 자동화
 
 ### P2 — 발표 진출 또는 대회 이후
 
 - 실제 음성검색·TTS 고도화
 - KoELECTRA·KoBERT 기반 위험문장·PII 분류
-- 내부·외부 모델 데이터등급 라우팅 PoC
+- 내부 모델 데이터등급·권한 라우팅 PoC
 - 모델 registry·shadow·canary·kill switch 고도화
 - LoRA/QLoRA 추가학습
 - 다기관 정책문서 RAG와 권한 분리
 - 금융회사·마이데이터 제휴 검토
 - 제한된 동의 고객 실증 설계
-- 신탁·후견·안심차단 등 공식 제도와 실제 상담 연계
+- 동의 기반 신뢰연락인 최소정보 알림과 공동확인 실증
 
 ---
 
@@ -1014,12 +1106,12 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 | 기간 | 구현 내용 | 완료 기준 |
 |---|---|---|
-| Day 1~2 | 문제정의, 사용자, 금지표현, A/B fixture, 동의 매트릭스 | 본 문서와 상태·사유코드 확정 |
+| Day 1~2 | 문제정의, 사용자, 금지표현, 반사실적 정책 분기 fixture, 동의 매트릭스 | 본 문서와 상태·사유코드 확정 |
 | Day 3~5 | 합성 생성기, 정답 라벨, 고정 테스트셋 | 합성 거래가 화면 카드에 표시 |
-| Day 6~9 | 중앙값·MAD·신규 수취인·반복송금·미납·추세 엔진 | `reasonCode` API와 단위테스트 |
-| Day 10~12 | 사건 병합, 상태기계, 동의차단, 감사로그 | A/B 기대상태와 차단 재현 |
+| Day 6~9 | 반복 누락·중복송금·재시도·미완료·반복확인 엔진 | `reasonCode` API와 단위테스트 |
+| Day 10~12 | 사건 병합, 상태기계, 동의차단, 감사로그 | A/B 정책 분기의 기대상태와 차단 재현 |
 | Day 13~15 | 고객·맥락확인·행원 3화면 | 90초 흐름 전체 완주 |
-| Day 16~18 | 공식 근거 카탈로그, 비식별화, 템플릿 폴백, 선택 LLM | API 키·오류 없이 완주 |
+| Day 16~18 | 공식 공개근거 카탈로그, 최소화·가명화, 템플릿 폴백, 자체 모델 연동 준비 | 외부 API·자체 모델 없이도 완주 |
 | Day 19~20 | 배포, 헬스체크, Reset, 브라우저 E2E | 공개 URL 안정화 |
 | Day 21~22 | KPI 측정, 접근성·사용성 시험, 치명 오류 수정 | 목표·실측 분리 리포트 |
 | Day 23 | 기획서·기능명세서·웹서비스 일치 검수 | 용어·상태·수치 불일치 0건 |
@@ -1029,7 +1121,7 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 ### 중간 완료 기준
 
 - Day 5: 합성데이터가 변화카드로 표시됨
-- Day 15: 동일사건 A/B 분기 데모 완주
+- Day 15: 동일 T0 사건의 반사실적 정책 분기 데모 완주
 - Day 18: LLM 장애 시에도 전 과정 완주
 - Day 20: 공개 URL과 헬스체크 안정화
 - Day 24: 기능 동결
@@ -1041,14 +1133,14 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 ### 기능 완료
 
 - [ ] 세 화면만으로 핵심 가치가 설명된다.
-- [ ] `MOVE_AB_001`이 매번 동일하게 재현된다.
-- [ ] A/B의 원시 거래·근거·버전·사전판정은 동일하고 맥락 패키지만 다르다.
+- [ ] `FIN_MGMT_AB_001`과 T0의 세 사유코드·정확한 count가 매번 동일하게 재현된다.
+- [ ] A/B의 T0 원시 거래·`alertEvidenceIds`·버전·사전판정은 동일하고 T1 고객응답·`contextEvidenceIds`만 다르다.
 - [ ] 모든 경보에 평소값·현재값·사유코드·근거 ID가 표시된다.
 - [ ] A는 구조적 근거와 일치할 때만 `CLOSED_NORMAL`이 된다.
 - [ ] B는 `PENDING_BANK_REVIEW`로 이동한다.
 - [ ] 미동의 연락은 `BLOCKED_BY_CONSENT`로 차단된다.
 - [ ] 행원 승인 전 외부 발송·계좌 실행이 0건이다.
-- [ ] LLM 키가 없어도 전체 데모가 동작한다.
+- [ ] 자체 모델이 없어도 전체 데모가 동작한다.
 - [ ] 모든 상태전이와 직원 override가 감사로그에 남는다.
 
 ### 탐지·데이터 안전
@@ -1060,24 +1152,28 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 - [ ] 사건 병합, 중복억제, cooldown을 시험한다.
 - [ ] 미래정보가 새는 오프라인 평가를 하지 않는다.
 - [ ] 시연 페르소나와 평가 골든셋이 분리돼 있다.
+- [ ] `unsafe downgrade rate=0%`를 통과하며 1건이라도 위반하면 출시를 중단한다.
+- [ ] 평가 seed·fixture 버전·manifest checksum과 모든 지표의 분자·분모를 재현할 수 있다.
 - [ ] 합성데이터임을 화면과 문서에 표시한다.
 
 ### AI·보안
 
 - [ ] 질병·인지상태 점수·라벨이 0개다.
 - [ ] 개인정보·계좌·카드·주민번호 형식 입력이 차단된다.
-- [ ] 비식별 구조화 요약만 LLM에 전달한다.
-- [ ] 근거 없는 보호수단 안내가 없다.
-- [ ] timeout, 429, 5xx, schema 오류가 템플릿으로 폴백된다.
+- [ ] P0에서는 모델을 호출하지 않고, P1 모델에는 직접식별자를 제거한 최소화·가명화 구조화 사실만 전달한다.
+- [ ] 근거 없는 공식·합성 데모 업무조치 안내가 없고 합성 규칙을 실제 은행 내부규정으로 표시하지 않는다.
+- [ ] timeout, 5xx, schema 오류가 템플릿으로 폴백된다.
 - [ ] 프롬프트 인젝션과 비허용 출처를 차단한다.
 - [ ] 모델·프롬프트·문서·정책·스키마 버전을 기록한다.
 - [ ] 익명 세션 간 교차누출이 없다.
+- [ ] 모든 세션 API가 capability·역할·소유권·만료를 검증하고 교차세션 IDOR·비허용 Origin·rate limit 시험을 통과한다.
 
 ### 제출·운영
 
 - [ ] 새 브라우저에서 로그인 없이 5초 이내 시작한다.
 - [ ] 모바일·데스크톱에서 한글·표·버튼이 깨지지 않는다.
-- [ ] Reset이 멱등적이다.
+- [ ] Reset이 기존 실행을 보존하고 새 `demoRunId`를 만들며, 동일 멱등키·동일 본문 재시도에는 같은 결과를 반환한다.
+- [ ] 감사로그가 Reset·세션 정리로 cascade 삭제되지 않고 hash chain 검증을 통과한다.
 - [ ] 공개 URL smoke test와 복구절차가 있다.
 - [ ] 기획서, 기능명세서, 화면, 코드의 명칭과 숫자가 일치한다.
 - [ ] 목표값과 실제 측정값이 구분돼 있다.
@@ -1089,11 +1185,11 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 | 단계 | 범위 | 검증 목표 |
 |---|---|---|
-| 1. 공모전 MVP | 합성데이터, 3개 화면, 90초 A/B 데모 | 작동성·설명가능성·안전게이트 |
-| 2. 금융회사 내부 PoC | 비식별 사건, 제한된 직원 사용 | 검토시간·기록시간·수정률 |
+| 1. 공모전 MVP | 합성데이터, 3개 화면, 90초 반사실적 정책 분기 데모 | 작동성·설명가능성·안전게이트 |
+| 2. 금융회사 내부 PoC | 합성·가명화 사건, 제한된 직원 사용 | 검토시간·기록시간·수정률 |
 | 3. 제한 실증 | 단일 금융회사, 동의 고객, 읽기 전용 분석 | 오경보·고객이해·업무효율·민원 영향 |
 | 4. 제휴·운영 | 금융회사 또는 허가받은 마이데이터 사업자 | 적법한 데이터 연결과 운영통제 |
-| 5. 보호체계 확장 | 신탁·후견·공공상담의 선택 연결 | 장기 금융안전 폐루프 |
+| 5. 고객지원 확장 | 일정·필수생활비 관리와 동의 기반 신뢰연락인 공동확인 | 장기 금융안전 폐루프 |
 
 마이데이터 상용제도가 존재하더라도 팀이 즉시 전 금융거래를 가져올 권한을 의미하지 않는다. 상용화는 금융회사 또는 허가받은 사업자와의 적법한 제휴·위탁·동의 구조를 전제로 한다.
 
@@ -1105,19 +1201,19 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 ### 발표용 한 문장
 
-> **ALZ's well은 고령자를 통제하거나 치매를 진단하는 AI가 아니라, 설명 가능한 개인 기준선 탐지와 생활맥락 확인을 통해 정상 변화는 덜어내고 필요한 사건만 고객과 행원의 안전한 다음 행동으로 연결하는 포용금융 안전망입니다.**
+> **ALZ's well은 고령자를 통제하거나 치매를 진단하는 AI가 아니라, 반복 누락·중복·미완료·재확인 같은 개인별 금융관리 행동변화를 설명 가능한 근거로 발견하고 필요한 사건만 고객과 행원의 안전한 다음 행동으로 연결하는 포용금융 안전망입니다.**
 
 ### 기술 한 문장
 
-> **규칙·통계 엔진이 금융생활 변화를 발견하고, 생성형 AI가 봉인된 근거와 승인 문서를 바탕으로 고객 설명과 행원 업무초안을 만들며, 최종 판단과 실행은 고객과 행원이 담당합니다.**
+> **공모전 MVP에서는 규칙·통계 엔진과 검증된 템플릿·공식 공개근거 카탈로그가 금융관리 행동변화의 탐지·설명·업무초안을 담당하고, P1·금융회사 PoC에서는 자체 호스팅 금융특화 AI와 권한형 내부 RAG가 표현과 검색을 고도화하며, 최종 판단과 실행은 고객과 행원이 담당합니다.**
 
 ### 망분리 한 문장
 
-> **탐지·동의·정책·감사는 금융회사 내부 보호영역에서 완결하고, 고객정보가 필요한 생성형 AI는 내부·전용 모델에 배치하며, 외부 AI는 승인된 공개자료 업무에만 제한합니다.**
+> **탐지·동의·정책·감사와 금융특화 AI·RAG를 금융회사 내부 보호영역 또는 은행 통제 전용환경에서 완결하며, 외부 상용 AI API로 고객정보나 내부문서를 전송하지 않습니다.**
 
 ### 30초 설명
 
-> 기존 금융권에는 FDS, 안심차단, 신탁과 후견 같은 보호수단이 이미 있습니다. 하지만 고객의 장기 금융생활 변화를 발견하고 정상 생활맥락을 확인한 뒤, 적절한 대응책과 행원 후속업무로 연결하는 과정은 분절돼 있습니다. ALZ's well은 개인 기준선으로 변화를 찾고 고객에게 이유를 물은 후, 정상 변화는 종결하고 설명이 필요한 사건만 행원에게 근거·질문·보호수단·기록 초안과 함께 전달합니다. AI가 결정하거나 거래를 차단하지 않고 고객과 행원이 최종 판단합니다.
+> 기존 금융권에는 보이스피싱과 부정거래를 탐지하는 FDS가 있습니다. 그러나 정기납부 누락, 중복거래, 업무 미완료, 반복문의와 반복확인처럼 장기간 나타나는 금융관리 행동변화를 발견하고 행원의 확인·상담·기록·사후관리로 연결하는 과정은 분절돼 있습니다. ALZ's well 공모전 MVP는 개인 기준선과 결정론적 템플릿·공식 공개근거로 변화를 찾고 행원 업무초안을 제공합니다. 자체 금융특화 AI와 내부 RAG는 금융회사 PoC의 목표 구조이며, 어떤 단계에서도 AI가 거래를 차단하지 않고 고객과 행원이 최종 판단합니다.
 
 ### 최종 발표 결론
 
@@ -1153,40 +1249,7 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 ---
 
-## 부록 A. 네 문서 비교와 통합 결정
-
-### 문서별 강점
-
-| 문서 | 강점 | 통합본에서의 사용 |
-|---|---|---|
-| `안심리듬_프로젝트_최종방향.md` | AI 모델 전략, sLLM·BERT 역할, GCP, 팀 역할, P0/P1/P2 | 모델·인프라·확장전략에 반영 |
-| `Ansim_Rhythm_Project_Final_Direction.md` | 문제·구매자, FDS 비교, Spring 구현, API·엔터티, 법·윤리, 25일 일정 | 실행 명세의 주요 뼈대로 반영 |
-| `Ansim_Rhythm_Project_Final_Summary.md` | 연구·국내외 근거, 탐지 예외, 평가, 망분리, 보안, 체크리스트 | 안전·검증·운영 세부에 반영 |
-| `PROJECT_DIRECTION.md` | 가장 간결한 MVP 의사결정, 공식 일정, 240개 데이터 목표, 수치형 수용기준 | 최상위 실행 결정의 출발점으로 반영 |
-
-### 주요 충돌과 최종 선택
-
-| 충돌 항목 | 문서별 차이 | 최종 선택 |
-|---|---|---|
-| 부제 | `인지취약 고객` 포함 여부 | 낙인 없는 `금융생활 변화 조기알림 및 행원 보호업무 코파일럿` |
-| MVP 중심 사용자 | 행원 중심 vs 전 고객용 기능 | MVP는 행원 중심 + 고객 맥락확인 최소 채널, 전 고객 기능은 확장 |
-| 데모 소재 | 병원비 180만 원 vs 이사·부동산 송금 | 구조적 근거가 가능한 이사 시나리오 |
-| A/B 통제 | B에만 추가 신호가 있는 버전 존재 | 원거래·신호·버전 고정, 맥락 패키지만 변경 |
-| 정상종결 | 고객 자기확인만으로 가능해 보이는 버전 | 구조적 근거와 일치할 때만 허용 |
-| 사건 상태 | `BANK_REVIEW` vs `PENDING_BANK_REVIEW` | `PENDING_BANK_REVIEW`로 통일 |
-| 동의 차단 | 사건 상태처럼 표현된 버전 | `BLOCKED_BY_CONSENT`는 행위 거절 결과 코드 |
-| MVP 구조 | 별도 AI 서버 vs 단일 Spring 앱 | MVP는 모듈형 모놀리스, 별도 AI 서버는 P1·PoC |
-| LLM 우선순위 | 오픈웨이트 sLLM 핵심 vs 선택사항 | 결정론적 P0, 생성형 AI는 선택형 P1 |
-| RAG | 벡터 RAG 필수 여부 | 공식 근거 카탈로그 P0, 벡터 RAG P1 |
-| 데이터 접근 | JPA vs JDBC·jOOQ | JPA 기본, 필요 시 JDBC·jOOQ 보조 |
-| GPU | L4 서버 구체화 vs GPU 제외 | P0 제외, 오픈웨이트 검증 시 선택 부록 |
-| 추가학습 | Colab/HF 학습 vs 자체학습 제외 | MVP 제외, 평가로 반복 실패가 확인된 뒤 LoRA 검토 |
-| 공개 인증 | 인증·RBAC vs 무로그인 URL | 합성데모만 무로그인, PoC·운영은 RBAC |
-| 합성데이터 규모 | 20~30 페르소나 vs 240 프로필 | 시연 페르소나는 소수, 평가 프로필은 240개 목표 |
-
----
-
-## 부록 B. 주요 연구·제도·기술 참고자료
+## 부록 A. 주요 연구·제도·기술 참고자료
 
 아래 자료는 문제 배경과 제도·보안 방향의 참고자료다. 제출 전 최신 원문과 적용범위를 다시 확인한다.
 
@@ -1194,13 +1257,11 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 - [2026 금융 AI Challenge 공식 페이지](https://daker.ai/public/hackathons/2026-finance-ai-challenge)
 
-### 국내 금융·공공 제도
+### 국내 금융·보안 제도
 
 - [금융위원회 FDS·ASAP 운영자료](https://www.fsc.go.kr/po010102/86997)
 - [금융위원회 금융거래 안심차단](https://www.fsc.go.kr/no010101/85644)
 - [금융위원회 마이데이터 2.0](https://www.fsc.go.kr/po010101/84780)
-- [국민연금공단 치매안심 재산관리서비스](https://www.nps.or.kr/pnsgdnc/nscvrgdata/getOHAE0002M1.do?menuId=MN24000898&pstId=ZZ202600000000000453)
-- [대한민국 법원 성년후견 안내](https://www.scourt.go.kr/nm/min_3/min_3_12/index.html)
 
 ### AI·개인정보·보안
 
@@ -1227,32 +1288,28 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 ---
 
-## 부록 C. 근거와 벤치마크 해석 범위
+## 부록 B. 근거와 벤치마크 해석 범위
 
 ### 금융행동 연구의 사용 범위
 
-연구에서는 인지저하·치매 전후에 청구서 연체, 계좌관리 실수, 금융관리 능력 저하, 사기 취약성이 집단 수준에서 증가하는 경향이 관찰됐다. 그러나 개인의 거래만으로 질병을 진단할 수 없고 모든 거래 패턴이 질병 특이 신호로 검증된 것도 아니다.
+연구에서는 인지저하·치매 전후에 청구서 연체, 계좌·명세서 관리 실수와 금융관리 능력 저하가 집단 수준에서 증가하는 경향이 관찰됐다. 그러나 개인의 거래만으로 질병을 진단할 수 없고, ALZ's well은 아래 행동을 진단 신호가 아니라 본인확인과 행원 검토가 필요한 금융관리 변화로만 사용한다.
 
 | 금융행동 | 근거 해석 | ALZ's well의 사용 방식 |
 |---|---|---|
 | 청구서 누락·연체 | 상대적으로 강한 연관 근거 | 반복·지속과 데이터 단절 여부를 함께 확인 |
 | 계좌·명세서 관리 실수 | 상대적으로 강한 연관 근거 | 단일 실수보다 다중 신호와 기간을 확인 |
-| 과잉지출·현금흐름 악화 | 부분적 연관 근거 | 소득·필수지출·생활사건과 함께 설명 |
-| 금융사기 취약성 | 연관 근거 | 보이스피싱 위험과 금융관리 변화는 구분 |
-| 중복결제·잊은 구독 | 금융관리 오류 가설 | 진단 신호가 아니라 본인확인 대상으로 사용 |
-| 낯선 시간·지역·ATM 이용 | 직접 근거 제한 | 여행·이사 등 생활맥락을 우선 확인 |
-| 동일 유형 상품 반복가입 | 직접 근거 제한 | 불완전판매 예방·소비자보호 검토 신호로만 사용 |
+| 중복결제·중복송금 | 금융관리 오류 가설 | 취소·환불·처리지연을 제거한 뒤 본인확인 대상으로 사용 |
+| 업무 재시도·미완료 | 집행기능 변화 가설 | 앱·인증·네트워크 장애를 제거한 뒤 복합사건에 사용 |
+| 동일 문의·설명 후 재발 | 기억·이해 변화 가설 | 미해결 상담과 안내 불충분을 제거한 뒤 행원 검토에 사용 |
+| 거래완료 반복확인 | 기억·불안 관련 가설 | 화면지연·푸시 미수신을 제거한 뒤 단독이 아닌 보조신호로 사용 |
 
-### 국내 보호수단과의 경계
+### 기존 금융수단과의 경계
 
 | 현재 수단 | 작동 방식 | ALZ's well의 역할 경계 |
 |---|---|---|
 | FDS·ASAP | 사기정보와 거래·접속 패턴으로 의심거래 탐지·확인·조치 | 장기 개인 기준선과 탐지 이후 맥락·업무 연결을 보완 |
-| 치매안심 재산관리서비스 | 자격·계약에 따라 맡긴 자산을 계획적으로 지급·관리 | 가입자격을 자동판정하지 않고 공식 상담 경로로만 안내 |
-| 공공후견·성년후견 | 신청·심판에 따라 정해진 범위의 법적 지원 | 조기탐지 기능이 아니라 적법한 상담·연결 대상으로 취급 |
-| 민간 신탁 | 사전계약과 발동조건에 따라 맡긴 자산 관리 | 맡긴 자산·가입조건의 범위를 명확히 설명 |
 | 지정인 알림 | 특정 상품·조건에서 선택 지정인에게 알림 | 별도 동의와 최소정보 원칙을 적용한 공동확인만 지원 |
-| 안심차단·지연이체·어카운트인포·두낫콜 | 사전차단, 조회·해지, 영업연락 차단 등 개별 제도 | 직접 실행하지 않고 조건과 공식 이용경로를 안내 |
+| 자동이체·납부관리 | 납부일정과 계좌 잔액에 따라 자동 집행 | 반복 누락과 완료 여부를 쉬운 말로 확인하고 재설정을 지원 |
 
 ### 해외 벤치마크에서 가져올 원칙
 
@@ -1264,7 +1321,7 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 | 취약고객 지원 | FCA 지침 | 쉬운 지원, 직원 확인, 이의제기, 사람의 감독 |
 | 일상 금전관리·자금 잠금 | 일본 지원제도, Singapore Money Lock | 일상비 지원과 큰 자산 보호를 분리 |
 
-공통적으로 가져올 원칙은 사전 동의, 최소개입, 본인 재확인, 이의제기, 사람의 최종판단, 은행·경찰·복지·법적 제도로 이어지는 명확한 상향 절차다.
+공통적으로 가져올 원칙은 사전 동의, 최소개입, 본인 재확인, 이의제기, 사람의 최종판단, 필요 시 은행 담당자로 이어지는 명확한 상향 절차다.
 
 ---
 

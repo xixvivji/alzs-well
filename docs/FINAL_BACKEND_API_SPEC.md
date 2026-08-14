@@ -1,14 +1,14 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.0.0**  
+> 문서 버전: **1.4.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-14 (Asia/Seoul)**  
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
-> 런타임 네트워크: **AIR_GAPPED_DEMO · 외부 egress 차단**  
+> 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
 > 상위 제품 기준: `ALZS_WELL_PROJECT_SSOT.md`
 
-이 문서는 처음 작성한 네 방향 문서, 통합 SSOT, 현재 Spring 코드와 P0 API 계약, 하나은행·신한은행·카카오뱅크·KB증권의 공식 공개 기능을 하나의 백엔드 API 지도로 통합한다.
+이 문서는 통합 SSOT, 현재 Spring 코드와 P0 API 계약, 하나은행·신한은행·카카오뱅크·KB증권의 공식 공개 기능을 하나의 백엔드 API 지도로 통합한다. 통합 전 방향 문서와 구 API 명세는 보관자료일 뿐 현재 계약의 해석 기준이 아니다.
 
 ## 문서 요약
 
@@ -25,13 +25,15 @@
 | 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 246개에는 실행하지 않을 은행 코어 참조 기능도 포함되며, 현재 실제 구현된 API는 `GET /api/v1/system/health` **1개뿐**이다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 246개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 1개 |
-| 상세 계약 확정, 구현 전 | 22개 |
+| `IMPLEMENTED` | 23개 |
+| 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 223개 |
+
+`IMPLEMENTED` 23개는 시스템 4개(`health`, `readiness`, `public-config`, `versions`), 데모 세션·시나리오 5개(생성, Reset, 적재, 세션 조회, 시나리오 목록), 금융생활 읽기 6개, 알림 4개(목록, 상세, 맥락 재평가, 감사이력), 행원 사건 4개(큐, 상세, 검토, 안내계획 승인)다. `./gradlew test --rerun-tasks`의 단위·PostgreSQL Testcontainers 통합시험 29개를 모두 통과한 상태를 구현 완료 기준으로 삼았다.
 
 여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -42,7 +44,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 3. `REFERENCE_ONLY`는 Spring Controller나 실행 버튼을 생성하지 않는다.
 4. 실제 이체·주문·대출·계좌개설·지급정지·한도변경·외부 연락은 공개 데모에서 실행하지 않는다.
 5. API 수가 많아도 현재 구조는 MSA가 아니라 도메인 패키지로 분리한 모듈형 모놀리스다.
-6. 본 문서가 `docs/API_SPEC.md`의 P0 계약을 포함해 확장한 최종본이며, OpenAPI 3.1 파일은 이 계약에서 후속 생성한다.
+6. P0 요청·응답 계약은 본 문서에 모두 통합했으며, OpenAPI 3.1 파일은 이 계약에서 후속 생성한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
 
 ## AIR_GAPPED_DEMO 네트워크 격리 결정
 
@@ -52,25 +54,25 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 ```text
 사용자 브라우저
-    → Spring Boot REST API
+    → 최소 Nginx gateway
+        → Spring Boot REST API
         → PostgreSQL
-        → 내부 FastAPI AI 서비스
-            → 로컬 모델·로컬 임베딩·로컬 공식문서 인덱스
+        → 결정론적 규칙·템플릿·공식 근거 카탈로그
 ```
 
 | 발신 | 허용 대상 | 금지 대상 |
 |---|---|---|
-| 브라우저 | 로컬 정적 자산, 공개 Spring API | FastAPI·PostgreSQL 직접 접근, 외부 API·CDN·분석/오류수집 SDK |
-| Spring Boot | PostgreSQL, 내부 FastAPI | 외부 LLM, 금융사, 마이데이터, 원격 텔레메트리 |
-| FastAPI | 이미지·볼륨에 포함된 로컬 모델과 지식 인덱스 | OpenAI·Hugging Face Hub·외부 검색·원격 모델 |
+| 브라우저 | 로컬 정적 자산, 공개 gateway의 Spring API 경로 | Spring·PostgreSQL 직접 접근, 외부 API·CDN·분석/오류수집 SDK |
+| Nginx gateway | 내부 Spring API | PostgreSQL·외부 업무 API |
+| Spring Boot | PostgreSQL, 내장 규칙·템플릿·카탈로그 | 외부 LLM, 금융사, 마이데이터, 원격 텔레메트리 |
 | PostgreSQL | 응답 없음 | 인터넷·외부 DB |
 | 배치·관리 작업 | 승인된 오프라인 반입 디렉터리 | 런타임 웹 다운로드·스크래핑 |
 
 ### 강제 규칙
 
 1. 런타임 프로필은 `AIR_GAPPED_DEMO`이며 `externalEgressEnabled=false`, `remoteModelEnabled=false`, `syntheticProviderOnly=true`를 고정한다.
-2. Docker Compose의 업무망은 `internal: true`로 만들고 Spring, FastAPI, PostgreSQL을 같은 내부망에 둔다. 런타임 서비스는 인터넷이 가능한 두 번째 네트워크에 동시에 연결하지 않는다.
-3. FastAPI는 외부 공개 port를 열지 않고 Spring만 서비스명으로 호출한다. 프론트는 FastAPI를 직접 호출하지 않는다.
+2. Docker Compose는 gateway↔Spring용 `alzs-well-app`과 Spring↔PostgreSQL용 `alzs-well-data`를 각각 `internal: true`로 분리한다. gateway는 `alzs-well-app`만, Spring은 `alzs-well-app`과 `alzs-well-data`, PostgreSQL은 `alzs-well-data`에만 연결한다. gateway와 PostgreSQL은 어떤 네트워크도 공유하지 않는다.
+3. Host port는 최소 Nginx gateway만 게시한다. P0에서는 별도 FastAPI를 기동하지 않으며, P1 이후 도입할 경우에도 외부 port 없이 승인된 별도 내부망으로만 Spring과 연결한다.
 4. Vue/React 번들·폰트·아이콘은 로컬에서 제공하고 Content Security Policy를 최소 `default-src 'self'; connect-src 'self'`로 제한한다. 외부 CDN, Google Fonts, 지도, 분석 SDK, 원격 오류수집 SDK, 제3자 스크립트를 런타임에 사용하지 않는다.
 5. Hugging Face 모델, 토크나이저, 임베딩, 공식문서는 빌드 전 통제된 절차로 내려받고 버전·라이선스·SHA-256을 고정한다. 실행 중 자동 다운로드를 금지한다.
 6. 공식문서 갱신은 관리자 업로드 → allowlist 확인 → 악성 콘텐츠 검사 → 체크섬 생성 → 승인·게시의 오프라인 절차를 사용한다.
@@ -84,40 +86,39 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 ```yaml
 services:
-  backend:
-    networks: [alz_internal]
+  gateway:
+    networks: [alzs-well-app]
     ports:
       - "127.0.0.1:8080:8080"
 
-  ai:
-    networks: [alz_internal]
-    expose:
-      - "8000"
+  backend:
+    networks: [alzs-well-app, alzs-well-data]
 
   postgres:
-    networks: [alz_internal]
+    networks: [alzs-well-data]
     expose:
       - "5432"
 
 networks:
-  alz_internal:
+  alzs-well-app:
+    internal: true
+  alzs-well-data:
     internal: true
 ```
 
-Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를 만든다. 서비스가 다른 외부 네트워크에도 함께 연결되면 그 경로로 인터넷에 접근할 수 있으므로 dual-homing을 금지한다.
+Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를 만든다. gateway는 DB 데이터망에, PostgreSQL은 gateway 앱망에 절대 연결하지 않는다. Spring만 app/data 두 내부망을 연결하되 애플리케이션 레벨 접근통제와 최소권한 DB 계정을 적용한다.
 
 ### 검증 수용기준
 
-- Spring 컨테이너에서 외부 DNS·HTTPS 요청 실패
-- FastAPI 컨테이너에서 외부 DNS·HTTPS 요청 실패
-- Spring → FastAPI, Spring → PostgreSQL 내부 통신 성공
-- FastAPI·PostgreSQL host 직접 노출 0개
+- Spring 컨테이너에서 외부 HTTPS 연결 실패
+- Spring → PostgreSQL 내부 통신 성공
+- gateway → PostgreSQL 5432 직접 연결 실패, gateway와 PostgreSQL의 공유 network 0개
+- Spring·PostgreSQL host 직접 노출 0개, gateway만 loopback에 공개
 - 브라우저의 제3자 origin 요청 0건 및 CSP 위반 0건
 - 외부 API key 0개로 P0 데모 완주
 - 실행 중 모델·문서 다운로드 0건
 - 외부 금융사·푸시·문자·전화·LLM 호출 0건
-- AI 서비스 강제 종료 후 템플릿 폴백 성공률 100%
-- 이미지에 포함된 모델·문서의 버전과 SHA-256 감사 가능
+- 외부 AI 서비스 없이 규칙·템플릿 흐름 완주율 100%
 
 공식 참고: [금융위원회 금융분야 망분리 개선 로드맵](https://fsc.go.kr/po010102/82885), [Docker Compose 내부 네트워크](https://docs.docker.com/reference/compose-file/networks/)
 
@@ -155,15 +156,9 @@ ALZ's well은 은행 코어를 새로 만드는 서비스가 아니다. 고객 �
 1. 최신 대회 공식 공지와 제출 양식
 2. `ALZS_WELL_PROJECT_SSOT.md`
 3. 본 최종 API 명세
-4. `docs/API_SPEC.md`의 이미 확정된 P0 계약
-5. 실제 구현과 자동 테스트 결과
-6. 아래 네 원본 방향 문서
-   - `안심리듬_프로젝트_최종방향.md`
-   - `Ansim_Rhythm_Project_Final_Direction.md`
-   - `Ansim_Rhythm_Project_Final_Summary.md`
-   - `PROJECT_DIRECTION.md`
+4. 실제 구현과 자동 테스트 결과
 
-네 원본 문서는 기능 아이디어와 의사결정 이력을 보존하는 참고자료다. 명칭, 시나리오, 상태 또는 기술구성이 SSOT와 충돌하면 원본 문서의 값을 다시 도입하지 않는다.
+통합 전 방향 문서와 구 API 명세는 변경 이력 보존용 아카이브다. 명칭, 시나리오, 상태 또는 기술구성이 현재 두 기준문서와 충돌하면 아카이브의 값을 다시 도입하지 않는다.
 
 실제 구현이 문서와 다르더라도 구현을 조용히 새 기준으로 삼지 않는다. 의도된 변경인지 검토한 뒤 코드, 테스트, OpenAPI, 프론트 타입과 문서를 함께 갱신한다.
 
@@ -217,7 +212,7 @@ ALZ's well은 은행 코어를 새로 만드는 서비스가 아니다. 고객 �
 | 도메인 | 책임 | 주요 엔터티 | 기본 우선순위 |
 |---|---|---|---|
 | `platform` | 헬스, 안전 가드, 기능 플래그, API 메타데이터 | `ServiceHealth`, `SafetyGuard`, `FeatureFlag`, `ApiVersion` | P0 |
-| `demo` | 익명 세션, 합성 시나리오, seed, Reset, 격리 | `DemoSession`, `ScenarioFixture`, `SyntheticProfile`, `Snapshot`, `ResetVersion` | P0 |
+| `demo` | 익명 세션, 역할별 capability, 합성 시나리오, run, seed, Reset, 격리 | `DemoSession`, `DemoRun`, `ScenarioFixture`, `SyntheticProfile`, `Snapshot`, `ResetVersion` | P0 |
 | `identity` | 인증, 세션, MFA, 기기, 역할과 권한 | `User`, `Staff`, `AuthSession`, `Device`, `MfaChallenge`, `Role`, `Permission` | P1 |
 | `customer` | 고객 프로필, 접근성, 연락·알림 선호 | `Customer`, `CustomerProfile`, `AccessibilityPreference`, `CommunicationPreference` | P1 |
 | `consent` | 목적별 동의, 철회, 신뢰연락인, 최소정보 정책 | `ConsentSnapshot`, `ConsentGrant`, `ConsentRevocation`, `TrustedContact`, `TrustedContactPolicy` | P0/P1 |
@@ -239,28 +234,30 @@ ALZ's well은 은행 코어를 새로 만드는 서비스가 아니다. 고객 �
 
 ```text
 DemoSession
-└─ SyntheticCustomer
-   ├─ Account
-   │  └─ Transaction
-   ├─ ConsentSnapshot
-   │  └─ TrustedContactPolicy
-   └─ AlertIncident
-      ├─ AnomalySignal
-      │  └─ EvidenceSnapshot
-      ├─ ContextEvent
-      └─ ProtectionCase (선택적 0..1)
-         ├─ StaffReview
-         ├─ FollowUp
-         ├─ GuidancePlan
-         │  └─ ActionCatalog
-         │     └─ SourceDocument
-         └─ AuditEvent
+└─ DemoRun
+   └─ SyntheticCustomer
+      ├─ Account
+      │  └─ Transaction
+      ├─ ConsentSnapshot
+      │  └─ TrustedContactPolicy
+      └─ AlertIncident
+         ├─ T0 AlertEvidenceSnapshot
+         │  └─ AnomalySignal
+         ├─ T1 ContextEvidenceSnapshot
+         │  └─ ContextEvent
+         └─ ProtectionCase (선택적 0..1)
+            ├─ StaffReview
+            ├─ FollowUp
+            ├─ GuidancePlan
+            │  └─ ActionCatalog
+            │     └─ SourceDocument
+            └─ AuditEvent
 ```
 
 - 한 `AlertIncident`는 여러 `AnomalySignal`을 하나의 고객 사건으로 묶는다.
 - `ProtectionCase`는 행원 검토가 필요할 때만 생성한다.
 - 최초 신호, 근거, 판단 snapshot은 덮어쓰지 않고 새 버전·이벤트로 축적한다.
-- 합성데모의 모든 자원은 `DemoSession`에 귀속되며 다른 세션에서 조회하면 `404`로 응답한다.
+- 합성데모의 모든 자원은 `{DemoSession, DemoRun}`에 귀속되며 다른 세션 capability나 run으로 조회하면 `404` 또는 stale-run `409`로 응답한다.
 - 설명·Copilot 도메인은 상태를 직접 변경하지 않고 구조화된 초안만 반환한다.
 - `audit`는 모든 중요 명령의 결과를 받지만 다른 업무 도메인의 상태를 변경하지 않는다.
 
@@ -291,11 +288,11 @@ incident/case
 
 1. `GET /api/v1/system/health`로 `syntheticDataOnly=true`, `externalActionsEnabled=false`를 확인한다.
 2. 익명 데모 세션을 생성한다.
-3. 고정 시나리오 `MOVE_AB_001`을 적재한다.
-4. 고객 금융생활 요약과 `ALERT_MOVE_001`의 변화 근거를 조회한다.
-5. A 경로에서 `LIFE_CHANGE + MOVING_HOME`과 서버 보유 구조적 근거를 적용한다.
+3. 고정 시나리오 `FIN_MGMT_AB_001`을 적재하고 최초 `demoRunId`를 받는다.
+4. 고객 금융생활 요약과 `ALERT_FIN_MGMT_001`의 T0 경보 근거를 조회한다.
+5. A 경로에서 `KNOWN_AND_INTENTIONAL` 응답과 서버가 확인한 네 종류의 T1 `ContextType` 근거를 적용한다.
 6. `postDecision=CLOSE_AS_NORMAL_CONTEXT`, `state=CLOSED_NORMAL`을 확인한다.
-7. 같은 seed와 원시 snapshot으로 세션을 Reset한다.
+7. 같은 seed와 T0 원시 snapshot으로 세션을 Reset하고 새로운 `demoRunId`를 받는다.
 8. B 경로에서 `UNABLE_TO_CONFIRM`을 적용한다.
 9. `postDecision=REQUIRE_BANK_REVIEW`, `state=PENDING_BANK_REVIEW`를 확인한다.
 10. 신뢰연락인 미동의 정책 평가가 `BLOCKED_BY_CONSENT`로 차단됐음을 확인한다.
@@ -316,7 +313,7 @@ Reset 전후 다음 값은 동일해야 한다.
 - `policyVersion`
 - `preDecision`
 
-달라지는 값은 고객 응답과 서버가 선택한 **후속 맥락 패키지**뿐이다.
+T0는 경보 생성 시점의 불변 원시거래·기준선·특징·사유코드·사전판단 snapshot이다. T1은 고객 응답 뒤 서버가 조회한 처리지연·연결장애·취소·환불·결과화면 지연 등 후속 맥락 근거다. API는 `alertEvidenceIds`와 `contextEvidenceIds`를 분리하고, 각 T1 근거에 `effectiveAt`, `observedAt`, `ingestedAt`, `sourceType`, `version`, `integrityHash`를 보존한다. T1을 T0에 소급 병합하거나 탐지 입력으로 사용하지 않는다. Reset 전후 달라질 수 있는 값은 `demoRunId`, 고객 응답과 서버가 선택한 **T1 후속 맥락 패키지**뿐이다.
 
 #### 여정 B — 고객 금융생활 확인
 
@@ -347,6 +344,25 @@ Reset 전후 다음 값은 동일해야 한다.
 5. 실제 전달이 허용되더라도 최소정보만 제공한다.
 6. 모든 동의 변경, 정책 평가와 열람을 감사한다.
 
+`TrustedContactGate` 상세 응답은 다음 필드를 공통으로 사용한다.
+
+| 필드 | 의미 |
+|---|---|
+| `gateEvaluated` | 이번 명령에서 연락 정책을 평가했는지 |
+| `consentSnapshotId` | 평가에 사용한 불변 동의 snapshot |
+| `consentStatus` | `GRANTED`, `NOT_GRANTED`, `REVOKED`, `EXPIRED` |
+| `recipientAccepted` | 지정 연락인이 초대·연락처 처리에 동의했는지 |
+| `triggerMatched` | 고객이 동의한 발동조건에 해당하는지 |
+| `fieldScopeMatched` | 보내려는 최소정보가 동의 범위 안인지 |
+| `validityMatched` | 동의 기간·철회 상태가 유효한지 |
+| `deliveryEnabled` | 모든 게이트가 통과하고 해당 환경에서 전달기능이 활성화됐는지 |
+| `resultCode` | 허용·차단 결과; 미평가면 `null` |
+| `dispatchAttempted` | 정책 게이트 통과 뒤 실제 외부 발송 adapter를 호출했는지 |
+| `externalDeliveryRequested` | 외부 adapter 요청 객체를 만들었는지 |
+| `externalDeliveryCreated` | 외부 전달 작업이 실제 생성됐는지; P0에서는 항상 `false` |
+
+단일 `trustedContactGranted` boolean만으로 연락 가능 여부를 표현하지 않는다. P0 미동의 fixture에서는 `gateEvaluated=true`, `consentStatus=NOT_GRANTED`, `deliveryEnabled=false`, `dispatchAttempted=false`, `externalDeliveryRequested=false`, `externalDeliveryCreated=false`를 고정한다.
+
 #### 여정 E — 공식 근거와 Copilot
 
 1. 정책엔진이 승인된 카탈로그에서 적용 가능한 보호수단 후보를 고른다.
@@ -357,7 +373,7 @@ Reset 전후 다음 값은 동일해야 한다.
 
 #### 현재 P0 계약의 보완 권고
 
-현재 `docs/API_SPEC.md`의 12개 API는 P0-A 핵심 흐름을 지원한다. 다만 SSOT가 요구하는 “12개월 금융생활 화면”을 프론트가 고정 fixture에 의존하지 않고 구성하려면 다음 읽기 계약을 P0-B로 추가하는 것이 안전하다.
+본 문서의 P0-A 12개 API는 핵심 흐름을 지원한다. SSOT가 요구하는 “12개월 금융생활 화면”을 프론트가 고정 fixture에 의존하지 않고 구성하기 위해 다음 읽기 계약을 P0-B로 함께 고정한다.
 
 - 데모 세션 상태 조회
 - 고객 금융생활 요약 조회
@@ -380,7 +396,8 @@ OPEN
   → PENDING_BANK_REVIEW
     → IN_BANK_REVIEW
       → FOLLOW_UP_REQUIRED → IN_BANK_REVIEW
-      → CLOSED_GUIDANCE_PROVIDED
+      → GUIDANCE_PLAN_APPROVED
+        → CLOSED_GUIDANCE_DELIVERED
       → CLOSED_FALSE_POSITIVE
 ```
 
@@ -393,7 +410,8 @@ OPEN
 | `PENDING_BANK_REVIEW` | 설명이 필요해 행원 큐에 등록됨 |
 | `IN_BANK_REVIEW` | 행원이 검토 중 |
 | `FOLLOW_UP_REQUIRED` | 추가 확인 또는 재연락 필요 |
-| `CLOSED_GUIDANCE_PROVIDED` | 상담 안내 계획 제공 후 종결 |
+| `GUIDANCE_PLAN_APPROVED` | 행원이 상담 안내 계획만 승인함; 고객 전달·외부 실행은 아직 없음 |
+| `CLOSED_GUIDANCE_DELIVERED` | 승인된 안내가 고객에게 실제 전달됐다는 별도 기록 후 종결 |
 | `CLOSED_FALSE_POSITIVE` | 데이터·규칙상 오탐으로 종결 |
 
 `BLOCKED_BY_CONSENT`는 `IncidentState`가 아니다. 연락·정보제공 정책 평가의 거절 결과 코드다.
@@ -406,28 +424,42 @@ OPEN
 | `CLOSE_AS_NORMAL_CONTEXT` | 검증된 정상 생활변화의 `postDecision` |
 | `REQUIRE_BANK_REVIEW` | 추가 설명이 필요한 `postDecision` |
 
-#### 고객 응답 `ContextResponseCode`
+#### 생활맥락 요청 DTO `ContextResponse`
+
+`ContextResponse`는 고객 선택과 서버 fixture 선택자를 분리한다. 고객이 보내는 의미값은 `responseCode`, 선택적 분류는 `contextType`이며 구조적 증거 자체를 요청 본문으로 받지 않는다.
 
 | 값 | 의미 | 기본 처리 |
 |---|---|---|
-| `KNOWN_TRANSACTION` | 내가 알고 한 거래 | 강한 신호는 구조적 근거 추가 확인 |
-| `LIFE_CHANGE` | 생활변화가 있었음 | 구조적 근거 정합성 확인 |
+| `KNOWN_AND_INTENTIONAL` | 내가 알고 한 거래 | 적격 구조적 근거가 모든 강한 신호를 설명할 때만 정상종결 후보 |
+| `LIFE_CONTEXT_CHANGED` | 생활변화가 있었음 | 유효기간·출처가 있는 구조적 근거 확인 후 정상종결 후보 |
 | `UNABLE_TO_CONFIRM` | 본인 거래인지 확인하기 어려움 | 행원 검토 전환 |
-| `DEFER` | 나중에 확인 | `CONTEXT_DEFERRED` |
-| `CONTACT_BANK` | 은행 문의 선택 | 행원 검토 전환 |
+| `NOT_MY_TRANSACTION` | 내가 하지 않은 거래 | 행원 검토와 기존 FDS·긴급 은행연락 경로 안내 |
+| `DEFERRED` | 나중에 확인 | `CONTEXT_DEFERRED` |
+| `REQUEST_BANK_REVIEW` | 은행 문의 선택 | 행원 검토 전환 |
+
+`ContextType`은 서버가 확인한 T1 구조적 근거의 API 타입이며 SSOT의 `ContextEvidenceCode`와 같은 다음 값으로 통일한다. 클라이언트는 이 값을 주장하거나 직접 전송하지 않는다.
+
+| 값 | 의미 |
+|---|---|
+| `PAYMENT_PROVIDER_DELAY_VERIFIED` | 납부기관 처리지연이 출처·시간·무결성값으로 확인됨 |
+| `ACCOUNT_CONNECTION_OUTAGE_VERIFIED` | 연결장애가 정기납부 누락 관찰기간과 일치함 |
+| `DUPLICATE_TRANSFER_REFUNDED` | 중복송금 한 건의 취소·환불 완료가 확인됨 |
+| `RESULT_SCREEN_DELAY_VERIFIED` | 반복확인 시간대의 결과화면 지연이 확인됨 |
+
+근거 없음은 별도의 긍정적 `ContextType`으로 만들지 않고 빈 `contextTypes`·`contextEvidenceIds`로 표현한다.
 
 #### 사유코드 `ReasonCode`
 
 | 값 | 의미 |
 |---|---|
-| `NEW_PAYEE` | 기준선에 없던 신규 수취인 |
-| `REPEATED_TRANSFER` | 동일·유사 수취인·금액의 반복송금 |
 | `DUPLICATE_PAYMENT` | 시간창 내 중복 가능 결제 |
+| `DUPLICATE_TRANSFER` | 동일 수취인·동일 금액·시간창 내 중복 가능 송금 |
 | `MISSED_RECURRING` | 유예기간 내 예상 정기납부 미발생 |
-| `CASH_WITHDRAWAL_TREND` | 현금인출 금액·빈도의 지속 증가 |
-| `UNUSUAL_AMOUNT` | 개인 기준선 대비 금액 변화 |
-| `UNUSUAL_TIME` | 개인 기준선 대비 이용시간 변화 |
-| `TREND_SHIFT` | 일정 기간 지속된 수준·추세 변화 |
+| `REPEATED_RETRY` | 동일 금융업무의 취소·재시도 반복 |
+| `UNFINISHED_TASK` | 시작한 납부·송금·조회 업무의 미완료 증가 |
+| `REPEATED_INQUIRY` | 같은 내용의 고객센터·영업점 문의 반복 |
+| `POST_EXPLANATION_RECURRENCE` | 행원 설명·상담 후 동일 질문·행동 재발 |
+| `REPEATED_CONFIRMATION` | 완료된 거래·납부 결과의 단시간 반복 확인 |
 
 #### 탐지 준비상태 `DetectionReadiness`
 
@@ -445,7 +477,7 @@ OPEN
 | `RESUME_REVIEW` | `FOLLOW_UP_REQUIRED` | `IN_BANK_REVIEW` |
 | `REQUIRE_FOLLOW_UP` | `IN_BANK_REVIEW` | `FOLLOW_UP_REQUIRED` |
 | `CLOSE_FALSE_POSITIVE` | `IN_BANK_REVIEW`, `FOLLOW_UP_REQUIRED` | `CLOSED_FALSE_POSITIVE` |
-| `APPROVE_GUIDANCE_PLAN` | `IN_BANK_REVIEW` | `CLOSED_GUIDANCE_PROVIDED` |
+| `APPROVE_GUIDANCE_PLAN` | `IN_BANK_REVIEW` | `GUIDANCE_PLAN_APPROVED` |
 
 #### 추가 공통 enum
 
@@ -453,6 +485,8 @@ OPEN
 |---|---|
 | `ReviewPriority` | 행원 업무순서용 `HIGH`, `MEDIUM`, `LOW`; 고객 위험도 아님 |
 | `ExecutionType` | P0 보호수단은 항상 `GUIDANCE_ONLY` |
+| `EvidencePhase` | 불변 경보근거 `T0_ALERT`, 후속 맥락근거 `T1_CONTEXT` |
+| `GuidancePlanStatus` | `NOT_APPROVED`, `APPROVED`, `DELIVERED`; 승인과 전달을 분리 |
 | `DataMode` | 공개 데모는 항상 `SYNTHETIC_ONLY` |
 | `ActorType` | `SYSTEM`, `CUSTOMER`, `STAFF`, `DEMO_STAFF`, `POLICY_ENGINE` 등 |
 | `TransactionStatus` | 최소 `PENDING`, `POSTED`, `CANCELED`, `REFUNDED`를 구분 |
@@ -466,10 +500,10 @@ OPEN
 #### P0 — 공모전 핵심 흐름
 
 - 무로그인 익명 데모 세션과 멱등 Reset
-- 12개월 완전 합성 거래와 `MOVE_AB_001` 고정 fixture
+- 12개월 완전 합성 거래와 `FIN_MGMT_AB_001` 고정 fixture
 - 합성 고객·계좌·거래·정기납부의 조회용 read model
 - 중앙값·MAD 기준선과 cold-start 처리
-- 신규 수취인·반복송금·정기납부 누락 탐지
+- 정기납부 반복 누락·중복송금·거래완료 반복확인 탐지
 - 동일 `alertId`의 A/B 생활맥락 재평가
 - 고객 알림·맥락 확인·행원 사건큐의 세 화면 지원
 - 정상종결과 행원검토 상태전이
@@ -526,14 +560,14 @@ OPEN
 |---|---|---|
 | 서비스명 | `안심리듬`, `치매머니`의 외부 노출 | `ALZ's well` |
 | 부제·고객 라벨 | 인지취약 고객 분류, 치매 위험도 | 금융생활 변화와 확인 필요 사유 |
-| P0 데모 소재 | 병원비 180만 원 | 이사·부동산 `MOVE_AB_001` |
+| P0 데모 소재 | 병원비·이사 고액송금 | 정기납부 반복 누락·중복송금·거래완료 반복확인 `FIN_MGMT_AB_001` |
 | A/B 대상 | 서로 다른 두 고객 | 같은 익명 세션을 Reset한 동일 사건 |
 | A/B 차이 | B에만 추가 거래·신호 | 맥락 패키지만 변경 |
 | 행원 대기상태 | `BANK_REVIEW` | `PENDING_BANK_REVIEW` |
 | 동의 차단 | 사건 상태 또는 HTTP 오류 | 정책결과 `BLOCKED_BY_CONSENT` |
 | 정기납부 코드 | `MISSED_RECURRING_PAYMENT` | `MISSED_RECURRING` |
-| 현금인출 코드 | `ATM_WITHDRAWAL_TREND` | `CASH_WITHDRAWAL_TREND` |
-| 금액변화 코드 | `AMOUNT_DEVIATION` | `UNUSUAL_AMOUNT` |
+| 중복송금 코드 | `REPEATED_TRANSFER` | `DUPLICATE_TRANSFER` |
+| 반복확인 코드 | 자유문구 또는 조회횟수 | `REPEATED_CONFIRMATION` |
 | 위험평가 엔터티 | 질병·고객 위험을 암시하는 `risk_assessment` | `PolicyDecision` 또는 `ReviewAssessment` |
 | 우선순위 필드 | `risk`, `riskScore`, 모호한 `priority` | 업무순서용 `reviewPriority` |
 | 정상종결 | 고객의 `괜찮아요`만으로 종결 | 서버 구조적 근거와 응답이 일치할 때만 허용 |
@@ -545,7 +579,7 @@ OPEN
 | 프론트 결합 | Thymeleaf·HTMX 전용 계약 | React·Vue에서도 사용할 JSON REST 계약 |
 | 합성데이터 규모 | 240개 거래 또는 240개 시연 고객 | 평가용 합성 프로필 240개 목표, 시연 페르소나는 소수 |
 | 공개 데모 보안 | JWT·RBAC 구현 완료 주장 | 현재 합성데모는 공개, PoC·운영 전에 RBAC 구현 |
-| 보호계획 승인 | 실제 지급정지·차단 승인 | 상담 `guidancePlan` 승인, 외부 실행 없음 |
+| 보호계획 승인 | 실제 지급정지·차단 승인 또는 고객 전달 완료 | 상담 `guidancePlan` 승인만 기록, 전달·외부 실행은 별도 상태 |
 | 신뢰연락인 | 가족이면 자동 권한 | 별도 동의와 최소정보, 법적 대리권과 분리 |
 | 데이터 연결 | 실제 전 금융사 연결 주장 | P0 합성데이터, 실연동은 적법한 제휴 후 P2 |
 
@@ -564,9 +598,12 @@ OPEN
 7. LLM은 상태, 우선순위, 연락권한, 사유코드와 실행코드를 변경하지 못한다.
 8. 외부 LLM에는 비식별 구조화 요약만 보내고 prompt·completion 원문 로그는 기본 비활성화한다.
 9. 공식 보호수단은 출처, 기준일과 적용조건 없이 반환하지 않는다.
-10. 모든 변경 명령은 `Idempotency-Key`를 지원하고 직원 사건 변경은 `caseVersion`으로 동시수정을 방지한다.
+10. 세션 생성을 제외한 모든 변경 명령은 `Idempotency-Key`와 서버 계산 `requestHash`를 사용하고 직원 사건 변경은 `caseVersion`으로 동시수정을 방지한다. 세션 생성은 비멱등·rate-limited다.
 11. actor는 요청 본문이 아니라 인증·세션 주체에서 결정한다.
-12. 세션 소유관계를 확인할 수 없는 자원은 정보노출을 막기 위해 `404`로 응답한다.
+12. T0 경보 근거와 T1 맥락 근거는 별도 snapshot으로 저장하며 T1을 T0 탐지 근거로 소급 사용하지 않는다.
+13. Reset은 같은 T0 snapshot을 복원하되 새 `demoRunId`를 발급하고 이전 run의 T1·상태·감사이력을 덮어쓰지 않는다.
+14. 안내계획 승인과 고객 전달 완료를 같은 상태나 시각으로 기록하지 않는다.
+12. 세션 소유관계를 capability로 확인할 수 없는 자원은 정보노출을 막기 위해 `404`로 응답한다.
 13. 금액은 10진 문자열과 통화코드로, 장기 seed는 문자열로 직렬화한다.
 14. 모든 중요 결정은 `traceId`, actor, 상태 전후값, 알고리즘·정책·모델·프롬프트·문서·스키마 버전과 함께 감사한다.
 15. P0의 모든 금융·연락 실행 결과는 `externalExecutionCreated=false`여야 한다.
@@ -792,7 +829,7 @@ OPEN
 > API 기준 버전: v1  
 > 아키텍처: Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈러 모놀리스  
 > 상위 기준서: ALZS_WELL_PROJECT_SSOT.md  
-> 상세 P0 계약: 본 문서 5~7장에 통합 (기존 docs/API_SPEC.md 확장)
+> 상세 P0 계약: 본 문서 5~7장에 통합
 
 이 문서는 ALZ's well의 핵심 금융생활 변화 확인 서비스와 은행·카드·증권 웹서비스의 공통 기능을 하나의 백엔드 API 지도에 정리한다. 기능 개수가 제품 범위를 자동으로 넓히는 것은 아니다. 우선 전체 지도를 고정한 뒤 P0를 먼저 구현하고, 일정에 따라 P1과 P2를 뒤로 미룬다.
 
@@ -813,13 +850,13 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 구현된 API는 GET /api/v1/system/health 하나다. 나머지는 계약 또는 백로그이며, 카탈로그 등록과 구현 완료를 혼동하지 않는다.
+현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개로 총 23개다. 나머지 223개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
 | 우선순위 | 의미 |
 |---|---|
-| P0-A | 기존 API_SPEC.md에 확정된 공모전 핵심 데모 12개 |
+| P0-A | 본 문서 5장에 확정된 공모전 핵심 데모 12개 |
 | P0-B | 공개 데모의 세션 격리를 유지하면서 뱅킹 셸을 완성하는 11개 |
 | P1 | 금융회사 PoC와 제품 핵심 기능 |
 | P2 | 은행·카드·증권 기능 확장 또는 장기 백로그 |
@@ -875,7 +912,7 @@ REFERENCE_ONLY 작업에는 OpenAPI 확장 속성 x-public-demo-enabled: false�
 | P0-B | GET | /api/v1/demo/sessions/{sessionId}/protection-actions | 세션 데모용 공식 보호수단 | OWNED |
 | P0-B | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent-summary | 세션 격리 연결·동의 요약 | OWNED |
 
-P0-B 읽기 API는 반드시 sessionId 소유권과 만료를 먼저 검증한다. 같은 customerId나 accountId라도 다른 익명 세션에서 조회할 수 없어야 한다.
+P0-B의 session 범위 읽기 API는 반드시 올바른 역할의 `X-Demo-Capability`, sessionId와 만료를 먼저 검증한다. 시나리오 파생 금융생활 읽기는 활성 `demoRunId`도 검증한다. sessionId 자체는 소유권 증명이 아니며, 같은 customerId나 accountId라도 다른 익명 세션·run에서 조회할 수 없어야 한다. 세션 생성 전 목록인 `/api/v1/demo/scenarios`는 session 범위가 아니다.
 
 #### 3.3.2 인증·세션·권한 — 9개
 
@@ -1249,7 +1286,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 ### 3.4 구현 순서
 
-1. 기존 P0-A 12개를 API_SPEC.md 계약 그대로 구현한다.
+1. 본 문서 5장의 P0-A 12개 계약을 구현한다.
 2. P0-B 11개는 공개 데모 안전설정 5개와 sessionId가 포함된 뱅킹 셸 읽기 API 6개로 한정한다.
 3. P0 총 23개를 공모전 MVP의 구현 경계로 삼는다.
 4. P0-B 금융 데이터는 실제 금융사 대신 세션별 SYNTHETIC_PROVIDER에서만 제공한다.
@@ -1285,22 +1322,46 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 |---|---:|---|
 | `Content-Type: application/json` | JSON 본문 사용 시 | 문자 인코딩은 UTF-8 |
 | `X-Trace-Id` | 선택 | 8~64자의 영문·숫자·`.`·`_`·`-`; 없거나 형식이 틀리면 서버가 생성 |
-| `Idempotency-Key` | `P0-CONTRACT` 변경 API에서 필수 | 8~64자의 고유 키; 동일 세션·경로·키 재요청은 최초 결과를 재사용 |
+| `Idempotency-Key` | 세션 생성을 제외한 변경 API에서 필수 | 8~64자의 고유 키; 동일 소유범위·경로·`requestHash` 재요청만 최초 결과를 재사용 |
+| `X-Demo-Capability` | 모든 세션 범위 API에서 필수 | 세션 생성 시 역할별로 발급한 256-bit 이상의 불투명 소유권 토큰; URL·본문·로그에 기록 금지 |
+| `X-Demo-Run-Id` | 시나리오 적재 후 run 파생 API에서 필수 | Reset 전후 실행을 구분하는 서버 발급 ID; 오래된 탭의 상태 혼합 방지 |
 | `Authorization: Bearer {token}` | PoC/운영 행원 API | 공개 합성데모에서는 생략; 운영에서는 RBAC 적용 |
 
 모든 응답은 `X-Trace-Id` 헤더를 반환하며 본문의 `traceId`와 같아야 한다.
 
-현재 구현의 CORS 허용 헤더에는 `Idempotency-Key`가 아직 포함되지 않았다. P0 변경 API 구현과 동시에 CORS 설정에도 이 헤더를 추가한다.
+현재 구현의 CORS 허용 헤더에는 `Authorization`, `Content-Type`, `X-Trace-Id`, `Idempotency-Key`가 포함돼 있다. `X-Demo-Capability`, `X-Demo-Run-Id`는 본 1.4 계약 구현 시 allow-header에 추가하고, 응답의 `X-Trace-Id`, `X-Demo-Customer-Capability`, `X-Demo-Staff-Capability`, `X-Demo-Run-Id`는 expose-header에 추가한다. header 기반 무쿠키 데모의 최종값은 `allowCredentials=false`이며 wildcard origin을 금지한다. 현재 코드의 `allowCredentials=true`는 1.4 계약 미반영 상태다. CORS는 브라우저 정책일 뿐 소유권 검증을 대신하지 않는다.
 
-현재 Spring Security에서 `/api/v1/demo/**`는 합성데모를 위해 공개되어 있으며 그 하위 행원 API도 예외가 아니다. JWT와 역할 기반 접근제어는 아직 구현되지 않았고, PoC/운영 전환 시 `STAFF`, `CONSUMER_PROTECTION` 권한으로 보호한다.
+현재 Spring Security의 URL 규칙은 `/api/v1/demo/**`를 합성데모 진입점으로 허용하지만, 모든 세션 하위 경로는 별도 filter가 세션별 hash와 `CUSTOMER_DEMO`·`DEMO_STAFF` 역할을 검증한다. 공개 데모에는 JWT가 없으며, PoC/운영 전환 시 기업 인증과 `STAFF`, `CONSUMER_PROTECTION` 권한을 추가한다.
+
+#### 4.2.1 익명 세션 capability 소유권
+
+`sessionId`는 조회 식별자일 뿐 인증정보가 아니다. 세션 생성 시 서버는 `CUSTOMER_DEMO`와 `DEMO_STAFF` capability 원문을 서로 독립적으로 생성해 응답 헤더로 한 번만 반환하고 서버에는 역할과 함께 단방향 hash만 저장한다. 이후 모든 `/api/v1/demo/sessions/{sessionId}/**` 요청은 `X-Demo-Capability`의 hash와 역할을 상수시간 비교로 검증한다. 누락·불일치·다른 세션 토큰이면 자원 존재 여부를 감추기 위해 모두 `404 DEMO_SESSION_NOT_FOUND`를 반환한다. capability는 query string, 응답 본문, 감사 payload, access log, `Referer`에 포함하지 않는다.
+
+`CUSTOMER_DEMO` capability는 세션 조회·적재·Reset, 금융생활 읽기, 알림 조회와 맥락 제출에만 사용할 수 있다. `DEMO_STAFF` capability는 행원 사건큐·상세·검토·안내계획과 필요한 감사조회에만 사용할 수 있다. 역할 범위를 벗어난 유효 토큰은 `403 DEMO_CAPABILITY_SCOPE_FORBIDDEN`을 반환한다. 두 토큰을 하나로 합치거나 고객 화면에 staff 토큰을 전달하지 않는다.
+
+시나리오가 적재되면 서버는 `demoRunId`를 발급한다. alert·context·audit·case와 시나리오 파생 금융생활 조회는 `{sessionId, demoRunId}` 복합범위에 귀속된다. Reset 뒤 이전 run ID로 변경 요청을 보내면 `409 DEMO_RUN_STALE`을 반환하고 이전 run의 감사이력은 읽기 전용으로만 보존한다.
+
+#### 4.2.2 `requestHash` 기반 멱등성
+
+`POST /api/v1/demo/sessions`는 멱등 API가 아니다. 이 API에서 클라이언트 제공 `Idempotency-Key`를 받거나 전역 namespace로 재사용하지 않으며, 초기 제한값은 세션 생성 IP당 분당 10회, 조회 capability당 분당 120회, 상태변경 capability당 분당 30회, 요청 본문 32KiB다. 동시 활성 세션 quota도 적용하며 초과 시 `429 DEMO_SESSION_RATE_LIMITED`와 `Retry-After`를 반환한다.
+
+그 밖의 변경 API에서 서버는 `HTTP method + 정규화 path + 정규화 query + content-type + canonical JSON body`의 SHA-256을 `requestHash`로 계산한다. 멱등 저장키는 `{sessionId, capabilityHash, capabilityRole, demoRunId, method, path, idempotencyKey}`다. Reset처럼 요청 시점의 run을 닫는 명령도 저장키에는 요청 헤더의 이전 `demoRunId`를 사용한다.
+
+- 동일 저장키와 동일 `requestHash`: 최초 HTTP status·응답 code·resource ID를 그대로 재사용한다.
+- 동일 저장키와 다른 `requestHash`: `409 IDEMPOTENCY_CONFLICT`를 반환하며 상태를 변경하지 않는다.
+- 같은 키라도 소유범위나 run이 다르면 서로 다른 요청이다.
+- 멱등 기록에는 원문 capability·자유입력·개인정보를 저장하지 않는다.
+- 프로세스 로컬 `synchronized`가 아니라 DB unique constraint와 transaction으로 원자성을 보장한다.
+
+세션 생성을 제외한 변경 응답은 `data.command.requestHash`와 `data.command.idempotencyReplayed`를 반환한다. 감사이력에는 `requestHash`와 `idempotencyKeyHash`만 남기고 원문 키와 capability는 남기지 않는다.
 
 ### 4.3 자료형
 
 | 항목 | 규칙 | 예시 |
 |---|---|---|
-| ID | UUID 또는 고정 합성 ID 문자열 | `4e85...`, `ALERT_MOVE_001` |
+| ID | UUID 또는 고정 합성 ID 문자열 | `4e85...`, `ALERT_FIN_MGMT_001` |
 | 시간 | ISO-8601, UTC 또는 명시적 offset | `2026-08-14T01:00:00Z` |
-| 금액 | 정밀도 손실을 막기 위한 10진 문자열과 통화코드 | `"18500000"`, `currency=KRW` |
+| 금액 | 정밀도 손실을 막기 위한 10진 문자열과 통화코드 | `"450000"`, `currency=KRW` |
 | 장기 seed | JavaScript 정밀도 손실 방지를 위해 문자열 | `"842039285123456789"` |
 | 비율 | 소수, 0~1 또는 별도 단위 명시 | `0.72` |
 | enum | 대문자 `UPPER_SNAKE_CASE` | `PENDING_BANK_REVIEW` |
@@ -1381,6 +1442,8 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 ## 5. P0-A 핵심 데모 상세 계약
 
+아래 P0-A 12개는 모두 `IMPLEMENTED`다. `FIN_MGMT_AB_001`, 역할별 capability, `demoRunId`, T0/T1 분리, `requestHash`, 사건 상태전이와 외부실행 금지를 코드·Flyway·계약시험에 함께 반영했다.
+
 ### 5.1 시스템 API
 
 #### 5.1.1 헬스체크
@@ -1419,16 +1482,21 @@ GET /api/v1/system/health
 
 #### 5.2.1 데모 세션 생성
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 POST /api/v1/demo/sessions
-Idempotency-Key: demo-start-0001
 ```
 
-요청 본문은 없다.
+요청 본문과 `Idempotency-Key`는 없다. 호출할 때마다 새 세션을 만들며 rate limit과 활성 세션 quota를 적용한다.
 
 ##### 성공 응답 `201 Created`
+
+```http
+X-Demo-Customer-Capability: {opaque-customer-capability-returned-once}
+X-Demo-Staff-Capability: {opaque-demo-staff-capability-returned-once}
+Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability, X-Demo-Staff-Capability
+```
 
 ```json
 {
@@ -1439,6 +1507,7 @@ Idempotency-Key: demo-start-0001
   "data": {
     "sessionId": "4e85d88f-16d3-4aa7-a0a7-d309d7d223d3",
     "scenarioSeed": "842039285123456789",
+    "demoRunId": null,
     "expiresAt": "2026-08-14T03:00:00Z",
     "resetVersion": 0,
     "dataMode": "SYNTHETIC_ONLY"
@@ -1449,16 +1518,20 @@ Idempotency-Key: demo-start-0001
 }
 ```
 
+두 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. 프론트는 고객 capability와 staff capability를 역할별 브라우저 메모리에만 분리 보관하고 URL, `localStorage`, `sessionStorage`, 쿠키에는 저장하지 않는다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
+
 #### 5.2.2 데모 Reset
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 POST /api/v1/demo/sessions/{sessionId}/reset
 Idempotency-Key: reset-a-to-b-0001
+X-Demo-Capability: {opaque-customer-capability}
+X-Demo-Run-Id: RUN_FIN_MGMT_A_001
 ```
 
-같은 `scenarioSeed`, 원시 거래 snapshot, `alertId`, 알고리즘·정책 버전을 복원한다. 같은 `Idempotency-Key`의 재요청은 감사이벤트와 `resetVersion`을 중복 증가시키지 않는다.
+같은 `scenarioSeed`, T0 원시 거래 snapshot, `alertId`, 알고리즘·정책 버전을 복원하되 새로운 `demoRunId`를 발급한다. 이전 run의 T1 맥락·상태·감사이력은 덮어쓰지 않는다. 새로운 멱등키의 Reset만 `resetVersion`을 정확히 1 증가시키고, 같은 `Idempotency-Key`와 같은 `requestHash` 재요청은 최초 `demoRunId`와 응답을 재사용해 감사이벤트와 `resetVersion`을 중복 증가시키지 않는다.
 
 ##### 성공 응답 `200 OK`
 
@@ -1470,12 +1543,18 @@ Idempotency-Key: reset-a-to-b-0001
   "message": "동일한 seed와 원시 snapshot으로 초기화했습니다.",
   "data": {
     "sessionId": "4e85d88f-16d3-4aa7-a0a7-d309d7d223d3",
+    "previousDemoRunId": "RUN_FIN_MGMT_A_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
     "scenarioSeed": "842039285123456789",
-    "scenarioId": "MOVE_AB_001",
+    "scenarioId": "FIN_MGMT_AB_001",
     "snapshotHash": "sha256:07d4c6...",
-    "alertId": "ALERT_MOVE_001",
+    "alertId": "ALERT_FIN_MGMT_001",
     "resetVersion": 1,
-    "restoredAt": "2026-08-14T01:05:00Z"
+    "restoredAt": "2026-08-14T01:05:00Z",
+    "command": {
+      "requestHash": "sha256:reset-request-001...",
+      "idempotencyReplayed": false
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:05:00Z",
@@ -1483,18 +1562,19 @@ Idempotency-Key: reset-a-to-b-0001
 }
 ```
 
-시나리오 적재 전에 Reset하면 `scenarioId`, `snapshotHash`, `alertId`는 `null`이며 세션 메타데이터만 초기화한다.
+시나리오 적재 전에 Reset하면 `previousDemoRunId`, `demoRunId`, `scenarioId`, `snapshotHash`, `alertId`는 `null`이며 세션 메타데이터만 초기화한다. Reset 뒤 모든 run 파생 요청은 새 `X-Demo-Run-Id`를 사용한다.
 
 #### 5.2.3 합성 시나리오 적재
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 POST /api/v1/demo/sessions/{sessionId}/scenarios/{scenarioId}/ingest
-Idempotency-Key: ingest-move-0001
+Idempotency-Key: ingest-fin-mgmt-0001
+X-Demo-Capability: {opaque-customer-capability}
 ```
 
-P0에서 허용하는 `scenarioId`는 `MOVE_AB_001` 하나다. 요청 본문은 없다.
+P0에서 허용하는 `scenarioId`는 `FIN_MGMT_AB_001` 하나다. 요청 본문은 없다. 최초 적재 성공 시 서버가 `demoRunId`를 발급하고 응답 헤더 `X-Demo-Run-Id`와 본문에 같은 값을 반환한다.
 
 ##### 성공 응답 `201 Created`
 
@@ -1505,10 +1585,11 @@ P0에서 허용하는 `scenarioId`는 `MOVE_AB_001` 하나다. 요청 본문은 
   "code": "DEMO_SCENARIO_INGESTED",
   "message": "고정 합성 시나리오를 적재했습니다.",
   "data": {
-    "scenarioId": "MOVE_AB_001",
-    "customerId": "SYN_CUSTOMER_MOVE_001",
-    "alertId": "ALERT_MOVE_001",
-    "caseId": "CASE_MOVE_001",
+    "scenarioId": "FIN_MGMT_AB_001",
+    "demoRunId": "RUN_FIN_MGMT_A_001",
+    "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
+    "alertId": "ALERT_FIN_MGMT_001",
+    "caseId": null,
     "scenarioSeed": "842039285123456789",
     "snapshotHash": "sha256:07d4c6...",
     "baselinePeriod": {
@@ -1520,14 +1601,27 @@ P0에서 허용하는 `scenarioId`는 `MOVE_AB_001` 하나다. 요청 본문은 
       "to": "2026-07-31"
     },
     "reasonCodes": [
-      "NEW_PAYEE",
-      "REPEATED_TRANSFER",
-      "MISSED_RECURRING"
+      "MISSED_RECURRING",
+      "DUPLICATE_TRANSFER",
+      "REPEATED_CONFIRMATION"
     ],
+    "t0Evidence": {
+      "phase": "T0_ALERT",
+      "alertSnapshotAt": "2026-08-01T00:00:00Z",
+      "alertEvidenceIds": ["SIG_MISSED_RECURRING_001", "SIG_DUPLICATE_TRANSFER_001", "SIG_REPEATED_CONFIRMATION_001"],
+      "missedRecurringCount60d": 3,
+      "duplicateTransferCount10m": 2,
+      "repeatedConfirmationCount1h": 7,
+      "immutable": true
+    },
     "preDecision": "NEEDS_CONTEXT",
     "state": "AWAITING_CONTEXT",
-    "algorithmVersion": "baseline-mad-v1.0.0",
-    "policyVersion": "context-policy-v1.0.0"
+    "algorithmVersion": "baseline-rules-v2.0.0",
+    "policyVersion": "context-policy-v1.0.0",
+    "command": {
+      "requestHash": "sha256:ingest-request-001...",
+      "idempotencyReplayed": false
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:01:00Z",
@@ -1541,7 +1635,7 @@ P0에서 허용하는 `scenarioId`는 `MOVE_AB_001` 하나다. 요청 본문은 
 
 #### 5.3.1 고객 알림 목록
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts
@@ -1556,17 +1650,19 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts
   "code": "ALERT_LIST_RETRIEVED",
   "message": "금융생활 변화 알림을 조회했습니다.",
   "data": {
-    "customerId": "SYN_CUSTOMER_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_A_001",
+    "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
     "syntheticData": true,
     "items": [
       {
-        "alertId": "ALERT_MOVE_001",
+        "alertId": "ALERT_FIN_MGMT_001",
         "state": "AWAITING_CONTEXT",
-        "title": "평소와 다른 송금과 정기납부 변화가 있어요",
-        "summary": "신규 수취인 1명, 반복송금 2회, 정기납부 누락 1건을 확인해 주세요.",
-        "reasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER", "MISSED_RECURRING"],
+        "title": "정기납부·중복송금·거래확인 변화가 있어요",
+        "summary": "최근 60일 정기납부 누락 3건, 10분 내 중복송금 2회, 완료 후 1시간 내 반복확인 7회를 확인해 주세요.",
+        "reasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"],
+        "evidencePhase": "T0_ALERT",
         "observedAt": "2026-07-31T23:59:59Z",
-        "algorithmVersion": "baseline-mad-v1.0.0"
+        "algorithmVersion": "baseline-rules-v2.0.0"
       }
     ]
   },
@@ -1578,7 +1674,7 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts
 
 #### 5.3.2 알림 상세
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}
@@ -1593,53 +1689,82 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}
   "code": "ALERT_DETAIL_RETRIEVED",
   "message": "변화 알림 상세를 조회했습니다.",
   "data": {
-    "alertId": "ALERT_MOVE_001",
-    "customerId": "SYN_CUSTOMER_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_A_001",
+    "alertId": "ALERT_FIN_MGMT_001",
+    "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
     "syntheticData": true,
     "state": "AWAITING_CONTEXT",
     "preDecision": "NEEDS_CONTEXT",
     "postDecision": null,
-    "reasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER", "MISSED_RECURRING"],
-    "signals": [
-      {
-        "signalId": "SIG_NEW_PAYEE_001",
-        "reasonCode": "NEW_PAYEE",
-        "readiness": "READY",
-        "baseline": {
-          "value": 0,
-          "unit": "COUNT",
-          "window": "9M"
+    "reasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"],
+    "t0AlertEvidence": {
+      "phase": "T0_ALERT",
+      "snapshotHash": "sha256:07d4c6...",
+      "alertSnapshotAt": "2026-08-01T00:00:00Z",
+      "alertEvidenceIds": ["SIG_MISSED_RECURRING_001", "SIG_DUPLICATE_TRANSFER_001", "SIG_REPEATED_CONFIRMATION_001"],
+      "immutable": true,
+      "signals": [
+        {
+          "signalId": "SIG_MISSED_RECURRING_001",
+          "reasonCode": "MISSED_RECURRING",
+          "readiness": "READY",
+          "baselineValue": 0,
+          "currentValue": 3,
+          "unit": "COUNT_60D",
+          "evidenceIds": ["OBLIGATION_MGMT_001", "OBLIGATION_TELCO_001"]
         },
-        "current": {
-          "value": 1,
-          "unit": "COUNT",
-          "window": "3M"
+        {
+          "signalId": "SIG_DUPLICATE_TRANSFER_001",
+          "reasonCode": "DUPLICATE_TRANSFER",
+          "readiness": "READY",
+          "baselineValue": 0,
+          "currentValue": 2,
+          "unit": "COUNT_10M",
+          "evidenceIds": ["TX_FIN_MGMT_DUP_001", "TX_FIN_MGMT_DUP_002"]
         },
-        "factExplanation": "최근 관찰기간에 처음 등장한 수취인입니다.",
-        "evidenceTransactionIds": ["TX_MOVE_101", "TX_MOVE_102"],
-        "calculatedAt": "2026-08-01T00:00:00Z"
-      }
-    ],
-    "evidenceTransactions": [
-      {
-        "transactionId": "TX_MOVE_101",
-        "institutionCode": "SYN_BANK_001",
-        "accountType": "DEMAND_DEPOSIT",
-        "transactionType": "TRANSFER_OUT",
-        "occurredAt": "2026-07-10T01:20:00Z",
-        "postedAt": "2026-07-10T01:20:03Z",
-        "amount": "10000000",
-        "currency": "KRW",
-        "counterpartyDisplayName": "합성수취인 A",
-        "channel": "MOBILE_BANKING",
-        "status": "POSTED"
-      }
-    ],
-    "consent": {
-      "trustedContactGranted": false,
+        {
+          "signalId": "SIG_REPEATED_CONFIRMATION_001",
+          "reasonCode": "REPEATED_CONFIRMATION",
+          "readiness": "READY",
+          "baselineValue": 1,
+          "currentValue": 7,
+          "unit": "COUNT_1H",
+          "evidenceIds": ["CONFIRM_EVENT_001", "CONFIRM_EVENT_007"]
+        }
+      ],
+      "evidenceTransactions": [
+        {
+          "transactionId": "TX_FIN_MGMT_DUP_001",
+          "institutionCode": "SYN_BANK_001",
+          "accountType": "DEMAND_DEPOSIT",
+          "transactionType": "TRANSFER_OUT",
+          "occurredAt": "2026-07-10T01:20:00Z",
+          "postedAt": "2026-07-10T01:20:03Z",
+          "amount": "450000",
+          "currency": "KRW",
+          "counterpartyDisplayName": "합성수취인 A",
+          "channel": "MOBILE_BANKING",
+          "status": "POSTED"
+        }
+      ]
+    },
+    "t1ContextEvidence": null,
+    "trustedContactGate": {
+      "gateEvaluated": false,
+      "consentSnapshotId": "CONSENT_TRUSTED_CONTACT_001",
+      "consentStatus": "NOT_GRANTED",
+      "recipientAccepted": false,
+      "triggerMatched": false,
+      "fieldScopeMatched": false,
+      "validityMatched": false,
+      "deliveryEnabled": false,
+      "resultCode": null,
+      "dispatchAttempted": false,
+      "externalDeliveryRequested": false,
+      "externalDeliveryCreated": false,
       "minimumInformationPreview": "확인이 필요한 금융활동이 있습니다. 고객에게 연락하거나 은행 상담을 도와주세요."
     },
-    "algorithmVersion": "baseline-mad-v1.0.0",
+    "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0"
   },
   "errors": [],
@@ -1648,15 +1773,17 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}
 }
 ```
 
-`signals`에는 점수만 보내지 않고 평소값, 현재값, 비교기간, 사실설명, 불변 근거 ID를 함께 제공한다.
+`t0AlertEvidence.signals`에는 점수만 보내지 않고 평소값, 현재값, 비교기간, 사실설명, 불변 근거 ID를 함께 제공한다. 맥락 제출 전 `t1ContextEvidence`는 반드시 `null`이며, T1 처리지연·연결장애·취소·환불 근거를 T0 배열에 미리 노출하지 않는다.
 
 #### 5.3.3 생활맥락 응답
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context
 Idempotency-Key: context-a-0001
+X-Demo-Capability: {opaque-customer-capability}
+X-Demo-Run-Id: RUN_FIN_MGMT_A_001
 Content-Type: application/json
 ```
 
@@ -1664,23 +1791,29 @@ Content-Type: application/json
 
 ```json
 {
-  "responseCode": "LIFE_CHANGE",
-  "contextCode": "MOVING_HOME",
-  "demoEvidenceFixture": "MOVE_A_VERIFIED"
+  "responseCode": "KNOWN_AND_INTENTIONAL",
+  "demoBranchCode": "FIN_MGMT_A_NORMAL_CONTEXT"
 }
 ```
 
 ##### B 경로 요청
 
+```http
+POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context
+Idempotency-Key: context-b-0001
+X-Demo-Capability: {opaque-customer-capability}
+X-Demo-Run-Id: RUN_FIN_MGMT_B_001
+Content-Type: application/json
+```
+
 ```json
 {
   "responseCode": "UNABLE_TO_CONFIRM",
-  "contextCode": null,
-  "demoEvidenceFixture": "MOVE_B_UNVERIFIED"
+  "demoBranchCode": "FIN_MGMT_B_NO_CONTEXT"
 }
 ```
 
-`demoEvidenceFixture`는 합성데모 전용 선택자다. 클라이언트가 계약서나 주소변경 증거를 직접 보내는 필드가 아니며, 서버는 이 코드에 대응하는 고정 fixture를 조회해 정합성을 판단한다. 운영 API에서는 이 필드를 제거하고 승인된 내부 데이터 조회 결과만 사용한다.
+이 요청 DTO가 `ContextResponse`다. `demoBranchCode`는 합성데모 전용 분기 선택자이며 클라이언트가 T1 근거나 `ContextType`을 직접 보내는 필드가 아니다. 서버는 allowlist된 분기에 대응하는 T1 근거만 조회해 정합성을 판단한다. 운영 API에서는 이 필드를 제거하고 승인된 내부 데이터 조회 결과만 사용한다. `demoBranchCode`와 `responseCode`의 허용 조합이 아니면 `400 COMMON_INVALID_INPUT`을 반환한다.
 
 ##### A 경로 성공 응답 `200 OK`
 
@@ -1691,26 +1824,89 @@ Content-Type: application/json
   "code": "ALERT_CONTEXT_APPLIED",
   "message": "생활맥락을 반영해 변화를 다시 확인했습니다.",
   "data": {
-    "contextEventId": "CTX_MOVE_A_001",
-    "alertId": "ALERT_MOVE_001",
-    "responseCode": "LIFE_CHANGE",
-    "contextCode": "MOVING_HOME",
-    "structuralEvidenceMatched": true,
-    "matchedEvidenceIds": ["LEASE_SYN_001", "ADDRESS_CHANGE_SYN_001"],
+    "demoRunId": "RUN_FIN_MGMT_A_001",
+    "contextEventId": "CTX_FIN_MGMT_A_001",
+    "alertId": "ALERT_FIN_MGMT_001",
+    "contextResponse": {
+      "responseCode": "KNOWN_AND_INTENTIONAL",
+      "demoBranchCode": "FIN_MGMT_A_NORMAL_CONTEXT"
+    },
+    "t1ContextEvidence": {
+      "phase": "T1_CONTEXT",
+      "structuralEvidenceMatched": true,
+      "contextTypes": ["PAYMENT_PROVIDER_DELAY_VERIFIED", "ACCOUNT_CONNECTION_OUTAGE_VERIFIED", "DUPLICATE_TRANSFER_REFUNDED", "RESULT_SCREEN_DELAY_VERIFIED"],
+      "contextEvidenceIds": ["PAYMENT_DELAY_SYN_001", "CONNECTION_OUTAGE_SYN_001", "TRANSFER_REFUND_SYN_001", "RESULT_DISPLAY_DELAY_SYN_001"],
+      "contextEvidenceRefs": [
+        {
+          "contextEvidenceId": "PAYMENT_DELAY_SYN_001",
+          "contextType": "PAYMENT_PROVIDER_DELAY_VERIFIED",
+          "effectiveAt": "2026-06-01T00:00:00Z",
+          "observedAt": "2026-07-31T23:59:59Z",
+          "ingestedAt": "2026-08-14T01:04:00Z",
+          "sourceType": "PAYMENT_PROVIDER_EVENT",
+          "version": "1",
+          "integrityHash": "sha256:payment-delay-001..."
+        },
+        {
+          "contextEvidenceId": "CONNECTION_OUTAGE_SYN_001",
+          "contextType": "ACCOUNT_CONNECTION_OUTAGE_VERIFIED",
+          "effectiveAt": "2026-06-01T00:00:00Z",
+          "observedAt": "2026-07-31T23:59:59Z",
+          "ingestedAt": "2026-08-14T01:04:00Z",
+          "sourceType": "SYSTEM_EVENT",
+          "version": "1",
+          "integrityHash": "sha256:connection-outage-001..."
+        },
+        {
+          "contextEvidenceId": "TRANSFER_REFUND_SYN_001",
+          "contextType": "DUPLICATE_TRANSFER_REFUNDED",
+          "effectiveAt": "2026-07-10T01:28:00Z",
+          "observedAt": "2026-07-10T01:28:03Z",
+          "ingestedAt": "2026-08-14T01:04:00Z",
+          "sourceType": "SYSTEM_EVENT",
+          "version": "1",
+          "integrityHash": "sha256:transfer-refund-001..."
+        },
+        {
+          "contextEvidenceId": "RESULT_DISPLAY_DELAY_SYN_001",
+          "contextType": "RESULT_SCREEN_DELAY_VERIFIED",
+          "effectiveAt": "2026-07-10T01:20:00Z",
+          "observedAt": "2026-07-10T02:20:00Z",
+          "ingestedAt": "2026-08-14T01:04:00Z",
+          "sourceType": "SYSTEM_EVENT",
+          "version": "1",
+          "integrityHash": "sha256:result-delay-001..."
+        }
+      ],
+      "observedAt": "2026-08-14T01:04:00Z"
+    },
     "preDecision": "NEEDS_CONTEXT",
     "postDecision": "CLOSE_AS_NORMAL_CONTEXT",
     "previousState": "AWAITING_CONTEXT",
     "currentState": "CLOSED_NORMAL",
-    "trustedContactPolicy": {
-      "granted": false,
-      "attempted": false,
-      "resultCode": null
+    "trustedContactGate": {
+      "gateEvaluated": false,
+      "consentSnapshotId": "CONSENT_TRUSTED_CONTACT_001",
+      "consentStatus": "NOT_GRANTED",
+      "recipientAccepted": false,
+      "triggerMatched": false,
+      "fieldScopeMatched": false,
+      "validityMatched": false,
+      "deliveryEnabled": false,
+      "resultCode": null,
+      "dispatchAttempted": false,
+      "externalDeliveryRequested": false,
+      "externalDeliveryCreated": false
     },
     "nextAction": {
       "type": "SHOW_CHECKLIST",
       "actionCode": "RECHECK_RECURRING_PAYMENT"
     },
-    "policyVersion": "context-policy-v1.0.0"
+    "policyVersion": "context-policy-v1.0.0",
+    "command": {
+      "requestHash": "sha256:context-a-request-001...",
+      "idempotencyReplayed": false
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:04:00Z",
@@ -1727,27 +1923,49 @@ Content-Type: application/json
   "code": "ALERT_ESCALATED_TO_BANK_REVIEW",
   "message": "추가 설명이 필요해 은행 검토로 연결했습니다.",
   "data": {
-    "contextEventId": "CTX_MOVE_B_001",
-    "alertId": "ALERT_MOVE_001",
-    "caseId": "CASE_MOVE_001",
-    "responseCode": "UNABLE_TO_CONFIRM",
-    "contextCode": null,
-    "structuralEvidenceMatched": false,
-    "matchedEvidenceIds": [],
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "contextEventId": "CTX_FIN_MGMT_B_001",
+    "alertId": "ALERT_FIN_MGMT_001",
+    "caseId": "CASE_FIN_MGMT_001",
+    "contextResponse": {
+      "responseCode": "UNABLE_TO_CONFIRM",
+      "demoBranchCode": "FIN_MGMT_B_NO_CONTEXT"
+    },
+    "t1ContextEvidence": {
+      "phase": "T1_CONTEXT",
+      "structuralEvidenceMatched": false,
+      "contextTypes": [],
+      "contextEvidenceIds": [],
+      "contextEvidenceRefs": [],
+      "observedAt": "2026-08-14T01:04:30Z"
+    },
     "preDecision": "NEEDS_CONTEXT",
     "postDecision": "REQUIRE_BANK_REVIEW",
     "previousState": "AWAITING_CONTEXT",
     "currentState": "PENDING_BANK_REVIEW",
-    "trustedContactPolicy": {
-      "granted": false,
-      "attempted": true,
-      "resultCode": "BLOCKED_BY_CONSENT"
+    "trustedContactGate": {
+      "gateEvaluated": true,
+      "consentSnapshotId": "CONSENT_TRUSTED_CONTACT_001",
+      "consentStatus": "NOT_GRANTED",
+      "recipientAccepted": false,
+      "triggerMatched": true,
+      "fieldScopeMatched": false,
+      "validityMatched": false,
+      "deliveryEnabled": false,
+      "resultCode": "BLOCKED_BY_CONSENT",
+      "dispatchAttempted": false,
+      "externalDeliveryRequested": false,
+      "externalDeliveryCreated": false
     },
     "nextAction": {
       "type": "OPEN_BANK_REVIEW",
       "actionCode": "REVIEW_CASE"
     },
-    "policyVersion": "context-policy-v1.0.0"
+    "policyVersion": "context-policy-v1.0.0",
+    "command": {
+      "requestHash": "sha256:context-b-request-001...",
+      "idempotencyReplayed": false
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:04:30Z",
@@ -1755,13 +1973,13 @@ Content-Type: application/json
 }
 ```
 
-`trustedContactPolicy.attempted=true`는 외부 연락을 시도했다는 뜻이 아니라 연락 정책 게이트를 평가했다는 뜻이다. 미동의 상태에서는 외부 메시지·전화 요청을 만들지 않는다.
+`trustedContactGate.gateEvaluated=true`는 연락 정책 게이트를 평가했다는 뜻이지 외부 연락을 시도했다는 뜻이 아니다. 미동의 상태에서는 `dispatchAttempted`, `externalDeliveryRequested`, `externalDeliveryCreated`가 모두 `false`여야 한다.
 
-고객의 `KNOWN_TRANSACTION` 응답만으로 강한 신호를 자동 해제하지 않는다. 구조적 근거가 없거나 불일치하면 `PENDING_BANK_REVIEW`로 전환한다.
+고객의 `KNOWN_AND_INTENTIONAL` 응답만으로 강한 신호를 자동 해제하지 않는다. 구조적 근거가 없거나 불일치하면 `PENDING_BANK_REVIEW`로 전환한다.
 
 #### 5.3.4 알림 감사이력
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&limit=20
@@ -1779,15 +1997,18 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
     "items": [
       {
         "auditId": "92d1af1e-8f17-40d4-9d60-09c09e73fa60",
+        "demoRunId": "RUN_FIN_MGMT_B_001",
         "eventType": "CONSENT_ACTION_BLOCKED",
         "actorType": "SYSTEM",
         "fromState": "AWAITING_CONTEXT",
         "toState": "PENDING_BANK_REVIEW",
         "resultCode": "BLOCKED_BY_CONSENT",
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
-        "algorithmVersion": "baseline-mad-v1.0.0",
+        "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "1.0",
+        "schemaVersion": "7",
+        "requestHash": "sha256:context-b-request-001...",
+        "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
         "occurredAt": "2026-08-14T01:04:30Z"
       }
@@ -1809,7 +2030,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
 
 #### 5.4.1 행원 사건큐
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 GET /api/v1/demo/sessions/{sessionId}/staff/cases?state=PENDING_BANK_REVIEW&reviewPriority=HIGH&cursor={cursor}&limit=20
@@ -1826,15 +2047,29 @@ GET /api/v1/demo/sessions/{sessionId}/staff/cases?state=PENDING_BANK_REVIEW&revi
   "data": {
     "items": [
       {
-        "caseId": "CASE_MOVE_001",
-        "alertId": "ALERT_MOVE_001",
-        "customerId": "SYN_CUSTOMER_MOVE_001",
+        "demoRunId": "RUN_FIN_MGMT_B_001",
+        "caseId": "CASE_FIN_MGMT_001",
+        "alertId": "ALERT_FIN_MGMT_001",
+        "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
         "state": "PENDING_BANK_REVIEW",
         "reviewPriority": "HIGH",
-        "reasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER", "MISSED_RECURRING"],
+        "reasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"],
         "customerResponseCode": "UNABLE_TO_CONFIRM",
-        "summary": "본인 거래 확인이 어렵고 정상 생활맥락의 구조적 근거가 없습니다.",
-        "trustedContactAllowed": false,
+        "summary": "정기납부 누락·중복송금·반복확인을 본인이 확인하기 어렵고 정상 구조적 근거가 없습니다.",
+        "trustedContactGate": {
+          "gateEvaluated": true,
+          "consentSnapshotId": "CONSENT_TRUSTED_CONTACT_001",
+          "consentStatus": "NOT_GRANTED",
+          "recipientAccepted": false,
+          "triggerMatched": true,
+          "fieldScopeMatched": false,
+          "validityMatched": false,
+          "deliveryEnabled": false,
+          "resultCode": "BLOCKED_BY_CONSENT",
+          "dispatchAttempted": false,
+          "externalDeliveryRequested": false,
+          "externalDeliveryCreated": false
+        },
         "createdAt": "2026-08-14T01:04:30Z",
         "caseVersion": 1,
         "sessionResetVersion": 1
@@ -1853,7 +2088,7 @@ GET /api/v1/demo/sessions/{sessionId}/staff/cases?state=PENDING_BANK_REVIEW&revi
 
 #### 5.4.2 사건 상세와 코파일럿 초안
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
@@ -1868,37 +2103,47 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
   "code": "CASE_DETAIL_RETRIEVED",
   "message": "보호업무 사건 상세를 조회했습니다.",
   "data": {
-    "caseId": "CASE_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "caseId": "CASE_FIN_MGMT_001",
     "caseVersion": 1,
     "sessionResetVersion": 1,
     "state": "PENDING_BANK_REVIEW",
     "reviewPriority": "HIGH",
     "alert": {
-      "alertId": "ALERT_MOVE_001",
+      "alertId": "ALERT_FIN_MGMT_001",
       "preDecision": "NEEDS_CONTEXT",
       "postDecision": "REQUIRE_BANK_REVIEW",
-      "reasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER", "MISSED_RECURRING"],
-      "algorithmVersion": "baseline-mad-v1.0.0",
+      "reasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"],
+      "algorithmVersion": "baseline-rules-v2.0.0",
       "policyVersion": "context-policy-v1.0.0"
     },
     "customerContext": {
       "responseCode": "UNABLE_TO_CONFIRM",
+      "contextTypes": [],
       "confirmedItems": [],
-      "unconfirmedItems": ["신규 수취인", "반복송금 2회", "정기납부 누락 1건"]
+      "unconfirmedItems": ["최근 60일 정기납부 누락 3건", "10분 내 중복송금 2회", "완료 후 1시간 내 반복확인 7회"]
     },
     "timeline": [
       {
+        "phase": "T0_ALERT",
         "type": "ALERT_CREATED",
         "title": "변화 알림 생성",
         "occurredAt": "2026-08-01T00:00:00Z",
-        "evidenceIds": ["SIG_NEW_PAYEE_001", "SIG_REPEAT_001", "SIG_MISSED_001"]
+        "evidenceIds": ["SIG_MISSED_RECURRING_001", "SIG_DUPLICATE_TRANSFER_001", "SIG_REPEATED_CONFIRMATION_001"]
+      },
+      {
+        "phase": "T1_CONTEXT",
+        "type": "CONTEXT_EVALUATED",
+        "title": "검증된 정상 구조적 근거 없음",
+        "occurredAt": "2026-08-14T01:04:30Z",
+        "evidenceIds": []
       }
     ],
     "suggestedQuestions": [
       {
-        "questionId": "Q_MOVE_001",
-        "text": "최근 두 차례 송금의 수취인과 목적을 기억하시나요?",
-        "basisReasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER"]
+        "questionId": "Q_FIN_MGMT_001",
+        "text": "최근 누락된 정기납부와 두 차례 송금, 완료내역을 여러 번 확인한 이유를 함께 살펴봐도 될까요?",
+        "basisReasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"]
       }
     ],
     "protectionCandidates": [
@@ -1917,14 +2162,29 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
     ],
     "consultationDraft": {
       "summary": "고객이 일부 거래를 확인하기 어려워 추가 사실확인이 필요합니다.",
-      "checklist": ["수취인 확인", "송금 목적 확인", "정기납부 변경 여부 확인"],
+      "checklist": ["정기납부 처리상태 확인", "중복송금 취소·환불 확인", "거래 결과화면 지연 여부 확인"],
       "generatedBy": "TEMPLATE",
       "fallbackUsed": true
     },
-    "trustedContactPolicy": {
-      "granted": false,
-      "contactActionEnabled": false,
-      "disabledReasonCode": "BLOCKED_BY_CONSENT"
+    "trustedContactGate": {
+      "gateEvaluated": true,
+      "consentSnapshotId": "CONSENT_TRUSTED_CONTACT_001",
+      "consentStatus": "NOT_GRANTED",
+      "recipientAccepted": false,
+      "triggerMatched": true,
+      "fieldScopeMatched": false,
+      "validityMatched": false,
+      "deliveryEnabled": false,
+      "resultCode": "BLOCKED_BY_CONSENT",
+      "dispatchAttempted": false,
+      "externalDeliveryRequested": false,
+      "externalDeliveryCreated": false
+    },
+    "guidancePlan": {
+      "status": "NOT_APPROVED",
+      "approvedAt": null,
+      "delivered": false,
+      "deliveredAt": null
     },
     "capabilities": {
       "externalMessage": false,
@@ -1955,11 +2215,13 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 
 #### 5.4.3 행원 검토 상태전이
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/review
 Idempotency-Key: case-review-0001
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: RUN_FIN_MGMT_B_001
 Content-Type: application/json
 ```
 
@@ -1992,14 +2254,19 @@ Content-Type: application/json
   "code": "CASE_REVIEW_UPDATED",
   "message": "행원 검토 상태를 변경했습니다.",
   "data": {
-    "caseId": "CASE_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "caseId": "CASE_FIN_MGMT_001",
     "previousState": "PENDING_BANK_REVIEW",
     "currentState": "IN_BANK_REVIEW",
     "caseVersion": 2,
     "reviewedBy": "DEMO_STAFF",
     "followUpAt": null,
     "externalExecutionCreated": false,
-    "updatedAt": "2026-08-14T01:08:00Z"
+    "updatedAt": "2026-08-14T01:08:00Z",
+    "command": {
+      "requestHash": "sha256:case-review-request-001...",
+      "idempotencyReplayed": false
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:08:00Z",
@@ -2009,11 +2276,13 @@ Content-Type: application/json
 
 #### 5.4.4 안내 계획 승인
 
-`P0-CONTRACT`
+`IMPLEMENTED`
 
 ```http
 POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 Idempotency-Key: guidance-plan-0001
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: RUN_FIN_MGMT_B_001
 Content-Type: application/json
 ```
 
@@ -2040,13 +2309,21 @@ Content-Type: application/json
   "code": "GUIDANCE_PLAN_APPROVED",
   "message": "상담 안내 계획을 승인했습니다. 실제 계좌 조치는 실행되지 않았습니다.",
   "data": {
-    "caseId": "CASE_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "caseId": "CASE_FIN_MGMT_001",
     "previousState": "IN_BANK_REVIEW",
-    "currentState": "CLOSED_GUIDANCE_PROVIDED",
+    "currentState": "GUIDANCE_PLAN_APPROVED",
     "caseVersion": 3,
+    "guidancePlanStatus": "APPROVED",
     "approvedActionCodes": ["SAFE_BLOCK_INFO", "BANK_CONSULTATION"],
     "externalExecutionCreated": false,
-    "approvedAt": "2026-08-14T01:09:00Z"
+    "guidanceDelivered": false,
+    "approvedAt": "2026-08-14T01:09:00Z",
+    "deliveredAt": null,
+    "command": {
+      "requestHash": "sha256:guidance-plan-request-001...",
+      "idempotencyReplayed": false
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:09:00Z",
@@ -2054,7 +2331,7 @@ Content-Type: application/json
 }
 ```
 
-이 API의 `APPROVE`는 상담 계획 승인이다. 지급정지·이체차단·한도변경·외부 연락 승인으로 해석하지 않는다.
+이 API의 `APPROVE`는 상담 계획 승인만 뜻한다. 지급정지·이체차단·한도변경·외부 연락 승인이나 고객 전달 완료로 해석하지 않는다. `CLOSED_GUIDANCE_DELIVERED`는 별도 전달 확인 이벤트가 기록된 뒤에만 사용할 수 있으며, 해당 전달 확인 API는 현재 P0 23개에 포함하지 않는다.
 
 ---
 
@@ -2078,23 +2355,23 @@ P0-B는 은행 앱 전체를 만드는 단계가 아니다. 공개 합성데모�
 | GET | `/api/v1/demo/sessions/{sessionId}/protection-actions` | `PROTECTION_ACTION_LIST_RETRIEVED` | `ProtectionActionListResponse` |
 | GET | `/api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent-summary` | `DEMO_CONNECTION_LIST_RETRIEVED` | `ConnectionConsentSummaryResponse` |
 
-현재 구현상태는 모두 `CONTRACT`다. 구현 시 `SecurityConfig`의 공개 경로와 CORS 허용 헤더를 함께 갱신해야 한다.
+P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V7 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 일회성 응답 헤더 노출 목록이 반영돼 있다.
 
 ---
 
 ### 공통 합성데이터 출처 필드
 
-은행·카드·증권 읽기 모델은 다음 출처 필드를 공통으로 가진다.
+금융생활 읽기 응답은 최상위 `data.provenance`에 다음 출처 필드를 공통으로 가진다. 계좌·연결 항목은 여기에 `institutionId`, `connectionId`를 추가로 제공한다.
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
+| `syntheticData` | boolean | P0에서는 항상 `true` |
 | `sourceProvider` | string | P0에서는 항상 `SYNTHETIC_PROVIDER` |
-| `sourceInstitutionId` | string | 합성 원천기관 ID |
 | `sourceUpdatedAt` | ISO-8601 | 합성 snapshot 기준시각 |
 | `dataFreshness` | enum | P0에서는 `FIXED_SNAPSHOT` |
-| `connectionId` | string | 세션에 속한 합성 연결 ID |
 | `consentId` | string | 분석 목적의 합성 동의 snapshot ID |
-| `consentScope` | string[] | 허용된 읽기 범위 |
+| `consentScope` | string[] | 세션 연결 전체의 허용된 읽기 범위 |
+| `snapshotHash` | string | Reset 전후 동일성을 확인하는 합성 snapshot SHA-256 |
 
 P0에서 허용하는 `dataFreshness` 값은 `FIXED_SNAPSHOT`, `FRESH`, `STALE`, `UNAVAILABLE`이며 실제 시연 fixture는 `FIXED_SNAPSHOT`을 사용한다.
 
@@ -2102,7 +2379,7 @@ P0에서 허용하는 `dataFreshness` 값은 `FIXED_SNAPSHOT`, `FRESH`, `STALE`,
 
 ```json
 {
-  "amount": "18500000",
+  "amount": "450000",
   "currency": "KRW"
 }
 ```
@@ -2162,7 +2439,7 @@ GET /api/v1/system/public-config
     "externalEgressEnabled": false,
     "remoteModelEnabled": false,
     "syntheticProviderOnly": true,
-    "supportedScenarioIds": ["MOVE_AB_001"],
+    "supportedScenarioIds": ["FIN_MGMT_AB_001"],
     "defaultLocale": "ko-KR",
     "demoSessionTtlSeconds": 7200,
     "featureFlags": {
@@ -2192,9 +2469,9 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "1",
-    "fixtureVersion": "move-ab-v1.0.0",
-    "algorithmVersion": "baseline-mad-v1.0.0",
+    "schemaVersion": "7",
+    "fixtureVersion": "fin-mgmt-ab-v2.0.0",
+    "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
     "sourceCatalogCheckedAt": "2026-08-14"
   },
@@ -2223,7 +2500,8 @@ GET /api/v1/demo/sessions/{sessionId}
   "data": {
     "sessionId": "4e85d88f-16d3-4aa7-a0a7-d309d7d223d3",
     "scenarioSeed": "842039285123456789",
-    "scenarioId": "MOVE_AB_001",
+    "scenarioId": "FIN_MGMT_AB_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
     "status": "ACTIVE",
     "resetVersion": 1,
     "snapshotHash": "sha256:07d4c6...",
@@ -2252,11 +2530,11 @@ GET /api/v1/demo/scenarios
   "data": {
     "items": [
       {
-        "scenarioId": "MOVE_AB_001",
-        "title": "이사·부동산 송금 A/B 비교",
+        "scenarioId": "FIN_MGMT_AB_001",
+        "title": "정기납부·중복송금·거래완료 반복확인 A/B 비교",
         "baselineMonths": 9,
         "observationMonths": 3,
-        "supportedContextFixtures": ["MOVE_A_VERIFIED", "MOVE_B_UNVERIFIED"],
+        "supportedBranchCodes": ["FIN_MGMT_A_NORMAL_CONTEXT", "FIN_MGMT_B_NO_CONTEXT"],
         "syntheticData": true
       }
     ]
@@ -2282,6 +2560,7 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent
   "code": "DEMO_CONNECTION_LIST_RETRIEVED",
   "message": "합성 연결기관과 동의 범위를 조회했습니다.",
   "data": {
+    "demoRunId": "RUN_FIN_MGMT_B_001",
     "items": [
       {
         "connectionId": "CONN_SYN_HANA_001",
@@ -2313,8 +2592,30 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent
       "granted": true,
       "grantedAt": "2026-08-14T01:00:00Z",
       "expiresAt": "2026-08-14T03:00:00Z",
-      "revocable": true,
-      "trustedContactGranted": false
+      "revocable": true
+    },
+    "trustedContactGate": {
+      "gateEvaluated": false,
+      "consentSnapshotId": "CONSENT_TRUSTED_CONTACT_001",
+      "consentStatus": "NOT_GRANTED",
+      "recipientAccepted": false,
+      "triggerMatched": false,
+      "fieldScopeMatched": false,
+      "validityMatched": false,
+      "deliveryEnabled": false,
+      "resultCode": null,
+      "dispatchAttempted": false,
+      "externalDeliveryRequested": false,
+      "externalDeliveryCreated": false
+    },
+    "provenance": {
+      "syntheticData": true,
+      "sourceProvider": "SYNTHETIC_PROVIDER",
+      "sourceUpdatedAt": "2026-07-31T23:59:59Z",
+      "dataFreshness": "FIXED_SNAPSHOT",
+      "consentId": "CONSENT_SYN_001",
+      "consentScope": ["ACCOUNT", "BALANCE", "TRANSACTION"],
+      "snapshotHash": "sha256:07d4c6..."
     }
   },
   "errors": [],
@@ -2340,7 +2641,8 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/financial-summary
   "code": "FINANCIAL_SUMMARY_RETRIEVED",
   "message": "합성 금융생활 요약을 조회했습니다.",
   "data": {
-    "customerId": "SYN_CUSTOMER_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
     "asOf": "2026-07-31",
     "period": {
       "from": "2025-08-01",
@@ -2359,8 +2661,8 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/financial-summary
     },
     "changeSummary": {
       "openAlertCount": 1,
-      "reasonCodes": ["NEW_PAYEE", "REPEATED_TRANSFER", "MISSED_RECURRING"],
-      "summary": "신규 수취인과 반복송금, 정기납부 누락을 확인해 주세요."
+      "reasonCodes": ["MISSED_RECURRING", "DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"],
+      "summary": "정기납부 누락 3건, 10분 내 중복송금 2회, 완료 후 1시간 내 반복확인 7회를 확인해 주세요."
     },
     "twelveMonthTrend": [
       {
@@ -2372,7 +2674,16 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/financial-summary
         "totalAssets": {"amount": "48250000", "currency": "KRW"}
       }
     ],
-    "syntheticData": true
+    "syntheticData": true,
+    "provenance": {
+      "syntheticData": true,
+      "sourceProvider": "SYNTHETIC_PROVIDER",
+      "sourceUpdatedAt": "2026-07-31T23:59:59Z",
+      "dataFreshness": "FIXED_SNAPSHOT",
+      "consentId": "CONSENT_SYN_001",
+      "consentScope": ["ACCOUNT", "BALANCE", "TRANSACTION"],
+      "snapshotHash": "sha256:07d4c6..."
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:02:00Z",
@@ -2399,7 +2710,8 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/accounts
   "code": "ACCOUNT_LIST_RETRIEVED",
   "message": "합성 계좌 목록을 조회했습니다.",
   "data": {
-    "customerId": "SYN_CUSTOMER_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
     "items": [
       {
         "accountId": "SYN_ACCOUNT_HANA_001",
@@ -2417,7 +2729,16 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/accounts
       }
     ],
     "nextCursor": null,
-    "hasMore": false
+    "hasMore": false,
+    "provenance": {
+      "syntheticData": true,
+      "sourceProvider": "SYNTHETIC_PROVIDER",
+      "sourceUpdatedAt": "2026-07-31T23:59:59Z",
+      "dataFreshness": "FIXED_SNAPSHOT",
+      "consentId": "CONSENT_SYN_001",
+      "consentScope": ["ACCOUNT", "BALANCE", "TRANSACTION"],
+      "snapshotHash": "sha256:07d4c6..."
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:03:00Z",
@@ -2449,26 +2770,36 @@ GET /api/v1/demo/sessions/{sessionId}/accounts/{accountId}/transactions?from=202
   "code": "TRANSACTION_LIST_RETRIEVED",
   "message": "합성 거래내역을 조회했습니다.",
   "data": {
+    "demoRunId": "RUN_FIN_MGMT_B_001",
     "accountId": "SYN_ACCOUNT_HANA_001",
     "items": [
       {
-        "transactionId": "TX_MOVE_101",
+        "transactionId": "TX_FIN_MGMT_DUP_001",
         "occurredAt": "2026-07-10T01:20:00Z",
         "postedAt": "2026-07-10T01:20:03Z",
         "direction": "OUT",
         "transactionType": "TRANSFER_OUT",
-        "amount": "10000000",
+        "amount": "450000",
         "currency": "KRW",
         "balanceAfter": "18250000",
         "counterpartyDisplayName": "합성수취인 A",
-        "category": "HOUSING",
+        "category": "FAMILY_SUPPORT",
         "status": "POSTED",
         "sourceProvider": "SYNTHETIC_PROVIDER",
         "dataFreshness": "FIXED_SNAPSHOT"
       }
     ],
     "nextCursor": null,
-    "hasMore": false
+    "hasMore": false,
+    "provenance": {
+      "syntheticData": true,
+      "sourceProvider": "SYNTHETIC_PROVIDER",
+      "sourceUpdatedAt": "2026-07-31T23:59:59Z",
+      "dataFreshness": "FIXED_SNAPSHOT",
+      "consentId": "CONSENT_SYN_001",
+      "consentScope": ["ACCOUNT", "BALANCE", "TRANSACTION"],
+      "snapshotHash": "sha256:07d4c6..."
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:03:00Z",
@@ -2493,7 +2824,8 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/baselines
   "code": "BASELINE_LIST_RETRIEVED",
   "message": "개인 금융생활 기준선을 조회했습니다.",
   "data": {
-    "customerId": "SYN_CUSTOMER_MOVE_001",
+    "demoRunId": "RUN_FIN_MGMT_B_001",
+    "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
     "baselinePeriod": {
       "from": "2025-08-01",
       "to": "2026-04-30"
@@ -2504,18 +2836,27 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/baselines
     },
     "items": [
       {
-        "baselineId": "BASELINE_TRANSFER_AMOUNT_001",
-        "featureCode": "MONTHLY_TRANSFER_AMOUNT",
-        "baselineValue": "5400000",
-        "currentValue": "18500000",
-        "unit": "KRW",
+        "baselineId": "BASELINE_MISSED_RECURRING_001",
+        "featureCode": "MISSED_RECURRING_COUNT_60D",
+        "baselineValue": "0",
+        "currentValue": "3",
+        "unit": "COUNT",
         "readiness": "READY",
-        "comparisonText": "최근 송금액이 기준기간 중앙값보다 증가했습니다.",
-        "reasonCodes": ["UNUSUAL_AMOUNT", "REPEATED_TRANSFER"],
-        "algorithmVersion": "baseline-mad-v1.0.0",
+        "comparisonText": "최근 60일간 예상 정기납부 3건이 유예기간 안에 확인되지 않았습니다.",
+        "reasonCodes": ["MISSED_RECURRING"],
+        "algorithmVersion": "baseline-rules-v2.0.0",
         "calculatedAt": "2026-08-01T00:00:00Z"
       }
-    ]
+    ],
+    "provenance": {
+      "syntheticData": true,
+      "sourceProvider": "SYNTHETIC_PROVIDER",
+      "sourceUpdatedAt": "2026-07-31T23:59:59Z",
+      "dataFreshness": "FIXED_SNAPSHOT",
+      "consentId": "CONSENT_SYN_001",
+      "consentScope": ["ACCOUNT", "BALANCE", "TRANSACTION"],
+      "snapshotHash": "sha256:07d4c6..."
+    }
   },
   "errors": [],
   "timestamp": "2026-08-14T01:04:00Z",
@@ -2540,6 +2881,7 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
   "code": "PROTECTION_ACTION_LIST_RETRIEVED",
   "message": "공식 보호수단 안내를 조회했습니다.",
   "data": {
+    "demoRunId": "RUN_FIN_MGMT_B_001",
     "items": [
       {
         "actionCode": "SAFE_BLOCK_INFO",
@@ -2567,7 +2909,9 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
           "checkedAt": "2026-08-14"
         }
       }
-    ]
+    ],
+    "syntheticData": true,
+    "dataMode": "SYNTHETIC_ONLY"
   },
   "errors": [],
   "timestamp": "2026-08-14T01:04:00Z",
@@ -2585,21 +2929,21 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 
 | HTTP | 코드 | 조건 |
 |---:|---|---|
-| 404 | `DEMO_SESSION_NOT_FOUND` | 세션이 없거나 다른 세션의 자원 접근 |
-| 410 | `DEMO_SESSION_EXPIRED` | 세션 만료 |
+| 404 | `DEMO_SESSION_NOT_FOUND` | 세션이 없거나 capability가 누락·불일치·만료됐거나 다른 세션의 자원 접근 |
 | 404 | `SYNTHETIC_ACCOUNT_NOT_FOUND` | 세션 내 합성 계좌 없음 |
 | 422 | `SYNTHETIC_FIXTURE_NOT_READY` | 시나리오 적재 전 금융생활 조회 |
 | 503 | `SYSTEM_NOT_READY` | DB·마이그레이션·필수 fixture 미준비 |
 
 수용기준:
 
-- 모든 응답의 `syntheticData` 또는 데이터 모드 표시가 프론트에서 항상 보인다.
+- 모든 금융생활 읽기 응답은 최상위 `provenance.syntheticData=true` 또는 `dataMode=SYNTHETIC_ONLY`를 제공하고 프론트는 이를 항상 표시한다.
 - 네 참여기관 배지는 합성 연결이며 실제 제휴·실연동으로 표현하지 않는다.
 - 같은 Reset 뒤 계좌, 거래, 기준선, 연결, 자산 요약의 snapshot hash가 동일하다.
+- 모든 session 범위 읽기는 올바른 역할의 `X-Demo-Capability`를 검증하고, 시나리오 파생 읽기는 활성 `X-Demo-Run-Id`도 검증한다.
 - 금액은 10진 문자열로 직렬화한다.
 - 각 읽기 데이터에 원천기관·기준시각·신선도·동의 범위를 추적할 수 있다.
 - 외부 금융회사 API, 외부 LLM, 원격 모델 저장소, 실제 푸시, 문자, 전화, 이체, 주문, 차단 호출은 0건이다.
-- Spring·FastAPI 컨테이너의 외부 DNS·HTTPS 요청은 실패하고 내부 서비스 통신만 성공한다.
+- P0 Spring 컨테이너의 외부 HTTPS 연결은 실패하고 Docker internal 네트워크의 PostgreSQL 통신만 성공한다. FastAPI는 P1 이후 별도 내부 서비스로 도입할 때 같은 정책을 적용한다.
 - `protection-actions`의 모든 P0 항목은 `GUIDANCE_ONLY`다.
 - 계좌번호·카드번호는 마스킹하며 합성값이라도 실제 번호 형식을 그대로 노출하지 않는다.
 
@@ -2618,7 +2962,8 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 | `PENDING_BANK_REVIEW` | 행원 큐 등록 |
 | `IN_BANK_REVIEW` | 행원 검토 중 |
 | `FOLLOW_UP_REQUIRED` | 재연락·추가확인 필요 |
-| `CLOSED_GUIDANCE_PROVIDED` | 안내 계획 제공 후 종결 |
+| `GUIDANCE_PLAN_APPROVED` | 안내 계획 승인 완료, 고객 전달·외부 실행은 아직 없음 |
+| `CLOSED_GUIDANCE_DELIVERED` | 승인된 안내의 고객 전달을 별도 확인한 뒤 종결 |
 | `CLOSED_FALSE_POSITIVE` | 데이터·규칙상 오탐 종결 |
 
 `BLOCKED_BY_CONSENT`는 사건 상태가 아니라 연락·정보제공 시도의 결과 코드다.
@@ -2635,24 +2980,27 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 
 | 값 | 화면 문구 | 기본 처리 |
 |---|---|---|
-| `KNOWN_TRANSACTION` | 내가 알고 한 거래예요 | 강한 신호는 구조적 근거 추가 확인 |
-| `LIFE_CHANGE` | 생활변화가 있었어요 | 구조적 근거 정합성 확인 |
+| `KNOWN_AND_INTENTIONAL` | 내가 알고 한 거래예요 | 모든 강한 신호에 적격 구조적 근거가 있을 때만 정상종결 후보 |
+| `LIFE_CONTEXT_CHANGED` | 생활변화가 있었어요 | 유효기간·출처가 있는 구조적 근거 확인 |
 | `UNABLE_TO_CONFIRM` | 본인 거래인지 확인하기 어려워요 | 행원 검토 전환 |
-| `DEFER` | 나중에 확인할게요 | `CONTEXT_DEFERRED` |
-| `CONTACT_BANK` | 은행에 문의할게요 | 행원 검토 전환 |
+| `NOT_MY_TRANSACTION` | 내가 하지 않은 거래예요 | 행원 검토와 기존 FDS·긴급 은행연락 경로 안내 |
+| `DEFERRED` | 나중에 확인할게요 | `CONTEXT_DEFERRED` |
+| `REQUEST_BANK_REVIEW` | 은행에 문의할게요 | 행원 검토 전환 |
+
+`ContextResponse` 요청 DTO는 위 `responseCode`와 합성데모 전용 `demoBranchCode`만 담는다. `ContextType`은 서버가 검증한 T1 근거코드 `PAYMENT_PROVIDER_DELAY_VERIFIED`, `ACCOUNT_CONNECTION_OUTAGE_VERIFIED`, `DUPLICATE_TRANSFER_REFUNDED`, `RESULT_SCREEN_DELAY_VERIFIED`이며 응답의 `contextTypes`에만 나타난다. 근거가 없으면 빈 배열이다.
 
 ### 7.4 사유코드
 
 | 값 | 의미 |
 |---|---|
-| `NEW_PAYEE` | 기준선에 없던 신규 수취인 |
-| `REPEATED_TRANSFER` | 동일·유사 수취인·금액의 반복송금 |
 | `DUPLICATE_PAYMENT` | 시간창 내 중복 가능 결제 |
+| `DUPLICATE_TRANSFER` | 동일 수취인·동일 금액·시간창 내 중복 가능 송금 |
 | `MISSED_RECURRING` | 유예기간 내 예상 정기납부 미발생 |
-| `CASH_WITHDRAWAL_TREND` | 현금인출 금액·빈도의 지속 증가 |
-| `UNUSUAL_AMOUNT` | 개인 기준선 대비 금액 변화 |
-| `UNUSUAL_TIME` | 개인 기준선 대비 이용시간 변화 |
-| `TREND_SHIFT` | 일정 기간 지속된 수준·추세 변화 |
+| `REPEATED_RETRY` | 동일 금융업무의 취소·재시도 반복 |
+| `UNFINISHED_TASK` | 시작한 금융업무의 미완료 증가 |
+| `REPEATED_INQUIRY` | 같은 내용의 고객센터·영업점 문의 반복 |
+| `POST_EXPLANATION_RECURRENCE` | 행원 설명 후 같은 질문·행동 재발 |
+| `REPEATED_CONFIRMATION` | 완료된 거래·납부 결과의 단시간 반복 확인 |
 
 과거 코드 `MISSED_RECURRING_PAYMENT`는 사용하지 않는다.
 
@@ -2685,11 +3033,13 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 
 | HTTP | 코드 | 발생 조건 |
 |---:|---|---|
-| 400 | `IDEMPOTENCY_KEY_REQUIRED` | 변경 API에서 키 누락 |
-| 409 | `IDEMPOTENCY_KEY_CONFLICT` | 같은 키를 다른 요청 본문에 재사용 |
-| 404 | `DEMO_SESSION_NOT_FOUND` | 세션 없음 |
-| 410 | `DEMO_SESSION_EXPIRED` | 세션 만료 |
-| 400 | `DEMO_SCENARIO_NOT_SUPPORTED` | `MOVE_AB_001` 외 시나리오 요청 |
+| 400 | `COMMON_INVALID_INPUT` | 세션 생성을 제외한 변경 API에서 `Idempotency-Key` 누락; `errors.field=Idempotency-Key` |
+| 409 | `IDEMPOTENCY_CONFLICT` | 같은 scope·키를 다른 `requestHash`에 재사용 |
+| 429 | `DEMO_SESSION_RATE_LIMITED` | 비멱등 세션 생성 rate limit 또는 활성 세션 quota 초과 |
+| 404 | `DEMO_SESSION_NOT_FOUND` | 세션 없음 또는 capability 누락·불일치·만료 |
+| 403 | `DEMO_CAPABILITY_SCOPE_FORBIDDEN` | 유효 capability의 고객/데모행원 역할범위 위반 |
+| 409 | `DEMO_RUN_STALE` | Reset 이전 `demoRunId`로 상태 변경 요청 |
+| 400 | `DEMO_SCENARIO_NOT_SUPPORTED` | `FIN_MGMT_AB_001` 외 시나리오 요청 |
 | 404 | `SYNTHETIC_CUSTOMER_NOT_FOUND` | 세션 내 합성 고객 없음 |
 | 404 | `ALERT_NOT_FOUND` | 세션 내 경보 없음 |
 | 409 | `ALERT_CONTEXT_ALREADY_SUBMITTED` | 다른 멱등키로 맥락 중복 제출 |
@@ -2713,24 +3063,28 @@ OPEN
       → PENDING_BANK_REVIEW
           → IN_BANK_REVIEW
               → FOLLOW_UP_REQUIRED → IN_BANK_REVIEW
-              → CLOSED_GUIDANCE_PROVIDED
+              → GUIDANCE_PLAN_APPROVED
+                  → CLOSED_GUIDANCE_DELIVERED
               → CLOSED_FALSE_POSITIVE
 ```
 
 규칙:
 
-1. 최초 `preDecision`과 근거 snapshot을 덮어쓰지 않는다.
+1. 최초 `preDecision`과 T0 경보근거 snapshot을 덮어쓰지 않는다.
 2. `CLOSED_NORMAL`은 고객 응답과 서버가 확인한 구조적 근거가 일치할 때만 가능하다.
 3. 강한 신호가 있는데 증거가 없거나 불일치하면 `PENDING_BANK_REVIEW`로 전환한다.
 4. 신뢰연락인 미동의 상태의 연락 시도는 상태를 바꾸지 않고 `BLOCKED_BY_CONSENT` 감사이벤트만 남긴다.
 5. 모든 변경 API는 상태 전후값, actor, traceId, 정책·알고리즘·스키마 버전을 감사로그에 기록한다.
 6. 행원 승인 전과 승인 후 모두 P0에서는 외부 실행 이벤트를 생성하지 않는다.
+7. T1 맥락 근거는 `demoRunId`에 귀속하고 T0 경보근거와 별도 필드·이벤트로 보존한다.
+8. `APPROVE_GUIDANCE_PLAN`은 `GUIDANCE_PLAN_APPROVED`까지만 전이하며 전달 확인 없이 `CLOSED_GUIDANCE_DELIVERED`로 건너뛰지 않는다.
 
 ---
 
 ### 7.8 보안·개인정보·감사 규칙
 
-- 공개 데모 API는 익명 세션 단위로 격리한다.
+- 공개 데모 API는 익명 세션·`demoRunId` 단위로 격리하고 `sessionId`만으로 조회를 허용하지 않는다.
+- 세션 생성은 비멱등·rate-limited이며 고객용 capability와 데모행원용 capability를 분리한다.
 - 모든 고객·계좌·거래·문서 데이터는 합성 fixture만 사용한다.
 - 자유입력에는 이름, 계좌번호, 카드번호, 주민번호 형식의 값이 들어오지 않도록 프론트와 서버 양쪽에서 검사한다.
 - 운영 행원 API는 `STAFF`, `CONSUMER_PROTECTION` 역할을 분리하고 중요 행위에 추가인증을 적용한다.
@@ -2745,11 +3099,11 @@ OPEN
 - 모든 응답이 공통 envelope를 사용한다.
 - 응답 헤더와 본문의 `traceId`가 일치한다.
 - React에서는 `scenarioSeed`를 `string`으로 처리한다.
-- 동일 Reset 후 `scenarioSeed`, `snapshotHash`, `alertId`, 버전, 원시 거래가 동일하다.
-- A/B 경로는 맥락 fixture 외의 원시 데이터가 동일하다.
-- `KNOWN_TRANSACTION`만으로 강한 신호가 `CLOSED_NORMAL`이 되지 않는다.
+- 동일 Reset 후 `scenarioSeed`, `snapshotHash`, `alertId`, 버전, T0 원시 거래가 동일하고 `demoRunId`만 새로 발급된다.
+- A/B 경로는 T1 맥락 fixture 외의 T0 원시 데이터가 동일하다.
+- `KNOWN_AND_INTENTIONAL`만으로 강한 신호가 `CLOSED_NORMAL`이 되지 않는다.
 - 미동의 연락 시도는 `BLOCKED_BY_CONSENT`이며 실제 외부 호출은 0건이다.
-- `guidance-plan` 성공 후에도 `externalExecutionCreated=false`다.
+- `guidance-plan` 성공은 `GUIDANCE_PLAN_APPROVED`, `guidanceDelivered=false`, `externalExecutionCreated=false`이며 전달 완료로 표시하지 않는다.
 - API 키나 LLM 장애가 있어도 템플릿 응답으로 전체 데모가 끝까지 동작한다.
 
 ---
@@ -2759,6 +3113,5 @@ OPEN
 1. API path 또는 필드의 제거·의미 변경은 `/api/v2` 또는 명시적 마이그레이션 기간을 둔다.
 2. enum 추가는 하위호환 변경이지만 프론트의 unknown fallback을 필수로 한다.
 3. 이 문서, Spring DTO, OpenAPI, 프론트 TypeScript 타입의 명칭을 함께 변경한다. 현재 OpenAPI/Swagger 생성기는 아직 설치되지 않았다.
-4. 구현 완료 시 엔드포인트 상태를 `P0-CONTRACT`에서 `IMPLEMENTED`로 변경하고 테스트 링크를 기록한다.
+4. 구현 완료 시 엔드포인트 상태를 `CONTRACT`에서 `IMPLEMENTED`로 변경하고 테스트 링크를 기록한다.
 5. 최종 제출 전 공식 보호수단 URL과 기준일을 다시 확인한다.
-

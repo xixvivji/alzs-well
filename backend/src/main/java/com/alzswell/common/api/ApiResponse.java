@@ -46,12 +46,23 @@ public record ApiResponse<T>(
             List<FieldViolation> errors,
             String traceId
     ) {
+        return failure(status, code, message, null, errors, traceId);
+    }
+
+    public static <T> ApiResponse<T> failure(
+            HttpStatus status,
+            String code,
+            String message,
+            T data,
+            List<FieldViolation> errors,
+            String traceId
+    ) {
         return new ApiResponse<>(
                 false,
                 status.value(),
                 code,
                 message,
-                null,
+                data,
                 errors,
                 OffsetDateTime.now(ZoneOffset.UTC),
                 traceId
