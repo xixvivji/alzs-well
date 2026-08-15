@@ -92,6 +92,7 @@ public class OpenApiConfiguration {
         return path.endsWith("/reset")
                 || path.endsWith("/ingest")
                 || path.endsWith("/context")
+                || path.endsWith("/notes")
                 || path.endsWith("/review")
                 || path.endsWith("/guidance-plan");
     }

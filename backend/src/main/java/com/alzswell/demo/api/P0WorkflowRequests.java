@@ -14,6 +14,12 @@ public final class P0WorkflowRequests {
     public record CopilotDraftCommand(@NotBlank String draftType) {
     }
 
+    public record CaseNoteCommand(
+            @NotNull @Positive @JsonAlias("expectedCaseVersion") Long caseVersion,
+            @NotBlank @Size(max = 500) String note
+    ) {
+    }
+
     private P0WorkflowRequests() {
     }
 

@@ -73,12 +73,13 @@ class PostgreSqlIntegrationTest {
                       'demo_run',
                       'demo_fixture_catalog',
                       'protection_action_catalog'
+                      ,'case_note'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(17);
+        assertThat(tableCount).isEqualTo(18);
     }
 
     @Test
@@ -138,7 +139,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("7"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("8"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -171,7 +172,7 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(26);
+        assertThat(specification.path("paths").size()).isEqualTo(27);
 
         JsonNode alertParameters = specification.path("paths")
                 .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")
