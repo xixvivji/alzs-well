@@ -1,6 +1,7 @@
 package com.alzswell.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -352,6 +353,36 @@ class P0WorkflowIntegrationTest {
         mockMvc.perform(client.customer(get(
                         "/api/v1/demo/sessions/{s}/cases/{c}/timeline", session.sessionId(), CASE), session))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void addsAnAppendOnlyStaffNoteWithIdempotencyAndNoExternalDelivery() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p1-note-ingest-0001");
+        applyBranchB(session, "p1-note-context-0001");
+        String request = """
+                {"caseVersion":1,"note":"고객 응답과 합성 근거를 추가 확인합니다."}
+                """;
+
+        JsonNode created = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/notes", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-case-note-0001")
+                .contentType(APPLICATION_JSON).content(request), session));
+        assertThat(created.at("/code").asText()).isEqualTo("CASE_NOTE_ADDED");
+        assertThat(created.at("/data/caseVersion").asLong()).isEqualTo(2);
+        assertThat(created.at("/data/customerVisible").asBoolean()).isFalse();
+        assertThat(created.at("/data/externalDeliveryCreated").asBoolean()).isFalse();
+
+        JsonNode replay = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/notes", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-case-note-0001")
+                .contentType(APPLICATION_JSON).content(request), session));
+        assertThat(replay.at("/data/command/idempotencyReplayed").asBoolean()).isTrue();
+
+        UUID noteId = UUID.fromString(created.at("/data/noteId").asText());
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "update case_note set note_text = '변조' where note_id = ?", noteId
+        )).isInstanceOf(org.springframework.dao.DataAccessException.class)
+                .hasMessageContaining("append-only");
     }
 
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {

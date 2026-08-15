@@ -4,6 +4,7 @@ import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.exception.CommonErrorCode;
 import com.alzswell.demo.api.P0WorkflowErrorCode;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.CaseNoteCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
 import com.alzswell.demo.api.P0WorkflowResult;
@@ -574,6 +575,77 @@ public class P0WorkflowService {
         );
         P0WorkflowResult result = new P0WorkflowResult(
                 "CASE_REVIEW_UPDATED", "행원 검토 상태를 변경했습니다.", data
+        );
+        saveCommand(scope, requestHash, result, now);
+        return result;
+    }
+
+    @Transactional
+    public P0WorkflowResult addCaseNote(
+            UUID sessionId,
+            UUID demoRunId,
+            String caseId,
+            String capabilityHash,
+            String idempotencyKey,
+            CaseNoteCommand request
+    ) {
+        requireCurrentRun(sessionId, demoRunId);
+        validateCommandHeaders(capabilityHash, idempotencyKey);
+        validateSafeNote(request.note());
+        String path = "/api/v1/demo/sessions/" + sessionId + "/cases/" + caseId + "/notes";
+        String requestHash = requestHash("POST", path, map(
+                "caseVersion", request.caseVersion(), "note", request.note()
+        ));
+        CommandScope scope = commandScope(sessionId, demoRunId, capabilityHash, STAFF_ROLE, path, idempotencyKey);
+        CaseRow row = requireCase(sessionId, demoRunId, caseId, true);
+        P0WorkflowResult replay = findReplay(scope, requestHash);
+        if (replay != null) {
+            return replay;
+        }
+        if (row.caseVersion() != request.caseVersion()) {
+            throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        long nextVersion = row.caseVersion() + 1;
+        UUID noteId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                insert into case_note (
+                    note_id, demo_session_id, demo_run_id, case_id, case_version,
+                    note_text, created_by, request_hash, idempotency_key_hash, created_at
+                ) values (?, ?, ?, ?, ?, ?, 'DEMO_STAFF', ?, ?, ?)
+                """,
+                noteId, sessionId, demoRunId, caseId, nextVersion, request.note(),
+                requestHash, scope.idempotencyKeyHash(), now
+        );
+        int updated = jdbcTemplate.update(
+                """
+                update protection_case
+                   set latest_note = ?, case_version = ?, updated_at = ?
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ? and case_version = ?
+                """,
+                request.note(), nextVersion, now, sessionId, demoRunId, caseId, request.caseVersion()
+        );
+        if (updated != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+        writeStaffAudit(sessionId, demoRunId, row.alertId(), caseId, "CASE_NOTE_ADDED",
+                row.incidentState(), row.incidentState(), requestHash, scope.idempotencyKeyHash(), now);
+
+        Map<String, Object> data = map(
+                "demoRunId", demoRunId,
+                "caseId", caseId,
+                "noteId", noteId,
+                "caseVersion", nextVersion,
+                "createdBy", "DEMO_STAFF",
+                "createdAt", now,
+                "customerVisible", false,
+                "externalDeliveryCreated", false,
+                "command", map("requestHash", requestHash, "idempotencyReplayed", false)
+        );
+        P0WorkflowResult result = new P0WorkflowResult(
+                "CASE_NOTE_ADDED", "행원 내부 메모를 등록했습니다.", data
         );
         saveCommand(scope, requestHash, result, now);
         return result;
