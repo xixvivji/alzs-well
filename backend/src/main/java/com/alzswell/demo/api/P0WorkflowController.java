@@ -6,6 +6,7 @@ import com.alzswell.common.security.DemoCapabilityService;
 import com.alzswell.copilot.application.CopilotDraftService;
 import com.alzswell.demo.api.P0WorkflowRequests.CopilotDraftCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseNoteCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.FollowUpCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
@@ -172,6 +173,21 @@ public class P0WorkflowController {
             @Valid @RequestBody CaseNoteCommand request
     ) {
         P0WorkflowResult result = workflowService.addCaseNote(
+                sessionId, demoRunId, caseId, capabilityHash, idempotencyKey, request
+        );
+        return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);
+    }
+
+    @PostMapping("/cases/{caseId}/follow-ups")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> scheduleFollowUp(
+            @PathVariable UUID sessionId,
+            @PathVariable String caseId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId,
+            @RequestAttribute(name = DemoCapabilityService.REQUEST_HASH_ATTRIBUTE) String capabilityHash,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody FollowUpCommand request
+    ) {
+        P0WorkflowResult result = workflowService.scheduleFollowUp(
                 sessionId, demoRunId, caseId, capabilityHash, idempotencyKey, request
         );
         return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);

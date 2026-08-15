@@ -89,7 +89,7 @@ app:
     default-locale: ${DEMO_DEFAULT_LOCALE:ko-KR}
   versions:
     api: v1
-    schema: "8"
+    schema: "9"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

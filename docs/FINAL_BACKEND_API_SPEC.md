@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 27개 |
+| `IMPLEMENTED` | 28개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 219개 |
+| 카탈로그·백로그 | 218개 |
 
-`IMPLEMENTED` 27개는 P0 23개와 P1 사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모 4개다.
+`IMPLEMENTED` 28개는 P0 23개와 P1 사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모·후속일정 5개다.
 
 여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 구현은 P0 23개와 P1 사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모 4개로 총 27개다. 나머지 219개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 구현은 P0 23개와 P1 사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모·후속일정 5개로 총 28개다. 나머지 218개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1163,7 +1163,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | POST | /api/v1/staff/cases/{caseId}/reviews | 검토 상태전이 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes | 행원 내부 메모 등록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-drafts | 결정론적 질문·상담기록 초안 생성 | OWNED |
-| P1 | POST | /api/v1/staff/cases/{caseId}/follow-ups | 재확인 일정만 등록 | OWNED |
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/follow-ups | 재확인 일정만 등록 | OWNED |
 | P1 | PATCH | /api/v1/staff/follow-ups/{followUpId} | 후속 일정·결과 갱신 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/guidance-plans | 안내계획 승인, 실제 조치 아님 | OWNED |
 | P2 | POST | /api/v1/staff/cases/{caseId}/overrides | 정책 결과에 대한 사유 있는 직원 재검토 | OWNED |
@@ -2008,7 +2008,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "8",
+        "schemaVersion": "9",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2270,6 +2270,22 @@ Content-Type: application/json
 
 메모는 행원 전용이며 고객에게 노출하거나 외부로 전달하지 않는다. 서버는 민감정보·질병 추정 표현을 거부하고, `caseVersion` 낙관적 잠금과 멱등키를 적용한다. Flyway V8의 `case_note`는 append-only로 저장되어 UPDATE·DELETE가 거부된다.
 
+#### 5.4.2.5 후속관리 일정 등록
+
+`IMPLEMENTED-P1`
+
+```http
+POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/follow-ups
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: {current-demo-run-id}
+Idempotency-Key: follow-up-0001
+Content-Type: application/json
+
+{"caseVersion":2,"scheduledAt":"2026-08-20T10:00:00+09:00","reason":"처리 상태를 다시 확인합니다."}
+```
+
+현재 이후 365일 이내의 내부 재확인 일정만 등록한다. 사건은 `FOLLOW_UP_REQUIRED`로 전이하지만 전화·문자·푸시를 발송하지 않으며 `deliveryAttempted=false`, `externalDeliveryCreated=false`를 강제한다. Flyway V9의 `follow_up_task`에도 외부 전달 금지 제약을 둔다.
+
 #### 5.4.3 행원 검토 상태전이
 
 `IMPLEMENTED`
@@ -2412,7 +2428,7 @@ P0-B는 은행 앱 전체를 만드는 단계가 아니다. 공개 합성데모�
 | GET | `/api/v1/demo/sessions/{sessionId}/protection-actions` | `PROTECTION_ACTION_LIST_RETRIEVED` | `ProtectionActionListResponse` |
 | GET | `/api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent-summary` | `DEMO_CONNECTION_LIST_RETRIEVED` | `ConnectionConsentSummaryResponse` |
 
-P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V8 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 일회성 응답 헤더 노출 목록이 반영돼 있다.
+P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V9 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 일회성 응답 헤더 노출 목록이 반영돼 있다.
 
 ---
 
@@ -2526,7 +2542,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "8",
+    "schemaVersion": "9",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
