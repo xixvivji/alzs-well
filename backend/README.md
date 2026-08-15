@@ -7,7 +7,7 @@
 ## 기술 기준
 
 - Java 21, Spring Boot 3.5.16, Gradle 8.14.3 Wrapper
-- PostgreSQL 17, Spring Data JPA·JDBC, Flyway V8
+- PostgreSQL 17, Spring Data JPA·JDBC, Flyway V9
 - Spring MVC·Security·Validation, Actuator
 - JUnit 5, Testcontainers
 
@@ -37,7 +37,7 @@ gateway만 `127.0.0.1`에 공개된다. gateway↔Spring은 `alzs-well-app`, Spr
 
 이 명령은 Spring의 외부 HTTPS 실패, Spring→DB 성공, gateway→DB 실패를 확인한다. 이 구성은 공모전용 망분리 모사이며 금융회사 운영환경의 규정 준수 완료를 뜻하지 않는다.
 
-## 구현 API — P0 23개 + P1 4개
+## 구현 API — P0 23개 + P1 5개
 
 ```text
 # 시스템 4
@@ -73,6 +73,7 @@ GET  /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 GET  /api/v1/demo/sessions/{sessionId}/cases/{caseId}/timeline
 GET  /api/v1/demo/sessions/{sessionId}/cases/{caseId}/evidence
 POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes
+POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/follow-ups
 POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/review
 POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 ```
@@ -117,4 +118,4 @@ P1 첫 API는 `POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-dra
 
 사건 근거 API는 합성 신호·근거 거래·공식 보호수단 출처를 행원에게 한 묶음으로 제공하며 외부 문서나 금융기관 시스템을 호출하지 않는다.
 
-현재 단위·PostgreSQL Testcontainers 통합시험 36개는 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사·내부 메모 append-only 제약, 조회 입력·cursor 검증, 사건 타임라인·근거·코파일럿 격리와 OpenAPI 27개 계약을 검증한다.
+현재 단위·PostgreSQL Testcontainers 통합시험 37개는 capability/IDOR, run 격리, 3·2·7 신호, A/B 정책, 멱등충돌, 낙관적 잠금, 미동의 연락 차단, 외부실행 금지, 감사·내부 메모 append-only 제약, 후속일정 비발송, 사건 타임라인·근거·코파일럿 격리와 OpenAPI 28개 계약을 검증한다.

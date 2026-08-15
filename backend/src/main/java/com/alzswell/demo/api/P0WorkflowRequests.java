@@ -20,6 +20,13 @@ public final class P0WorkflowRequests {
     ) {
     }
 
+    public record FollowUpCommand(
+            @NotNull @Positive @JsonAlias("expectedCaseVersion") Long caseVersion,
+            @NotNull OffsetDateTime scheduledAt,
+            @NotBlank @Size(max = 500) String reason
+    ) {
+    }
+
     private P0WorkflowRequests() {
     }
 

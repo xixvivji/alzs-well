@@ -5,6 +5,7 @@ import com.alzswell.common.exception.CommonErrorCode;
 import com.alzswell.demo.api.P0WorkflowErrorCode;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseNoteCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.FollowUpCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
 import com.alzswell.demo.api.P0WorkflowResult;
@@ -646,6 +647,92 @@ public class P0WorkflowService {
         );
         P0WorkflowResult result = new P0WorkflowResult(
                 "CASE_NOTE_ADDED", "행원 내부 메모를 등록했습니다.", data
+        );
+        saveCommand(scope, requestHash, result, now);
+        return result;
+    }
+
+    @Transactional
+    public P0WorkflowResult scheduleFollowUp(
+            UUID sessionId,
+            UUID demoRunId,
+            String caseId,
+            String capabilityHash,
+            String idempotencyKey,
+            FollowUpCommand request
+    ) {
+        requireCurrentRun(sessionId, demoRunId);
+        validateCommandHeaders(capabilityHash, idempotencyKey);
+        validateSafeNote(request.reason());
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (!request.scheduledAt().isAfter(now) || request.scheduledAt().isAfter(now.plusDays(365))) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                    "scheduledAt은 현재 이후 365일 이내여야 합니다.");
+        }
+        String path = "/api/v1/demo/sessions/" + sessionId + "/cases/" + caseId + "/follow-ups";
+        String requestHash = requestHash("POST", path, map(
+                "caseVersion", request.caseVersion(),
+                "scheduledAt", request.scheduledAt(),
+                "reason", request.reason()
+        ));
+        CommandScope scope = commandScope(sessionId, demoRunId, capabilityHash, STAFF_ROLE, path, idempotencyKey);
+        CaseRow row = requireCase(sessionId, demoRunId, caseId, true);
+        P0WorkflowResult replay = findReplay(scope, requestHash);
+        if (replay != null) {
+            return replay;
+        }
+        if (row.caseVersion() != request.caseVersion()) {
+            throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+        if (!"IN_BANK_REVIEW".equals(row.incidentState())) {
+            throw new BusinessException(P0WorkflowErrorCode.INVALID_STATE_TRANSITION);
+        }
+
+        UUID followUpId = UUID.randomUUID();
+        long nextVersion = row.caseVersion() + 1;
+        updateIncidentState(sessionId, demoRunId, row.alertId(), row.incidentState(),
+                "FOLLOW_UP_REQUIRED", now);
+        int updated = jdbcTemplate.update(
+                """
+                update protection_case
+                   set review_task_status = 'FOLLOW_UP', follow_up_at = ?, latest_note = ?,
+                       case_version = ?, updated_at = ?
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ? and case_version = ?
+                """,
+                request.scheduledAt(), request.reason(), nextVersion, now,
+                sessionId, demoRunId, caseId, request.caseVersion()
+        );
+        if (updated != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+        jdbcTemplate.update(
+                """
+                insert into follow_up_task (
+                    follow_up_id, demo_session_id, demo_run_id, case_id, status,
+                    scheduled_at, reason, created_by, external_delivery_created, created_at, updated_at
+                ) values (?, ?, ?, ?, 'SCHEDULED', ?, ?, 'DEMO_STAFF', false, ?, ?)
+                """,
+                followUpId, sessionId, demoRunId, caseId,
+                request.scheduledAt(), request.reason(), now, now
+        );
+        writeStaffAudit(sessionId, demoRunId, row.alertId(), caseId, "FOLLOW_UP_SCHEDULED",
+                row.incidentState(), "FOLLOW_UP_REQUIRED", requestHash, scope.idempotencyKeyHash(), now);
+
+        Map<String, Object> data = map(
+                "demoRunId", demoRunId,
+                "caseId", caseId,
+                "followUpId", followUpId,
+                "status", "SCHEDULED",
+                "scheduledAt", request.scheduledAt(),
+                "caseVersion", nextVersion,
+                "currentState", "FOLLOW_UP_REQUIRED",
+                "deliveryAttempted", false,
+                "externalDeliveryCreated", false,
+                "createdAt", now,
+                "command", map("requestHash", requestHash, "idempotencyReplayed", false)
+        );
+        P0WorkflowResult result = new P0WorkflowResult(
+                "FOLLOW_UP_SCHEDULED", "내부 재확인 일정을 등록했습니다.", data
         );
         saveCommand(scope, requestHash, result, now);
         return result;

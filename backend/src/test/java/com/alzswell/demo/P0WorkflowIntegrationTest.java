@@ -385,6 +385,42 @@ class P0WorkflowIntegrationTest {
                 .hasMessageContaining("append-only");
     }
 
+    @Test
+    void schedulesAnInternalFollowUpWithoutSendingAnyMessage() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p1-follow-up-ingest-0001");
+        applyBranchB(session, "p1-follow-up-context-0001");
+        String reviewRequest = """
+                {"action":"START_REVIEW","caseVersion":1,"note":"합성 근거를 확인합니다.","followUpAt":null}
+                """;
+        read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-follow-up-review-0001")
+                .contentType(APPLICATION_JSON).content(reviewRequest), session));
+
+        String request = """
+                {
+                  "caseVersion":2,
+                  "scheduledAt":"2026-08-20T10:00:00+09:00",
+                  "reason":"정기납부 처리 상태를 다시 확인합니다."
+                }
+                """;
+        JsonNode created = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-follow-up-0001")
+                .contentType(APPLICATION_JSON).content(request), session));
+        assertThat(created.at("/code").asText()).isEqualTo("FOLLOW_UP_SCHEDULED");
+        assertThat(created.at("/data/currentState").asText()).isEqualTo("FOLLOW_UP_REQUIRED");
+        assertThat(created.at("/data/caseVersion").asLong()).isEqualTo(3);
+        assertThat(created.at("/data/deliveryAttempted").asBoolean()).isFalse();
+        assertThat(created.at("/data/externalDeliveryCreated").asBoolean()).isFalse();
+
+        JsonNode replay = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-follow-up-0001")
+                .contentType(APPLICATION_JSON).content(request), session));
+        assertThat(replay.at("/data/command/idempotencyReplayed").asBoolean()).isTrue();
+    }
+
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {
         String request = """
                 {
