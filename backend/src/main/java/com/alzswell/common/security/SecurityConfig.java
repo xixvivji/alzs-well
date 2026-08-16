@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -25,7 +26,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
-            RestAccessDeniedHandler accessDeniedHandler
+            RestAccessDeniedHandler accessDeniedHandler,
+            DemoCapabilityFilter demoCapabilityFilter
     ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -41,13 +43,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
-                                "/api/v1/system/health",
+                                "/api/v1/system/**",
                                 "/api/v1/demo/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
                                 "/actuator/health",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
-                );
+                )
+                .addFilterBefore(demoCapabilityFilter, AuthorizationFilter.class);
 
         return http.build();
     }
@@ -62,10 +68,18 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(List.of(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
-                "X-Trace-Id"
+                "X-Trace-Id",
+                "Idempotency-Key",
+                DemoCapabilityService.REQUEST_HEADER,
+                DemoCapabilityService.RUN_HEADER
         ));
-        configuration.setExposedHeaders(List.of("X-Trace-Id"));
-        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(List.of(
+                "X-Trace-Id",
+                DemoCapabilityService.CUSTOMER_RESPONSE_HEADER,
+                DemoCapabilityService.STAFF_RESPONSE_HEADER,
+                DemoCapabilityService.RUN_HEADER
+        ));
+        configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

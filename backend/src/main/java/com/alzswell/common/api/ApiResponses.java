@@ -46,6 +46,22 @@ public final class ApiResponses {
         return ResponseEntity.status(errorCode.status()).body(body);
     }
 
+    public static <T> ResponseEntity<ApiResponse<T>> errorWithData(
+            ErrorCode errorCode,
+            String message,
+            T data
+    ) {
+        ApiResponse<T> body = ApiResponse.failure(
+                errorCode.status(),
+                errorCode.code(),
+                message,
+                data,
+                List.of(),
+                TraceIdContext.currentOrCreate()
+        );
+        return ResponseEntity.status(errorCode.status()).body(body);
+    }
+
     private static <T> ResponseEntity<ApiResponse<T>> success(
             HttpStatus status,
             String code,
