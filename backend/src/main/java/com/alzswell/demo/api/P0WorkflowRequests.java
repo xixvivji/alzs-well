@@ -27,6 +27,15 @@ public final class P0WorkflowRequests {
     ) {
     }
 
+    public record FollowUpUpdateCommand(
+            @NotNull @Positive @JsonAlias("expectedCaseVersion") Long caseVersion,
+            @NotBlank String status,
+            @NotBlank @Size(max = 500) String resultNote,
+            // 외부 입력은 거부하며, 완료시각은 서비스가 서버 Clock으로 결정한다.
+            OffsetDateTime completedAt
+    ) {
+    }
+
     private P0WorkflowRequests() {
     }
 

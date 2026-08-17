@@ -6,6 +6,7 @@ import com.alzswell.demo.api.DemoErrorCode;
 import com.alzswell.demo.api.DemoScenarioIngestedResponse;
 import com.alzswell.demo.api.DemoScenarioListResponse;
 import com.alzswell.demo.api.DemoSessionCreatedResponse;
+import com.alzswell.demo.api.DemoSessionDiscardedResponse;
 import com.alzswell.demo.api.DemoSessionResetResponse;
 import com.alzswell.demo.api.DemoSessionResponse;
 import com.alzswell.demo.domain.DemoIdempotencyRecord;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +49,7 @@ public class DemoSessionService {
     private final DemoAuditWriter auditWriter;
     private final DemoRunStore demoRunStore;
     private final SyntheticFinanceFixtureService fixtureService;
+    private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
     private final long sessionTtlSeconds;
     private final long maxActiveSessions;
@@ -60,6 +63,7 @@ public class DemoSessionService {
             DemoAuditWriter auditWriter,
             DemoRunStore demoRunStore,
             SyntheticFinanceFixtureService fixtureService,
+            JdbcTemplate jdbcTemplate,
             Clock clock,
             @Value("${app.demo.session-ttl-seconds:7200}") long sessionTtlSeconds,
             @Value("${app.demo.max-active-sessions:1000}") long maxActiveSessions,
@@ -72,6 +76,7 @@ public class DemoSessionService {
         this.auditWriter = auditWriter;
         this.demoRunStore = demoRunStore;
         this.fixtureService = fixtureService;
+        this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
         this.sessionTtlSeconds = sessionTtlSeconds;
         this.maxActiveSessions = maxActiveSessions;
@@ -81,10 +86,7 @@ public class DemoSessionService {
     }
 
     @Transactional
-    public synchronized DemoSessionCreatedResponse createSession(
-            String customerCapabilityHash,
-            String staffCapabilityHash
-    ) {
+    public synchronized DemoSessionCreatedResponse createSession(String customerCapabilityHash) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (sessionRepository.countByExpiresAtAfter(now) >= maxActiveSessions) {
             throw new BusinessException(DemoErrorCode.SESSION_RATE_LIMITED);
@@ -95,7 +97,6 @@ public class DemoSessionService {
                 demoRunId,
                 nextPositiveSeed(),
                 customerCapabilityHash,
-                staffCapabilityHash,
                 now,
                 now.plusSeconds(sessionTtlSeconds)
         );
@@ -115,6 +116,25 @@ public class DemoSessionService {
         return toCreatedResponse(session, session.getResetVersion());
     }
 
+    @Transactional
+    public DemoSession issueStaffCapability(UUID sessionId, String staffCapabilityHash) {
+        DemoSession session = requireActiveSession(sessionId);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        session.issueStaffCapability(staffCapabilityHash, now);
+        sessionRepository.saveAndFlush(session);
+        auditWriter.write(
+                sessionId,
+                session.getDemoRunId(),
+                "DEMO_STAFF_CAPABILITY_ISSUED",
+                Map.of(
+                        "actorType", "DEMO_STAFF_BOOTSTRAP",
+                        "capabilityRotated", true
+                ),
+                now
+        );
+        return session;
+    }
+
     @Transactional(readOnly = true)
     public DemoSessionResponse getSession(UUID sessionId) {
         DemoSession session = requireActiveSession(sessionId);
@@ -129,6 +149,43 @@ public class DemoSessionService {
                 session.getCreatedAt(),
                 session.getExpiresAt(),
                 DATA_MODE
+        );
+    }
+
+    /**
+     * 익명 데모 세션을 명시적으로 폐기한다. 연결된 합성 snapshot, run, command 기록은
+     * FK cascade로 제거하지만, decision_audit는 세션 FK가 없고 append-only여서 보존된다.
+     */
+    @Transactional
+    public DemoSessionDiscardedResponse discard(UUID sessionId) {
+        DemoSession session = requireActiveSession(sessionId);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        auditWriter.write(
+                sessionId,
+                session.getDemoRunId(),
+                "DEMO_SESSION_DISCARDED",
+                Map.of(
+                        "actorType", "CUSTOMER_DEMO",
+                        "previousState", "ACTIVE",
+                        "currentState", "DISCARDED",
+                        "syntheticDataDeleted", true,
+                        "externalActionCreated", false
+                ),
+                now
+        );
+        jdbcTemplate.queryForObject(
+                "select set_config('app.demo_session_discard', ?, true)",
+                String.class,
+                sessionId.toString()
+        );
+        sessionRepository.delete(session);
+        sessionRepository.flush();
+        return new DemoSessionDiscardedResponse(
+                sessionId,
+                session.getDemoRunId(),
+                now,
+                true,
+                false
         );
     }
 

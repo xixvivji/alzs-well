@@ -1,0 +1,34 @@
+# CI·보안 품질 게이트 운영 가이드
+
+## 자동 검증
+
+`develop` push와 `develop`·`main` 대상 PR에서 다음 검증을 실행한다.
+
+- 백엔드 Java 21 테스트와 JaCoCo 리포트
+- 전체 라인 커버리지 90% 이상
+- Bearer 인증 필터·인증 세션·로컬 인증 어댑터 라인 커버리지 80% 이상
+- 프론트 Node.js 22 기준 `npm ci`, lint, build, test
+- Docker Compose 설정 렌더링
+- PR에서 새로 도입된 high severity 의존성 검토(사용 가능할 때)
+
+테스트와 JaCoCo HTML/XML 결과는 GitHub Actions artifact로 14일 보관한다. PR에서는 전체 90%, 변경 파일 80% 기준의 커버리지 댓글을 갱신한다.
+
+## 의존성 업데이트
+
+Dependabot은 매주 월요일 다음 생태계를 `develop` 대상으로 확인한다.
+
+- Gradle: `backend/`
+- npm: `frontend/`
+- GitHub Actions: 저장소 루트
+
+자동 PR 한도는 생태계별 5개이며 커밋 prefix는 `chore`다.
+
+## 보안 분석
+
+- Gitleaks는 PR, `develop`·`main` push, 매주 정기 실행에서 전체 Git 이력을 검사한다.
+- CodeQL 구성은 Java와 JavaScript/TypeScript를 대상으로 준비돼 있다.
+- 현재 private 저장소 계정에는 GitHub Advanced Security가 없어 GitHub Secret Scanning, Push Protection, CodeQL SARIF 업로드와 Dependency Review를 활성화할 수 없다.
+- GitHub Advanced Security를 구입하거나 저장소를 public으로 전환한 뒤 저장소 변수 `CODEQL_ENABLED=true`, `DEPENDENCY_REVIEW_ENABLED=true`를 설정한다.
+- GitHub Secret Scanning과 Push Protection도 같은 시점에 저장소 Settings → Code security에서 활성화한다.
+
+민감정보는 `.env.example`에도 실제 값을 넣지 않는다. 비밀이 발견되면 파일 삭제만으로 끝내지 말고 해당 자격증명을 먼저 폐기·회전한 뒤 Git 이력 정리 여부를 판단한다.

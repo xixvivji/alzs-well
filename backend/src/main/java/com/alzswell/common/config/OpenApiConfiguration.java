@@ -23,6 +23,8 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfiguration {
 
     private static final String SESSION_ROOT = "/api/v1/demo/sessions/{sessionId}";
+    private static final String STAFF_CAPABILITY_ISSUANCE =
+            "/api/v1/demo/staff/sessions/{sessionId}/capability";
     private static final String CAPABILITY_HEADER = "X-Demo-Capability";
     private static final String RUN_HEADER = "X-Demo-Run-Id";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
@@ -40,12 +42,16 @@ public class OpenApiConfiguration {
                         .title("ALZ's well P0 API")
                         .version("v1")
                         .description("합성 데이터 전용 금융생활 변화 알림 및 행원 보호업무 데모 API. 외부 전송과 실제 금융 실행은 지원하지 않습니다."))
-                .components(new Components().addSecuritySchemes("DemoCapability",
-                        new SecurityScheme()
+                .components(new Components()
+                        .addSecuritySchemes("DemoCapability", new SecurityScheme()
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
                                 .name(CAPABILITY_HEADER)
-                                .description("세션 생성 응답으로 발급된 customer 또는 staff 역할 capability")));
+                                .description("고객 생성 API 또는 인증된 직원 발급 API에서 받은 역할 capability"))
+                        .addSecuritySchemes("DemoStaffBootstrap", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("basic")
+                                .description("직원 capability를 발급하기 위한 합성 staging 전용 직원 인증")));
     }
 
     @Bean
@@ -71,15 +77,22 @@ public class OpenApiConfiguration {
                 addHeader(operation, RUN_HEADER, true, "현재 demoRun UUID");
             }
         }
+        if (STAFF_CAPABILITY_ISSUANCE.equals(path)) {
+            operation.addSecurityItem(new SecurityRequirement().addList("DemoStaffBootstrap"));
+        }
 
-        if (method == PathItem.HttpMethod.POST && requiresIdempotencyKey(path)) {
+        if ((method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PATCH)
+                && requiresIdempotencyKey(path)) {
             addHeader(operation, IDEMPOTENCY_HEADER, true, "동일 요청의 중복 처리를 방지하는 키");
         }
 
         if (method == PathItem.HttpMethod.POST && "/api/v1/demo/sessions".equals(path)) {
             ApiResponse response = response(operation, "201", "데모 세션 생성");
             response.addHeaderObject("X-Demo-Customer-Capability", responseHeader("고객 역할 capability"));
-            response.addHeaderObject("X-Demo-Staff-Capability", responseHeader("행원 역할 capability"));
+        }
+        if (method == PathItem.HttpMethod.POST && STAFF_CAPABILITY_ISSUANCE.equals(path)) {
+            response(operation, "200", "인증된 직원 capability 발급")
+                    .addHeaderObject("X-Demo-Staff-Capability", responseHeader("행원 역할 capability"));
         }
         if (method == PathItem.HttpMethod.POST && (path.endsWith("/reset") || path.endsWith("/ingest"))) {
             String status = path.endsWith("/ingest") ? "201" : "200";
@@ -94,6 +107,7 @@ public class OpenApiConfiguration {
                 || path.endsWith("/context")
                 || path.endsWith("/notes")
                 || path.endsWith("/follow-ups")
+                || path.contains("/follow-ups/")
                 || path.endsWith("/review")
                 || path.endsWith("/guidance-plan");
     }

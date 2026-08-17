@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +38,7 @@ class P0WorkflowIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -378,11 +381,53 @@ class P0WorkflowIntegrationTest {
                 .contentType(APPLICATION_JSON).content(request), session));
         assertThat(replay.at("/data/command/idempotencyReplayed").asBoolean()).isTrue();
 
+        JsonNode list = read(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/notes", session.sessionId(), CASE), session));
+        assertThat(list.at("/code").asText()).isEqualTo("CASE_NOTES_RETRIEVED");
+        assertThat(list.at("/data/items").size()).isEqualTo(1);
+        assertThat(list.at("/data/items[0].isVisibleToCustomer").asBoolean()).isFalse();
+
+        mockMvc.perform(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/notes", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-case-note-sensitive-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {"caseVersion":2,"note":"연락처 customer@example.com 을 내부 메모에 남깁니다."}
+                        """), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        mockMvc.perform(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/notes", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-case-note-obfuscated-pii-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {"caseVersion":2,"note":"주 민 등 록 번 호 900101-1234567"}
+                        """), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        mockMvc.perform(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/notes", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-case-note-hidden-char-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {"caseVersion":2,"note":"customer\\u200B@example.com"}
+                        """), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
         UUID noteId = UUID.fromString(created.at("/data/noteId").asText());
         assertThatThrownBy(() -> jdbcTemplate.update(
                 "update case_note set note_text = '변조' where note_id = ?", noteId
         )).isInstanceOf(org.springframework.dao.DataAccessException.class)
                 .hasMessageContaining("append-only");
+
+        mockMvc.perform(client.customer(delete(
+                        "/api/v1/demo/sessions/{s}", session.sessionId()), session, false))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("DEMO_SESSION_DISCARDED"));
+        Integer remainingNotes = jdbcTemplate.queryForObject(
+                "select count(*) from case_note where demo_session_id = ?", Integer.class, session.sessionId()
+        );
+        assertThat(remainingNotes).isZero();
     }
 
     @Test
@@ -400,10 +445,10 @@ class P0WorkflowIntegrationTest {
         String request = """
                 {
                   "caseVersion":2,
-                  "scheduledAt":"2026-08-20T10:00:00+09:00",
+                  "scheduledAt":"%s",
                   "reason":"정기납부 처리 상태를 다시 확인합니다."
                 }
-                """;
+                """.formatted(OffsetDateTime.now().plusDays(5));
         JsonNode created = read(client.staff(post(
                         "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
                 .header("Idempotency-Key", "p1-follow-up-0001")
@@ -419,6 +464,164 @@ class P0WorkflowIntegrationTest {
                 .header("Idempotency-Key", "p1-follow-up-0001")
                 .contentType(APPLICATION_JSON).content(request), session));
         assertThat(replay.at("/data/command/idempotencyReplayed").asBoolean()).isTrue();
+
+        UUID followUpId = UUID.fromString(created.at("/data/followUpId").asText());
+        JsonNode followUps = read(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE), session));
+        assertThat(followUps.at("/code").asText()).isEqualTo("CASE_FOLLOW_UPS_RETRIEVED");
+        assertThat(followUps.at("/data/items").size()).isEqualTo(1);
+
+        String updateRequest = """
+                {
+                  "expectedCaseVersion":3,
+                  "status":"COMPLETED",
+                  "resultNote":"고객 전화 안내 없이 내부에서 상태를 확인했습니다."
+                }
+                """;
+        JsonNode updated = read(client.staff(patch(
+                        "/api/v1/demo/sessions/{s}/staff/follow-ups/{followUpId}", session.sessionId(), followUpId)
+                .header("Idempotency-Key", "p1-follow-up-update-0001")
+                .contentType(APPLICATION_JSON).content(updateRequest), session));
+        assertThat(updated.at("/code").asText()).isEqualTo("FOLLOW_UP_UPDATED");
+        assertThat(updated.at("/data/status").asText()).isEqualTo("COMPLETED");
+        assertThat(updated.at("/data/caseVersion").asLong()).isEqualTo(4);
+        assertThat(updated.at("/data/completedAt").isMissingNode()).isFalse();
+
+        JsonNode updateReplay = read(client.staff(patch(
+                        "/api/v1/demo/sessions/{s}/staff/follow-ups/{followUpId}", session.sessionId(), followUpId)
+                .header("Idempotency-Key", "p1-follow-up-update-0001")
+                .contentType(APPLICATION_JSON).content(updateRequest), session));
+        assertThat(updateReplay.at("/data/command/idempotencyReplayed").asBoolean()).isTrue();
+
+        var commandScope = jdbcTemplate.queryForMap(
+                """
+                select w.capability_hash, w.capability_role, w.http_method, s.staff_capability_hash
+                  from workflow_command_result w
+                  join demo_session s on s.session_id = w.demo_session_id
+                 where w.demo_session_id = ? and w.demo_run_id = ?
+                   and w.operation_path like '%/staff/follow-ups/%'
+                """,
+                session.sessionId(), session.demoRunId()
+        );
+        assertThat(commandScope.get("capability_hash")).isEqualTo(commandScope.get("staff_capability_hash"));
+        assertThat(commandScope.get("capability_role")).isEqualTo("DEMO_STAFF");
+        assertThat(commandScope.get("http_method")).isEqualTo("PATCH");
+
+        mockMvc.perform(client.staff(patch(
+                        "/api/v1/demo/sessions/{s}/staff/follow-ups/{followUpId}", session.sessionId(), followUpId)
+                .header("Idempotency-Key", "p1-follow-up-client-time-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "expectedCaseVersion":4,
+                          "status":"COMPLETED",
+                          "resultNote":"클라이언트 완료시각은 허용하지 않습니다.",
+                          "completedAt":"2026-08-21T10:00:00+09:00"
+                        }
+                        """), session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+
+        String nextRequest = """
+                {
+                  "expectedCaseVersion":4,
+                  "scheduledAt":"%s",
+                  "reason":"두 번째 내부 확인 일정을 등록합니다."
+                }
+                """.formatted(OffsetDateTime.now().plusDays(6));
+        JsonNode next = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p1-follow-up-0002")
+                .contentType(APPLICATION_JSON).content(nextRequest), session));
+        assertThat(next.at("/data/caseVersion").asLong()).isEqualTo(5);
+
+        mockMvc.perform(client.staff(patch(
+                        "/api/v1/demo/sessions/{s}/staff/follow-ups/{followUpId}", session.sessionId(), followUpId)
+                .header("Idempotency-Key", "p1-follow-up-old-task-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "expectedCaseVersion":5,
+                          "status":"CANCELLED",
+                          "resultNote":"이전 완료 일정은 다시 변경할 수 없습니다."
+                        }
+                        """), session))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+
+        UUID nextFollowUpId = UUID.fromString(next.at("/data/followUpId").asText());
+        String nextStatus = jdbcTemplate.queryForObject(
+                "select status from follow_up_task where follow_up_id = ?",
+                String.class,
+                nextFollowUpId
+        );
+        assertThat(nextStatus).isEqualTo("SCHEDULED");
+    }
+
+    @Test
+    void reviewActionsKeepExactlyOneScheduledFollowUpAndCompleteItWhenReviewResumes() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "review-follow-up-ingest-0001");
+        applyBranchB(session, "review-follow-up-context-0001");
+
+        read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)
+                .header("Idempotency-Key", "review-follow-up-start-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "action":"START_REVIEW",
+                          "caseVersion":1,
+                          "note":"합성 근거를 검토합니다.",
+                          "followUpAt":null
+                        }
+                        """), session));
+
+        JsonNode scheduled = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)
+                .header("Idempotency-Key", "review-follow-up-schedule-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "action":"REQUIRE_FOLLOW_UP",
+                          "caseVersion":2,
+                          "note":"내부에서 처리 상태를 다시 확인합니다.",
+                          "followUpAt":"%s"
+                        }
+                        """.formatted(OffsetDateTime.now().plusDays(4))), session));
+        UUID followUpId = UUID.fromString(scheduled.at("/data/followUpId").asText());
+        assertThat(scheduled.at("/data/currentState").asText()).isEqualTo("FOLLOW_UP_REQUIRED");
+
+        JsonNode resumed = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)
+                .header("Idempotency-Key", "review-follow-up-resume-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "action":"RESUME_REVIEW",
+                          "caseVersion":3,
+                          "note":"내부 확인을 마쳐 검토를 재개합니다.",
+                          "followUpAt":null
+                        }
+                        """), session));
+        assertThat(resumed.at("/data/followUpId").asText()).isEqualTo(followUpId.toString());
+        assertThat(resumed.at("/data/currentState").asText()).isEqualTo("IN_BANK_REVIEW");
+        assertThat(resumed.at("/data/caseVersion").asLong()).isEqualTo(4);
+
+        var followUp = jdbcTemplate.queryForMap(
+                """
+                select status, result_note, completed_at
+                  from follow_up_task where follow_up_id = ?
+                """,
+                followUpId
+        );
+        assertThat(followUp.get("status")).isEqualTo("COMPLETED");
+        assertThat(followUp.get("result_note")).isEqualTo("내부 확인을 마쳐 검토를 재개합니다.");
+        assertThat(followUp.get("completed_at")).isNotNull();
+
+        Integer scheduledCount = jdbcTemplate.queryForObject(
+                """
+                select count(*) from follow_up_task
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ? and status = 'SCHEDULED'
+                """,
+                Integer.class,
+                session.sessionId(), session.demoRunId(), CASE
+        );
+        assertThat(scheduledCount).isZero();
     }
 
     private JsonNode applyBranchB(DemoTestClient.Session session, String key) throws Exception {

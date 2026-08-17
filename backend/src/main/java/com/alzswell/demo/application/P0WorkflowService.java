@@ -6,6 +6,7 @@ import com.alzswell.demo.api.P0WorkflowErrorCode;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseNoteCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.FollowUpCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.FollowUpUpdateCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
 import com.alzswell.demo.api.P0WorkflowResult;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
@@ -28,6 +30,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -42,8 +45,17 @@ public class P0WorkflowService {
 
     private static final Pattern IDEMPOTENCY_KEY =
             Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._:-]{7,63}$");
-    private static final Pattern SENSITIVE_NOTE = Pattern.compile(
-            "(?i)(치매|알츠하이머|주민등록|계좌번호|\\d{6}[- ]?\\d{7})"
+    private static final List<Pattern> SENSITIVE_NOTE_PATTERNS = List.of(
+            Pattern.compile("(?iu)(치매|알츠하이머|주민\\s*등록(?:번호)?)"),
+            Pattern.compile("(?iu)(?:계좌|카드)\\s*(?:번호)?\\s*[:#=\\-]?\\s*\\d[\\d .\\-]{5,}"),
+            Pattern.compile("(?<!\\d)\\d{6}[- ]?\\d{7}(?!\\d)"),
+            Pattern.compile("(?<!\\d)(?:\\d[ -]?){13,19}(?!\\d)"),
+            Pattern.compile("(?iu)(?:\\+?82[- .]?)?0?1[016789][- .]?\\d{3,4}[- .]?\\d{4}"),
+            Pattern.compile("(?iu)[A-Z0-9._%+\\-]+@[A-Z0-9.\\-]+\\.[A-Z]{2,}"),
+            Pattern.compile("(?iu)(?:이름|성명|name)\\s*[:=]\\s*[가-힣A-Z][가-힣A-Z .\\-]{1,40}")
+    );
+    private static final Pattern COMPACT_SENSITIVE_NOTE_PATTERN = Pattern.compile(
+            "(?iu)(치매|알츠하이머|주민등록(?:번호)?|계좌번호|카드번호|전화번호|이메일|email|성명|이름|name)"
     );
     private static final String CUSTOMER_ROLE = "CUSTOMER_DEMO";
     private static final String STAFF_ROLE = "DEMO_STAFF";
@@ -61,6 +73,7 @@ public class P0WorkflowService {
             "DUPLICATE_TRANSFER", 10 * 60,
             "REPEATED_CONFIRMATION", 60 * 60
     );
+    private static final Set<String> FOLLOW_UP_STATUSES = Set.of("COMPLETED", "CANCELLED");
     private static final List<String> CONTEXT_TYPES = List.of(
             "PAYMENT_PROVIDER_DELAY_VERIFIED",
             "ACCOUNT_CONNECTION_OUTAGE_VERIFIED",
@@ -499,6 +512,78 @@ public class P0WorkflowService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> caseNotes(UUID sessionId, UUID demoRunId, String caseId) {
+        requireCurrentRun(sessionId, demoRunId);
+        CaseRow row = requireCase(sessionId, demoRunId, caseId, false);
+        List<Map<String, Object>> items = jdbcTemplate.query(
+                """
+                select note_id, case_version, note_text, created_by, created_at
+                  from case_note
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ?
+                 order by created_at asc, note_id asc
+                """,
+                (rs, rowNum) -> map(
+                        "noteId", rs.getObject("note_id", UUID.class),
+                        "caseVersion", rs.getLong("case_version"),
+                        "noteText", rs.getString("note_text"),
+                        "createdBy", rs.getString("created_by"),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class),
+                        "isVisibleToCustomer", false
+                ),
+                sessionId, demoRunId, caseId
+        );
+        return map(
+                "demoRunId", demoRunId,
+                "caseId", caseId,
+                "alertId", row.alertId(),
+                "items", items,
+                "count", items.size(),
+                "externalDeliveryCreated", false
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> caseFollowUps(UUID sessionId, UUID demoRunId, String caseId) {
+        requireCurrentRun(sessionId, demoRunId);
+        CaseRow row = requireCase(sessionId, demoRunId, caseId, false);
+        List<Map<String, Object>> items = jdbcTemplate.query(
+                """
+                select follow_up_id, status, reason, scheduled_at, result_note,
+                       completed_at, created_at, updated_at, created_by
+                  from follow_up_task
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ?
+                 order by created_at asc, follow_up_id asc
+                """,
+                (rs, rowNum) -> map(
+                        "followUpId", rs.getObject("follow_up_id", UUID.class),
+                        "status", rs.getString("status"),
+                        "reason", rs.getString("reason"),
+                        "scheduledAt", rs.getObject("scheduled_at", OffsetDateTime.class),
+                        "resultNote", rs.getString("result_note"),
+                        "completedAt", rs.getObject("completed_at", OffsetDateTime.class),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class),
+                        "updatedAt", rs.getObject("updated_at", OffsetDateTime.class),
+                        "createdBy", rs.getString("created_by"),
+                        "externalDeliveryCreated", false
+                ),
+                sessionId, demoRunId, caseId
+        );
+        OffsetDateTime nextFollowUpAt = items.stream()
+                .filter(item -> "SCHEDULED".equals(item.get("status")))
+                .map(item -> (OffsetDateTime) item.get("scheduledAt"))
+                .min(OffsetDateTime::compareTo)
+                .orElse(null);
+        return map(
+                "demoRunId", demoRunId,
+                "caseId", caseId,
+                "alertId", row.alertId(),
+                "items", items,
+                "count", items.size(),
+                "nextFollowUpAt", nextFollowUpAt
+        );
+    }
+
     @Transactional
     public P0WorkflowResult reviewCase(
             UUID sessionId,
@@ -536,6 +621,9 @@ public class P0WorkflowService {
             default -> throw new BusinessException(P0WorkflowErrorCode.INVALID_STATE_TRANSITION);
         };
         OffsetDateTime now = OffsetDateTime.now(clock);
+        if ("REQUIRE_FOLLOW_UP".equals(request.action())) {
+            validateFollowUpAt(request.followUpAt(), now);
+        }
         long nextVersion = row.caseVersion() + 1;
         updateIncidentState(sessionId, demoRunId, row.alertId(), row.incidentState(), nextState, now);
         int updated = jdbcTemplate.update(
@@ -550,6 +638,22 @@ public class P0WorkflowService {
         );
         if (updated != 1) {
             throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+
+        UUID followUpId = null;
+        if ("REQUIRE_FOLLOW_UP".equals(request.action())) {
+            followUpId = insertFollowUpTask(
+                    sessionId, demoRunId, caseId, request.followUpAt(), request.note(), now
+            );
+        } else if ("RESUME_REVIEW".equals(request.action())) {
+            followUpId = finishScheduledFollowUp(
+                    sessionId, demoRunId, caseId, "COMPLETED", request.note(), now, true
+            );
+        } else if ("CLOSE_FALSE_POSITIVE".equals(request.action())
+                && "FOLLOW_UP_REQUIRED".equals(row.incidentState())) {
+            followUpId = finishScheduledFollowUp(
+                    sessionId, demoRunId, caseId, "CANCELLED", request.note(), now, false
+            );
         }
 
         String eventType = switch (request.action()) {
@@ -570,6 +674,7 @@ public class P0WorkflowService {
                 "caseVersion", nextVersion,
                 "reviewedBy", "DEMO_STAFF",
                 "followUpAt", request.followUpAt(),
+                "followUpId", followUpId,
                 "externalExecutionCreated", false,
                 "updatedAt", now,
                 "command", map("requestHash", requestHash, "idempotencyReplayed", false)
@@ -665,10 +770,7 @@ public class P0WorkflowService {
         validateCommandHeaders(capabilityHash, idempotencyKey);
         validateSafeNote(request.reason());
         OffsetDateTime now = OffsetDateTime.now(clock);
-        if (!request.scheduledAt().isAfter(now) || request.scheduledAt().isAfter(now.plusDays(365))) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT,
-                    "scheduledAt은 현재 이후 365일 이내여야 합니다.");
-        }
+        validateFollowUpAt(request.scheduledAt(), now);
         String path = "/api/v1/demo/sessions/" + sessionId + "/cases/" + caseId + "/follow-ups";
         String requestHash = requestHash("POST", path, map(
                 "caseVersion", request.caseVersion(),
@@ -705,16 +807,8 @@ public class P0WorkflowService {
         if (updated != 1) {
             throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
         }
-        jdbcTemplate.update(
-                """
-                insert into follow_up_task (
-                    follow_up_id, demo_session_id, demo_run_id, case_id, status,
-                    scheduled_at, reason, created_by, external_delivery_created, created_at, updated_at
-                ) values (?, ?, ?, ?, 'SCHEDULED', ?, ?, 'DEMO_STAFF', false, ?, ?)
-                """,
-                followUpId, sessionId, demoRunId, caseId,
-                request.scheduledAt(), request.reason(), now, now
-        );
+        insertFollowUpTask(followUpId, sessionId, demoRunId, caseId,
+                request.scheduledAt(), request.reason(), now);
         writeStaffAudit(sessionId, demoRunId, row.alertId(), caseId, "FOLLOW_UP_SCHEDULED",
                 row.incidentState(), "FOLLOW_UP_REQUIRED", requestHash, scope.idempotencyKeyHash(), now);
 
@@ -733,6 +827,111 @@ public class P0WorkflowService {
         );
         P0WorkflowResult result = new P0WorkflowResult(
                 "FOLLOW_UP_SCHEDULED", "내부 재확인 일정을 등록했습니다.", data
+        );
+        saveCommand(scope, requestHash, result, now);
+        return result;
+    }
+
+    @Transactional
+    public P0WorkflowResult updateFollowUp(
+            UUID sessionId,
+            UUID demoRunId,
+            UUID followUpId,
+            String capabilityHash,
+            String idempotencyKey,
+            FollowUpUpdateCommand request
+    ) {
+        requireCurrentRun(sessionId, demoRunId);
+        validateCommandHeaders(capabilityHash, idempotencyKey);
+        validateFollowUpUpdateRequest(request);
+        String path = "/api/v1/demo/sessions/" + sessionId + "/staff/follow-ups/" + followUpId;
+        String requestHash = requestHash("PATCH", path, map(
+                "caseVersion", request.caseVersion(),
+                "status", request.status(),
+                "resultNote", request.resultNote(),
+                "completedAt", request.completedAt()
+        ));
+        CommandScope scope = commandScope(
+                sessionId, demoRunId, capabilityHash, STAFF_ROLE, "PATCH", path, idempotencyKey
+        );
+        FollowUpRow lookup = requireFollowUp(sessionId, demoRunId, followUpId, false);
+        CaseRow caseRow = requireCase(sessionId, demoRunId, lookup.caseId(), true);
+        FollowUpRow row = requireFollowUp(sessionId, demoRunId, followUpId, true);
+        P0WorkflowResult replay = findReplay(scope, requestHash);
+        if (replay != null) {
+            return replay;
+        }
+
+        if (caseRow.caseVersion() != request.caseVersion()) {
+            throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+        if (!"FOLLOW_UP_REQUIRED".equals(caseRow.incidentState())) {
+            throw new BusinessException(P0WorkflowErrorCode.INVALID_STATE_TRANSITION);
+        }
+        if (!"SCHEDULED".equals(row.status())) {
+            throw new BusinessException(P0WorkflowErrorCode.INVALID_STATE_TRANSITION);
+        }
+        if (!FOLLOW_UP_STATUSES.contains(request.status())) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT, "지원하지 않는 후속 일정 상태입니다.");
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime completedAt = "COMPLETED".equals(request.status()) ? now : null;
+        long nextVersion = caseRow.caseVersion() + 1;
+        int updated = jdbcTemplate.update(
+                """
+                update follow_up_task
+                   set status = ?, result_note = ?, completed_at = ?, updated_at = ?
+                 where demo_session_id = ? and demo_run_id = ? and follow_up_id = ?
+                   and status = 'SCHEDULED'
+                """,
+                request.status(), request.resultNote(), completedAt, now,
+                sessionId, demoRunId, followUpId
+        );
+        if (updated != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.FOLLOW_UP_NOT_FOUND);
+        }
+
+        updateIncidentState(sessionId, demoRunId, row.alertId(), caseRow.incidentState(),
+                "IN_BANK_REVIEW", now);
+        int caseUpdated = jdbcTemplate.update(
+                """
+                update protection_case
+                   set review_task_status = 'IN_REVIEW', case_version = ?, latest_note = ?,
+                       follow_up_at = null, updated_at = ?
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ? and case_version = ?
+                """,
+                nextVersion, request.resultNote(), now,
+                sessionId, demoRunId, row.caseId(), request.caseVersion()
+        );
+        if (caseUpdated != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.CASE_VERSION_CONFLICT);
+        }
+
+        String eventType = "COMPLETED".equals(request.status())
+                ? "FOLLOW_UP_COMPLETED" : "FOLLOW_UP_CANCELLED";
+        writeStaffAudit(sessionId, demoRunId, row.alertId(), row.caseId(), eventType,
+                caseRow.incidentState(), "IN_BANK_REVIEW", requestHash,
+                scope.idempotencyKeyHash(), now);
+
+        Map<String, Object> data = map(
+                "demoRunId", demoRunId,
+                "followUpId", followUpId,
+                "caseId", row.caseId(),
+                "status", request.status(),
+                "previousStatus", row.status(),
+                "caseVersion", nextVersion,
+                "previousState", caseRow.incidentState(),
+                "currentState", "IN_BANK_REVIEW",
+                "resultNote", request.resultNote(),
+                "completedAt", completedAt,
+                "externalDeliveryCreated", false,
+                "updatedAt", now,
+                "command", map("requestHash", requestHash, "idempotencyReplayed", false)
+        );
+
+        P0WorkflowResult result = new P0WorkflowResult(
+                "FOLLOW_UP_UPDATED", "후속 일정 상태를 갱신했습니다.", data
         );
         saveCommand(scope, requestHash, result, now);
         return result;
@@ -872,6 +1071,105 @@ public class P0WorkflowService {
             throw new BusinessException(P0WorkflowErrorCode.CASE_NOT_FOUND);
         }
         return rows.getFirst();
+    }
+
+    private FollowUpRow requireFollowUp(UUID sessionId, UUID demoRunId, UUID followUpId, boolean lock) {
+        String sql = """
+                select f.follow_up_id, f.case_id, f.status, f.scheduled_at, f.reason,
+                       f.result_note, f.completed_at, f.created_at, f.updated_at,
+                       c.alert_id
+                  from follow_up_task f
+                  join protection_case c
+                    on c.demo_session_id = f.demo_session_id
+                   and c.demo_run_id = f.demo_run_id
+                   and c.case_id = f.case_id
+                 where f.demo_session_id = ? and f.demo_run_id = ? and f.follow_up_id = ?
+                """ + (lock ? " for update" : "");
+        List<FollowUpRow> rows = jdbcTemplate.query(sql, this::followUpRow, sessionId, demoRunId, followUpId);
+        if (rows.size() != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.FOLLOW_UP_NOT_FOUND);
+        }
+        return rows.getFirst();
+    }
+
+    private UUID insertFollowUpTask(
+            UUID sessionId,
+            UUID demoRunId,
+            String caseId,
+            OffsetDateTime scheduledAt,
+            String reason,
+            OffsetDateTime now
+    ) {
+        UUID followUpId = UUID.randomUUID();
+        insertFollowUpTask(followUpId, sessionId, demoRunId, caseId, scheduledAt, reason, now);
+        return followUpId;
+    }
+
+    private void insertFollowUpTask(
+            UUID followUpId,
+            UUID sessionId,
+            UUID demoRunId,
+            String caseId,
+            OffsetDateTime scheduledAt,
+            String reason,
+            OffsetDateTime now
+    ) {
+        jdbcTemplate.update(
+                """
+                insert into follow_up_task (
+                    follow_up_id, demo_session_id, demo_run_id, case_id, status,
+                    scheduled_at, reason, created_by, external_delivery_created, created_at, updated_at
+                ) values (?, ?, ?, ?, 'SCHEDULED', ?, ?, 'DEMO_STAFF', false, ?, ?)
+                """,
+                followUpId, sessionId, demoRunId, caseId, scheduledAt, reason, now, now
+        );
+    }
+
+    private UUID finishScheduledFollowUp(
+            UUID sessionId,
+            UUID demoRunId,
+            String caseId,
+            String status,
+            String resultNote,
+            OffsetDateTime now,
+            boolean required
+    ) {
+        List<UUID> scheduled = jdbcTemplate.queryForList(
+                """
+                select follow_up_id
+                  from follow_up_task
+                 where demo_session_id = ? and demo_run_id = ? and case_id = ?
+                   and status = 'SCHEDULED'
+                 order by scheduled_at, follow_up_id
+                 for update
+                """,
+                UUID.class,
+                sessionId, demoRunId, caseId
+        );
+        if (scheduled.isEmpty()) {
+            if (required) {
+                throw new BusinessException(P0WorkflowErrorCode.INVALID_STATE_TRANSITION);
+            }
+            return null;
+        }
+        if (scheduled.size() != 1) {
+            throw new IllegalStateException("사건에는 예약 상태의 후속조치가 하나만 존재해야 합니다.");
+        }
+        UUID followUpId = scheduled.getFirst();
+        OffsetDateTime completedAt = "COMPLETED".equals(status) ? now : null;
+        int updated = jdbcTemplate.update(
+                """
+                update follow_up_task
+                   set status = ?, result_note = ?, completed_at = ?, updated_at = ?
+                 where follow_up_id = ? and demo_session_id = ? and demo_run_id = ?
+                   and status = 'SCHEDULED'
+                """,
+                status, resultNote, completedAt, now, followUpId, sessionId, demoRunId
+        );
+        if (updated != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.INVALID_STATE_TRANSITION);
+        }
+        return followUpId;
     }
 
     private List<SignalRow> signals(UUID sessionId, UUID demoRunId, String alertId) {
@@ -1184,6 +1482,17 @@ public class P0WorkflowService {
         }
     }
 
+    private void validateFollowUpUpdateRequest(FollowUpUpdateCommand request) {
+        if (!FOLLOW_UP_STATUSES.contains(request.status())) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT, "지원하지 않는 후속 일정 상태입니다.");
+        }
+        if (request.completedAt() != null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                    "completedAt은 서버가 기록하므로 요청에 포함할 수 없습니다.");
+        }
+        validateSafeNote(request.resultNote());
+    }
+
     private void validateReviewRequest(CaseReviewCommand request) {
         if (!REVIEW_ACTIONS.contains(request.action())) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT, "지원하지 않는 review action입니다.");
@@ -1192,6 +1501,11 @@ public class P0WorkflowService {
         if ("REQUIRE_FOLLOW_UP".equals(request.action()) && request.followUpAt() == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT,
                     "REQUIRE_FOLLOW_UP에는 followUpAt이 필요합니다.");
+        }
+        if (Set.of("REQUIRE_FOLLOW_UP", "RESUME_REVIEW").contains(request.action())
+                && (request.note() == null || request.note().isBlank())) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                    "후속조치 예약·완료에는 내부 기록이 필요합니다.");
         }
         if (!"REQUIRE_FOLLOW_UP".equals(request.action()) && request.followUpAt() != null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT,
@@ -1215,9 +1529,33 @@ public class P0WorkflowService {
     }
 
     private void validateSafeNote(String note) {
-        if (note != null && SENSITIVE_NOTE.matcher(note).find()) {
+        if (note == null) {
+            return;
+        }
+        String normalized = Normalizer.normalize(note, Normalizer.Form.NFKC);
+        boolean hiddenCharacters = normalized.codePoints().anyMatch(character ->
+                Character.isISOControl(character)
+                        || Character.getType(character) == Character.FORMAT
+                        || Character.getType(character) == Character.PRIVATE_USE
+        );
+        String compact = normalized.toLowerCase(Locale.ROOT)
+                .replaceAll("[\\p{Z}\\p{P}\\p{S}]", "");
+        long digitCount = normalized.codePoints().filter(Character::isDigit).count();
+        boolean sensitivePattern = SENSITIVE_NOTE_PATTERNS.stream()
+                .anyMatch(pattern -> pattern.matcher(normalized).find());
+        if (hiddenCharacters
+                || digitCount >= 6
+                || sensitivePattern
+                || COMPACT_SENSITIVE_NOTE_PATTERN.matcher(compact).find()) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT,
                     "메모에는 고객 식별정보·계좌번호·질병 추정 표현을 입력할 수 없습니다.");
+        }
+    }
+
+    private void validateFollowUpAt(OffsetDateTime scheduledAt, OffsetDateTime now) {
+        if (scheduledAt == null || !scheduledAt.isAfter(now) || scheduledAt.isAfter(now.plusDays(365))) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                    "scheduledAt은 현재 이후 365일 이내여야 합니다.");
         }
     }
 
@@ -1298,12 +1636,24 @@ public class P0WorkflowService {
             UUID demoRunId,
             String capabilityHash,
             String role,
+            String method,
             String path,
             String idempotencyKey
     ) {
         return new CommandScope(
-                sessionId, demoRunId, capabilityHash, role, "POST", path, sha256(idempotencyKey)
+                sessionId, demoRunId, capabilityHash, role, method, path, sha256(idempotencyKey)
         );
+    }
+
+    private CommandScope commandScope(
+            UUID sessionId,
+            UUID demoRunId,
+            String capabilityHash,
+            String role,
+            String path,
+            String idempotencyKey
+    ) {
+        return commandScope(sessionId, demoRunId, capabilityHash, role, "POST", path, idempotencyKey);
     }
 
     private P0WorkflowResult findReplay(CommandScope scope, String requestHash) {
@@ -1488,6 +1838,15 @@ public class P0WorkflowService {
                 rs.getString("trusted_contact_gate"),
                 rs.getObject("alert_snapshot_at", OffsetDateTime.class),
                 rs.getObject("context_observed_at", OffsetDateTime.class)
+        );
+    }
+
+    private FollowUpRow followUpRow(ResultSet rs, int rowNum) throws SQLException {
+        return new FollowUpRow(
+                rs.getObject("follow_up_id", UUID.class), rs.getString("case_id"), rs.getString("status"),
+                rs.getObject("scheduled_at", OffsetDateTime.class), rs.getString("reason"), rs.getString("result_note"),
+                rs.getObject("completed_at", OffsetDateTime.class), rs.getObject("created_at", OffsetDateTime.class),
+                rs.getObject("updated_at", OffsetDateTime.class), rs.getString("alert_id")
         );
     }
 
@@ -1707,6 +2066,20 @@ public class P0WorkflowService {
             String responseCode,
             String responseMessage,
             String responsePayload
+    ) {
+    }
+
+    private record FollowUpRow(
+            UUID followUpId,
+            String caseId,
+            String status,
+            OffsetDateTime scheduledAt,
+            String reason,
+            String resultNote,
+            OffsetDateTime completedAt,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt,
+            String alertId
     ) {
     }
 

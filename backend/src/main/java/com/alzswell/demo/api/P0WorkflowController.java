@@ -7,6 +7,7 @@ import com.alzswell.copilot.application.CopilotDraftService;
 import com.alzswell.demo.api.P0WorkflowRequests.CopilotDraftCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseNoteCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.FollowUpCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.FollowUpUpdateCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
@@ -15,9 +16,11 @@ import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -40,6 +43,7 @@ public class P0WorkflowController {
     }
 
     @GetMapping("/customers/{customerId}/alerts")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> alertList(
             @PathVariable UUID sessionId,
             @PathVariable String customerId,
@@ -53,6 +57,7 @@ public class P0WorkflowController {
     }
 
     @GetMapping("/alerts/{alertId}")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> alertDetail(
             @PathVariable UUID sessionId,
             @PathVariable String alertId,
@@ -66,6 +71,7 @@ public class P0WorkflowController {
     }
 
     @PostMapping("/alerts/{alertId}/context")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> applyContext(
             @PathVariable UUID sessionId,
             @PathVariable String alertId,
@@ -81,6 +87,7 @@ public class P0WorkflowController {
     }
 
     @GetMapping("/alerts/{alertId}/audit")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> alertAudit(
             @PathVariable UUID sessionId,
             @PathVariable String alertId,
@@ -96,6 +103,7 @@ public class P0WorkflowController {
     }
 
     @GetMapping("/staff/cases")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> caseQueue(
             @PathVariable UUID sessionId,
             @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId,
@@ -112,6 +120,7 @@ public class P0WorkflowController {
     }
 
     @GetMapping("/cases/{caseId}")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> caseDetail(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -125,6 +134,7 @@ public class P0WorkflowController {
     }
 
     @GetMapping("/cases/{caseId}/evidence")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> caseEvidence(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -136,7 +146,36 @@ public class P0WorkflowController {
         ), demoRunId);
     }
 
+    @GetMapping("/cases/{caseId}/notes")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> caseNotes(
+            @PathVariable UUID sessionId,
+            @PathVariable String caseId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId
+    ) {
+        return withRun(ApiResponses.ok(
+                "CASE_NOTES_RETRIEVED",
+                "사건 내부 메모를 조회했습니다.",
+                workflowService.caseNotes(sessionId, demoRunId, caseId)
+        ), demoRunId);
+    }
+
+    @GetMapping("/cases/{caseId}/follow-ups")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> caseFollowUps(
+            @PathVariable UUID sessionId,
+            @PathVariable String caseId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId
+    ) {
+        return withRun(ApiResponses.ok(
+                "CASE_FOLLOW_UPS_RETRIEVED",
+                "사건 후속 일정을 조회했습니다.",
+                workflowService.caseFollowUps(sessionId, demoRunId, caseId)
+        ), demoRunId);
+    }
+
     @GetMapping("/cases/{caseId}/timeline")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> caseTimeline(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -149,6 +188,7 @@ public class P0WorkflowController {
     }
 
     @PostMapping("/cases/{caseId}/review")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reviewCase(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -164,6 +204,7 @@ public class P0WorkflowController {
     }
 
     @PostMapping("/cases/{caseId}/notes")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> addCaseNote(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -179,6 +220,7 @@ public class P0WorkflowController {
     }
 
     @PostMapping("/cases/{caseId}/follow-ups")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> scheduleFollowUp(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -193,7 +235,24 @@ public class P0WorkflowController {
         return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);
     }
 
+    @PatchMapping("/staff/follow-ups/{followUpId}")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateFollowUp(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID followUpId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId,
+            @RequestAttribute(name = DemoCapabilityService.REQUEST_HASH_ATTRIBUTE) String capabilityHash,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody FollowUpUpdateCommand request
+    ) {
+        P0WorkflowResult result = workflowService.updateFollowUp(
+                sessionId, demoRunId, followUpId, capabilityHash, idempotencyKey, request
+        );
+        return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);
+    }
+
     @PostMapping("/cases/{caseId}/copilot-drafts")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> generateCopilotDraft(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,
@@ -207,6 +266,7 @@ public class P0WorkflowController {
     }
 
     @PostMapping("/cases/{caseId}/guidance-plan")
+    @PreAuthorize("hasAuthority('DEMO_STAFF')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> approveGuidancePlan(
             @PathVariable UUID sessionId,
             @PathVariable String caseId,

@@ -44,6 +44,11 @@ public enum P0WorkflowErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "IDEMPOTENCY_CONFLICT",
             "같은 Idempotency-Key를 다른 요청에 재사용할 수 없습니다."
+    ),
+    FOLLOW_UP_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "FOLLOW_UP_NOT_FOUND",
+            "행원 후속 일정이 존재하지 않습니다."
     );
 
     private final HttpStatus status;

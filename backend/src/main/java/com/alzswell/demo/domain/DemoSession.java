@@ -74,7 +74,6 @@ public class DemoSession {
             UUID demoRunId,
             long scenarioSeed,
             String customerCapabilityHash,
-            String staffCapabilityHash,
             OffsetDateTime createdAt,
             OffsetDateTime expiresAt
     ) {
@@ -82,14 +81,19 @@ public class DemoSession {
         this.demoRunId = demoRunId;
         this.scenarioSeed = scenarioSeed;
         this.customerCapabilityHash = Objects.requireNonNull(customerCapabilityHash);
-        this.staffCapabilityHash = Objects.requireNonNull(staffCapabilityHash);
-        if (customerCapabilityHash.equals(staffCapabilityHash)) {
-            throw new IllegalArgumentException("고객과 행원 capability hash는 달라야 합니다.");
-        }
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
         this.expiresAt = expiresAt;
         this.resetVersion = 0;
+    }
+
+    public void issueStaffCapability(String capabilityHash, OffsetDateTime issuedAt) {
+        String requiredHash = Objects.requireNonNull(capabilityHash);
+        if (requiredHash.equals(customerCapabilityHash)) {
+            throw new IllegalArgumentException("고객과 행원 capability hash는 달라야 합니다.");
+        }
+        this.staffCapabilityHash = requiredHash;
+        this.updatedAt = issuedAt;
     }
 
     public void ingest(

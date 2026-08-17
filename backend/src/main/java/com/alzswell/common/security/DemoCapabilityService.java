@@ -40,21 +40,9 @@ public class DemoCapabilityService {
         this.clock = clock;
     }
 
-    public IssuedCapabilities issue() {
-        String customer = newOpaqueToken();
-        String staff;
-        do {
-            staff = newOpaqueToken();
-        } while (MessageDigest.isEqual(
-                customer.getBytes(StandardCharsets.US_ASCII),
-                staff.getBytes(StandardCharsets.US_ASCII)
-        ));
-        return new IssuedCapabilities(
-                customer,
-                staff,
-                hash(customer),
-                hash(staff)
-        );
+    public IssuedCapability issue() {
+        String capability = newOpaqueToken();
+        return new IssuedCapability(capability, hash(capability));
     }
 
     public Validation validate(String rawToken, UUID sessionId, RequiredRole requiredRole) {
@@ -143,11 +131,9 @@ public class DemoCapabilityService {
         }
     }
 
-    public record IssuedCapabilities(
-            String customerCapability,
-            String staffCapability,
-            String customerCapabilityHash,
-            String staffCapabilityHash
+    public record IssuedCapability(
+            String capability,
+            String capabilityHash
     ) {
     }
 }

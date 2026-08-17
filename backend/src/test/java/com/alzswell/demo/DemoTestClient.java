@@ -1,6 +1,7 @@
 package com.alzswell.demo;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 
 import com.alzswell.common.security.DemoCapabilityService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,6 +13,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 final class DemoTestClient {
+
+    static final String STAFF_USERNAME = "demo-staff";
+    static final String STAFF_PASSWORD = "local-demo-staff-password-change-me-1234567890";
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;
@@ -26,11 +30,17 @@ final class DemoTestClient {
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsByteArray());
+        UUID sessionId = UUID.fromString(body.at("/data/sessionId").asText());
+        MvcResult staffResult = mockMvc.perform(MockMvcRequestBuilders.post(
+                        "/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
+                        .with(httpBasic(STAFF_USERNAME, STAFF_PASSWORD)))
+                .andExpect(status().isOk())
+                .andReturn();
         return new Session(
-                UUID.fromString(body.at("/data/sessionId").asText()),
+                sessionId,
                 body.at("/data/scenarioSeed").asText(),
                 result.getResponse().getHeader(DemoCapabilityService.CUSTOMER_RESPONSE_HEADER),
-                result.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER),
+                staffResult.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER),
                 null
         );
     }

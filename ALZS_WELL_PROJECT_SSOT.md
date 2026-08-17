@@ -948,13 +948,13 @@ POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 
 공개 데모는 사용자 계정 로그인을 생략할 뿐, `sessionId`를 아는 사람에게 권한을 주는 구조가 아니다.
 
-- 세션 생성 시 최소 128bit 엔트로피의 일회성 capability를 발급하고 서버에는 원문이 아닌 hash만 저장한다. 원문은 URL·응답로그·감사로그에 남기지 않는다.
+- 공개 세션 생성 시 최소 128bit 엔트로피의 고객용 일회성 capability만 발급한다. 직원 capability는 별도 직원 origin에서 인증된 staging 운영자에게 발급하고, 발급할 때마다 이전 값을 회전한다. 서버에는 원문이 아닌 hash만 저장하며 원문은 URL·응답로그·감사로그에 남기지 않는다.
 - 공모전 구현은 capability를 `X-Demo-Capability` 헤더로 전달하고 브라우저 메모리에만 보관한다. URL, `localStorage`, `sessionStorage`, 쿠키, 응답·접근로그에 저장하지 않으며 페이지 이탈·세션 만료 시 폐기한다.
 - 고객 API는 `CUSTOMER_DEMO`, 모의 행원 API는 별도 `DEMO_STAFF` capability를 요구한다. 고객 capability만으로 `/staff/**`, `/cases/**`를 조회·변경할 수 없다.
 - 모든 세션 하위 API는 capability subject, `sessionId`, 역할, 만료시각, `demoRunId` 소유권을 객체 단위로 확인한다. UUID 자체를 접근권한으로 취급하지 않는다.
-- 초기 운영 제한값은 세션 생성 `IP당 분당 10회`, 조회 `capability당 분당 120회`, 상태변경 `capability당 분당 30회`, 요청 본문 `32KiB`다. 환경설정으로 더 엄격하게 조정할 수 있고 초과 시 `429`와 `Retry-After`를 반환한다.
-- 상태변경 요청은 정확한 `Origin` allowlist를 검증한다. CORS는 허용 출처만 등록하고 `allowCredentials=false`로 고정하며 wildcard origin을 금지한다. 현재 header 기반 무쿠키 경로에는 CSRF 토큰을 사용하지 않지만, 향후 쿠키 인증으로 바꾸면 `Secure`·`HttpOnly`·`SameSite`와 CSRF 토큰 검증을 함께 적용한다. Gateway와 애플리케이션 양쪽에 연결·읽기·전체 요청 timeout을 둔다.
-- 만료·폐기된 capability는 즉시 거절하고, 만료 세션의 업무데이터는 보존정책에 따라 정리하되 감사로그는 cascade 삭제하지 않는다.
+- 초기 운영 제한값은 세션 생성 `IP당 분당 10회`, 조회 `IP·capability 각각 분당 120회`, 상태변경 `IP·capability 각각 분당 30회`, 요청 본문 `32KiB`다. 신뢰 프록시는 환경별 CIDR allowlist로 제한하고, 초과 시 `429`와 `Retry-After`를 반환한다.
+- 상태변경 요청은 정확한 `Origin` allowlist를 검증한다. 개발은 고객·직원 localhost origin을 분리하고, 운영은 환경변수로 주입한 서로 겹치지 않는 HTTPS 고객·직원 origin만 허용한다. 공개 세션 생성과 일반 고객 세션 경로에는 고객 origin만, 직원 발급과 세션 하위 `/staff/**`·`/cases/**`에는 직원 origin만 허용하며 capability 응답 헤더도 각 발급 경로에만 노출한다. CORS는 `allowCredentials=false`로 고정하며 빈 목록·wildcard·경로 또는 두 목록의 중복 origin을 기동 시 거절한다. 현재 header 기반 무쿠키 경로에는 CSRF 토큰을 사용하지 않지만, 향후 쿠키 인증으로 바꾸면 `Secure`·`HttpOnly`·`SameSite`와 CSRF 토큰 검증을 함께 적용한다. Gateway와 애플리케이션 양쪽에 연결·읽기·전체 요청 timeout을 둔다.
+- 만료·폐기된 capability는 즉시 거절한다. 만료 세션 업무데이터는 transaction advisory lock과 제한된 batch로 자동 정리하고 `DEMO_SESSION_EXPIRED_PURGED`를 추가하되, 감사 hash chain은 cascade 삭제하지 않는다.
 - 오류 응답에는 capability, 세션 존재 여부, DB·스택 정보가 노출되지 않는다. 교차세션 IDOR, 역할상승, 비허용 Origin, 향후 쿠키 경로의 CSRF, 멱등충돌, 과다요청을 공개 배포 전 자동시험한다.
 
 ### MVP 보안 원칙
