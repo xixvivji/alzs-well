@@ -10,7 +10,7 @@ class DemoGuardrailStartupValidatorTest {
     @Test
     void acceptsThePublicSyntheticDemoBoundary() {
         DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
-                true, false, "AIR_GAPPED_DEMO", false, false, true
+                true, false, "AIR_GAPPED_DEMO", false, false, true, false
         );
 
         assertThatCode(validator::validatePublicDemoBoundary).doesNotThrowAnyException();
@@ -19,7 +19,18 @@ class DemoGuardrailStartupValidatorTest {
     @Test
     void refusesToStartWhenAnyExternalExecutionGuardIsOpen() {
         DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
-                true, true, "AIR_GAPPED_DEMO", false, false, true
+                true, true, "AIR_GAPPED_DEMO", false, false, true, false
+        );
+
+        assertThatThrownBy(validator::validatePublicDemoBoundary)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("안전 가드레일");
+    }
+
+    @Test
+    void refusesToStartWhenTheUnpersistedCustomerProfileScaffoldIsEnabled() {
+        DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
+                true, false, "AIR_GAPPED_DEMO", false, false, true, true
         );
 
         assertThatThrownBy(validator::validatePublicDemoBoundary)

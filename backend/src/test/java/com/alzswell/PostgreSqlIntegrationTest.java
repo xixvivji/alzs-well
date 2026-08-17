@@ -37,7 +37,7 @@ class PostgreSqlIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -140,7 +140,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("9"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("13"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -173,7 +173,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(28);
+        assertThat(specification.path("paths").size()).isEqualTo(30);
+        long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
+                .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
+                        .filter(path::has)
+                        .count())
+                .sum();
+        assertThat(operationCount).isEqualTo(33);
 
         JsonNode alertParameters = specification.path("paths")
                 .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")
@@ -191,7 +197,24 @@ class PostgreSqlIntegrationTest {
                 .path("201")
                 .path("headers");
         assertThat(createHeaders.has("X-Demo-Customer-Capability")).isTrue();
-        assertThat(createHeaders.has("X-Demo-Staff-Capability")).isTrue();
+        assertThat(createHeaders.has("X-Demo-Staff-Capability")).isFalse();
+
+        JsonNode staffIssuance = specification.path("paths")
+                .path("/api/v1/demo/staff/sessions/{sessionId}/capability")
+                .path("post");
+        assertThat(staffIssuance.path("security").toString()).contains("DemoStaffBootstrap");
+        assertThat(staffIssuance.path("responses").path("200").path("headers")
+                .has("X-Demo-Staff-Capability")).isTrue();
+
+        JsonNode followUpPatchParameters = specification.path("paths")
+                .path("/api/v1/demo/sessions/{sessionId}/staff/follow-ups/{followUpId}")
+                .path("patch")
+                .path("parameters");
+        List<String> followUpPatchParameterNames = StreamSupport.stream(
+                        followUpPatchParameters.spliterator(), false)
+                .map(parameter -> parameter.path("name").asText())
+                .toList();
+        assertThat(followUpPatchParameterNames).contains("Idempotency-Key");
 
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());

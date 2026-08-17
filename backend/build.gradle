@@ -8,6 +8,8 @@ group = 'com.alzswell'
 version = '0.0.1-SNAPSHOT'
 description = "ALZ's well financial safety backend"
 
+ext['tomcat.version'] = '10.1.57'
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)

@@ -1,13 +1,25 @@
 services:
   gateway:
-    image: ${NGINX_IMAGE:-nginx:1.27-alpine}
+    image: ${NGINX_IMAGE:-nginx:1.30.4-alpine}
+    restart: unless-stopped
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+      - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
+    environment:
+      NGINX_ENVSUBST_FILTER: TRUSTED_PROXY_CIDR
+      TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:-127.0.0.1/32}
     volumes:
-      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
+      - alzs-well-ingress
       - alzs-well-app
     cap_drop:
       - ALL
@@ -19,21 +31,44 @@ services:
       - SETUID
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /etc/nginx/conf.d:size=1m,mode=0755
+      - /var/cache/nginx:size=16m,mode=0755
+      - /var/run:size=1m,mode=0755
+      - /tmp:size=8m,mode=1777
+    mem_limit: 128m
+    cpus: 0.50
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
   backend:
+    restart: unless-stopped
     build:
       context: .
     environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-production}
+      PUBLIC_DEPLOYMENT: "true"
+      CORS_CUSTOMER_ALLOWED_ORIGINS: ${CORS_CUSTOMER_ALLOWED_ORIGINS:?CORS_CUSTOMER_ALLOWED_ORIGINS must be set}
+      CORS_STAFF_ALLOWED_ORIGINS: ${CORS_STAFF_ALLOWED_ORIGINS:?CORS_STAFF_ALLOWED_ORIGINS must be set}
+      DEMO_STAFF_USERNAME: ${DEMO_STAFF_USERNAME:?DEMO_STAFF_USERNAME must be set}
+      DEMO_STAFF_PASSWORD: ${DEMO_STAFF_PASSWORD:?DEMO_STAFF_PASSWORD must be set}
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-alzs_well}
-      DB_USERNAME: ${POSTGRES_USER:-alzswell}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      DB_USERNAME: alzswell_app
+      DB_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set in .env}
+      SPRING_FLYWAY_USER: alzswell_migrator
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
       NETWORK_MODE: AIR_GAPPED_DEMO
       EXTERNAL_EGRESS_ENABLED: "false"
       REMOTE_MODEL_ENABLED: "false"
       DEMO_MAX_ACTIVE_SESSIONS: ${DEMO_MAX_ACTIVE_SESSIONS:-1000}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-bootstrap:
+        condition: service_completed_successfully
     networks:
       - alzs-well-app
       - alzs-well-data
@@ -41,9 +76,50 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  db-bootstrap:
+    image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
+    restart: "no"
+    user: postgres
+    entrypoint: ["/bin/bash", "/bootstrap/create-database-roles.sh"]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-alzs_well}
+      PGUSER: ${POSTGRES_USER:-alzswell}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set in .env}
+      POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+    volumes:
+      - ./docker/create-database-roles.sh:/bootstrap/create-database-roles.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m,mode=1777
+    mem_limit: 64m
+    cpus: 0.25
 
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-alzs_well}
       POSTGRES_USER: ${POSTGRES_USER:-alzswell}
@@ -58,8 +134,18 @@ services:
       start_period: 5s
     networks:
       - alzs-well-data
+    mem_limit: 512m
+    cpus: 1.00
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
 networks:
+  alzs-well-ingress:
+    driver: bridge
   alzs-well-app:
     internal: true
     driver: bridge

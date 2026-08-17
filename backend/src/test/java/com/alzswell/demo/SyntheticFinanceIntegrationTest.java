@@ -32,7 +32,7 @@ class SyntheticFinanceIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;

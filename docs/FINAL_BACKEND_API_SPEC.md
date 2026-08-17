@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.4.0**
+> 문서 버전: **1.4.1**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-14 (Asia/Seoul)**  
+> 기준일: **2026-08-15 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **246개** |
+| 전체 API operation | **248개** |
 | API 도메인 | **25개** |
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **23개** |
-| P1 제품 핵심 백로그 | **145개** |
+| P1 제품 핵심 백로그 | **147개** |
 | P2 은행·증권 확장 백로그 | **78개** |
 | ALZ's well 소유 `OWNED` | **156개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 246개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 248개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 28개 |
+| `IMPLEMENTED` | 업무 API 32개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 218개 |
+| 카탈로그·백로그 | 216개 |
 
-`IMPLEMENTED` 28개는 P0 23개와 P1 사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모·후속일정 5개다.
+업무 `IMPLEMENTED` 32개는 P0 23개와 P1 데모 세션 조기 폐기·사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모 등록·메모 조회·후속일정 등록·후속일정 조회·후속일정 갱신 9개다. 여기에 공개 고객 경계와 직원 경계를 분리하기 위한 staging 전용 직원 capability 발급 API 1개가 별도로 구현돼 OpenAPI operation은 총 33개다.
 
-여기서 API 246개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 248개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -128,7 +128,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 25개 도메인·246개 API 마스터 카탈로그
+3. 25개 도메인·248개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 12개 상세 계약
 6. P0-B 11개 상세 계약
@@ -841,16 +841,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **246** |
+| 전체 | **248** |
 | P0-A 기존 핵심 데모 | **12** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **145** |
+| P1 제품 핵심 | **147** |
 | P2 은행·증권 확장 | **78** |
 | OWNED | **156** |
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 구현은 P0 23개와 P1 사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모·후속일정 5개로 총 28개다. 나머지 218개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개와 P1 데모 세션 조기 폐기·사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모·후속일정 9개로 총 32개다. 별도 staging 보안 발급 API 1개를 포함한 OpenAPI operation은 33개다. 나머지 216개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -942,6 +942,8 @@ KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 �
 | P1 | PUT | /api/v1/customers/{customerId}/accessibility-settings | 글자·대비·읽기 흐름 설정 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/data-summary | 서비스가 보유한 데이터 범위 확인 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/data-export-requests | 고객 데이터 사본 요청 | OWNED |
+
+이 묶음은 인증 주체·고객 소유권 검증·PostgreSQL 영속화가 함께 배포되는 P1 기능이다. 현재 공개 합성데모에서는 `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이므로 이 경로를 노출하지 않는다. 설정만 `true`로 바꾸는 것은 금지하며, 인증·인가와 영속화 migration·계약 테스트를 같은 변경으로 추가한 뒤에만 활성화한다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -1151,7 +1153,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P0-A | POST | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context | 기존 데모 맥락 응답·재평가 | OWNED |
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit | 기존 데모 판단·동의 감사이력 | OWNED |
 
-#### 3.3.17 행원 사건·코파일럿·후속관리 — 16개
+#### 3.3.17 행원 사건·코파일럿·후속관리 — 18개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
@@ -1160,11 +1162,13 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | PUT | /api/v1/staff/cases/{caseId}/assignment | 담당자·팀 배정 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/timeline | 사건·신호·맥락·감사 타임라인 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/evidence | 합성 근거 거래·신호·공식 출처 묶음 | OWNED |
+| P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes | 행원 내부 메모 목록 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/reviews | 검토 상태전이 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes | 행원 내부 메모 등록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-drafts | 결정론적 질문·상담기록 초안 생성 | OWNED |
+| P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/follow-ups | 내부 재확인 일정 목록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/follow-ups | 재확인 일정만 등록 | OWNED |
-| P1 | PATCH | /api/v1/staff/follow-ups/{followUpId} | 후속 일정·결과 갱신 | OWNED |
+| P1 | PATCH | /api/v1/demo/sessions/{sessionId}/staff/follow-ups/{followUpId} | 후속 일정·결과 갱신 | OWNED |
 | P1 | POST | /api/v1/staff/cases/{caseId}/guidance-plans | 안내계획 승인, 실제 조치 아님 | OWNED |
 | P2 | POST | /api/v1/staff/cases/{caseId}/overrides | 정책 결과에 대한 사유 있는 직원 재검토 | OWNED |
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/staff/cases | 기존 데모 행원 사건큐 | OWNED |
@@ -1300,10 +1304,10 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 |---|---|---:|
 | Wave 1 | P0-A 핵심 A/B 데모 | 12 |
 | Wave 2 | P0-B 세션 격리 뱅킹 셸 | 23 |
-| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 168 |
-| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 246 |
+| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
+| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 248 |
 
-발표에서는 “246개 API 카탈로그를 설계했고 공모전 구현 목표는 안전한 P0 23개”라고 표현한다. 246개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “248개 API 카탈로그를 설계했고 공모전 구현 목표는 안전한 P0 23개”라고 표현한다. 248개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -1323,27 +1327,30 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | `Content-Type: application/json` | JSON 본문 사용 시 | 문자 인코딩은 UTF-8 |
 | `X-Trace-Id` | 선택 | 8~64자의 영문·숫자·`.`·`_`·`-`; 없거나 형식이 틀리면 서버가 생성 |
 | `Idempotency-Key` | 세션 생성을 제외한 변경 API에서 필수 | 8~64자의 고유 키; 동일 소유범위·경로·`requestHash` 재요청만 최초 결과를 재사용 |
-| `X-Demo-Capability` | 모든 세션 범위 API에서 필수 | 세션 생성 시 역할별로 발급한 256-bit 이상의 불투명 소유권 토큰; URL·본문·로그에 기록 금지 |
+| `X-Demo-Capability` | 모든 세션 범위 API에서 필수 | 고객 세션 생성 또는 인증된 직원 발급 경로에서 받은 256-bit 이상의 불투명 소유권 토큰; URL·본문·로그에 기록 금지 |
 | `X-Demo-Run-Id` | 시나리오 적재 후 run 파생 API에서 필수 | Reset 전후 실행을 구분하는 서버 발급 ID; 오래된 탭의 상태 혼합 방지 |
 | `Authorization: Bearer {token}` | PoC/운영 행원 API | 공개 합성데모에서는 생략; 운영에서는 RBAC 적용 |
+| `Authorization: Basic {credentials}` | staging 직원 capability 발급 API | 신뢰된 운영자 전용 임시 경계; 브라우저 번들에 자격증명을 넣지 않으며 실제 운영 전 기업 IdP·MFA로 교체 |
 
 모든 응답은 `X-Trace-Id` 헤더를 반환하며 본문의 `traceId`와 같아야 한다.
 
-현재 구현의 CORS 허용 헤더에는 `Authorization`, `Content-Type`, `X-Trace-Id`, `Idempotency-Key`가 포함돼 있다. `X-Demo-Capability`, `X-Demo-Run-Id`는 본 1.4 계약 구현 시 allow-header에 추가하고, 응답의 `X-Trace-Id`, `X-Demo-Customer-Capability`, `X-Demo-Staff-Capability`, `X-Demo-Run-Id`는 expose-header에 추가한다. header 기반 무쿠키 데모의 최종값은 `allowCredentials=false`이며 wildcard origin을 금지한다. 현재 코드의 `allowCredentials=true`는 1.4 계약 미반영 상태다. CORS는 브라우저 정책일 뿐 소유권 검증을 대신하지 않는다.
+현재 구현의 CORS 허용 헤더에는 `Authorization`, `Content-Type`, `X-Trace-Id`, `Idempotency-Key`, `X-Demo-Capability`, `X-Demo-Run-Id`가 포함돼 있다. 공개 세션 생성 경로는 고객 origin에만 `X-Demo-Customer-Capability`를 노출하고, 직원 발급 경로는 직원 origin에만 `X-Demo-Staff-Capability`를 노출한다. 세션 하위 `/staff/**`·`/cases/**`는 직원 origin, 나머지 세션·시나리오 경로는 고객 origin만 허용하며 응답에는 trace·run 헤더만 노출한다. header 기반 무쿠키 데모는 `allowCredentials=false`로 고정한다. 개발 프로필은 고객·직원 localhost origin을 분리하고, 운영 프로필은 환경변수로 주입한 서로 겹치지 않는 HTTPS origin만 허용한다. 빈 목록·wildcard·경로·query 또는 두 목록의 중복 origin은 기동 시 거절한다. CORS가 권한을 대신하지 않으며 각 화면은 서로 다른 capability와 서버 권한을 사용한다.
 
-현재 Spring Security의 URL 규칙은 `/api/v1/demo/**`를 합성데모 진입점으로 허용하지만, 모든 세션 하위 경로는 별도 filter가 세션별 hash와 `CUSTOMER_DEMO`·`DEMO_STAFF` 역할을 검증한다. 공개 데모에는 JWT가 없으며, PoC/운영 전환 시 기업 인증과 `STAFF`, `CONSUMER_PROTECTION` 권한을 추가한다.
+현재 Spring Security의 URL 규칙은 `/api/v1/demo/**`를 합성데모 진입점으로 허용하지만, 모든 세션 하위 경로는 별도 filter가 세션별 hash와 `CUSTOMER_DEMO`·`DEMO_STAFF` 역할을 검증하고 인증 주체를 SecurityContext에 설치한다. 컨트롤러 메서드가 같은 역할을 다시 검사하며, `%` 인코딩·세미콜론·역슬래시·중복 slash·제어문자가 포함된 모호한 세션 URI는 역할 분류 전에 거절한다. 공개 데모에는 JWT가 없으며, PoC/운영 전환 시 기업 인증과 `STAFF`, `CONSUMER_PROTECTION` 권한을 추가한다.
 
 #### 4.2.1 익명 세션 capability 소유권
 
-`sessionId`는 조회 식별자일 뿐 인증정보가 아니다. 세션 생성 시 서버는 `CUSTOMER_DEMO`와 `DEMO_STAFF` capability 원문을 서로 독립적으로 생성해 응답 헤더로 한 번만 반환하고 서버에는 역할과 함께 단방향 hash만 저장한다. 이후 모든 `/api/v1/demo/sessions/{sessionId}/**` 요청은 `X-Demo-Capability`의 hash와 역할을 상수시간 비교로 검증한다. 누락·불일치·다른 세션 토큰이면 자원 존재 여부를 감추기 위해 모두 `404 DEMO_SESSION_NOT_FOUND`를 반환한다. capability는 query string, 응답 본문, 감사 payload, access log, `Referer`에 포함하지 않는다.
+`sessionId`는 조회 식별자일 뿐 인증정보가 아니다. 공개 세션 생성은 `CUSTOMER_DEMO` capability만 응답 헤더로 한 번 반환한다. `DEMO_STAFF` capability는 직원 origin에서 별도 인증된 staging 발급 API를 호출할 때 생성·회전되며 한 번만 반환된다. 서버에는 역할과 함께 단방향 hash만 저장한다. 이후 모든 `/api/v1/demo/sessions/{sessionId}/**` 요청은 `X-Demo-Capability`의 hash와 역할을 상수시간 비교로 검증한다. 누락·불일치·다른 세션 토큰이면 자원 존재 여부를 감추기 위해 모두 `404 DEMO_SESSION_NOT_FOUND`를 반환한다. capability는 query string, 응답 본문, 감사 payload, access log, `Referer`에 포함하지 않는다.
 
 `CUSTOMER_DEMO` capability는 세션 조회·적재·Reset, 금융생활 읽기, 알림 조회와 맥락 제출에만 사용할 수 있다. `DEMO_STAFF` capability는 행원 사건큐·상세·검토·안내계획과 필요한 감사조회에만 사용할 수 있다. 역할 범위를 벗어난 유효 토큰은 `403 DEMO_CAPABILITY_SCOPE_FORBIDDEN`을 반환한다. 두 토큰을 하나로 합치거나 고객 화면에 staff 토큰을 전달하지 않는다.
+
+현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 HTTP Basic으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, 자격증명은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
 
 시나리오가 적재되면 서버는 `demoRunId`를 발급한다. alert·context·audit·case와 시나리오 파생 금융생활 조회는 `{sessionId, demoRunId}` 복합범위에 귀속된다. Reset 뒤 이전 run ID로 변경 요청을 보내면 `409 DEMO_RUN_STALE`을 반환하고 이전 run의 감사이력은 읽기 전용으로만 보존한다.
 
 #### 4.2.2 `requestHash` 기반 멱등성
 
-`POST /api/v1/demo/sessions`는 멱등 API가 아니다. 이 API에서 클라이언트 제공 `Idempotency-Key`를 받거나 전역 namespace로 재사용하지 않으며, 초기 제한값은 세션 생성 IP당 분당 10회, 조회 capability당 분당 120회, 상태변경 capability당 분당 30회, 요청 본문 32KiB다. 동시 활성 세션 quota도 적용하며 초과 시 `429 DEMO_SESSION_RATE_LIMITED`와 `Retry-After`를 반환한다.
+`POST /api/v1/demo/sessions`는 멱등 API가 아니다. 이 API에서 클라이언트 제공 `Idempotency-Key`를 받거나 전역 namespace로 재사용하지 않는다. Gateway 초기 제한값은 세션 생성 IP당 분당 10회, 전체 조회 IP·capability 각각 분당 120회, 상태변경 IP·capability 각각 분당 30회, 요청 본문 32KiB다. 신뢰 프록시는 환경별 CIDR allowlist로 한정하며 초과 시 `429`와 `Retry-After`를 반환한다. 애플리케이션의 동시 활성 세션 quota 초과는 `429 DEMO_SESSION_RATE_LIMITED`를 반환한다.
 
 그 밖의 변경 API에서 서버는 `HTTP method + 정규화 path + 정규화 query + content-type + canonical JSON body`의 SHA-256을 `requestHash`로 계산한다. 멱등 저장키는 `{sessionId, capabilityHash, capabilityRole, demoRunId, method, path, idempotencyKey}`다. Reset처럼 요청 시점의 run을 닫는 명령도 저장키에는 요청 헤더의 이전 `demoRunId`를 사용한다.
 
@@ -1496,8 +1503,7 @@ POST /api/v1/demo/sessions
 
 ```http
 X-Demo-Customer-Capability: {opaque-customer-capability-returned-once}
-X-Demo-Staff-Capability: {opaque-demo-staff-capability-returned-once}
-Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability, X-Demo-Staff-Capability
+Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability
 ```
 
 ```json
@@ -1520,9 +1526,61 @@ Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability, X-Demo-St
 }
 ```
 
-두 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. 프론트는 고객 capability와 staff capability를 역할별 브라우저 메모리에만 분리 보관하고 URL, `localStorage`, `sessionStorage`, 쿠키에는 저장하지 않는다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
+고객 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. 고객 프론트는 브라우저 메모리에만 보관하고 URL, `localStorage`, `sessionStorage`, 쿠키에는 저장하지 않는다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
 
-#### 5.2.2 데모 Reset
+#### 5.2.1-A 직원 capability 발급
+
+`IMPLEMENTED-STAGING-SECURITY`
+
+```http
+POST /api/v1/demo/staff/sessions/{sessionId}/capability
+Authorization: Basic {staging-operator-credentials}
+```
+
+직원 origin과 인증된 staging 운영자에게만 허용한다. 발급할 때마다 기존 staff capability는 즉시 회전되어 이전 원문은 더 이상 사용할 수 없다. 자격증명을 직원 SPA 번들에 포함하면 안 되며 실제 운영 전에는 기업 IdP·MFA·RBAC로 교체한다.
+
+##### 성공 응답 `200 OK`
+
+```http
+X-Demo-Staff-Capability: {opaque-demo-staff-capability-returned-once}
+Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Staff-Capability
+```
+
+응답 본문에는 `sessionId`와 `expiresAt`만 포함하고 capability 원문은 넣지 않는다. 서버는 hash만 저장하고 `DEMO_STAFF_CAPABILITY_ISSUED` 감사 이벤트를 남긴다.
+
+#### 5.2.2 데모 세션 조기 폐기
+
+`IMPLEMENTED-P1`
+
+```http
+DELETE /api/v1/demo/sessions/{sessionId}
+X-Demo-Capability: {opaque-customer-capability}
+```
+
+소유한 익명 세션을 즉시 폐기한다. session·run·합성 snapshot·capability hash·명령 기록은 삭제하고, 불변 `decision_audit` 체인은 세션 ID 기준으로 보존한다. 실제 금융회사·가족·외부 서비스에는 아무 요청도 만들지 않는다.
+
+##### 성공 응답 `200 OK`
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "code": "DEMO_SESSION_DISCARDED",
+  "message": "익명 데모 세션과 합성 실행 데이터를 폐기했습니다.",
+  "data": {
+    "sessionId": "4e85d88f-16d3-4aa7-a0a7-d309d7d223d3",
+    "demoRunId": "RUN_FIN_MGMT_A_001",
+    "syntheticDataDeleted": true,
+    "externalActionCreated": false
+  }
+}
+```
+
+폐기 완료 후 같은 capability와 sessionId로 하는 모든 session API는 `DEMO_SESSION_NOT_FOUND`를 반환한다.
+
+TTL이 지난 세션은 다중 인스턴스 중복 처리를 피하는 PostgreSQL transaction advisory lock을 획득한 뒤 제한된 batch로 자동 정리한다. 정리 직전에 `DEMO_SESSION_EXPIRED_PURGED` 감사 이벤트를 추가하고 session·run·합성 snapshot·명령 기록을 삭제하되, 세션 FK에 cascade되지 않는 `decision_audit` hash chain은 보존한다.
+
+#### 5.2.3 데모 Reset
 
 `IMPLEMENTED`
 
@@ -1566,7 +1624,7 @@ X-Demo-Run-Id: RUN_FIN_MGMT_A_001
 
 시나리오 적재 전에 Reset하면 `previousDemoRunId`, `demoRunId`, `scenarioId`, `snapshotHash`, `alertId`는 `null`이며 세션 메타데이터만 초기화한다. Reset 뒤 모든 run 파생 요청은 새 `X-Demo-Run-Id`를 사용한다.
 
-#### 5.2.3 합성 시나리오 적재
+#### 5.2.4 합성 시나리오 적재
 
 `IMPLEMENTED`
 
@@ -2215,7 +2273,31 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 
 `protectionCandidates`는 공식 조건과 상담 경로만 제공한다. `executionType`은 P0에서 항상 `GUIDANCE_ONLY`다.
 
-#### 5.4.2.1 사건 타임라인
+#### 5.4.2.0 행원 내부 메모 조회
+
+`IMPLEMENTED-P1`
+
+```http
+GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: {current-demo-run-id}
+```
+
+내부 메모 목록을 읽기 전용으로 조회한다. `customerVisible=false`, `externalDeliveryCreated=false`가 고정이다.
+
+#### 5.4.2.1 후속일정 조회
+
+`IMPLEMENTED-P1`
+
+```http
+GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}/follow-ups
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: {current-demo-run-id}
+```
+
+행원 내부의 후속일정 목록을 조회한다. 각 항목은 `status`, `reason`, `scheduledAt`, `completedAt`, `resultNote`, `externalDeliveryCreated=false`를 포함한다.
+
+#### 5.4.2.2 사건 타임라인
 
 `IMPLEMENTED-P1`
 
@@ -2227,7 +2309,7 @@ X-Demo-Run-Id: {current-demo-run-id}
 
 T0 알림과 T1 맥락확인 단계를 시간 근거와 함께 반환하고, 같은 사건의 hash-chain 감사 이벤트를 `auditTrail`로 제공한다. 행원 capability만 접근할 수 있고 응답은 상태를 변경하거나 외부 실행을 만들지 않는다.
 
-#### 5.4.2.2 사건 근거 묶음
+#### 5.4.2.3 사건 근거 묶음
 
 `IMPLEMENTED-P1`
 
@@ -2239,7 +2321,7 @@ X-Demo-Run-Id: {current-demo-run-id}
 
 현재 run에 고정된 합성 신호, 근거 거래, 생활맥락 근거 ID와 공식 보호수단 출처를 반환한다. 응답은 `syntheticData=true`, `externalFetchPerformed=false`를 명시하며 고객 capability로는 접근할 수 없다. 코파일럿과 행원은 이 묶음의 `reasonCode`, `evidenceIds`, `snapshotHash`, 공식 출처만 근거로 사용한다.
 
-#### 5.4.2.3 결정론적 코파일럿 초안
+#### 5.4.2.4 결정론적 코파일럿 초안
 
 `IMPLEMENTED-P1`
 
@@ -2254,7 +2336,7 @@ Content-Type: application/json
 
 응답은 `summary`, `suggestedQuestions`, `checklist`, `basisReasonCodes`와 안전 메타데이터를 반환한다. 현재 구현은 `CopilotPort` 뒤의 `DETERMINISTIC_TEMPLATE`이며 `modelInvoked=false`, `externalEgressAttempted=false`, `humanReviewRequired=true`를 강제한다. 직접식별자를 포트 입력으로 전달하지 않고 실제 연락·거래조치·상태전이를 만들지 않는다.
 
-#### 5.4.2.4 행원 내부 메모 등록
+#### 5.4.2.5 행원 내부 메모 등록
 
 `IMPLEMENTED-P1`
 
@@ -2270,7 +2352,7 @@ Content-Type: application/json
 
 메모는 행원 전용이며 고객에게 노출하거나 외부로 전달하지 않는다. 서버는 민감정보·질병 추정 표현을 거부하고, `caseVersion` 낙관적 잠금과 멱등키를 적용한다. Flyway V8의 `case_note`는 append-only로 저장되어 UPDATE·DELETE가 거부된다.
 
-#### 5.4.2.5 후속관리 일정 등록
+#### 5.4.2.6 후속관리 일정 등록
 
 `IMPLEMENTED-P1`
 
@@ -2284,7 +2366,31 @@ Content-Type: application/json
 {"caseVersion":2,"scheduledAt":"2026-08-20T10:00:00+09:00","reason":"처리 상태를 다시 확인합니다."}
 ```
 
-현재 이후 365일 이내의 내부 재확인 일정만 등록한다. 사건은 `FOLLOW_UP_REQUIRED`로 전이하지만 전화·문자·푸시를 발송하지 않으며 `deliveryAttempted=false`, `externalDeliveryCreated=false`를 강제한다. Flyway V9의 `follow_up_task`에도 외부 전달 금지 제약을 둔다.
+현재 이후 365일 이내의 내부 재확인 일정만 등록한다. 사건은 `FOLLOW_UP_REQUIRED`로 전이하지만 전화·문자·푸시를 발송하지 않으며 `deliveryAttempted=false`, `externalDeliveryCreated=false`를 강제한다. Flyway V12는 같은 세션·run·사건에 `SCHEDULED` 일정이 하나만 존재하도록 부분 unique index를 적용하고, 상태·완료시각·결과메모 조합을 check constraint로 고정한다.
+
+#### 5.4.2.7 후속관리 일정 상태 변경
+
+`IMPLEMENTED-P1`
+
+```http
+PATCH /api/v1/demo/sessions/{sessionId}/staff/follow-ups/{followUpId}
+X-Demo-Capability: {opaque-demo-staff-capability}
+X-Demo-Run-Id: {current-demo-run-id}
+Idempotency-Key: follow-up-update-0001
+Content-Type: application/json
+```
+
+요청
+
+```json
+{
+  "expectedCaseVersion":3,
+  "status": "COMPLETED",
+  "resultNote": "내부 재확인을 마쳤고 상태가 정리되었습니다."
+}
+```
+
+`status`는 `COMPLETED` 또는 `CANCELLED`만 허용하고 `resultNote`는 필수다. `SCHEDULED` 상태인 일정만 한 번 종결할 수 있으며 이미 완료·취소된 일정의 재변경은 거절한다. `completedAt`은 클라이언트에서 받지 않고 서버 시각으로 저장하며, 결과는 외부 전달을 생성하지 않는다. PATCH 멱등 scope도 staff capability hash·`DEMO_STAFF` 역할·HTTP method를 포함한다.
 
 #### 5.4.3 행원 검토 상태전이
 
@@ -2317,6 +2423,8 @@ Content-Type: application/json
 | `CLOSE_FALSE_POSITIVE` | `IN_BANK_REVIEW`, `FOLLOW_UP_REQUIRED` | `CLOSED_FALSE_POSITIVE` |
 
 `note`에는 실제 고객 식별정보·계좌번호·질병 추정 표현을 입력하지 않는다. `followUpAt`은 `REQUIRE_FOLLOW_UP`일 때 필수다. `caseVersion`은 낙관적 잠금에 사용하며, actor는 요청에서 받지 않고 인증 주체에서 정한다. 공개 데모 actor는 서버가 `DEMO_STAFF`로 고정한다.
+
+`REQUIRE_FOLLOW_UP`은 사건 상태전이와 같은 transaction에서 `SCHEDULED` 일정을 생성한다. `RESUME_REVIEW`는 해당 일정을 `COMPLETED`로 종결한 뒤 검토를 재개하며, 후속상태에서 `CLOSE_FALSE_POSITIVE`를 선택하면 남은 일정을 `CANCELLED`로 종결한다. 상태전이와 일정 상태가 갈라지면 전체 transaction을 rollback한다.
 
 ##### 성공 응답 `200 OK`
 
@@ -2428,7 +2536,7 @@ P0-B는 은행 앱 전체를 만드는 단계가 아니다. 공개 합성데모�
 | GET | `/api/v1/demo/sessions/{sessionId}/protection-actions` | `PROTECTION_ACTION_LIST_RETRIEVED` | `ProtectionActionListResponse` |
 | GET | `/api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent-summary` | `DEMO_CONNECTION_LIST_RETRIEVED` | `ConnectionConsentSummaryResponse` |
 
-P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V9 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 일회성 응답 헤더 노출 목록이 반영돼 있다.
+P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V13까지의 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 경로별 일회성 응답 헤더 노출 목록이 반영돼 있다.
 
 ---
 

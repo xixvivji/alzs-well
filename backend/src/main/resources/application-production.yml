@@ -1,0 +1,22 @@
+app:
+  cors:
+    customer-allowed-origins: ${CORS_CUSTOMER_ALLOWED_ORIGINS}
+    staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS}
+    require-https: true
+  deployment:
+    public-exposure: ${PUBLIC_DEPLOYMENT:true}
+  demo:
+    staff-bootstrap-username: ${DEMO_STAFF_USERNAME}
+    staff-bootstrap-password: ${DEMO_STAFF_PASSWORD}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}

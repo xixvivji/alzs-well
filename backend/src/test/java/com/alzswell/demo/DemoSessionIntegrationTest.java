@@ -1,14 +1,22 @@
 package com.alzswell.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.alzswell.common.security.DemoCapabilityService;
+import com.alzswell.demo.application.DemoSessionCleanupService;
+import com.alzswell.demo.application.DemoSessionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,11 +38,12 @@ class DemoSessionIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired DemoSessionCleanupService cleanupService;
 
     private DemoTestClient client;
 
@@ -92,7 +101,7 @@ class DemoSessionIntegrationTest {
                 Integer.class,
                 first.sessionId()
         );
-        assertThat(auditCount).isEqualTo(3);
+        assertThat(auditCount).isEqualTo(4);
     }
 
     @Test
@@ -167,6 +176,84 @@ class DemoSessionIntegrationTest {
     }
 
     @Test
+    void rejectsEncodedOrAmbiguousPathsBeforeRoleClassification() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "encoded-path-ingest-0001");
+        mockMvc.perform(client.customer(post(
+                        "/api/v1/demo/sessions/{sessionId}/alerts/ALERT_FIN_MGMT_001/context",
+                        session.sessionId())
+                .header("Idempotency-Key", "encoded-path-context-0001")
+                .contentType(APPLICATION_JSON)
+                .content("""
+                        {"responseCode":"UNABLE_TO_CONFIRM","demoBranchCode":"FIN_MGMT_B_NO_CONTEXT"}
+                        """), session))
+                .andExpect(status().isOk());
+
+        String encodedCasesPath = "/api/v1/demo/sessions/" + session.sessionId()
+                + "/%63ases/CASE_FIN_MGMT_001";
+        mockMvc.perform(client.customer(get(URI.create(encodedCasesPath)), session))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DEMO_SESSION_NOT_FOUND"));
+
+        String encodedSessionsPath = "/api/v1/demo/%73essions/" + session.sessionId();
+        mockMvc.perform(get(URI.create(encodedSessionsPath))
+                        .header(DemoCapabilityService.REQUEST_HEADER, session.customerCapability()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DEMO_SESSION_NOT_FOUND"));
+    }
+
+    @Test
+    void corsAllowsOnlyConfiguredDevelopmentOrigins() throws Exception {
+        DemoTestClient.Session session = client.create();
+
+        mockMvc.perform(get("/api/v1/demo/sessions/{sessionId}", session.sessionId())
+                        .header("Origin", "https://untrusted.example")
+                        .header(DemoCapabilityService.REQUEST_HEADER, session.customerCapability()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/demo/sessions/{sessionId}", session.sessionId())
+                        .header("Origin", "http://localhost:5173")
+                        .header(DemoCapabilityService.REQUEST_HEADER, session.customerCapability()))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertThat(result.getResponse().getHeader("Access-Control-Allow-Origin"))
+                        .isEqualTo("http://localhost:5173"));
+
+        mockMvc.perform(get("/api/v1/demo/sessions/{sessionId}", session.sessionId())
+                        .header("Origin", "http://localhost:4173")
+                        .header(DemoCapabilityService.REQUEST_HEADER, session.customerCapability()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(options("/api/v1/demo/staff/sessions/{sessionId}/capability", session.sessionId())
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(options("/api/v1/demo/staff/sessions/{sessionId}/capability", session.sessionId())
+                        .header("Origin", "http://localhost:4173")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4173"));
+
+        mockMvc.perform(post("/api/v1/demo/sessions")
+                        .header("Origin", "http://localhost:4173"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(options("/api/v1/demo/sessions/{sessionId}/cases/{caseId}",
+                        session.sessionId(), DemoSessionService.CASE_ID)
+                        .header("Origin", "http://localhost:4173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4173"));
+
+        mockMvc.perform(options("/api/v1/demo/sessions/{sessionId}/cases/{caseId}",
+                        session.sessionId(), DemoSessionService.CASE_ID)
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void listsOnlyTheFixedSyntheticScenarioAndNeverReturnsCapabilitiesInJson() throws Exception {
         MvcResult create = mockMvc.perform(post("/api/v1/demo/sessions"))
                 .andExpect(status().isCreated())
@@ -174,12 +261,82 @@ class DemoSessionIntegrationTest {
                 .andExpect(jsonPath("$.data.demoRunId").isEmpty())
                 .andReturn();
         assertThat(create.getResponse().getHeader(DemoCapabilityService.CUSTOMER_RESPONSE_HEADER)).isNotBlank();
-        assertThat(create.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER)).isNotBlank();
+        assertThat(create.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER)).isNull();
+
+        UUID sessionId = UUID.fromString(objectMapper.readTree(create.getResponse().getContentAsByteArray())
+                .at("/data/sessionId").asText());
+        mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
+                        .with(httpBasic(DemoTestClient.STAFF_USERNAME, "wrong-password")))
+                .andExpect(status().isUnauthorized());
+        MvcResult staffIssuance = mockMvc.perform(post(
+                        "/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
+                        .with(httpBasic(DemoTestClient.STAFF_USERNAME, DemoTestClient.STAFF_PASSWORD)))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(staffIssuance.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER)).isNotBlank();
 
         mockMvc.perform(get("/api/v1/demo/scenarios"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].scenarioId").value("FIN_MGMT_AB_001"))
                 .andExpect(jsonPath("$.data.items[0].syntheticData").value(true));
+    }
+
+    @Test
+    void discardsOwnedDemoSessionWhilePreservingTheImmutableAuditChain() throws Exception {
+        DemoTestClient.Session session = client.create();
+
+        mockMvc.perform(client.customer(delete("/api/v1/demo/sessions/{sessionId}", session.sessionId()), session, false))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("DEMO_SESSION_DISCARDED"))
+                .andExpect(jsonPath("$.data.sessionId").value(session.sessionId().toString()))
+                .andExpect(jsonPath("$.data.syntheticDataDeleted").value(true))
+                .andExpect(jsonPath("$.data.externalActionCreated").value(false));
+
+        Integer remainingSessions = jdbcTemplate.queryForObject(
+                "select count(*) from demo_session where session_id = ?", Integer.class, session.sessionId()
+        );
+        Integer auditCount = jdbcTemplate.queryForObject(
+                "select count(*) from decision_audit where demo_session_id = ?", Integer.class, session.sessionId()
+        );
+        assertThat(remainingSessions).isZero();
+        assertThat(auditCount).isEqualTo(3);
+
+        mockMvc.perform(get("/api/v1/demo/sessions/{sessionId}", session.sessionId())
+                        .header(DemoCapabilityService.REQUEST_HEADER, session.customerCapability()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DEMO_SESSION_NOT_FOUND"));
+    }
+
+    @Test
+    void purgesExpiredSyntheticSessionsWhilePreservingTheImmutableAuditChain() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "cleanup-ingest-0001");
+        jdbcTemplate.update(
+                """
+                update demo_session
+                   set created_at = now() - interval '2 hours',
+                       expires_at = now() - interval '1 minute'
+                 where session_id = ?
+                """,
+                session.sessionId()
+        );
+
+        assertThat(cleanupService.cleanupExpiredSessions()).isGreaterThanOrEqualTo(1);
+
+        Integer remainingSessions = jdbcTemplate.queryForObject(
+                "select count(*) from demo_session where session_id = ?", Integer.class, session.sessionId()
+        );
+        Integer purgeAuditCount = jdbcTemplate.queryForObject(
+                """
+                select count(*) from decision_audit
+                 where demo_session_id = ? and event_type = 'DEMO_SESSION_EXPIRED_PURGED'
+                """,
+                Integer.class,
+                session.sessionId()
+        );
+        assertThat(remainingSessions).isZero();
+        assertThat(purgeAuditCount).isEqualTo(1);
     }
 }

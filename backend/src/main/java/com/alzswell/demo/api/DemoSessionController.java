@@ -7,6 +7,8 @@ import com.alzswell.demo.application.DemoSessionService;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,29 +33,56 @@ public class DemoSessionController {
 
     @PostMapping("/sessions")
     public ResponseEntity<ApiResponse<DemoSessionCreatedResponse>> createSession() {
-        DemoCapabilityService.IssuedCapabilities capabilities = capabilityService.issue();
-        DemoSessionCreatedResponse created = demoSessionService.createSession(
-                capabilities.customerCapabilityHash(),
-                capabilities.staffCapabilityHash()
-        );
+        DemoCapabilityService.IssuedCapability capability = capabilityService.issue();
+        DemoSessionCreatedResponse created = demoSessionService.createSession(capability.capabilityHash());
         ResponseEntity<ApiResponse<DemoSessionCreatedResponse>> response = ApiResponses.created(
                 "DEMO_SESSION_CREATED",
                 "익명 데모 세션을 생성했습니다.",
                 created
         );
         return ResponseEntity.status(response.getStatusCode())
-                .header(DemoCapabilityService.CUSTOMER_RESPONSE_HEADER, capabilities.customerCapability())
-                .header(DemoCapabilityService.STAFF_RESPONSE_HEADER, capabilities.staffCapability())
+                .header(DemoCapabilityService.CUSTOMER_RESPONSE_HEADER, capability.capability())
+                .cacheControl(CacheControl.noStore())
+                .body(response.getBody());
+    }
+
+    @PostMapping("/staff/sessions/{sessionId}/capability")
+    @PreAuthorize("hasAuthority('DEMO_STAFF_BOOTSTRAP')")
+    public ResponseEntity<ApiResponse<DemoStaffCapabilityIssuedResponse>> issueStaffCapability(
+            @PathVariable UUID sessionId
+    ) {
+        DemoCapabilityService.IssuedCapability capability = capabilityService.issue();
+        var session = demoSessionService.issueStaffCapability(sessionId, capability.capabilityHash());
+        ResponseEntity<ApiResponse<DemoStaffCapabilityIssuedResponse>> response = ApiResponses.ok(
+                "DEMO_STAFF_CAPABILITY_ISSUED",
+                "직원 화면용 데모 capability를 발급했습니다.",
+                new DemoStaffCapabilityIssuedResponse(sessionId, session.getExpiresAt())
+        );
+        return ResponseEntity.status(response.getStatusCode())
+                .header(DemoCapabilityService.STAFF_RESPONSE_HEADER, capability.capability())
                 .cacheControl(CacheControl.noStore())
                 .body(response.getBody());
     }
 
     @GetMapping("/sessions/{sessionId}")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<DemoSessionResponse>> getSession(@PathVariable UUID sessionId) {
         return ApiResponses.ok(
                 "DEMO_SESSION_RETRIEVED",
                 "데모 세션 상태를 조회했습니다.",
                 demoSessionService.getSession(sessionId)
+        );
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
+    public ResponseEntity<ApiResponse<DemoSessionDiscardedResponse>> discardSession(
+            @PathVariable UUID sessionId
+    ) {
+        return ApiResponses.ok(
+                "DEMO_SESSION_DISCARDED",
+                "익명 데모 세션과 합성 실행 데이터를 폐기했습니다.",
+                demoSessionService.discard(sessionId)
         );
     }
 
@@ -67,6 +96,7 @@ public class DemoSessionController {
     }
 
     @PostMapping("/sessions/{sessionId}/scenarios/{scenarioId}/ingest")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<DemoScenarioIngestedResponse>> ingest(
             @PathVariable UUID sessionId,
             @PathVariable String scenarioId,
@@ -85,6 +115,7 @@ public class DemoSessionController {
     }
 
     @PostMapping("/sessions/{sessionId}/reset")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
     public ResponseEntity<ApiResponse<DemoSessionResetResponse>> reset(
             @PathVariable UUID sessionId,
             @RequestHeader(name = DemoCapabilityService.RUN_HEADER, required = false) UUID demoRunId,
