@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "문서에 표시된 비밀이 아닌 Idempotency-Key 예시"
+regexTarget = "line"
+paths = [
+  '''(^|/)docs/FINAL_BACKEND_API_SPEC\.md$''',
+  '''(^|/)archive/legacy-docs/2026-08-14/API_SPEC\.md$'''
+]
+regexes = ['''Idempotency-Key:\s*[A-Za-z0-9_-]+''']
