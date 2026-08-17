@@ -100,7 +100,7 @@ app:
     customer-profile-api-enabled: ${CUSTOMER_PROFILE_API_ENABLED:false}
   versions:
     api: v1
-    schema: "13"
+    schema: "14"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

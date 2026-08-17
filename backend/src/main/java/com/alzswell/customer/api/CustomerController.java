@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
         havingValue = "true"
 )
 @Validated
-@PreAuthorize("#customerId == authentication.name or hasAnyAuthority('STAFF', 'CONSUMER_PROTECTION')")
+@PreAuthorize("#customerId == authentication.name or hasAuthority('CUSTOMER_PROFILE_READ_ALL')")
 public class CustomerController {
 
     private static final String CUSTOMER_ID_PATTERN = "^[A-Za-z0-9][A-Za-z0-9_:-]{2,79}$";

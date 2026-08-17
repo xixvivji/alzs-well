@@ -17,6 +17,7 @@ public class DemoGuardrailStartupValidator {
     private final boolean remoteModelEnabled;
     private final boolean syntheticProviderOnly;
     private final boolean customerProfileApiEnabled;
+    private final boolean publicExposure;
 
     public DemoGuardrailStartupValidator(
             @Value("${app.guardrails.synthetic-data-only:true}") boolean syntheticDataOnly,
@@ -25,7 +26,8 @@ public class DemoGuardrailStartupValidator {
             @Value("${app.guardrails.external-egress-enabled:false}") boolean externalEgressEnabled,
             @Value("${app.guardrails.remote-model-enabled:false}") boolean remoteModelEnabled,
             @Value("${app.guardrails.synthetic-provider-only:true}") boolean syntheticProviderOnly,
-            @Value("${app.features.customer-profile-api-enabled:false}") boolean customerProfileApiEnabled
+            @Value("${app.features.customer-profile-api-enabled:false}") boolean customerProfileApiEnabled,
+            @Value("${app.deployment.public-exposure:false}") boolean publicExposure
     ) {
         this.syntheticDataOnly = syntheticDataOnly;
         this.externalActionsEnabled = externalActionsEnabled;
@@ -34,6 +36,7 @@ public class DemoGuardrailStartupValidator {
         this.remoteModelEnabled = remoteModelEnabled;
         this.syntheticProviderOnly = syntheticProviderOnly;
         this.customerProfileApiEnabled = customerProfileApiEnabled;
+        this.publicExposure = publicExposure;
     }
 
     @PostConstruct
@@ -44,7 +47,7 @@ public class DemoGuardrailStartupValidator {
                 && !externalEgressEnabled
                 && !remoteModelEnabled
                 && syntheticProviderOnly
-                && !customerProfileApiEnabled;
+                && (!customerProfileApiEnabled || !publicExposure);
         if (!safe) {
             throw new IllegalStateException(
                     "공개 합성데모 안전 가드레일이 해제되어 애플리케이션 기동을 중단합니다."

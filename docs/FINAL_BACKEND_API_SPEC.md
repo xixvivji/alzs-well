@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.4.1**
+> 문서 버전: **1.4.2**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-15 (Asia/Seoul)**
+> 기준일: **2026-08-17 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 32개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 39개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 216개 |
+| 카탈로그·백로그 | 209개 |
 
-업무 `IMPLEMENTED` 32개는 P0 23개와 P1 데모 세션 조기 폐기·사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모 등록·메모 조회·후속일정 등록·후속일정 조회·후속일정 갱신 9개다. 여기에 공개 고객 경계와 직원 경계를 분리하기 위한 staging 전용 직원 capability 발급 API 1개가 별도로 구현돼 OpenAPI operation은 총 33개다.
+업무 `IMPLEMENTED` 39개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개다. 고객 프로필 7개는 PostgreSQL과 낙관적 잠금 및 메서드 소유권 검증까지 구현했지만, 일반 사용자용 IdP/Bearer 인증 어댑터가 붙기 전까지 기본 비활성화한다. 따라서 기본 공개 프로필의 OpenAPI operation은 기존 업무 API 32개와 staging 직원 capability 발급 API 1개를 합한 33개이며, 사설 프로필에서 고객 기능을 명시적으로 활성화하면 40개다.
 
 여기서 API 248개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개와 P1 데모 세션 조기 폐기·사건 타임라인·근거 묶음·결정론적 코파일럿 초안·내부 메모·후속일정 9개로 총 32개다. 별도 staging 보안 발급 API 1개를 포함한 OpenAPI operation은 33개다. 나머지 216개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개로 총 39개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 40개 operation이며, 고객 기능이 꺼진 기본 공개 프로필의 OpenAPI에는 33개가 노출된다. 나머지 209개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -943,7 +943,7 @@ KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 �
 | P1 | GET | /api/v1/customers/{customerId}/data-summary | 서비스가 보유한 데이터 범위 확인 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/data-export-requests | 고객 데이터 사본 요청 | OWNED |
 
-이 묶음은 인증 주체·고객 소유권 검증·PostgreSQL 영속화가 함께 배포되는 P1 기능이다. 현재 공개 합성데모에서는 `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이므로 이 경로를 노출하지 않는다. 설정만 `true`로 바꾸는 것은 금지하며, 인증·인가와 영속화 migration·계약 테스트를 같은 변경으로 추가한 뒤에만 활성화한다.
+P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expectedVersion` 낙관적 잠금, 인증 주체와 customerId 소유권 검증 및 계약 테스트까지 구현했다. 다만 일반 사용자용 IdP/Bearer 인증 어댑터는 아직 구현 전이므로 `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이고 공개 합성데모에는 노출하지 않는다. 사설 환경에서 활성화할 때도 인증 주체를 공급해야 하며, 공개 노출은 인증 어댑터 구현과 보안 검증 후에만 허용한다. P2 데이터 사본 요청은 구현 전이다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -2536,7 +2536,7 @@ P0-B는 은행 앱 전체를 만드는 단계가 아니다. 공개 합성데모�
 | GET | `/api/v1/demo/sessions/{sessionId}/protection-actions` | `PROTECTION_ACTION_LIST_RETRIEVED` | `ProtectionActionListResponse` |
 | GET | `/api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent-summary` | `DEMO_CONNECTION_LIST_RETRIEVED` | `ConnectionConsentSummaryResponse` |
 
-P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V13까지의 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 경로별 일회성 응답 헤더 노출 목록이 반영돼 있다.
+P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V14까지의 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 경로별 일회성 응답 헤더 노출 목록이 반영돼 있다.
 
 ---
 
