@@ -9,6 +9,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -31,6 +32,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    @Bean
+    FilterRegistrationBean<BearerTokenAuthenticationFilter> bearerFilterRegistration(
+            BearerTokenAuthenticationFilter filter
+    ) {
+        FilterRegistrationBean<BearerTokenAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
 
     @Bean
     PasswordEncoder passwordEncoder() {
@@ -87,7 +97,8 @@ public class SecurityConfig {
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler,
-            DemoCapabilityFilter demoCapabilityFilter
+            DemoCapabilityFilter demoCapabilityFilter,
+            BearerTokenAuthenticationFilter bearerTokenAuthenticationFilter
     ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -102,6 +113,10 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/token/refresh"
+                        ).permitAll()
                         .requestMatchers(
                                 "/api/v1/system/**",
                                 "/api/v1/demo/**",
@@ -113,7 +128,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(demoCapabilityFilter, AuthorizationFilter.class);
+                .addFilterBefore(demoCapabilityFilter, AuthorizationFilter.class)
+                .addFilterBefore(bearerTokenAuthenticationFilter, AuthorizationFilter.class);
 
         return http.build();
     }
@@ -172,6 +188,7 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/v1/demo/sessions", customerIssuance);
+        source.registerCorsConfiguration("/api/v1/auth/**", customerApi);
         source.registerCorsConfiguration("/api/v1/demo/staff/sessions/*/capability", staffIssuance);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/staff/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/cases/**", staffApi);

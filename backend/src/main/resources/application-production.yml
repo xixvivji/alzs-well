@@ -1,4 +1,6 @@
 app:
+  features:
+    local-auth-api-enabled: false
   cors:
     customer-allowed-origins: ${CORS_CUSTOMER_ALLOWED_ORIGINS}
     staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS}

@@ -21,7 +21,8 @@ import org.springframework.web.bind.annotation.*;
         havingValue = "true"
 )
 @Validated
-@PreAuthorize("#customerId == authentication.name or hasAuthority('CUSTOMER_PROFILE_READ_ALL')")
+@PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_READ')) or "
+        + "hasAuthority('CUSTOMER_PROFILE_READ_ALL')")
 public class CustomerController {
 
     private static final String CUSTOMER_ID_PATTERN = "^[A-Za-z0-9][A-Za-z0-9_:-]{2,79}$";
@@ -44,6 +45,8 @@ public class CustomerController {
     }
 
     @PatchMapping("/{customerId}/display-profile")
+    @PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_WRITE')) or "
+            + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
     public ResponseEntity<ApiResponse<Object>> updateDisplayProfile(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @Valid @RequestBody DisplayProfileCommand request
@@ -68,6 +71,8 @@ public class CustomerController {
     }
 
     @PatchMapping("/{customerId}/preferences")
+    @PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_WRITE')) or "
+            + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> patchPreferences(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @Valid @RequestBody PreferencesCommand request
@@ -92,6 +97,8 @@ public class CustomerController {
     }
 
     @PutMapping("/{customerId}/accessibility-settings")
+    @PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_WRITE')) or "
+            + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> putAccessibilitySettings(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @Valid @RequestBody AccessibilitySettingsCommand request

@@ -32,7 +32,7 @@ class CustomerProfileIntegrationTest {
     @Autowired MockMvc mockMvc;
 
     @Test
-    @WithMockUser(username = CUSTOMER_ID)
+    @WithMockUser(username = CUSTOMER_ID, authorities = {"CUSTOMER_PROFILE_READ", "CUSTOMER_PROFILE_WRITE"})
     void persistsProfilePreferencesAndAccessibilityWithOptimisticVersions() throws Exception {
         mockMvc.perform(get("/api/v1/customers/{customerId}", CUSTOMER_ID))
                 .andExpect(status().isOk())
@@ -81,7 +81,7 @@ class CustomerProfileIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = CUSTOMER_ID)
+    @WithMockUser(username = CUSTOMER_ID, authorities = {"CUSTOMER_PROFILE_READ", "CUSTOMER_PROFILE_WRITE"})
     void rejectsStaleVersionAndEmptyPatch() throws Exception {
         mockMvc.perform(patch("/api/v1/customers/{customerId}/display-profile", CUSTOMER_ID)
                         .contentType(APPLICATION_JSON)
@@ -101,7 +101,7 @@ class CustomerProfileIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "ANOTHER_CUSTOMER")
+    @WithMockUser(username = "ANOTHER_CUSTOMER", authorities = "CUSTOMER_PROFILE_READ")
     void blocksCrossCustomerAccess() throws Exception {
         mockMvc.perform(get("/api/v1/customers/{customerId}", CUSTOMER_ID))
                 .andExpect(status().isForbidden())

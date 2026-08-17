@@ -17,6 +17,7 @@ public class DemoGuardrailStartupValidator {
     private final boolean remoteModelEnabled;
     private final boolean syntheticProviderOnly;
     private final boolean customerProfileApiEnabled;
+    private final boolean localAuthApiEnabled;
     private final boolean publicExposure;
 
     public DemoGuardrailStartupValidator(
@@ -27,6 +28,7 @@ public class DemoGuardrailStartupValidator {
             @Value("${app.guardrails.remote-model-enabled:false}") boolean remoteModelEnabled,
             @Value("${app.guardrails.synthetic-provider-only:true}") boolean syntheticProviderOnly,
             @Value("${app.features.customer-profile-api-enabled:false}") boolean customerProfileApiEnabled,
+            @Value("${app.features.local-auth-api-enabled:false}") boolean localAuthApiEnabled,
             @Value("${app.deployment.public-exposure:false}") boolean publicExposure
     ) {
         this.syntheticDataOnly = syntheticDataOnly;
@@ -36,6 +38,7 @@ public class DemoGuardrailStartupValidator {
         this.remoteModelEnabled = remoteModelEnabled;
         this.syntheticProviderOnly = syntheticProviderOnly;
         this.customerProfileApiEnabled = customerProfileApiEnabled;
+        this.localAuthApiEnabled = localAuthApiEnabled;
         this.publicExposure = publicExposure;
     }
 
@@ -47,7 +50,8 @@ public class DemoGuardrailStartupValidator {
                 && !externalEgressEnabled
                 && !remoteModelEnabled
                 && syntheticProviderOnly
-                && (!customerProfileApiEnabled || !publicExposure);
+                && (!customerProfileApiEnabled || !publicExposure)
+                && (!localAuthApiEnabled || !publicExposure);
         if (!safe) {
             throw new IllegalStateException(
                     "공개 합성데모 안전 가드레일이 해제되어 애플리케이션 기동을 중단합니다."
