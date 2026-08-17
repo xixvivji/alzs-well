@@ -1,4 +1,6 @@
 app:
+  features:
+    local-auth-api-enabled: ${LOCAL_AUTH_API_ENABLED:true}
   cors:
     customer-allowed-origins: ${CORS_CUSTOMER_ALLOWED_ORIGINS:http://localhost:5173}
     staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS:http://localhost:4173}

@@ -98,9 +98,14 @@ app:
   features:
     # 인증·인가·PostgreSQL 영속화 전에는 고객 API를 외부에 노출하지 않는다.
     customer-profile-api-enabled: ${CUSTOMER_PROFILE_API_ENABLED:false}
+    # 합성 계정 인증은 로컬·사설 검증 전용이며 공개 운영에서 활성화하지 않는다.
+    local-auth-api-enabled: ${LOCAL_AUTH_API_ENABLED:false}
+  auth:
+    access-ttl-seconds: ${AUTH_ACCESS_TTL_SECONDS:900}
+    refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
   versions:
     api: v1
-    schema: "14"
+    schema: "15"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0
