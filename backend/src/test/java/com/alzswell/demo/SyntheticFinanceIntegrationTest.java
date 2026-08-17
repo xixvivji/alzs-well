@@ -53,7 +53,7 @@ class SyntheticFinanceIntegrationTest {
                         "/api/v1/demo/sessions/{s}/customers/{c}/connections/consent-summary",
                         session.sessionId(), CUSTOMER), session))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items.length()").value(4))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].sourceProvider").value("SYNTHETIC_PROVIDER"))
                 .andExpect(jsonPath("$.data.consentSummary.revocable").value(true))
                 .andExpect(jsonPath("$.data.provenance.syntheticData").value(true));
@@ -68,12 +68,12 @@ class SyntheticFinanceIntegrationTest {
 
         JsonNode firstPage = client.read(client.customer(get(
                         "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                        session.sessionId(), "SYN_ACCOUNT_BANK_001")
                 .param("direction", "OUT").param("limit", "2"), session));
         String cursor = firstPage.at("/data/nextCursor").asText();
         JsonNode secondPage = client.read(client.customer(get(
                         "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                        session.sessionId(), "SYN_ACCOUNT_BANK_001")
                 .param("direction", "OUT").param("limit", "2").param("cursor", cursor), session));
         assertThat(firstPage.at("/data/items").size()).isEqualTo(2);
         assertThat(secondPage.at("/data/items").size()).isEqualTo(2);
@@ -82,7 +82,7 @@ class SyntheticFinanceIntegrationTest {
 
         JsonNode ledger = client.read(client.customer(get(
                         "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                        session.sessionId(), "SYN_ACCOUNT_SHINHAN_001")
+                        session.sessionId(), "SYN_ACCOUNT_BANK_002")
                 .param("from", "2025-08-01").param("to", "2026-07-31").param("limit", "100"), session));
         assertThat(ledger.at("/data/items").size()).isEqualTo(33);
 
@@ -115,14 +115,14 @@ class SyntheticFinanceIntegrationTest {
 
         mockMvc.perform(client.customer(get(
                         "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                        session.sessionId(), "SYN_ACCOUNT_BANK_001")
                 .param("from", "2026-08-01").param("to", "2026-07-01"), session))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
 
         mockMvc.perform(client.customer(get(
                         "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                        session.sessionId(), "SYN_ACCOUNT_BANK_001")
                 .param("direction", "SIDEWAYS"), session))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
@@ -130,7 +130,7 @@ class SyntheticFinanceIntegrationTest {
         for (String invalidLimit : List.of("0", "101")) {
             mockMvc.perform(client.customer(get(
                             "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                            session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                            session.sessionId(), "SYN_ACCOUNT_BANK_001")
                     .param("limit", invalidLimit), session))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
@@ -138,7 +138,7 @@ class SyntheticFinanceIntegrationTest {
 
         mockMvc.perform(client.customer(get(
                         "/api/v1/demo/sessions/{s}/accounts/{a}/transactions",
-                        session.sessionId(), "SYN_ACCOUNT_HANA_001")
+                        session.sessionId(), "SYN_ACCOUNT_BANK_001")
                 .param("cursor", "MjAyNi0wOC0xNFQwMDowMDowMFp8"), session))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
@@ -164,7 +164,7 @@ class SyntheticFinanceIntegrationTest {
 
         jdbcTemplate.update(
                 "delete from synthetic_account where demo_session_id = ? and demo_run_id = ? and account_id = ?",
-                first.sessionId(), first.demoRunId(), "SYN_ACCOUNT_KAKAO_001"
+                first.sessionId(), first.demoRunId(), "SYN_ACCOUNT_BANK_003"
         );
         mockMvc.perform(client.customer(get(
                         "/api/v1/demo/sessions/{s}/customers/{c}/accounts",
@@ -206,7 +206,7 @@ class SyntheticFinanceIntegrationTest {
                         "/api/v1/demo/sessions/{s}/customers/{c}/accounts",
                         session.sessionId(), CUSTOMER), session)).get("data"),
                 client.read(client.customer(get(
-                        "/api/v1/demo/sessions/{s}/accounts/SYN_ACCOUNT_HANA_001/transactions",
+                        "/api/v1/demo/sessions/{s}/accounts/SYN_ACCOUNT_BANK_001/transactions",
                         session.sessionId()), session)).get("data"),
                 client.read(client.customer(get(
                         "/api/v1/demo/sessions/{s}/customers/{c}/baselines",

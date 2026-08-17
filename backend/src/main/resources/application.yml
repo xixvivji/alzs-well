@@ -105,7 +105,7 @@ app:
     refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
   versions:
     api: v1
-    schema: "15"
+    schema: "16"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

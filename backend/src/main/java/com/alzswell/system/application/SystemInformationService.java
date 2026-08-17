@@ -107,7 +107,7 @@ public class SystemInformationService {
                 Integer fixtureCount = jdbcTemplate.queryForObject("""
                         select count(*) from demo_fixture_catalog
                          where scenario_id = 'FIN_MGMT_AB_001' and fixture_version = ? and enabled = true
-                           and expected_connection_count = 4 and expected_account_count = 4
+                           and expected_connection_count = 2 and expected_account_count = 4
                            and expected_transaction_count = 42
                            and expected_baseline_count = 3 and expected_trend_count = 12
                            and expected_interaction_count = 8 and expected_signal_count = 3
