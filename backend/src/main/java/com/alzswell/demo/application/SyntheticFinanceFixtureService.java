@@ -140,10 +140,8 @@ public class SyntheticFinanceFixtureService {
                 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         jdbcTemplate.batchUpdate(sql, List.of(
-                connection(session, "CONN_SYN_HANA_001", "HANA_BANK", "하나은행", "BANK", 1),
-                connection(session, "CONN_SYN_SHINHAN_001", "SHINHAN_BANK", "신한은행", "BANK", 2),
-                connection(session, "CONN_SYN_KAKAO_001", "KAKAO_BANK", "카카오뱅크", "BANK", 3),
-                connection(session, "CONN_SYN_KBSEC_001", "KB_SECURITIES", "KB증권", "SECURITIES", 4)
+                connection(session, "CONN_SYN_BANK_001", "SYNTHETIC_BANK", "안심은행", "BANK", 1),
+                connection(session, "CONN_SYN_SECURITIES_001", "SYNTHETIC_SECURITIES", "안심증권", "SECURITIES", 2)
         ));
     }
 
@@ -161,19 +159,13 @@ public class SyntheticFinanceFixtureService {
                 ) values (?, ?, ?, ?, ?)
                 """;
         jdbcTemplate.batchUpdate(sql, List.of(
-                scope(session, "CONN_SYN_HANA_001", "ACCOUNT", 1),
-                scope(session, "CONN_SYN_HANA_001", "BALANCE", 2),
-                scope(session, "CONN_SYN_HANA_001", "TRANSACTION", 3),
-                scope(session, "CONN_SYN_HANA_001", "RECURRING_PAYMENT", 4),
-                scope(session, "CONN_SYN_SHINHAN_001", "ACCOUNT", 1),
-                scope(session, "CONN_SYN_SHINHAN_001", "BALANCE", 2),
-                scope(session, "CONN_SYN_SHINHAN_001", "TRANSACTION", 3),
-                scope(session, "CONN_SYN_KAKAO_001", "ACCOUNT", 1),
-                scope(session, "CONN_SYN_KAKAO_001", "BALANCE", 2),
-                scope(session, "CONN_SYN_KAKAO_001", "TRANSACTION", 3),
-                scope(session, "CONN_SYN_KBSEC_001", "INVESTMENT_ACCOUNT", 1),
-                scope(session, "CONN_SYN_KBSEC_001", "POSITION", 2),
-                scope(session, "CONN_SYN_KBSEC_001", "TRADE_HISTORY", 3)
+                scope(session, "CONN_SYN_BANK_001", "ACCOUNT", 1),
+                scope(session, "CONN_SYN_BANK_001", "BALANCE", 2),
+                scope(session, "CONN_SYN_BANK_001", "TRANSACTION", 3),
+                scope(session, "CONN_SYN_BANK_001", "RECURRING_PAYMENT", 4),
+                scope(session, "CONN_SYN_SECURITIES_001", "INVESTMENT_ACCOUNT", 1),
+                scope(session, "CONN_SYN_SECURITIES_001", "POSITION", 2),
+                scope(session, "CONN_SYN_SECURITIES_001", "TRADE_HISTORY", 3)
         ));
     }
 
@@ -201,14 +193,14 @@ public class SyntheticFinanceFixtureService {
 
     private List<AccountSeed> accountSeeds() {
         return List.of(
-                new AccountSeed("SYN_ACCOUNT_HANA_001", "HANA_BANK", "DEMAND_DEPOSIT",
-                        "생활비 통장", "***-***-1234", new BigDecimal("9250000"), "CONN_SYN_HANA_001", 1),
-                new AccountSeed("SYN_ACCOUNT_SHINHAN_001", "SHINHAN_BANK", "SAVINGS",
-                        "정기생활 저축", "***-***-5678", new BigDecimal("12500000"), "CONN_SYN_SHINHAN_001", 2),
-                new AccountSeed("SYN_ACCOUNT_KAKAO_001", "KAKAO_BANK", "DEMAND_DEPOSIT",
-                        "비상금 통장", "***-***-9012", new BigDecimal("7000000"), "CONN_SYN_KAKAO_001", 3),
-                new AccountSeed("SYN_ACCOUNT_KBSEC_001", "KB_SECURITIES", "INVESTMENT",
-                        "합성 투자계좌", "***-***-3456", new BigDecimal("19500000"), "CONN_SYN_KBSEC_001", 4)
+                new AccountSeed("SYN_ACCOUNT_BANK_001", "SYNTHETIC_BANK", "DEMAND_DEPOSIT",
+                        "생활비 통장", "***-***-1234", new BigDecimal("9250000"), "CONN_SYN_BANK_001", 1),
+                new AccountSeed("SYN_ACCOUNT_BANK_002", "SYNTHETIC_BANK", "SAVINGS",
+                        "정기생활 저축", "***-***-5678", new BigDecimal("12500000"), "CONN_SYN_BANK_001", 2),
+                new AccountSeed("SYN_ACCOUNT_BANK_003", "SYNTHETIC_BANK", "DEMAND_DEPOSIT",
+                        "비상금 통장", "***-***-9012", new BigDecimal("7000000"), "CONN_SYN_BANK_001", 3),
+                new AccountSeed("SYN_ACCOUNT_SECURITIES_001", "SYNTHETIC_SECURITIES", "INVESTMENT",
+                        "합성 투자계좌", "***-***-3456", new BigDecimal("19500000"), "CONN_SYN_SECURITIES_001", 4)
         );
     }
 
@@ -235,23 +227,23 @@ public class SyntheticFinanceFixtureService {
         addRecurringSeries(rows, "UTILITY", "합성공과금", "100000", 2, Set.of(YearMonth.of(2026, 6)));
         addRecurringSeries(rows, "INSURANCE", "합성보험료", "120000", 10, Set.of(YearMonth.of(2026, 7)));
         addRecurringSeries(rows, "TELECOM", "합성통신비", "80000", 20, Set.of(YearMonth.of(2026, 7)));
-        rows.add(transaction("TX_SALARY_071", "SYN_ACCOUNT_HANA_001", "2026-07-01T00:10:00Z",
+        rows.add(transaction("TX_SALARY_071", "SYN_ACCOUNT_BANK_001", "2026-07-01T00:10:00Z",
                 "IN", "DEPOSIT", "3200000", "28250000", "합성급여", "INCOME"));
-        rows.add(transaction("TX_DUP_A_001", "SYN_ACCOUNT_HANA_001", "2026-07-10T10:00:00Z",
+        rows.add(transaction("TX_DUP_A_001", "SYN_ACCOUNT_BANK_001", "2026-07-10T10:00:00Z",
                 "OUT", "TRANSFER_OUT", "1200000", "17050000", "합성수취인 A", "LIVING"));
-        rows.add(transaction("TX_DUP_A_002", "SYN_ACCOUNT_HANA_001", "2026-07-10T10:07:00Z",
+        rows.add(transaction("TX_DUP_A_002", "SYN_ACCOUNT_BANK_001", "2026-07-10T10:07:00Z",
                 "OUT", "TRANSFER_OUT", "1200000", "15850000", "합성수취인 A", "LIVING"));
-        rows.add(transaction("TX_DUP_B_001", "SYN_ACCOUNT_HANA_001", "2026-07-20T09:00:00Z",
+        rows.add(transaction("TX_DUP_B_001", "SYN_ACCOUNT_BANK_001", "2026-07-20T09:00:00Z",
                 "OUT", "TRANSFER_OUT", "850000", "15000000", "합성수취인 B", "FAMILY_SUPPORT"));
-        rows.add(transaction("TX_DUP_B_002", "SYN_ACCOUNT_HANA_001", "2026-07-20T09:08:00Z",
+        rows.add(transaction("TX_DUP_B_002", "SYN_ACCOUNT_BANK_001", "2026-07-20T09:08:00Z",
                 "OUT", "TRANSFER_OUT", "850000", "14150000", "합성수취인 B", "FAMILY_SUPPORT"));
-        rows.add(transaction("TX_LIVING_072", "SYN_ACCOUNT_HANA_001", "2026-07-20T12:00:00Z",
+        rows.add(transaction("TX_LIVING_072", "SYN_ACCOUNT_BANK_001", "2026-07-20T12:00:00Z",
                 "OUT", "CARD_PAYMENT", "500000", "13650000", "합성생활비", "LIVING"));
-        rows.add(transaction("TX_GROCERY_071", "SYN_ACCOUNT_HANA_001", "2026-07-22T12:00:00Z",
+        rows.add(transaction("TX_GROCERY_071", "SYN_ACCOUNT_BANK_001", "2026-07-22T12:00:00Z",
                 "OUT", "CARD_PAYMENT", "180000", "13470000", "합성식료품", "LIVING"));
-        rows.add(transaction("TX_EMERGENCY_071", "SYN_ACCOUNT_KAKAO_001", "2026-07-18T05:00:00Z",
+        rows.add(transaction("TX_EMERGENCY_071", "SYN_ACCOUNT_BANK_003", "2026-07-18T05:00:00Z",
                 "OUT", "TRANSFER_OUT", "120000", "7000000", "합성생활이체", "LIVING"));
-        rows.add(transaction("TX_DIVIDEND_071", "SYN_ACCOUNT_KBSEC_001", "2026-07-25T06:00:00Z",
+        rows.add(transaction("TX_DIVIDEND_071", "SYN_ACCOUNT_SECURITIES_001", "2026-07-25T06:00:00Z",
                 "IN", "INVESTMENT_INCOME", "180000", "19500000", "합성배당", "INVESTMENT"));
         return List.copyOf(rows);
     }
@@ -264,7 +256,7 @@ public class SyntheticFinanceFixtureService {
                 continue;
             }
             rows.add(transaction("TX_REC_" + code + "_" + month.toString().replace("-", ""),
-                    "SYN_ACCOUNT_SHINHAN_001",
+                    "SYN_ACCOUNT_BANK_002",
                     month.atDay(day).atTime(1, 0).atOffset(ZoneOffset.UTC).toString(),
                     "OUT", "AUTOPAY", amount, "12500000", payee, "RECURRING_LIVING"));
         }

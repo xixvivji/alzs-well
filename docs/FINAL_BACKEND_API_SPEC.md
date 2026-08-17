@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.5.0**
+> 문서 버전: **1.5.1**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-17 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 44개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 48개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 204개 |
+| 카탈로그·백로그 | 200개 |
 
-업무 `IMPLEMENTED` 44개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 5개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development에서는 고객 API를 제외한 OpenAPI 38개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 45개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 48개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 5개, P1 합성 금융기관·연결 조회 4개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development에서는 고객 프로필 API를 제외한 OpenAPI 42개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 49개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 248개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 5개로 총 44개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 45개 operation이다. development 기본 OpenAPI에는 고객 기능을 제외한 38개가 노출된다. 나머지 204개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 5개, 합성 금융기관·연결 조회 4개로 총 48개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 49개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 42개가 노출된다. 나머지 200개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -961,6 +961,24 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P2 | DELETE | /api/v1/customers/{customerId}/connections/{connectionId} | 연결·수집 동의 해제 | EXTERNAL_INTEGRATION |
 
 공개 데모에서는 실제 마이데이터 연결 없이 동일 계약의 SYNTHETIC_PROVIDER만 사용한다.
+
+앞의 P1 조회 4개는 Flyway V16의 금융기관·지원 범위·고객 연결·동의 범위 테이블과 함께 구현했다. 실행 데이터는 가상 기관인 `안심은행(SYNTHETIC_BANK)`과 `안심증권(SYNTHETIC_SECURITIES)`의 기준일 고정 합성 snapshot이며 모든 범위는 읽기 전용이다. 고객 연결 경로는 Bearer 인증의 customerId 소유권과 `FINANCIAL_CONNECTION_READ` 권한을 검증한다. P2 연결 생성·동기화·해제는 구현 전이며 실제 기관 API를 호출하지 않는다.
+
+구현된 합성 기관 계약은 다음과 같다.
+
+| institutionId | 표시명 | 유형 | 지원 scope | providerMode |
+|---|---|---|---|---|
+| `SYNTHETIC_BANK` | 안심은행 | `BANK` | `ACCOUNTS`, `TRANSACTIONS` | `SYNTHETIC_PROVIDER` |
+| `SYNTHETIC_SECURITIES` | 안심증권 | `SECURITIES` | `INVESTMENT_ACCOUNTS`, `POSITIONS` | `SYNTHETIC_PROVIDER` |
+
+- 기관 목록과 상세도 인증이 필요하다.
+- 고객 연결 목록·상세는 Bearer 주체의 ID와 `{customerId}`가 같고 `FINANCIAL_CONNECTION_READ` 권한이 있거나, 직원 주체에 `FINANCIAL_CONNECTION_READ_ALL` 권한이 있어야 한다.
+- `{institutionId}`는 대문자로 시작하는 3~40자의 영문 대문자·숫자·밑줄만 허용한다.
+- `{connectionId}`는 UUID이며 현재 고정 fixture는 안심은행 `92000000-0000-0000-0000-000000000001`, 안심증권 `92000000-0000-0000-0000-000000000002`를 사용한다.
+- 목록 응답은 현재 두 기관·두 연결을 반환하며 페이지네이션은 적용하지 않는다.
+- 존재하지 않는 기관은 `CONNECTION_INSTITUTION_NOT_FOUND`, 고객 소유가 아니거나 존재하지 않는 연결은 `CONNECTION_NOT_FOUND`로 응답한다. 인증 없음은 `401`, 소유권·권한 위반은 `403`, 경로 형식 오류는 `400`이다.
+
+기관 목록의 `data.items[]`는 `institutionId`, `displayName`, `institutionType`, `providerMode`, `connectionAvailable`, `dataAsOf`를 반환한다. 기관 상세는 같은 구조의 `institution`과 `supportedScopes[]`를 추가한다. 고객 연결 목록의 `data.items[]`는 `connectionId`, `customerId`, 중첩 `institution`, `connectionStatus`, `consentedAt`, `consentExpiresAt`, `lastSyncedAt`, `providerMode`, `version`을 반환하며, 연결 상세는 여기에 `consentScopes[]`를 추가한다. 기관 상세의 scope는 `consentStatus=null`, 연결 상세의 scope는 현재 `CONSENTED`다.
 
 #### 3.3.5 계좌 — 11개
 
@@ -2538,7 +2556,7 @@ P0-B는 은행 앱 전체를 만드는 단계가 아니다. 공개 합성데모�
 | GET | `/api/v1/demo/sessions/{sessionId}/protection-actions` | `PROTECTION_ACTION_LIST_RETRIEVED` | `ProtectionActionListResponse` |
 | GET | `/api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent-summary` | `DEMO_CONNECTION_LIST_RETRIEVED` | `ConnectionConsentSummaryResponse` |
 
-P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V15까지의 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 경로별 일회성 응답 헤더 노출 목록이 반영돼 있다.
+P0-B 11개 operation은 모두 `IMPLEMENTED`다. 금융생활 읽기 API 6개는 세션·`demoRunId`별 FIN_MGMT 합성 fixture, Flyway V16까지의 스키마·fixture/정책 카탈로그, 거래 필터·불투명 cursor 페이지네이션, capability 역할·만료·교차세션 격리 검증을 포함한다. CORS에는 capability·run·멱등 헤더와 경로별 일회성 응답 헤더 노출 목록이 반영돼 있다.
 
 ---
 
@@ -2746,9 +2764,9 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent
     "demoRunId": "RUN_FIN_MGMT_B_001",
     "items": [
       {
-        "connectionId": "CONN_SYN_HANA_001",
-        "institutionId": "HANA_BANK",
-        "institutionName": "하나은행",
+        "connectionId": "CONN_SYN_BANK_001",
+        "institutionId": "SYNTHETIC_BANK",
+        "institutionName": "안심은행",
         "institutionType": "BANK",
         "status": "CONNECTED_SYNTHETIC",
         "sourceProvider": "SYNTHETIC_PROVIDER",
@@ -2758,9 +2776,9 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent
         "consentScope": ["ACCOUNT", "BALANCE", "TRANSACTION", "RECURRING_PAYMENT"]
       },
       {
-        "connectionId": "CONN_SYN_KBSEC_001",
-        "institutionId": "KB_SECURITIES",
-        "institutionName": "KB증권",
+        "connectionId": "CONN_SYN_SECURITIES_001",
+        "institutionId": "SYNTHETIC_SECURITIES",
+        "institutionName": "안심증권",
         "institutionType": "SECURITIES",
         "status": "CONNECTED_SYNTHETIC",
         "sourceProvider": "SYNTHETIC_PROVIDER",
@@ -2897,14 +2915,14 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/accounts
     "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
     "items": [
       {
-        "accountId": "SYN_ACCOUNT_HANA_001",
-        "institutionId": "HANA_BANK",
+        "accountId": "SYN_ACCOUNT_BANK_001",
+        "institutionId": "SYNTHETIC_BANK",
         "accountType": "DEMAND_DEPOSIT",
         "displayName": "생활비 통장",
         "maskedAccountNumber": "***-***-1234",
         "currentBalance": {"amount": "9250000", "currency": "KRW"},
         "availableBalance": {"amount": "9250000", "currency": "KRW"},
-        "connectionId": "CONN_SYN_HANA_001",
+        "connectionId": "CONN_SYN_BANK_001",
         "consentId": "CONSENT_SYN_001",
         "sourceProvider": "SYNTHETIC_PROVIDER",
         "sourceUpdatedAt": "2026-07-31T23:59:59Z",
@@ -2954,7 +2972,7 @@ GET /api/v1/demo/sessions/{sessionId}/accounts/{accountId}/transactions?from=202
   "message": "합성 거래내역을 조회했습니다.",
   "data": {
     "demoRunId": "RUN_FIN_MGMT_B_001",
-    "accountId": "SYN_ACCOUNT_HANA_001",
+    "accountId": "SYN_ACCOUNT_BANK_001",
     "items": [
       {
         "transactionId": "TX_FIN_MGMT_DUP_001",
