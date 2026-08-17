@@ -35,6 +35,10 @@ const eslintConfig = defineConfig([
         version: "detect",
       },
     },
+    rules: {
+      // 세션 저장소는 SSR 중 읽을 수 없어 hydration 이후 effect에서 동기화한다.
+      "react-hooks/set-state-in-effect": "off",
+    },
   },
 ]);
 
