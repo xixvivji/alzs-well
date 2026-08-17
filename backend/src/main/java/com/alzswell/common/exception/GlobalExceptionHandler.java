@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -80,6 +81,11 @@ public class GlobalExceptionHandler {
                 CommonErrorCode.INVALID_INPUT,
                 "경로 변수 '" + exception.getName() + "'의 형식을 확인해 주세요."
         );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied() {
+        return ApiResponses.error(CommonErrorCode.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)

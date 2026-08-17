@@ -75,12 +75,16 @@ class PostgreSqlIntegrationTest {
                       'protection_action_catalog'
                       ,'case_note'
                       ,'follow_up_task'
+                      ,'customer_profile'
+                      ,'customer_preferences'
+                      ,'customer_accessibility_settings'
+                      ,'customer_data_inventory'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(19);
+        assertThat(tableCount).isEqualTo(23);
     }
 
     @Test
@@ -140,7 +144,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("13"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("14"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));

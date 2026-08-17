@@ -10,7 +10,7 @@ class DemoGuardrailStartupValidatorTest {
     @Test
     void acceptsThePublicSyntheticDemoBoundary() {
         DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
-                true, false, "AIR_GAPPED_DEMO", false, false, true, false
+                true, false, "AIR_GAPPED_DEMO", false, false, true, false, true
         );
 
         assertThatCode(validator::validatePublicDemoBoundary).doesNotThrowAnyException();
@@ -19,7 +19,7 @@ class DemoGuardrailStartupValidatorTest {
     @Test
     void refusesToStartWhenAnyExternalExecutionGuardIsOpen() {
         DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
-                true, true, "AIR_GAPPED_DEMO", false, false, true, false
+                true, true, "AIR_GAPPED_DEMO", false, false, true, false, true
         );
 
         assertThatThrownBy(validator::validatePublicDemoBoundary)
@@ -28,13 +28,22 @@ class DemoGuardrailStartupValidatorTest {
     }
 
     @Test
-    void refusesToStartWhenTheUnpersistedCustomerProfileScaffoldIsEnabled() {
+    void refusesToExposeCustomerProfileApiInThePublicDemo() {
         DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
-                true, false, "AIR_GAPPED_DEMO", false, false, true, true
+                true, false, "AIR_GAPPED_DEMO", false, false, true, true, true
         );
 
         assertThatThrownBy(validator::validatePublicDemoBoundary)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("안전 가드레일");
+    }
+
+    @Test
+    void allowsPersistedCustomerProfileApiInPrivateMode() {
+        DemoGuardrailStartupValidator validator = new DemoGuardrailStartupValidator(
+                true, false, "AIR_GAPPED_DEMO", false, false, true, true, false
+        );
+
+        assertThatCode(validator::validatePublicDemoBoundary).doesNotThrowAnyException();
     }
 }
