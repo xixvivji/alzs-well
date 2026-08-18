@@ -6,6 +6,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -89,7 +91,8 @@ public class DemoSession {
 
     public void issueStaffCapability(String capabilityHash, OffsetDateTime issuedAt) {
         String requiredHash = Objects.requireNonNull(capabilityHash);
-        if (requiredHash.equals(customerCapabilityHash)) {
+        if (MessageDigest.isEqual(requiredHash.getBytes(StandardCharsets.UTF_8),
+                customerCapabilityHash.getBytes(StandardCharsets.UTF_8))) {
             throw new IllegalArgumentException("고객과 행원 capability hash는 달라야 합니다.");
         }
         this.staffCapabilityHash = requiredHash;

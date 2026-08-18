@@ -46,6 +46,12 @@ public class AuthController {
         return ApiResponses.ok("AUTH_LOGOUT_SUCCEEDED", "로그아웃했습니다.", null);
     }
 
+    @PostMapping("/logout-all")
+    public ResponseEntity<ApiResponse<Void>> logoutAll(Authentication authentication) {
+        authSessionService.logoutAll(authentication);
+        return ApiResponses.ok("AUTH_LOGOUT_ALL_SUCCEEDED", "모든 인증 세션에서 로그아웃했습니다.", null);
+    }
+
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<CurrentUser>> me(Authentication authentication) {
         return ApiResponses.ok("AUTH_CURRENT_USER_RETRIEVED", "현재 인증 주체를 조회했습니다.",

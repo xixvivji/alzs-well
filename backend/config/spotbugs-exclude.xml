@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Spring singleton 의존성 주입과 직렬화 DTO 컬렉션은 컨테이너/생성 지점에서 소유한다. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
+    <!-- 아래 SQL 조각은 사용자 입력이 아니라 내부 상수, boolean 잠금 플래그, 바인딩 placeholder 개수다. -->
+    <Match>
+        <Class name="com.alzswell.connection.application.FinancialConnectionQueryService"/>
+        <Method name="queryConnections"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
+    <Match>
+        <Class name="com.alzswell.demo.application.P0WorkflowService"/>
+        <Method name="requireIncident"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
+    <Match>
+        <Class name="com.alzswell.demo.application.P0WorkflowService"/>
+        <Method name="requireCase"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
+    <Match>
+        <Class name="com.alzswell.demo.application.P0WorkflowService"/>
+        <Method name="requireFollowUp"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
+    <Match>
+        <Class name="com.alzswell.demo.application.P0WorkflowService"/>
+        <Method name="requireKnownActionCodes"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
+</FindBugsFilter>

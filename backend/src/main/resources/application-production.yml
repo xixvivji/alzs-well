@@ -1,3 +1,6 @@
+server:
+  address: 0.0.0.0
+
 app:
   features:
     local-auth-api-enabled: false

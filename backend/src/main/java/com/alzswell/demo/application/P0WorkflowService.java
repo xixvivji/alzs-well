@@ -50,7 +50,7 @@ public class P0WorkflowService {
             Pattern.compile("(?iu)(?:계좌|카드)\\s*(?:번호)?\\s*[:#=\\-]?\\s*\\d[\\d .\\-]{5,}"),
             Pattern.compile("(?<!\\d)\\d{6}[- ]?\\d{7}(?!\\d)"),
             Pattern.compile("(?<!\\d)(?:\\d[ -]?){13,19}(?!\\d)"),
-            Pattern.compile("(?iu)(?:\\+?82[- .]?)?0?1[016789][- .]?\\d{3,4}[- .]?\\d{4}"),
+            Pattern.compile("(?iu)(?>\\+82[- .]?0?1[016789]|01[016789])[- .]?(?>\\d{3,4})[- .]?\\d{4}"),
             Pattern.compile("(?iu)[A-Z0-9._%+\\-]+@[A-Z0-9.\\-]+\\.[A-Z]{2,}"),
             Pattern.compile("(?iu)(?:이름|성명|name)\\s*[:=]\\s*[가-힣A-Z][가-힣A-Z .\\-]{1,40}")
     );
@@ -115,7 +115,7 @@ public class P0WorkflowService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> alertList(UUID sessionId, UUID demoRunId, String customerId) {
-        DemoSession session = requireCurrentRun(sessionId, demoRunId);
+        requireCurrentRun(sessionId, demoRunId);
         if (!DemoSessionService.CUSTOMER_ID.equals(customerId)) {
             throw new BusinessException(P0WorkflowErrorCode.SYNTHETIC_CUSTOMER_NOT_FOUND);
         }
@@ -372,7 +372,12 @@ public class P0WorkflowService {
             args.add(reviewPriority);
         }
         if (decoded != null) {
-            sql.append(" and (c.created_at > ? or (c.created_at = ? and c.case_id > ?))");
+            String priorityRank = "case c.review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end";
+            sql.append(" and ((").append(priorityRank).append(") > ? or ((")
+                    .append(priorityRank).append(") = ? and (c.created_at > ? or ")
+                    .append("(c.created_at = ? and c.case_id > ?))))");
+            args.add(decoded.priorityRank());
+            args.add(decoded.priorityRank());
             args.add(decoded.createdAt());
             args.add(decoded.createdAt());
             args.add(decoded.caseId());
@@ -1915,19 +1920,30 @@ public class P0WorkflowService {
         }
         try {
             String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
-            int separator = decoded.lastIndexOf('|');
-            if (separator < 1 || separator == decoded.length() - 1) {
+            String[] parts = decoded.split("\\|", 3);
+            if (parts.length != 3) {
                 throw new IllegalArgumentException("cursor payload is incomplete");
             }
-            return new CaseCursor(OffsetDateTime.parse(decoded.substring(0, separator)),
-                    decoded.substring(separator + 1));
+            int priorityRank = Integer.parseInt(parts[0]);
+            if (priorityRank < 1 || priorityRank > 3) {
+                throw new IllegalArgumentException("cursor priority is invalid");
+            }
+            return new CaseCursor(priorityRank, OffsetDateTime.parse(parts[1]), parts[2]);
         } catch (RuntimeException exception) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT, "cursor가 올바르지 않습니다.");
         }
     }
 
     private String encodeCaseCursor(QueueRow row) {
-        return encodeCursor(row.createdAt() + "|" + row.caseId());
+        return encodeCursor(priorityRank(row.reviewPriority()) + "|" + row.createdAt() + "|" + row.caseId());
+    }
+
+    private int priorityRank(String reviewPriority) {
+        return switch (reviewPriority) {
+            case "HIGH" -> 1;
+            case "MEDIUM" -> 2;
+            default -> 3;
+        };
     }
 
     private String encodeCursor(String raw) {
@@ -2086,6 +2102,6 @@ public class P0WorkflowService {
     private record AuditCursor(OffsetDateTime occurredAt, UUID auditId) {
     }
 
-    private record CaseCursor(OffsetDateTime createdAt, String caseId) {
+    private record CaseCursor(int priorityRank, OffsetDateTime createdAt, String caseId) {
     }
 }
