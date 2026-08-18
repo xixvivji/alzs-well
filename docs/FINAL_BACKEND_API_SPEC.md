@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.5.1**
+> 문서 버전: **1.6.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-17 (Asia/Seoul)**
+> 기준일: **2026-08-18 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -19,9 +19,9 @@
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **23개** |
-| P1 제품 핵심 백로그 | **147개** |
+| P1 제품 핵심 백로그 | **148개** |
 | P2 은행·증권 확장 백로그 | **78개** |
-| ALZ's well 소유 `OWNED` | **156개** |
+| ALZ's well 소유 `OWNED` | **159개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
@@ -846,7 +846,7 @@ OPEN
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
 | P1 제품 핵심 | **148** |
 | P2 은행·증권 확장 | **78** |
-| OWNED | **157** |
+| OWNED | **159** |
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
@@ -2826,7 +2826,7 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent
 }
 ```
 
-화면에는 네 참여기관 배지를 사용할 수 있지만 연결 데이터가 합성이라는 표시를 고정한다. 기관 브랜드 UI를 복제하거나 실제 연결 완료로 표현하지 않는다.
+화면에는 안심은행·안심증권 두 합성기관 배지를 사용할 수 있지만 연결 데이터가 합성이라는 표시를 고정한다. 실제 참여 기업의 브랜드 UI를 복제하거나 실제 연결 완료로 표현하지 않는다.
 
 ---
 
@@ -3139,7 +3139,7 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 수용기준:
 
 - 모든 금융생활 읽기 응답은 최상위 `provenance.syntheticData=true` 또는 `dataMode=SYNTHETIC_ONLY`를 제공하고 프론트는 이를 항상 표시한다.
-- 네 참여기관 배지는 합성 연결이며 실제 제휴·실연동으로 표현하지 않는다.
+- 안심은행·안심증권 배지는 합성 연결이며 실제 제휴·실연동으로 표현하지 않는다.
 - 같은 Reset 뒤 계좌, 거래, 기준선, 연결, 자산 요약의 snapshot hash가 동일하다.
 - 모든 session 범위 읽기는 올바른 역할의 `X-Demo-Capability`를 검증하고, 시나리오 파생 읽기는 활성 `X-Demo-Run-Id`도 검증한다.
 - 금액은 10진 문자열로 직렬화한다.
@@ -3148,6 +3148,376 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 - P0 Spring 컨테이너의 외부 HTTPS 연결은 실패하고 Docker internal 네트워크의 PostgreSQL 통신만 성공한다. FastAPI는 P1 이후 별도 내부 서비스로 도입할 때 같은 정책을 적용한다.
 - `protection-actions`의 모든 P0 항목은 `GUIDANCE_ONLY`다.
 - 계좌번호·카드번호는 마스킹하며 합성값이라도 실제 번호 형식을 그대로 노출하지 않는다.
+
+---
+
+## 6.1 P1 고객 프로필·접근성 상세 계약
+
+이 절의 7개 operation은 `IMPLEMENTED`지만 `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이다. 사설 검증 환경에서만 기능 플래그를 켜며, 모든 경로는 Bearer 인증과 customerId 소유권을 검증한다.
+
+### 공통 인증과 path
+
+```http
+Authorization: Bearer {accessToken}
+```
+
+- `customerId`: `^[A-Za-z0-9][A-Za-z0-9_:-]{2,79}$`
+- 본인 조회: 인증 주체의 `authentication.name == customerId`
+- 조회 authority: `CUSTOMER_PROFILE_READ` 또는 `CUSTOMER_PROFILE_READ_ALL`
+- 변경 authority: `CUSTOMER_PROFILE_WRITE` 또는 `CUSTOMER_PROFILE_WRITE_ALL`
+- 다른 고객의 ID를 사용하면 `403 COMMON_FORBIDDEN`
+- 존재하지 않는 고객은 `404 CUSTOMER_NOT_FOUND`
+- 변경의 `expectedVersion`이 현재 `version`과 다르면 `409 CUSTOMER_VERSION_CONFLICT`
+
+### 6.1.1 고객 요약 조회
+
+```http
+GET /api/v1/customers/{customerId}
+```
+
+성공은 `200 CUSTOMER_SUMMARY_RETRIEVED`이며 `data`는 다음 필드를 가진다.
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `customerId` | string | N | 비식별 고객 ID |
+| `displayName` | string | N | 화면 표시명 |
+| `organization` | string | N | 합성 소속 표시 |
+| `region` | string | N | 지역 코드 |
+| `status` | enum | N | `ACTIVE`, `SUSPENDED`, `CLOSED` |
+| `version` | integer(int64) | N | 낙관적 잠금 버전 |
+| `createdAt` | ISO-8601 offset datetime | N | 생성시각 |
+| `updatedAt` | ISO-8601 offset datetime | N | 최종 변경시각 |
+
+### 6.1.2 표시 프로필 변경
+
+```http
+PATCH /api/v1/customers/{customerId}/display-profile
+Content-Type: application/json
+```
+
+```json
+{
+  "expectedVersion": 0,
+  "displayName": "이용자 001"
+}
+```
+
+- `expectedVersion`: 필수, 0 이상
+- `displayName`: 필수, trim 후 빈 문자열 금지, 최대 80자
+- 성공: `200 CUSTOMER_DISPLAY_PROFILE_UPDATED`
+- 응답 `data`: `customerId`, `displayName`, 증가된 `version`, `updatedAt`
+- 같은 요청의 재전송을 서버가 자동 재생하지 않으므로 클라이언트는 성공 후 최신 version을 저장한다.
+
+### 6.1.3 환경설정 조회·부분변경
+
+```http
+GET   /api/v1/customers/{customerId}/preferences
+PATCH /api/v1/customers/{customerId}/preferences
+```
+
+PATCH 요청:
+
+```json
+{
+  "expectedVersion": 0,
+  "smsNotificationEnabled": false,
+  "pushNotificationEnabled": false,
+  "inAppNotificationEnabled": true
+}
+```
+
+- `expectedVersion`은 필수다.
+- 세 boolean은 nullable이며 하나 이상을 반드시 보내야 한다.
+- `null` 또는 생략된 설정은 현재 값을 유지한다.
+- 실제 SMS·push 발송을 실행하지 않고 서비스 설정만 저장한다.
+- 조회 성공: `200 CUSTOMER_PREFERENCES_RETRIEVED`
+- 변경 성공: `200 CUSTOMER_PREFERENCES_UPDATED`
+- 응답 필드: `customerId`, 세 boolean, `version`, `updatedAt`
+
+### 6.1.4 접근성 설정 조회·전체변경
+
+```http
+GET /api/v1/customers/{customerId}/accessibility-settings
+PUT /api/v1/customers/{customerId}/accessibility-settings
+```
+
+PUT 요청:
+
+```json
+{
+  "expectedVersion": 0,
+  "largeFont": true,
+  "highContrast": false,
+  "speechGuidance": false,
+  "oneHandMode": true
+}
+```
+
+PUT은 전체 교체다. `expectedVersion`과 네 boolean은 모두 필수다.
+
+- 조회 성공: `200 CUSTOMER_ACCESSIBILITY_SETTINGS_RETRIEVED`
+- 변경 성공: `200 CUSTOMER_ACCESSIBILITY_SETTINGS_UPDATED`
+- 응답 필드: `customerId`, 네 boolean, `version`, `updatedAt`
+
+### 6.1.5 보유 데이터 요약 조회
+
+```http
+GET /api/v1/customers/{customerId}/data-summary
+```
+
+성공은 `200 CUSTOMER_DATA_SUMMARY_RETRIEVED`다.
+
+```json
+{
+  "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
+  "institutions": 2,
+  "accounts": 4,
+  "transactionsSynced": 42,
+  "lastSyncAt": null,
+  "dataFreshness": {
+    "accounts": "FIXED_SNAPSHOT",
+    "transactions": "FIXED_SNAPSHOT",
+    "baseline": "CURRENT"
+  },
+  "updatedAt": "2026-08-14T00:00:00Z"
+}
+```
+
+개수는 0 이상이며 `lastSyncAt`만 nullable이다. 실제 금융회사 동기화를 시작하지 않는다.
+
+---
+
+## 6.2 P1 로컬 합성 인증 상세 계약
+
+이 절의 6개 operation은 `IMPLEMENTED-DEVELOPMENT-ONLY`다. `LOCAL_AUTH_API_ENABLED=true`일 때만 Controller가 등록되고 production에서는 강제로 비활성화된다. 실제 서비스의 기업 IdP 계약이 아니다.
+
+### 공통 token 계약
+
+- access·refresh token은 256-bit 불투명 난수이며 JWT가 아니다.
+- token 원문은 응답에서 한 번만 반환하고 DB에는 SHA-256 hash만 저장한다.
+- access 기본 TTL은 15분, refresh sliding TTL은 8시간, 세션 절대 TTL은 24시간이다.
+- refresh할 때 access·refresh token을 모두 회전한다.
+- 이미 사용한 refresh token이 다시 들어오면 탈취 신호로 보고 token family 전체를 폐기한다.
+- 사용자별 활성 세션 기본 상한은 5개이며 초과 시 가장 오래된 세션부터 폐기한다.
+- Authorization header, token, 비밀번호를 URL·로그·감사 payload에 기록하지 않는다.
+
+### 6.2.1 로그인
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "loginId": "synthetic-customer",
+  "password": "{12~200자의 로컬 합성 계정 비밀번호}"
+}
+```
+
+- 인증 불필요
+- `loginId`: 필수, 최대 80자
+- `password`: 필수, 12~200자
+- 성공: `200 AUTH_LOGIN_SUCCEEDED`
+- 실패: `401 AUTH_INVALID_CREDENTIALS`; 계정 존재 여부를 구분하지 않는다.
+- 같은 loginId hash의 반복 실패: `429 AUTH_LOGIN_RATE_LIMITED`
+
+성공 `data`:
+
+```json
+{
+  "tokenType": "Bearer",
+  "accessToken": "{opaque-token}",
+  "accessExpiresAt": "2026-08-18T01:15:00Z",
+  "refreshToken": "{opaque-refresh-token}",
+  "refreshExpiresAt": "2026-08-18T09:00:00Z"
+}
+```
+
+### 6.2.2 token 갱신
+
+```http
+POST /api/v1/auth/token/refresh
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "{40~300자의 opaque refresh token}"
+}
+```
+
+- Bearer 인증은 요구하지 않고 refresh token 자체를 검증한다.
+- 성공: `200 AUTH_TOKEN_REFRESHED`, 새로운 `TokenPair` 반환
+- token 없음·만료·폐기·절대 만료: `401 AUTH_INVALID_TOKEN`
+- 이전 token 재사용: `401 AUTH_INVALID_TOKEN`과 해당 family 전체 폐기
+- 새 `refreshExpiresAt`은 절대 만료를 넘지 않는다.
+
+### 6.2.3 현재 세션 로그아웃
+
+```http
+POST /api/v1/auth/logout
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 AUTH_LOGOUT_SUCCEEDED`, `data=null`
+- 이미 폐기되었거나 유효하지 않은 세션: `401 AUTH_INVALID_TOKEN` 또는 `AUTH_SESSION_REVOKED`
+- 현재 세션과 연결된 모든 refresh token을 폐기한다.
+
+### 6.2.4 모든 세션 로그아웃
+
+```http
+POST /api/v1/auth/logout-all
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 AUTH_LOGOUT_ALL_SUCCEEDED`, `data=null`
+- 인증 주체의 현재·다른 기기 세션과 refresh token을 모두 폐기한다.
+
+### 6.2.5 현재 사용자 조회
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer {accessToken}
+```
+
+성공은 `200 AUTH_CURRENT_USER_RETRIEVED`다.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `principalId` | UUID | 인증 주체 ID |
+| `loginId` | string | 로컬 합성 로그인 ID |
+| `customerId` | string | 연결된 비식별 고객 ID |
+| `displayName` | string | 표시명 |
+| `roles` | string[] | 정렬된 역할 목록 |
+
+### 6.2.6 권한 조회
+
+```http
+GET /api/v1/auth/me/permissions
+Authorization: Bearer {accessToken}
+```
+
+성공은 `200 AUTH_PERMISSIONS_RETRIEVED`이며 `data.permissions`는 중복 없이 정렬된 authority 문자열 배열이다.
+
+---
+
+## 6.3 P1 합성 금융기관·연결 조회 상세 계약
+
+이 절의 4개 operation은 `IMPLEMENTED-SYNTHETIC-READ-ONLY`다. 모든 데이터는 PostgreSQL 고정 snapshot이며 실제 금융기관·마이데이터 API를 호출하지 않는다.
+
+### 공통 인증
+
+- 네 endpoint 모두 Bearer 인증이 필요하다.
+- 기관 목록·상세는 유효한 인증 주체면 조회할 수 있다.
+- 고객 연결 목록·상세는 본인 `customerId + FINANCIAL_CONNECTION_READ` 또는 `FINANCIAL_CONNECTION_READ_ALL`이 필요하다.
+- `customerId`: `^[A-Za-z0-9][A-Za-z0-9_:-]{2,79}$`
+- `institutionId`: `^[A-Z][A-Z0-9_]{2,39}$`
+- `connectionId`: UUID
+
+### 공통 DTO
+
+`InstitutionSummary`:
+
+| 필드 | 타입 | 값·설명 |
+|---|---|---|
+| `institutionId` | string | `SYNTHETIC_BANK`, `SYNTHETIC_SECURITIES` |
+| `displayName` | string | 안심은행, 안심증권 |
+| `institutionType` | enum | `BANK`, `SECURITIES` |
+| `providerMode` | enum | 항상 `SYNTHETIC_PROVIDER` |
+| `connectionAvailable` | boolean | 합성 연결 가능 여부 |
+| `dataAsOf` | date | 고정 snapshot 기준일 |
+
+`Scope`:
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `scopeCode` | string | N | `ACCOUNTS`, `TRANSACTIONS`, `INVESTMENT_ACCOUNTS`, `POSITIONS` |
+| `displayName` | string | N | 화면 표시명 |
+| `readOnly` | boolean | N | 현재 항상 true |
+| `consentStatus` | enum | Y | 기관 지원범위에서는 null, 고객 연결에서는 `CONSENTED` 또는 `WITHDRAWN` |
+
+### 6.3.1 금융기관 목록
+
+```http
+GET /api/v1/financial-institutions
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 FINANCIAL_INSTITUTIONS_RETRIEVED`
+- 응답: `{ "items": InstitutionSummary[], "total": integer }`
+- 정렬: `displayName`, `institutionId` 오름차순
+- 현재 fixture의 `total`은 2다.
+
+### 6.3.2 금융기관 상세
+
+```http
+GET /api/v1/financial-institutions/{institutionId}
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 FINANCIAL_INSTITUTION_RETRIEVED`
+- 응답: `{ "institution": InstitutionSummary, "supportedScopes": Scope[] }`
+- 없음: `404 CONNECTION_INSTITUTION_NOT_FOUND`
+- `supportedScopes`는 `scopeCode` 오름차순이며 `consentStatus=null`이다.
+
+### 6.3.3 고객 연결 목록
+
+```http
+GET /api/v1/customers/{customerId}/connections
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 CUSTOMER_CONNECTIONS_RETRIEVED`
+- 응답: `{ "items": ConnectionSummary[], "total": integer }`
+- 정렬: 기관 `displayName`, `connectionId` 오름차순
+
+`ConnectionSummary` 필드:
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `connectionId` | UUID | N | 연결 ID |
+| `customerId` | string | N | 소유 고객 |
+| `institution` | InstitutionSummary | N | 합성 기관 |
+| `connectionStatus` | enum | N | `ACTIVE`, `DEGRADED`, `EXPIRED` |
+| `consentedAt` | datetime | N | 합성 동의 시작 |
+| `consentExpiresAt` | datetime | N | 합성 동의 만료 |
+| `lastSyncedAt` | datetime | Y | 마지막 snapshot 동기화 |
+| `providerMode` | enum | N | 항상 `SYNTHETIC_PROVIDER` |
+| `version` | integer(int64) | N | row version |
+
+### 6.3.4 고객 연결 상세
+
+```http
+GET /api/v1/customers/{customerId}/connections/{connectionId}
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 CUSTOMER_CONNECTION_RETRIEVED`
+- 응답: `{ "connection": ConnectionSummary, "consentScopes": Scope[] }`
+- 같은 고객에게 해당 연결이 없음: `404 CONNECTION_NOT_FOUND`
+- 다른 고객 ID로 조회하면 소유권 단계에서 `403 COMMON_FORBIDDEN`
+- `consentScopes`는 `scopeCode` 오름차순이다.
+
+---
+
+## 6.4 미구현 API를 CONTRACT로 승격하는 규칙
+
+현재 카탈로그·백로그 200개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
+
+| 필수 항목 | 기록 내용 |
+|---|---|
+| 식별 | 우선순위, 상태, 경계, Method, path |
+| 접근 | 호출 주체, authority, 소유권, step-up 필요 여부 |
+| 입력 | header, path, query, request DTO, validation |
+| 출력 | HTTP status, 안정적 response code, typed response DTO |
+| 실패 | endpoint별 오류 code와 발생 조건 |
+| 일관성 | 멱등키, request hash, 낙관적 잠금, 정렬·cursor |
+| 데이터 | 소유 테이블, 읽기·쓰기 set, Flyway 버전 |
+| 외부경계 | port, synthetic adapter, timeout·fallback, 외부 실행 여부 |
+| 검증 | 정상, 검증실패, 권한, 소유권, 동시성, 감사 테스트 |
+
+구현 완료 후 `IMPLEMENTED`로 바꾸고 Controller·DTO·migration·통합 테스트 위치와 OpenAPI operation을 같은 PR에서 연결한다. 세부 작업 순서는 `docs/BACKEND_DEVELOPER_HANDOFF.md`를 따른다.
 
 ---
 
