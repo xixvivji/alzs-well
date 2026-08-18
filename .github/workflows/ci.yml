@@ -30,7 +30,19 @@ jobs:
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
       - name: Test and enforce coverage
-        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification spotbugsMain --no-daemon
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if ./gradlew test jacocoTestReport jacocoTestCoverageVerification spotbugsMain --no-daemon 2>&1 | tee gradle-attempt.log; then
+              exit 0
+            fi
+            if ! grep -Eq 'status code 429|Too Many Requests' gradle-attempt.log || [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "Maven 저장소가 요청을 제한했습니다. $((attempt * 10))초 후 재시도합니다. ($attempt/3)"
+            sleep $((attempt * 10))
+          done
       - name: Upload backend reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -40,7 +52,8 @@ jobs:
             backend/build/reports/tests/test
             backend/build/reports/jacoco/test
             backend/build/reports/spotbugs
-          if-no-files-found: error
+          # 선행 Gradle 구성·다운로드 실패 시 원래 오류를 artifact 오류로 덮지 않는다.
+          if-no-files-found: warn
           retention-days: 14
       - name: Publish PR coverage report
         if: github.event_name == 'pull_request'

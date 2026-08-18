@@ -13,6 +13,7 @@
 - PR에서 새로 도입된 high severity 의존성 검토(사용 가능할 때)
 
 테스트와 JaCoCo HTML/XML 결과는 GitHub Actions artifact로 14일 보관한다. PR에서는 전체 90%, 변경 파일 80% 기준의 커버리지 댓글을 갱신한다.
+Maven 저장소가 일시적으로 `429 Too Many Requests`를 반환한 경우에만 백엔드 검증을 최대 3회 재시도한다. 코드·테스트·커버리지 실패는 즉시 실패시키며, 선행 Gradle 실패로 리포트가 생성되지 않은 경우 artifact 업로드는 원래 실패 원인을 덮지 않고 경고만 남긴다.
 
 ## 의존성 업데이트
 
