@@ -7,7 +7,7 @@
 ## 기술 기준
 
 - Java 21, Spring Boot 3.5.16, Gradle 8.14.3 Wrapper
-- PostgreSQL 17.11, Spring Data JPA·JDBC, Flyway V16
+- PostgreSQL 17.11, Spring Data JPA·JDBC, Flyway V17
 - Spring MVC·Security·Validation, Actuator
 - JUnit 5, Testcontainers
 
@@ -37,7 +37,7 @@ gateway만 `127.0.0.1`에 공개된다. gateway↔Spring은 `alzs-well-app`, Spr
 
 이 명령은 Spring의 외부 HTTPS 실패, Spring→DB 성공, gateway→DB 실패를 확인한다. 이 구성은 공모전용 망분리 모사이며 금융회사 운영환경의 규정 준수 완료를 뜻하지 않는다.
 
-## 구현 API — 업무 API 48개 + 직원 capability 발급 API 1개
+## 구현 API — 업무 API 49개 + 직원 capability 발급 API 1개
 
 ```text
 # 시스템 4
@@ -96,10 +96,11 @@ GET   /api/v1/customers/{customerId}/accessibility-settings
 PUT   /api/v1/customers/{customerId}/accessibility-settings
 GET   /api/v1/customers/{customerId}/data-summary
 
-# P1 로컬 합성 인증 5 (development 전용, production 강제 비활성화)
+# P1 로컬 합성 인증 6 (development 전용, production 강제 비활성화)
 POST /api/v1/auth/login
 POST /api/v1/auth/token/refresh
 POST /api/v1/auth/logout
+POST /api/v1/auth/logout-all
 GET  /api/v1/auth/me
 GET  /api/v1/auth/me/permissions
 
@@ -157,7 +158,7 @@ P1 첫 API는 `POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-dra
 
 사건 근거 API는 합성 신호·근거 거래·공식 보호수단 출처를 행원에게 한 묶음으로 제공하며 외부 문서나 금융기관 시스템을 호출하지 않는다.
 
-현재 단위·PostgreSQL Testcontainers 통합시험 60개는 capability/IDOR와 인코딩 경로 우회, 고객·직원 capability 분리 발급, 역할별 메서드 권한, 환경별 CORS 분리, 운영 노출 프로필 fail-closed, access/refresh token 해시 저장·회전·로그아웃 폐기, 합성 금융기관·연결 조회와 고객 소유권, run 격리, 3·2·7 신호, A/B 정책, 개인정보형 자유입력 차단, 멱등충돌, 낙관적 잠금, 고객 프로필·환경설정 영속화와 소유권 검증, 미동의 연락 차단, 외부실행 금지, 감사·내부 메모 append-only 제약, 만료 정리, 후속일정 상태 불변식, 사건 타임라인·근거·코파일럿 격리와 development OpenAPI 42개 계약을 검증한다.
+현재 단위·PostgreSQL Testcontainers 통합시험은 capability/IDOR와 인코딩 경로 우회, 고객·직원 capability 분리 발급, 역할별 메서드 권한, 환경별 CORS 분리, 명시적 실행 프로필과 운영 노출 fail-closed, refresh token 재사용 탐지·절대 만료·세션 상한·전체 로그아웃, 합성 금융기관·연결 조회와 고객 소유권, run 격리, 3·2·7 신호, A/B 정책, 개인정보형 자유입력 차단, 멱등충돌, 낙관적 잠금, 고객 프로필·환경설정 영속화와 소유권 검증, 미동의 연락 차단, 외부실행 금지, 감사·내부 메모 append-only 제약, 만료 정리, 후속일정 상태 불변식, 사건 타임라인·근거·코파일럿 격리와 development OpenAPI 43개 계약을 검증한다.
 
 ## AWS 백엔드 데모 배포
 

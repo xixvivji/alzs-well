@@ -14,7 +14,7 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **248개** |
+| 전체 API operation | **249개** |
 | API 도메인 | **25개** |
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
@@ -25,17 +25,17 @@
 | 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 248개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 249개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 48개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 49개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 200개 |
 
-업무 `IMPLEMENTED` 48개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 5개, P1 합성 금융기관·연결 조회 4개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development에서는 고객 프로필 API를 제외한 OpenAPI 42개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 49개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 49개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development에서는 고객 프로필 API를 제외한 OpenAPI 43개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 50개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
-여기서 API 248개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 249개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -128,7 +128,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 25개 도메인·248개 API 마스터 카탈로그
+3. 25개 도메인·249개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 12개 상세 계약
 6. P0-B 11개 상세 계약
@@ -841,16 +841,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **248** |
+| 전체 | **249** |
 | P0-A 기존 핵심 데모 | **12** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **147** |
+| P1 제품 핵심 | **148** |
 | P2 은행·증권 확장 | **78** |
-| OWNED | **156** |
+| OWNED | **157** |
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 5개, 합성 금융기관·연결 조회 4개로 총 48개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 49개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 42개가 노출된다. 나머지 200개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개로 총 49개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 50개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 43개가 노출된다. 나머지 200개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -914,13 +914,14 @@ REFERENCE_ONLY 작업에는 OpenAPI 확장 속성 x-public-demo-enabled: false�
 
 P0-B의 session 범위 읽기 API는 반드시 올바른 역할의 `X-Demo-Capability`, sessionId와 만료를 먼저 검증한다. 시나리오 파생 금융생활 읽기는 활성 `demoRunId`도 검증한다. sessionId 자체는 소유권 증명이 아니며, 같은 customerId나 accountId라도 다른 익명 세션·run에서 조회할 수 없어야 한다. 세션 생성 전 목록인 `/api/v1/demo/scenarios`는 session 범위가 아니다.
 
-#### 3.3.2 인증·세션·권한 — 9개
+#### 3.3.2 인증·세션·권한 — 10개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P1 | POST | /api/v1/auth/login | 기업 SSO 또는 인증 공급자 로그인 | EXTERNAL_INTEGRATION |
 | P1 | POST | /api/v1/auth/token/refresh | 애플리케이션 토큰 갱신 | OWNED |
 | P1 | POST | /api/v1/auth/logout | 현재 세션 종료 | OWNED |
+| P1 | POST | /api/v1/auth/logout-all | 현재 사용자의 모든 인증 세션 종료 | OWNED |
 | P1 | GET | /api/v1/auth/me | 현재 사용자·직원 정보 | OWNED |
 | P1 | GET | /api/v1/auth/me/permissions | 역할·세부 권한 조회 | OWNED |
 | P2 | GET | /api/v1/auth/sessions | 로그인 세션 목록 | OWNED |
@@ -930,7 +931,7 @@ P0-B의 session 범위 읽기 API는 반드시 올바른 역할의 `X-Demo-Capab
 
 KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 기존 체계의 책임이다.
 
-앞의 P1 5개는 Flyway V15의 인증 주체·역할·권한·세션 테이블과 함께 구현했다. Access/Refresh token은 256-bit 불투명 난수이며 원문은 응답에서 한 번만 제공하고 DB에는 SHA-256 hash만 저장한다. Refresh는 두 token을 모두 회전하고 이전 token을 즉시 무효화하며, logout은 현재 세션을 폐기한다. 로컬 합성 인증은 development 전용이고 공개 production에서는 기동 가드와 기능 플래그로 노출을 거부한다. 실제 기업 SSO/IdP 연동은 `IdentityProviderPort`의 후속 어댑터 작업이다.
+앞의 P1 6개는 Flyway V15의 인증 주체·역할·권한·세션 테이블과 V17의 refresh token 계열 이력·절대 만료·로그인 감사 테이블로 구현했다. Access/Refresh token은 256-bit 불투명 난수이며 원문은 응답에서 한 번만 제공하고 DB에는 SHA-256 hash만 저장한다. Refresh는 두 token을 모두 회전하며 이전 token 재사용 시 계열 전체를 폐기한다. 세션은 절대 만료와 사용자별 활성 상한을 적용하고, logout과 logout-all로 현재 또는 전체 세션을 폐기한다. 존재하지 않는 계정도 BCrypt dummy hash를 검증하며 반복 실패는 DB 기반으로 제한한다. 로컬 합성 인증은 development 전용이고 공개 production에서는 기동 가드와 기능 플래그로 노출을 거부한다. 실제 기업 SSO/IdP 연동은 `IdentityProviderPort`의 후속 어댑터 작업이다.
 
 #### 3.3.3 고객 프로필·접근성 — 8개
 
@@ -1325,9 +1326,9 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 1 | P0-A 핵심 A/B 데모 | 12 |
 | Wave 2 | P0-B 세션 격리 뱅킹 셸 | 23 |
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
-| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 248 |
+| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 249 |
 
-발표에서는 “248개 API 카탈로그를 설계했고 공모전 구현 목표는 안전한 P0 23개”라고 표현한다. 248개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “249개 API 카탈로그를 설계했고 공모전 구현 목표는 안전한 P0 23개”라고 표현한다. 249개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -3237,6 +3238,7 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 | 400 | `COMMON_INVALID_INPUT` | 세션 생성을 제외한 변경 API에서 `Idempotency-Key` 누락; `errors.field=Idempotency-Key` |
 | 409 | `IDEMPOTENCY_CONFLICT` | 같은 scope·키를 다른 `requestHash`에 재사용 |
 | 429 | `DEMO_SESSION_RATE_LIMITED` | 비멱등 세션 생성 rate limit 또는 활성 세션 quota 초과 |
+| 429 | `AUTH_LOGIN_RATE_LIMITED` | 같은 로그인 ID hash의 반복 인증 실패 한도 초과 |
 | 404 | `DEMO_SESSION_NOT_FOUND` | 세션 없음 또는 capability 누락·불일치·만료 |
 | 403 | `DEMO_CAPABILITY_SCOPE_FORBIDDEN` | 유효 capability의 고객/데모행원 역할범위 위반 |
 | 409 | `DEMO_RUN_STALE` | Reset 이전 `demoRunId`로 상태 변경 요청 |

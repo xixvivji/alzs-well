@@ -86,8 +86,11 @@ public class DemoSessionService {
     }
 
     @Transactional
-    public synchronized DemoSessionCreatedResponse createSession(String customerCapabilityHash) {
+    public DemoSessionCreatedResponse createSession(String customerCapabilityHash) {
         OffsetDateTime now = OffsetDateTime.now(clock);
+        jdbcTemplate.execute(
+                "select pg_advisory_xact_lock(hashtextextended('alzs-well-demo-session-capacity', 0))"
+        );
         if (sessionRepository.countByExpiresAtAfter(now) >= maxActiveSessions) {
             throw new BusinessException(DemoErrorCode.SESSION_RATE_LIMITED);
         }
@@ -499,7 +502,8 @@ public class DemoSessionService {
     }
 
     private void requireSameRequest(DemoIdempotencyRecord existing, String requestHash) {
-        if (!requestHash.equals(existing.getRequestHash())) {
+        if (!MessageDigest.isEqual(requestHash.getBytes(StandardCharsets.UTF_8),
+                existing.getRequestHash().getBytes(StandardCharsets.UTF_8))) {
             throw new BusinessException(DemoErrorCode.IDEMPOTENCY_CONFLICT);
         }
     }

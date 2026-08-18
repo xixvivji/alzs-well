@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -34,6 +37,7 @@ class AuthSessionIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
+    @Autowired JdbcTemplate jdbcTemplate;
 
     @Test
     void loginMePermissionsRefreshAndLogoutFormAClosedSessionLoop() throws Exception {
@@ -70,8 +74,9 @@ class AuthSessionIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_INVALID_TOKEN"));
 
+        // 이미 사용한 refresh token 재사용은 탈취 신호이므로 새 access token을 포함한 family 전체를 폐기한다.
         mockMvc.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + rotatedAccess))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + rotatedAccess))
                 .andExpect(status().isUnauthorized());
     }
@@ -83,6 +88,71 @@ class AuthSessionIntegrationTest {
                         """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    void logoutAllRevokesEveryActiveSessionForThePrincipal() throws Exception {
+        String firstAccess = login().at("/data/accessToken").asText();
+        String secondAccess = login().at("/data/accessToken").asText();
+
+        mockMvc.perform(post("/api/v1/auth/logout-all")
+                        .header("Authorization", "Bearer " + secondAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("AUTH_LOGOUT_ALL_SUCCEEDED"));
+
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + firstAccess))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + secondAccess))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void limitsActiveSessionsAndRevokesTheOldestSession() throws Exception {
+        String oldestAccess = login().at("/data/accessToken").asText();
+        for (int index = 0; index < 5; index++) login();
+
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + oldestAccess))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rateLimitsRepeatedFailuresWithoutStoringTheRawLoginId() throws Exception {
+        String loginId = "missing-account-for-rate-limit";
+        String body = "{\"loginId\":\"" + loginId + "\",\"password\":\"incorrect-password\"}";
+        for (int index = 0; index < 10; index++) {
+            mockMvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content(body))
+                    .andExpect(status().isUnauthorized());
+        }
+        mockMvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("AUTH_LOGIN_RATE_LIMITED"));
+    }
+
+    @Test
+    void refreshNeverExtendsBeyondTheAbsoluteSessionExpiry() throws Exception {
+        JsonNode issued = login();
+        String refresh = issued.at("/data/refreshToken").asText();
+        jdbcTemplate.update("""
+                update auth_session set access_expires_at = now() + interval '5 minutes',
+                    refresh_expires_at = now() + interval '5 minutes',
+                    absolute_expires_at = now() + interval '5 minutes'
+                 where refresh_token_hash = ?
+                """, com.alzswell.identity.application.AuthSessionService.hash(refresh));
+        jdbcTemplate.update("""
+                update auth_refresh_token set expires_at = now() + interval '5 minutes'
+                 where token_hash = ?
+                """, com.alzswell.identity.application.AuthSessionService.hash(refresh));
+
+        JsonNode rotated = body(mockMvc.perform(post("/api/v1/auth/token/refresh")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refresh + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        java.time.OffsetDateTime accessExpiry = java.time.OffsetDateTime.parse(
+                rotated.at("/data/accessExpiresAt").asText());
+        java.time.OffsetDateTime refreshExpiry = java.time.OffsetDateTime.parse(
+                rotated.at("/data/refreshExpiresAt").asText());
+        assertFalse(accessExpiry.isAfter(refreshExpiry));
+        assertTrue(refreshExpiry.isBefore(java.time.OffsetDateTime.now().plusMinutes(6)));
     }
 
     @Test
@@ -101,5 +171,11 @@ class AuthSessionIntegrationTest {
 
     private JsonNode body(String json) throws Exception {
         return objectMapper.readTree(json);
+    }
+
+    private JsonNode login() throws Exception {
+        return body(mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON).content(LOGIN_BODY))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
 }

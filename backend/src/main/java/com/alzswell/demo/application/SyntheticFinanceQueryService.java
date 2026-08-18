@@ -22,6 +22,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -155,7 +156,7 @@ public class SyntheticFinanceQueryService {
                 rs.getString("comparison_text"), reasons(sessionId, demoRunId, rs.getString("baseline_id")),
                 rs.getString("algorithm_version"), rs.getObject("calculated_at", OffsetDateTime.class)
         ), sessionId, demoRunId, customerId);
-        List<LocalDate> periods = jdbcTemplate.query("""
+        List<LocalDate> periods = Objects.requireNonNull(jdbcTemplate.query("""
                 select baseline_from, baseline_to, observation_from, observation_to
                   from synthetic_baseline where demo_session_id = ? and demo_run_id = ? and customer_id = ?
                  order by display_order limit 1
@@ -165,7 +166,7 @@ public class SyntheticFinanceQueryService {
                     rs.getObject("baseline_to", LocalDate.class),
                     rs.getObject("observation_from", LocalDate.class),
                     rs.getObject("observation_to", LocalDate.class));
-        }, sessionId, demoRunId, customerId);
+        }, sessionId, demoRunId, customerId), "합성 기준선 기간 fixture가 없습니다.");
         return new BaselineListResponse(customerId,
                 new BaselineListResponse.DatePeriod(periods.get(0), periods.get(1)),
                 new BaselineListResponse.DatePeriod(periods.get(2), periods.get(3)), items,
@@ -182,7 +183,7 @@ public class SyntheticFinanceQueryService {
     public FinancialSummaryResponse financialSummary(UUID sessionId, String customerId) {
         DemoSession session = sessionService.requireFinancialFixture(sessionId, customerId);
         UUID demoRunId = session.getDemoRunId();
-        Profile profile = jdbcTemplate.queryForObject("""
+        Profile profile = Objects.requireNonNull(jdbcTemplate.queryForObject("""
                 select as_of_date, period_from, period_to, monthly_income, monthly_expense,
                        upcoming_obligations, liabilities, open_alert_count, change_summary
                   from synthetic_financial_profile where demo_session_id = ? and demo_run_id = ? and customer_id = ?
@@ -190,14 +191,15 @@ public class SyntheticFinanceQueryService {
                 rs.getObject("period_from", LocalDate.class), rs.getObject("period_to", LocalDate.class),
                 decimal(rs, "monthly_income"), decimal(rs, "monthly_expense"),
                 decimal(rs, "upcoming_obligations"), decimal(rs, "liabilities"),
-                rs.getInt("open_alert_count"), rs.getString("change_summary")), sessionId, demoRunId, customerId);
-        List<String> totals = jdbcTemplate.query("""
+                rs.getInt("open_alert_count"), rs.getString("change_summary")), sessionId, demoRunId, customerId),
+                "합성 금융 요약 fixture가 없습니다.");
+        List<String> totals = Objects.requireNonNull(jdbcTemplate.query("""
                 select coalesce(sum(current_balance), 0) total,
                        coalesce(sum(current_balance) filter (where account_type <> 'INVESTMENT'), 0) deposits,
                        coalesce(sum(current_balance) filter (where account_type = 'INVESTMENT'), 0) investments
                   from synthetic_account where demo_session_id = ? and demo_run_id = ? and customer_id = ?
                 """, rs -> { rs.next(); return List.of(decimal(rs, "total"), decimal(rs, "deposits"), decimal(rs, "investments")); },
-                sessionId, demoRunId, customerId);
+                sessionId, demoRunId, customerId), "합성 자산 합계 fixture가 없습니다.");
         List<FinancialSummaryResponse.TrendItem> trend = jdbcTemplate.query("""
                 select trend_month, total_assets from synthetic_asset_trend
                  where demo_session_id = ? and demo_run_id = ? and customer_id = ? order by trend_month
@@ -231,7 +233,7 @@ public class SyntheticFinanceQueryService {
     }
 
     private SyntheticDataProvenance provenance(UUID sessionId, UUID demoRunId, String customerId) {
-        ProvenanceRow source = jdbcTemplate.queryForObject("""
+        ProvenanceRow source = Objects.requireNonNull(jdbcTemplate.queryForObject("""
                 select source_provider, max(source_updated_at) source_updated_at,
                        min(data_freshness) data_freshness, min(consent_id) consent_id,
                        min(snapshot_hash) snapshot_hash
@@ -240,7 +242,8 @@ public class SyntheticFinanceQueryService {
                  group by source_provider
                 """, (rs, row) -> new ProvenanceRow(rs.getString("source_provider"),
                 rs.getObject("source_updated_at", OffsetDateTime.class), rs.getString("data_freshness"),
-                rs.getString("consent_id"), rs.getString("snapshot_hash")), sessionId, demoRunId, customerId);
+                rs.getString("consent_id"), rs.getString("snapshot_hash")), sessionId, demoRunId, customerId),
+                "합성 데이터 출처 fixture가 없습니다.");
         List<String> scope = jdbcTemplate.queryForList("""
                 select distinct s.scope_code
                   from synthetic_connection_scope s

@@ -1,4 +1,5 @@
 server:
+  address: ${SERVER_ADDRESS}
   port: ${SERVER_PORT:8080}
   max-http-request-header-size: 16KB
   shutdown: graceful
@@ -11,17 +12,15 @@ server:
     max-swallow-size: 32KB
 
 spring:
-  profiles:
-    default: development
   application:
     name: alzs-well-backend
     version: ${APPLICATION_VERSION:0.0.1-SNAPSHOT}
   lifecycle:
     timeout-per-shutdown-phase: 20s
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/alzs_well}
-    username: ${DB_USERNAME:alzswell}
-    password: ${DB_PASSWORD:alzs_well_local_password}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
       minimum-idle: ${DB_POOL_MIN_IDLE:2}
@@ -81,7 +80,7 @@ app:
     staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS:}
     require-https: false
   deployment:
-    public-exposure: ${PUBLIC_DEPLOYMENT:false}
+    public-exposure: ${PUBLIC_DEPLOYMENT}
   guardrails:
     synthetic-data-only: ${SYNTHETIC_DATA_ONLY:true}
     external-actions-enabled: ${EXTERNAL_ACTIONS_ENABLED:false}
@@ -103,9 +102,17 @@ app:
   auth:
     access-ttl-seconds: ${AUTH_ACCESS_TTL_SECONDS:900}
     refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
+    absolute-ttl-seconds: ${AUTH_ABSOLUTE_TTL_SECONDS:86400}
+    max-active-sessions-per-principal: ${AUTH_MAX_ACTIVE_SESSIONS:5}
+    login-failure-limit: ${AUTH_LOGIN_FAILURE_LIMIT:10}
+    login-failure-window-seconds: ${AUTH_LOGIN_FAILURE_WINDOW_SECONDS:900}
+    cleanup-interval-ms: ${AUTH_CLEANUP_INTERVAL_MS:3600000}
+    cleanup-retention-seconds: ${AUTH_CLEANUP_RETENTION_SECONDS:86400}
+    login-event-retention-seconds: ${AUTH_LOGIN_EVENT_RETENTION_SECONDS:2592000}
+    cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "16"
+    schema: "17"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0
