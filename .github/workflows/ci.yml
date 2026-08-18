@@ -16,6 +16,17 @@ permissions:
   pull-requests: write
 
 jobs:
+  api-contract:
+    name: API catalog contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Validate API catalog counts and uniqueness
+        run: python3 scripts/validate_api_catalog.py
+
   backend:
     name: Backend test and coverage
     runs-on: ubuntu-latest
