@@ -167,6 +167,13 @@ public class OpenApiConfiguration {
         if (path.equals("/api/v1/knowledge/search")) return List.of("KNOWLEDGE_SEARCH");
         if (path.startsWith("/api/v1/knowledge/")) return List.of("KNOWLEDGE_READ");
         if (path.equals("/api/v1/guidance-candidates")) return List.of("GUIDANCE_CANDIDATE_READ");
+        if (path.startsWith("/api/v1/protection-actions")) {
+            return List.of(method == PathItem.HttpMethod.POST
+                    ? "PROTECTION_ACTION_EVALUATE" : "PROTECTION_ACTION_READ");
+        }
+        if (path.endsWith("/protection-enrollments")) {
+            return List.of("PROTECTION_ENROLLMENT_READ or PROTECTION_ENROLLMENT_READ_ALL");
+        }
         if (path.startsWith("/api/v1/staff/follow-ups/")) return List.of("STAFF_FOLLOW_UP");
         if (path.startsWith("/api/v1/staff/cases")) return staffCaseAuthorities(path, method);
         if (path.contains("/alerts")) {

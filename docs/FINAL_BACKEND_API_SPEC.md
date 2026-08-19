@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 94개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 98개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 170개 |
+| 카탈로그·백로그 | 166개 |
 
-업무 `IMPLEMENTED` 94개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건·후속일정 12개, P1 운영형 인앱 알림·설정·미리보기 6개, P1 승인 근거·결정론적 검색·안내 후보 6개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 88개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 95개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 98개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건·후속일정 12개, P1 운영형 인앱 알림·설정·미리보기 6개, P1 승인 근거·결정론적 검색·안내 후보 6개, P1 보호수단 카탈로그·안내 평가·합성 가입상태 4개다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 92개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 99개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 264개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -860,7 +860,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개, 운영형 행원 사건·후속일정 12개, 운영형 인앱 알림·설정·미리보기 6개, 승인 근거·결정론적 검색·안내 후보 6개로 총 94개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 95개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 88개가 노출된다. 나머지 170개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 보호수단 카탈로그·규칙 평가·합성 가입상태 4개를 포함해 총 98개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 99개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 92개가 노출된다. 나머지 166개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1142,6 +1142,8 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P2 | POST | /api/v1/protection-enrollments | 실제 보호수단 신청 참조 | REFERENCE_ONLY |
 | P2 | DELETE | /api/v1/protection-enrollments/{enrollmentId} | 실제 해지 기능 참조 | REFERENCE_ONLY |
 
+앞의 P1 4개는 Flyway V29와 함께 구현했다. 카탈로그와 상세는 공식 출처·확인일·승인된 근거 passage를 반환하고, 안내 가능성 평가는 고정 정책 버전과 reason code만 사용하는 결정론적 결과다. 가입상태는 `안심은행` 합성 snapshot만 읽으며 `externalProviderCalled=false`를 명시한다. 모든 응답에서 신청 endpoint와 외부 실행은 제공하지 않고, 실제 신청·해지 API는 계속 `REFERENCE_ONLY`다.
+
 #### 3.3.15 동의·신뢰연락인·정보제공 — 12개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1357,7 +1359,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 95개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 99개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2116,7 +2118,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "28",
+        "schemaVersion": "29",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2700,7 +2702,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "28",
+    "schemaVersion": "29",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
