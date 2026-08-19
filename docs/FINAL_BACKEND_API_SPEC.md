@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.10.0**
+> 문서 버전: **1.11.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-19 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 70개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 75개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 187개 |
+| 카탈로그·백로그 | 182개 |
 
-업무 `IMPLEMENTED` 70개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 64개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 71개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 75개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건 5개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 69개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 76개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 257개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개로 총 70개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 71개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 64개가 노출된다. 나머지 187개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개, 운영형 행원 사건 5개로 총 75개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 76개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 69개가 노출된다. 나머지 182개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1336,7 +1336,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “257개 API 카탈로그를 설계했고 P0 23개를 포함한 71개 코드 operation을 구현했다”고 표현한다. 257개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “257개 API 카탈로그를 설계했고 P0 23개를 포함한 76개 코드 operation을 구현했다”고 표현한다. 257개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2095,7 +2095,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "23",
+        "schemaVersion": "24",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2679,7 +2679,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "23",
+    "schemaVersion": "24",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3704,7 +3704,48 @@ GET  /api/v1/alerts/{alertId}/audit
 
 ---
 
-## 6.7 미구현 API를 CONTRACT로 승격하는 규칙
+## 6.7 P1 운영형 행원 사건 상세 계약
+
+이 절의 5개 operation은 `IMPLEMENTED-PRIVATE-SYNTHETIC-ONLY`다. 고객의 `UNRECOGNIZED|NOT_SURE` 응답으로 경보가 `BANK_REVIEW`가 되는 트랜잭션 안에서 운영형 사건 하나를 생성한다. 기존 `demo_session_id` 범위의 `protection_case`와는 별도 테이블을 사용한다.
+
+```http
+GET  /api/v1/staff/cases?status=PENDING&priority=HIGH&cursor={caseId}&limit=20
+GET  /api/v1/staff/cases/{caseId}
+PUT  /api/v1/staff/cases/{caseId}/assignment
+POST /api/v1/staff/cases/{caseId}/reviews
+POST /api/v1/staff/cases/{caseId}/guidance-plans
+```
+
+### 6.7.1 권한과 사건 생성
+
+- 큐·상세: `STAFF_CASE_READ`
+- 담당자 배정: `STAFF_CASE_ASSIGN`
+- 검토 상태전이: `STAFF_CASE_REVIEW`
+- 안내계획 승인: `STAFF_GUIDANCE_APPROVE`
+- `PROTECTION_STAFF` 역할은 위 권한을 가진 사설 검증용 행원 역할이다.
+- 경보당 사건은 하나만 존재하며 `operational_protection_case.alert_id` 고유 제약으로 중복을 차단한다.
+- 우선순위는 경보 severity를 그대로 사용하고 최초 업무상태는 `PENDING`이다.
+
+### 6.7.2 큐·배정·검토 상태
+
+- 큐 정렬은 `HIGH → MEDIUM → LOW`, 생성시각, `caseId` 순서다. 다음 cursor는 마지막 `caseId`이며 동일 복합 정렬 기준으로 이어진다.
+- 배정은 `assignedTeam`, `assignedTo`, `expectedVersion`을 함께 요구하며 완료 사건은 변경할 수 없다.
+- 검토 상태전이는 `PENDING → IN_REVIEW → COMPLETED`이며 안내계획 승인 후에는 `GUIDANCE_APPROVED → COMPLETED`가 가능하다.
+- 완료 사건은 `REOPEN_REVIEW`로 `IN_REVIEW`에 되돌릴 수 있다.
+- `START_REVIEW`는 담당자가 배정된 사건에만 허용한다.
+- 모든 변경은 `expectedVersion`을 사용하고 오래된 요청은 `409 STAFF_CASE_STATE_CONFLICT`다.
+- 검토 요청은 `Idempotency-Key`가 필수이며 원문 키를 저장하지 않는다. 같은 키의 다른 요청은 `409 STAFF_CASE_REVIEW_IDEMPOTENCY_CONFLICT`다.
+
+### 6.7.3 안내계획 안전경계
+
+- 허용 action은 `FDS_REVIEW`, `DELAYED_TRANSFER_GUIDANCE`, `SECURITY_SETTINGS_GUIDANCE`, `BRANCH_CONSULTATION`이다.
+- 안내계획은 배정된 `IN_REVIEW` 사건에 한 번만 승인할 수 있다.
+- 응답은 `delivered=false`, `externalExecutionCreated=false`다. 실제 FDS 실행, 지연이체 신청, 설정 변경, 영업점 예약을 수행하지 않는다.
+- 사건 응답도 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
+
+---
+
+## 6.8 미구현 API를 CONTRACT로 승격하는 규칙
 
 현재 카탈로그·백로그 200개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 

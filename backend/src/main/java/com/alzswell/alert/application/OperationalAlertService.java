@@ -119,8 +119,12 @@ public class OperationalAlertService {
                 ) values (?, ?, ?, ?, ?, ?, ?, ?)
                 """, eventId, alertId, command.responseCode(), detail.alert().state(), nextState,
                 requestHash, keyHash, now);
+        UUID caseId = nextState.equals("BANK_REVIEW") ? createProtectionCase(detail.alert(), now) : null;
         writeAudit(alertId, "CONTEXT_RESPONDED", detail.alert().state(), nextState,
-                Map.of("contextEventId", eventId, "responseCode", command.responseCode()), now);
+                caseId == null
+                        ? Map.of("contextEventId", eventId, "responseCode", command.responseCode())
+                        : Map.of("contextEventId", eventId, "responseCode", command.responseCode(),
+                                "caseId", caseId), now);
         return transition(alertId, detail.alert().state(), nextState, command.expectedVersion() + 1,
                 command.responseCode(), null, now, false);
     }
@@ -190,6 +194,19 @@ public class OperationalAlertService {
                     detail, integrity_hash, created_at
                 ) values (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
                 """, auditId, alertId, eventType, previousState, resultingState, detailJson, integrityHash, now);
+    }
+
+    private UUID createProtectionCase(AlertSummary alert, OffsetDateTime now) {
+        UUID caseId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into operational_protection_case (
+                    case_id, alert_id, signal_id, customer_id, review_priority, task_status,
+                    case_version, created_at, updated_at
+                ) values (?, ?, ?, ?, ?, 'PENDING', 1, ?, ?)
+                on conflict (alert_id) do nothing
+                """, caseId, alert.alertId(), alert.signalId(), alert.customerId(), alert.severity(), now, now);
+        return jdbcTemplate.queryForObject(
+                "select case_id from operational_protection_case where alert_id = ?", UUID.class, alert.alertId());
     }
 
     private AlertTransition transition(UUID alertId, String previousState, String currentState, long version,
