@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +41,8 @@ class OperationalCaseIntegrationTest {
     @BeforeEach
     void resetWorkflow() {
         jdbcTemplate.execute("""
-                truncate table operational_case_note, operational_case_activity,
+                truncate table operational_case_follow_up_event, operational_case_follow_up,
+                    operational_case_note, operational_case_activity,
                     operational_case_review_event, operational_guidance_plan,
                     operational_protection_case
                 """);
@@ -119,18 +122,44 @@ class OperationalCaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.idempotencyReplayed").value(true));
 
+        String scheduledAt = OffsetDateTime.now().plusDays(2).toString();
+        String followUpBody = "{\"followUpType\":\"CUSTOMER_RECHECK\",\"scheduledAt\":\""
+                + scheduledAt + "\",\"purpose\":\"고객 상태 내부 재확인\",\"expectedCaseVersion\":3}";
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/follow-ups", caseId)
+                        .with(staff("STAFF_FOLLOW_UP")).header("Idempotency-Key", "case-follow-up-0001")
+                        .contentType(APPLICATION_JSON).content(followUpBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("SCHEDULED"))
+                .andExpect(jsonPath("$.data.externalContactExecuted").value(false));
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/follow-ups", caseId)
+                        .with(staff("STAFF_FOLLOW_UP")).header("Idempotency-Key", "case-follow-up-0001")
+                        .contentType(APPLICATION_JSON).content(followUpBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.idempotencyReplayed").value(true));
+        UUID followUpId = jdbcTemplate.queryForObject(
+                "select follow_up_id from operational_case_follow_up where case_id = ?", UUID.class, caseId);
+        mockMvc.perform(patch("/api/v1/staff/follow-ups/{followUpId}", followUpId)
+                        .with(staff("STAFF_FOLLOW_UP")).contentType(APPLICATION_JSON)
+                        .content("{\"actionCode\":\"COMPLETE\",\"outcome\":\"내부 재확인 완료\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+        mockMvc.perform(get("/api/v1/staff/cases/{caseId}/follow-ups", caseId)
+                        .with(staff("STAFF_CASE_READ")).queryParam("status", "COMPLETED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.count").value(1));
+
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/guidance-plans", caseId)
                         .with(staff("STAFF_GUIDANCE_APPROVE")).contentType(APPLICATION_JSON)
-                        .content("{\"selectedActionCodes\":[\"FDS_REVIEW\",\"BRANCH_CONSULTATION\"],\"expectedVersion\":3}"))
+                        .content("{\"selectedActionCodes\":[\"FDS_REVIEW\",\"BRANCH_CONSULTATION\"],\"expectedVersion\":4}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.caseVersion").value(4))
+                .andExpect(jsonPath("$.data.caseVersion").value(5))
                 .andExpect(jsonPath("$.data.delivered").value(false))
                 .andExpect(jsonPath("$.data.externalExecutionCreated").value(false));
 
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/reviews", caseId)
                         .with(staff("STAFF_CASE_REVIEW")).header("Idempotency-Key", "case-review-0002")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"actionCode\":\"COMPLETE_REVIEW\",\"note\":\"검토 기록 완료\",\"expectedVersion\":4}"))
+                        .content("{\"actionCode\":\"COMPLETE_REVIEW\",\"note\":\"검토 기록 완료\",\"expectedVersion\":5}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.currentStatus").value("COMPLETED"))
                 .andExpect(jsonPath("$.data.financialActionExecuted").value(false));
@@ -138,7 +167,7 @@ class OperationalCaseIntegrationTest {
         mockMvc.perform(get("/api/v1/staff/cases/{caseId}/timeline", caseId)
                         .with(staff("STAFF_CASE_READ")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.count").value(7))
+                .andExpect(jsonPath("$.data.count").value(9))
                 .andExpect(jsonPath("$.data.items[0].eventType").exists());
     }
 

@@ -2,6 +2,7 @@ package com.alzswell.casework.api;
 
 import com.alzswell.casework.api.CaseworkRequests.AssignmentCommand;
 import com.alzswell.casework.api.CaseworkRequests.GuidancePlanCommand;
+import com.alzswell.casework.api.CaseworkRequests.FollowUpCommand;
 import com.alzswell.casework.api.CaseworkRequests.NoteCommand;
 import com.alzswell.casework.api.CaseworkRequests.ReviewCommand;
 import com.alzswell.casework.api.CaseworkResponses.CaseDetail;
@@ -12,6 +13,8 @@ import com.alzswell.casework.api.CaseworkResponses.CaseQueue;
 import com.alzswell.casework.api.CaseworkResponses.CaseTimeline;
 import com.alzswell.casework.api.CaseworkResponses.CaseTransition;
 import com.alzswell.casework.api.CaseworkResponses.GuidancePlan;
+import com.alzswell.casework.api.CaseworkResponses.FollowUp;
+import com.alzswell.casework.api.CaseworkResponses.FollowUps;
 import com.alzswell.casework.application.OperationalCaseService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
@@ -127,4 +130,26 @@ public class OperationalCaseController {
         return ApiResponses.created("STAFF_CASE_NOTE_CREATED", "외부 전송 없이 사건 내부 메모를 등록했습니다.",
                 caseService.addNote(caseId, command, idempotencyKey, authentication.getName()));
     }
+
+    @GetMapping("/{caseId}/follow-ups")
+    @PreAuthorize("hasAnyAuthority('STAFF_CASE_READ', 'STAFF_FOLLOW_UP')")
+    public ResponseEntity<ApiResponse<FollowUps>> followUps(
+            @PathVariable UUID caseId,
+            @RequestParam(required = false) @Pattern(regexp = "SCHEDULED|COMPLETED|CANCELLED") String status) {
+        return ApiResponses.ok("STAFF_CASE_FOLLOW_UPS_RETRIEVED", "사건 내부 후속 일정을 조회했습니다.",
+                caseService.followUps(caseId, status));
+    }
+
+    @PostMapping("/{caseId}/follow-ups")
+    @PreAuthorize("hasAuthority('STAFF_FOLLOW_UP')")
+    public ResponseEntity<ApiResponse<FollowUp>> createFollowUp(
+            @PathVariable UUID caseId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody FollowUpCommand command,
+            Authentication authentication) {
+        return ApiResponses.created("STAFF_CASE_FOLLOW_UP_CREATED", "외부 연락 없이 후속 일정을 등록했습니다.",
+                caseService.createFollowUp(caseId, command, idempotencyKey, authentication.getName()));
+    }
+
 }

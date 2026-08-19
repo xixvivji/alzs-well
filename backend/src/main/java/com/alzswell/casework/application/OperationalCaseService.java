@@ -3,6 +3,8 @@ package com.alzswell.casework.application;
 import com.alzswell.casework.api.CaseworkErrorCode;
 import com.alzswell.casework.api.CaseworkRequests.AssignmentCommand;
 import com.alzswell.casework.api.CaseworkRequests.GuidancePlanCommand;
+import com.alzswell.casework.api.CaseworkRequests.FollowUpCommand;
+import com.alzswell.casework.api.CaseworkRequests.FollowUpUpdateCommand;
 import com.alzswell.casework.api.CaseworkRequests.NoteCommand;
 import com.alzswell.casework.api.CaseworkRequests.ReviewCommand;
 import com.alzswell.casework.api.CaseworkResponses.CaseDetail;
@@ -15,6 +17,8 @@ import com.alzswell.casework.api.CaseworkResponses.CaseTimeline;
 import com.alzswell.casework.api.CaseworkResponses.CaseTransition;
 import com.alzswell.casework.api.CaseworkResponses.EvidenceItem;
 import com.alzswell.casework.api.CaseworkResponses.GuidancePlan;
+import com.alzswell.casework.api.CaseworkResponses.FollowUp;
+import com.alzswell.casework.api.CaseworkResponses.FollowUps;
 import com.alzswell.casework.api.CaseworkResponses.TimelineEvent;
 import com.alzswell.common.exception.BusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -184,12 +188,16 @@ public class OperationalCaseService {
                     select 'INTERNAL_NOTE_ADDED'::varchar, created_by, null::varchar, null::varchar,
                            '행원 내부 메모 등록'::varchar, created_at
                       from operational_case_note where case_id = ?
+                    union all
+                    select event_type, actor_subject, previous_status, resulting_status,
+                           '내부 후속 일정 변경'::varchar, created_at
+                      from operational_case_follow_up_event where case_id = ?
                   ) timeline order by occurred_at, event_type
                 """, (rs, rowNum) -> new TimelineEvent(rs.getString("event_type"),
                         rs.getString("actor_subject"), rs.getString("previous_state"),
                         rs.getString("resulting_state"), rs.getString("summary"),
                         rs.getObject("occurred_at", OffsetDateTime.class)),
-                caseId, alertId, caseId, caseId, caseId, caseId);
+                caseId, alertId, caseId, caseId, caseId, caseId, caseId);
         return new CaseTimeline(caseId, items, items.size());
     }
 
@@ -221,6 +229,96 @@ public class OperationalCaseService {
                 ) values (?, ?, ?, ?, ?, ?, ?, ?)
                 """, noteId, caseId, normalized, actor, requestHash, keyHash, integrityHash, now);
         return new CaseNote(noteId, caseId, normalized, actor, integrityHash, now, false);
+    }
+
+    @Transactional(readOnly = true)
+    public FollowUps followUps(UUID caseId, String status) {
+        detail(caseId);
+        List<FollowUp> items = jdbcTemplate.query("""
+                select follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
+                       outcome, follow_up_version, created_by, created_at, updated_at
+                  from operational_case_follow_up
+                 where case_id = ? and (cast(? as varchar) is null or status = ?)
+                 order by scheduled_at, follow_up_id
+                """, (rs, rowNum) -> mapFollowUp(rs, false), caseId, status, status);
+        return new FollowUps(caseId, items, items.size());
+    }
+
+    @Transactional
+    public FollowUp createFollowUp(UUID caseId, FollowUpCommand command, String idempotencyKey, String actor) {
+        CaseSummary current = lockCaseSummary(caseId);
+        String keyHash = sha256(idempotencyKey);
+        String normalizedPurpose = command.purpose().trim();
+        String requestHash = sha256(caseId + "|" + command.followUpType() + "|" + command.scheduledAt()
+                + "|" + normalizedPurpose + "|" + command.expectedCaseVersion());
+        FollowUp replay = findFollowUp(caseId, keyHash, requestHash, true);
+        if (replay != null) return replay;
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (current.version() != command.expectedCaseVersion() || current.assignedTo() == null
+                || !List.of("IN_REVIEW", "GUIDANCE_APPROVED", "COMPLETED").contains(current.taskStatus())
+                || command.scheduledAt().isAfter(now.plusDays(90))) {
+            throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
+        }
+        int caseUpdated = jdbcTemplate.update("""
+                update operational_protection_case
+                   set case_version = case_version + 1, updated_at = ?
+                 where case_id = ? and case_version = ? and assigned_to is not null
+                """, now, caseId, command.expectedCaseVersion());
+        if (caseUpdated != 1) throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
+        UUID followUpId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into operational_case_follow_up (
+                    follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
+                    outcome, follow_up_version, idempotency_key_hash, request_hash,
+                    created_by, created_at, updated_at
+                ) values (?, ?, ?, 'SCHEDULED', ?, ?, null, 1, ?, ?, ?, ?, ?)
+                """, followUpId, caseId, command.followUpType(), command.scheduledAt(), normalizedPurpose,
+                keyHash, requestHash, actor, now, now);
+        writeFollowUpEvent(followUpId, caseId, "FOLLOW_UP_CREATED", null, "SCHEDULED", actor,
+                java.util.Map.of("scheduledAt", command.scheduledAt().toString(),
+                        "followUpType", command.followUpType()), now);
+        return requiredFollowUp(followUpId, false);
+    }
+
+    @Transactional
+    public FollowUp updateFollowUp(UUID followUpId, FollowUpUpdateCommand command, String actor) {
+        FollowUp current = lockFollowUp(followUpId);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (!current.status().equals("SCHEDULED") || current.version() != command.expectedVersion()) {
+            throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_STATE_CONFLICT);
+        }
+        String nextStatus;
+        OffsetDateTime nextScheduled = current.scheduledAt();
+        String outcome = command.outcome() == null ? null : command.outcome().trim();
+        String eventType;
+        if (command.actionCode().equals("RESCHEDULE") && command.scheduledAt() != null
+                && command.scheduledAt().isAfter(now) && command.scheduledAt().isBefore(now.plusDays(90))
+                && (outcome == null || outcome.isEmpty())) {
+            nextStatus = "SCHEDULED";
+            nextScheduled = command.scheduledAt();
+            outcome = null;
+            eventType = "FOLLOW_UP_RESCHEDULED";
+        } else if (command.actionCode().equals("COMPLETE") && command.scheduledAt() == null
+                && outcome != null && !outcome.isEmpty()) {
+            nextStatus = "COMPLETED";
+            eventType = "FOLLOW_UP_COMPLETED";
+        } else if (command.actionCode().equals("CANCEL") && command.scheduledAt() == null
+                && outcome != null && !outcome.isEmpty()) {
+            nextStatus = "CANCELLED";
+            eventType = "FOLLOW_UP_CANCELLED";
+        } else {
+            throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_STATE_CONFLICT);
+        }
+        int updated = jdbcTemplate.update("""
+                update operational_case_follow_up
+                   set status = ?, scheduled_at = ?, outcome = ?,
+                       follow_up_version = follow_up_version + 1, updated_at = ?
+                 where follow_up_id = ? and follow_up_version = ? and status = 'SCHEDULED'
+                """, nextStatus, nextScheduled, outcome, now, followUpId, command.expectedVersion());
+        if (updated != 1) throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_STATE_CONFLICT);
+        writeFollowUpEvent(followUpId, current.caseId(), eventType, current.status(), nextStatus, actor,
+                java.util.Map.of("actionCode", command.actionCode()), now);
+        return requiredFollowUp(followUpId, false);
     }
 
     @Transactional
@@ -338,6 +436,74 @@ public class OperationalCaseService {
         return new CaseNote(rs.getObject("note_id", UUID.class), rs.getObject("case_id", UUID.class),
                 rs.getString("note_text"), rs.getString("created_by"), rs.getString("integrity_hash"),
                 rs.getObject("created_at", OffsetDateTime.class), replayed);
+    }
+
+    private FollowUp findFollowUp(UUID caseId, String keyHash, String requestHash, boolean replayed) {
+        List<FollowUp> rows = jdbcTemplate.query("""
+                select follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
+                       outcome, follow_up_version, created_by, created_at, updated_at, request_hash
+                  from operational_case_follow_up
+                 where case_id = ? and idempotency_key_hash = ?
+                """, (rs, rowNum) -> {
+                    if (!secureHashEquals(rs.getString("request_hash"), requestHash)) {
+                        throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_IDEMPOTENCY_CONFLICT);
+                    }
+                    return mapFollowUp(rs, replayed);
+                }, caseId, keyHash);
+        return rows.isEmpty() ? null : rows.getFirst();
+    }
+
+    private FollowUp requiredFollowUp(UUID followUpId, boolean replayed) {
+        List<FollowUp> rows = jdbcTemplate.query("""
+                select follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
+                       outcome, follow_up_version, created_by, created_at, updated_at
+                  from operational_case_follow_up where follow_up_id = ?
+                """, (rs, rowNum) -> mapFollowUp(rs, replayed), followUpId);
+        if (rows.size() != 1) throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_NOT_FOUND);
+        return rows.getFirst();
+    }
+
+    private FollowUp lockFollowUp(UUID followUpId) {
+        List<FollowUp> rows = jdbcTemplate.query("""
+                select follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
+                       outcome, follow_up_version, created_by, created_at, updated_at
+                  from operational_case_follow_up where follow_up_id = ? for update
+                """, (rs, rowNum) -> mapFollowUp(rs, false), followUpId);
+        if (rows.size() != 1) throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_NOT_FOUND);
+        return rows.getFirst();
+    }
+
+    private FollowUp mapFollowUp(ResultSet rs, boolean replayed) throws SQLException {
+        return new FollowUp(rs.getObject("follow_up_id", UUID.class), rs.getObject("case_id", UUID.class),
+                rs.getString("follow_up_type"), rs.getString("status"),
+                rs.getObject("scheduled_at", OffsetDateTime.class), rs.getString("purpose"),
+                rs.getString("outcome"), rs.getLong("follow_up_version"), rs.getString("created_by"),
+                rs.getObject("created_at", OffsetDateTime.class),
+                rs.getObject("updated_at", OffsetDateTime.class), replayed, false);
+    }
+
+    private CaseSummary lockCaseSummary(UUID caseId) {
+        List<CaseSummary> rows = jdbcTemplate.query(
+                "select * from operational_protection_case where case_id = ? for update",
+                this::mapSummary, caseId);
+        if (rows.size() != 1) throw new BusinessException(CaseworkErrorCode.CASE_NOT_FOUND);
+        return rows.getFirst();
+    }
+
+    private void writeFollowUpEvent(UUID followUpId, UUID caseId, String eventType, String previousStatus,
+                                    String resultingStatus, String actor, java.util.Map<String, Object> detail,
+                                    OffsetDateTime now) {
+        UUID eventId = UUID.randomUUID();
+        String detailJson = json(detail);
+        String integrityHash = sha256(eventId + "|" + followUpId + "|" + eventType + "|"
+                + previousStatus + "|" + resultingStatus + "|" + detailJson + "|" + now);
+        jdbcTemplate.update("""
+                insert into operational_case_follow_up_event (
+                    follow_up_event_id, follow_up_id, case_id, event_type, previous_status,
+                    resulting_status, actor_subject, detail, integrity_hash, created_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+                """, eventId, followUpId, caseId, eventType, previousStatus, resultingStatus,
+                actor, detailJson, integrityHash, now);
     }
 
     private void lockCase(UUID caseId) {
