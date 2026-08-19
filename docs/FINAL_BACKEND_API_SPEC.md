@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.6.0**
+> 문서 버전: **1.7.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-18 (Asia/Seoul)**
+> 기준일: **2026-08-19 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 49개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 56개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 200개 |
+| 카탈로그·백로그 | 193개 |
 
-업무 `IMPLEMENTED` 49개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development에서는 고객 프로필 API를 제외한 OpenAPI 43개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 50개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 56개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 50개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 57개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 249개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개로 총 49개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 50개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 43개가 노출된다. 나머지 200개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개로 총 56개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 57개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 50개가 노출된다. 나머지 193개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -2087,7 +2087,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "9",
+        "schemaVersion": "20",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2671,7 +2671,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "9",
+    "schemaVersion": "20",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3501,7 +3501,73 @@ Authorization: Bearer {accessToken}
 
 ---
 
-## 6.4 미구현 API를 CONTRACT로 승격하는 규칙
+## 6.4 P1 고객 기준선·변화신호 상세 계약
+
+이 절의 7개 operation은 `IMPLEMENTED-SYNTHETIC-SNAPSHOT`이다. 운영형 고객 API는 익명 데모의 `{sessionId, demoRunId}` 테이블을 직접 노출하지 않고 V18의 고객 소유 snapshot을 사용한다. 현재 계산은 외부 데이터 수집이나 외부 모델 실행 없이 고정 합성 snapshot을 결정론적으로 검증한다.
+
+### 공통 접근·데이터 경계
+
+- 고객 경로 조회: 본인 `customerId + DETECTION_READ` 또는 `DETECTION_READ_ALL`
+- 계산 생성: 본인 `customerId + DETECTION_CALCULATE` 또는 `DETECTION_CALCULATE_ALL`
+- `/signals/{signalId}` 경로는 `DETECTION_READ` 또는 `DETECTION_READ_ALL`이 필요하다.
+- 다른 고객의 customerId 경로는 `403 COMMON_FORBIDDEN`이다.
+- 다른 고객의 signalId는 소유관계를 감추기 위해 `404 DETECTION_SIGNAL_NOT_FOUND`다.
+- 금액은 10진 문자열로 반환하고 신호는 `BEHAVIOR_CHANGE`이며 금융기관 FDS 판정으로 표현하지 않는다.
+
+### 6.4.1 기준선 목록·상세·특징
+
+```http
+GET /api/v1/customers/{customerId}/baselines
+GET /api/v1/customers/{customerId}/baselines/{baselineId}
+GET /api/v1/customers/{customerId}/baselines/{baselineId}/features
+```
+
+- 목록 성공: `200 CUSTOMER_BASELINES_RETRIEVED`
+- 상세 성공: `200 CUSTOMER_BASELINE_RETRIEVED`
+- 특징 성공: `200 CUSTOMER_BASELINE_FEATURES_RETRIEVED`
+- 기준선 없음: `404 DETECTION_BASELINE_NOT_FOUND`
+- 목록 정렬: `featureCode`, `baselineId` 오름차순
+- 특징 정렬: `featureCode`, `featureId` 오름차순
+- `BaselineSummary`: `baselineId`, `customerId`, `featureCode`, `baselineValue`, `currentValue`, `unit`, `readiness`, `comparisonText`, `algorithmVersion`, `calculatedAt`, `version`
+- 상세 추가 필드: `baselinePeriod`, `observationPeriod`, `snapshotHash`
+- 특징 필드: `featureId`, `featureCode`, `value`, `unit`, `observedPeriod`, `sampleCount`, `snapshotHash`
+
+### 6.4.2 기준선 계산 작업 생성
+
+```http
+POST /api/v1/customers/{customerId}/baseline-calculations
+Idempotency-Key: {8~100자의 안전한 키}
+```
+
+현재 구현은 이미 적재된 합성 기준선·신호 snapshot을 해시로 검증하고 계산 작업 이력을 남긴다. 원천 금융데이터 재수집, 외부 API, 외부 LLM, 실제 금융 실행은 만들지 않는다.
+
+- 성공: `202 BASELINE_CALCULATION_COMPLETED`
+- snapshot 미준비: `422 DETECTION_SNAPSHOT_NOT_READY`
+- 응답: `calculationId`, `customerId`, `status=COMPLETED`, `algorithmVersion`, `baselinesEvaluated`, `signalsEvaluated`, `reusedCurrentSnapshot=true`, `requestedAt`, `completedAt`, `resultSnapshotHash`, `requestHash`, `idempotencyReplayed`, `externalExecutionCreated=false`
+- `Idempotency-Key`는 필수이며 같은 고객·키의 재요청은 기존 결과와 `idempotencyReplayed=true`를 반환한다.
+- 작업별 `idempotencyKeyHash`, `requestHash`, `inputSnapshotHash`, `resultSnapshotHash`를 저장하고 원문 멱등키는 저장하지 않는다.
+
+### 6.4.3 변화신호 목록·상세·근거
+
+```http
+GET /api/v1/customers/{customerId}/signals?severity=HIGH&status=OPEN
+GET /api/v1/signals/{signalId}
+GET /api/v1/signals/{signalId}/evidence
+```
+
+- 목록 성공: `200 CUSTOMER_SIGNALS_RETRIEVED`
+- 상세 성공: `200 SIGNAL_RETRIEVED`
+- 근거 성공: `200 SIGNAL_EVIDENCE_RETRIEVED`
+- `severity`: 선택, `LOW|MEDIUM|HIGH`
+- `status`: 선택, `OPEN|ACKNOWLEDGED|CLOSED`
+- 목록 정렬: `detectedAt`, `signalId` 내림차순
+- `SignalSummary`: `signalId`, `customerId`, `baselineId`, `signalType`, `severity`, `baselineValue`, `currentValue`, `unit`, `reasonCode`, `status`, `algorithmVersion`, `detectedAt`
+- 근거 필드: `evidenceId`, `evidenceType`, `sourceReference`, `occurredAt`, nullable `amount`·`currency`, `description`, `integrityHash`
+- 근거는 신호 생성시점의 불변 snapshot이며 이후 고객 맥락을 소급 병합하지 않는다.
+
+---
+
+## 6.5 미구현 API를 CONTRACT로 승격하는 규칙
 
 현재 카탈로그·백로그 200개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 
