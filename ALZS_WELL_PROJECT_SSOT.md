@@ -1,8 +1,8 @@
 # ALZ's well 프로젝트 최종 통합 기준서
 
 > 문서 상태: **최종 통합본 · Single Source of Truth (SSOT)**  
-> 버전: **1.2**
-> 기준일: **2026-08-14**  
+> 버전: **1.3**
+> 기준일: **2026-08-19**
 > 참가 대회: [2026 금융 AI Challenge](https://daker.ai/public/hackathons/2026-finance-ai-challenge)  
 > 제출 마감: **2026-09-07 10:00 KST**
 
@@ -47,7 +47,7 @@
 | 공동 사용자·최종 수혜자 | 금융생활 변화 확인에 동의한 고객 |
 | 핵심 가치 | 개인 기준선 → 금융관리 변화 확인 → 행원 코파일럿 → 고객 일정·생활비 지원 → 동의 기반 신뢰연락인 연결 |
 | 기존 체계와 관계 | 보이스피싱·부정거래 FDS를 대체하거나 중복 탐지하지 않고, 장기 금융관리 행동변화와 후속 보호업무에 집중 |
-| 탐지 | Java 기반 규칙·통계·시계열 분석 |
+| 탐지 | Java 기반 규칙·통계·시계열 분석이 권위 경로. Isolation Forest는 P0-AI 비교평가·행원 보조정렬에만 선택 적용 |
 | 생성형 AI | P0는 검증된 템플릿으로 동작하고, P1·PoC부터 자체 호스팅 모델이 쉬운 설명·중립 질문·상담기록·사후관리의 표현 개선만 담당 |
 | 최종 판단·실행 | 고객, 행원, 법적 권한이 있는 금융회사 |
 | MVP 구조 | Spring Boot 모듈형 모놀리스 |
@@ -157,10 +157,10 @@ P0 엔진이 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 
 |---|---|---|
 | 1. 공모전 MVP | 고객 맥락확인 최소 채널 + 행원 코파일럿 | 작동성·안전성·업무 연결 증명 |
 | 2. 행원용 예방 AI | 사건 분류·요약, 규정검색, 상담기록·재확인 | 금융회사 업무효율 검증 |
-| 3. 고객용 일정·생활비 모드 | 납부일정, 필수지출, 중복거래, 가용생활비, 쉬운 설명 | 금융접근성과 자기관리 지원 |
+| 3. 고객용 일정·생활비·지원안내 모드 | 납부일정, 필수지출, 중복거래, 가용생활비, 쉬운 설명, 비상품성 지원 서비스 안내 | 금융접근성과 자기관리 지원 |
 | 4. 신뢰연락인 연결 | 본인 우선 알림, 반복 시 최소정보 알림, 공동확인 | 계좌 통제권 없이 단계적 금융안전망 제공 |
 
-고객용 장기 비전은 납부일정, 필수생활비, 중복거래 확인과 동의 기반 신뢰연락인 연결에 집중한다. 자연어 거래검색, 돌봄·의료·복지기관 연결, 광범위한 자산관리 추천은 현재 제품 범위에서 제외한다.
+고객용 장기 비전은 납부일정, 필수생활비, 중복거래 확인, 비상품성 금융지원 서비스 안내와 동의 기반 신뢰연락인 연결에 집중한다. 자연어 거래검색, 돌봄·의료·복지기관 연결, 광범위한 자산관리 추천은 현재 제품 범위에서 제외한다. 지원 서비스 안내는 금융생활 변화나 고객이 직접 선택한 필요에 따라 이용 가능한 일정관리·접근성·거래확인·직원상담·신뢰연락인 공동확인 기능의 존재와 이용방법을 중립적으로 보여주는 것이며, 금융상품 추천이나 가입 적합성 판단이 아니다.
 
 ---
 
@@ -174,6 +174,8 @@ P0 엔진이 묶은 사건, 변화 근거, 고객 답변, 중립 질문, 공식 
 - 고객 동의 없이 가족 또는 신뢰연락인에게 연락하거나 정보를 제공
 - 가족에게 별도 법적 권한 없이 송금·해지·동결 권한을 부여
 - 탐지 신호를 대출·보험·마케팅·추심에 재사용
+- 연령·금융생활 변화·반복실수·고객 응답을 이용해 금융상품을 자동 추천하거나 판매 우선순위를 결정
+- 비상품성 지원 서비스 안내 결과를 금융상품 가입 권유, 교차판매 또는 고객 적합성 판단으로 전환
 - 실제 고객 원문 거래내역이나 개인신용정보를 외부 상용 LLM API에 전송
 - 치매안심센터·요양·복지·주거 등 돌봄서비스를 직접 중개하거나 의료기관처럼 진단·검사 권유를 자동화
 - 근거 없는 금융상품 추천, 법률·의료 판단, 가입 적합성 최종판정
@@ -570,7 +572,83 @@ LLM은 수치 거래의 이상 여부를 판단하지 않는다. Java 기반 규
 | 거래결과 반복확인 | 완료 거래 ID의 단시간 조회횟수와 개인 기준선 비교 | 결과화면 지연·푸시 미수신·앱 오류 분리 |
 | 사건 융합 | 사유코드·기간·업무목적 기반 정책표 | 중복억제, cooldown, 고객별 경보예산 |
 
-Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비교실험 후보로만 사용한다.
+Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비교실험 후보로 사용한다. 검증된 Isolation Forest 결과는 아래 P0-AI 선택 트랙에서 행원용 비권위적 보조점수로 표시할 수 있다.
+
+### P0-AI 보조점수 검증 트랙
+
+공모전에서 AI가 향후 계획으로만 보이지 않도록, 기존 결정론적 핵심 흐름과 분리된 **비권위적(advisory-only) Isolation Forest 보조점수**를 실제 비교평가와 행원 화면에 추가할 수 있다. 이 트랙은 `reasonCode`, `preDecision`, `postDecision`, 사건 상태, 연락권한, `actionCode`를 생성하거나 변경하지 않는다. 모델이 없어도 기존 P0 데모가 동일하게 완주하며, 모델 결과가 규칙·정책 결과와 충돌하면 규칙·정책 결과를 우선한다.
+
+```text
+합성 거래·상호작용
+→ 공통 FeatureExtractor
+→ A. 규칙·MAD·정책의 권위 경로
+→ B. Isolation Forest 보조점수 경로
+→ 행원 화면에서 근거와 함께 비교 표시
+```
+
+#### 모델이 답하는 질문
+
+> 최근 관찰된 금융행동 특징의 조합이 해당 고객의 기준기간 금융생활에 비해 얼마나 드문가?
+
+모델 출력은 질병, 인지상태, 사기 가능성, 의사결정능력 또는 고객 위험도가 아니다. 고객 화면에는 원점수나 `고위험` 라벨을 표시하지 않고, 행원 화면에서만 `검토 우선순위 보조`임을 명시한다.
+
+#### 입력 특징 최소 집합
+
+| 특징군 | 예시 `featureCode` | 계산 원칙 |
+|---|---|---|
+| 거래금액·빈도 | `TRANSFER_AMOUNT_MAD_DISTANCE`, `TRANSFER_COUNT_7D` | 절대금액보다 개인 중앙값·MAD 대비 거리 사용 |
+| 수취인·시간 | `NEW_PAYEE_RATIO_30D`, `OFF_HOUR_RATIO_30D` | 연령집단 평균이 아닌 고객 과거 분포와 비교 |
+| 정기납부 | `MISSED_RECURRING_COUNT_60D`, `DUE_DATE_DEVIATION_DAYS` | 데이터 단절·처리지연·grace period 분리 |
+| 반복·중복 | `DUPLICATE_TRANSFER_COUNT`, `RETRY_COUNT_7D` | 취소·환불·pending·장애 이벤트 제외 |
+| 업무완료 | `UNFINISHED_TASK_RATE_30D`, `TASK_DURATION_MAD_DISTANCE` | 정상 취소·세션 만료·채널 전환 분리 |
+| 확인·문의 | `CONFIRMATION_COUNT_1H`, `INQUIRY_REPEAT_COUNT_30D` | 결과화면 지연·미해결 상담 분리 |
+
+특징 정의, 결측치 처리, 범주 인코딩, 윈도우와 정규화 방식은 `featureVersion`으로 고정한다. 학습 입력과 웹 추론 입력은 동일한 FeatureExtractor 계약을 사용하고, 원문 거래명·상호명·정확한 계좌식별자는 모델 입력에서 제외한다.
+
+#### 학습·추론·배치 원칙
+
+- 정상 프로필과 각 고객의 기준기간을 중심으로 학습하고, 사건 주입 관찰기간은 학습에서 제외한다.
+- 최소 60개 고정 테스트 프로필은 임계값·모델 선택·특징 튜닝에 사용하지 않는다.
+- 합성데이터 생성기와 모델이 동일한 임계값 또는 정답 규칙을 공유하지 않는다.
+- 학습은 개발환경의 오프라인 도구로 수행할 수 있지만, 공모전 웹의 제품 경로에 별도 Python API 서버를 두지 않는다.
+- 고정된 모델 artifact와 특징·모델 manifest의 checksum을 배포물에 포함한다.
+- 런타임 추론이 필요하면 Spring 프로세스 내부의 검증된 Java 추론 또는 호환 모델 runtime을 사용한다. ONNX는 Python 학습결과와 Java 추론결과의 일치가 자동검증될 때만 채택한다.
+- 런타임 연결이 일정상 어렵다면 고정 fixture 전체에 대한 배치추론 결과를 버전·checksum과 함께 적재할 수 있으나, 발표에서 이를 실시간 추론이라고 표현하지 않는다.
+- 모델 로딩 실패, 특징 버전 불일치, 비정상 점수, timeout 시 `aiScoreStatus=UNAVAILABLE`로 두고 기존 규칙·정책·템플릿 경로로 완주한다.
+
+#### 출력 계약
+
+```json
+{
+  "algorithmType": "ISOLATION_FOREST",
+  "modelVersion": "iforest-v0.1",
+  "featureVersion": "finance-feature-v1",
+  "modelArtifactHash": "sha256:...",
+  "anomalyScore": 0.87,
+  "scoreBand": "HIGH_REVIEW_PRIORITY",
+  "topContributions": [
+    {
+      "featureCode": "MISSED_RECURRING_COUNT_60D",
+      "baselineValue": 0,
+      "currentValue": 3,
+      "evidenceIds": ["OBLIGATION-001"]
+    }
+  ],
+  "advisoryOnly": true,
+  "aiScoreStatus": "AVAILABLE",
+  "calculatedAt": "2026-08-19T10:00:00Z"
+}
+```
+
+`scoreBand`는 행원 큐의 보조 정렬값일 뿐이며, 표시 문구는 `AI 보조 검토순위`로 고정한다. 모델 특성상 개별 특징의 정확한 인과 기여도를 제공하기 어렵다면 `topContributions`를 모델 설명값으로 가장하지 않고, 같은 사건에서 규칙·통계 엔진이 확인한 상위 변화사실을 별도로 표시한다.
+
+#### 행원 화면 수용기준
+
+- 규칙이 확인한 평소값·현재값·관찰기간·typed 근거와 AI 보조점수를 함께 표시한다.
+- `이 점수는 고객의 질병·인지상태·사기 가능성을 뜻하지 않습니다`를 고정 표시한다.
+- AI 점수가 없어도 사건 조회·검토·상태전이·감사로그가 동일하게 작동한다.
+- 모델 버전, 특징 버전, 계산시각, artifact checksum과 폴백 여부를 감사로그에서 확인할 수 있다.
+- 규칙·정책 결과와 AI 점수의 불일치는 숨기지 않고 비교평가 자료로 보존한다.
 
 ### 기준선과 콜드 스타트
 
@@ -625,6 +703,7 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 | A. 전역 규칙 | 모든 고객에 공통 금액·횟수 임계값 | 개인차로 발생하는 과다 경보 측정 |
 | B. 개인 기준선 | A + 개인별 반복·누락·미완료·재확인 기준선 | 개인화의 추가가치 측정 |
 | C. 기준선 + 맥락 | B + 검증된 정상 생활·처리 맥락 | 위험사건 검토를 유지하며 불필요한 상향 감소 측정 |
+| D. 기준선 + 맥락 + AI 보조점수 | C + Isolation Forest 비권위적 검토순위 | 안전한 상태전이를 유지하며 검토필요 사건의 상위 집중도와 행원 검토량 개선 측정 |
 
 ### 평가 지표
 
@@ -638,6 +717,9 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 - 정상맥락 종결률
 - 위험사건 unsafe downgrade rate = `검토필요 골든사건 중 CLOSED_NORMAL로 잘못 하향된 수 / 검토필요 골든사건 수`
 - typed 근거 참조 정확도와 허구 근거 수
+- AI 상위 10%·20% 사건의 검토필요 사건 포착률과 lift
+- 규칙·기준선 대비 AI 보조정렬 적용 후 행원 검토량 감소
+- 모델 미사용·장애 대비 폴백 결과 동일성
 
 **P1 생성형 AI·RAG**
 
@@ -647,6 +729,8 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 - 공식 출처·페이지 정확성
 - 쉬운 말 이해도
 - timeout·오류 시 폴백 성공률
+- 서비스 안내 검색 top-k 적중률과 허용 서비스 recall
+- 허용되지 않은 서비스·판매성 문구·근거 없는 연락처 생성 건수
 
 **업무·시스템**
 
@@ -703,11 +787,13 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 | 구성요소 | 역할 | MVP 우선순위 |
 |---|---|---|
 | Java 규칙·통계·시계열 | 수치 거래 변화 탐지 | P0 |
+| Isolation Forest 보조점수 | 개인 기준선 대비 복합 이상도와 행원 검토순위의 비권위적 비교평가 | P0-AI 선택 트랙 |
 | 정책·동의 엔진 | 상태·권한·공식 공개근거 및 합성 데모 업무규칙 기반 조치후보 강제 | P0 |
 | 템플릿 생성기 | 키 없이 쉬운 설명·질문·기록 생성 | P0 |
 | 공식 공개근거 카탈로그 | 공개된 공식자료의 구조화 조건·출처·기준일 제공 | P0 |
 | 자체 호스팅 오픈웨이트 금융특화 LLM | 문장 표현 개선, 사건요약·질문·상담기록·사후관리 구조화 초안 | P1 |
 | 권한형 벡터 RAG | 은행 내부 규정·매뉴얼과 공식 문서 검색 고도화 | P1 |
+| 로컬 임베딩 서비스 검색 | 정책엔진이 허용한 비상품성 지원 서비스 문서의 의미검색 | P1 선택 트랙 |
 | KoBERT·KLUE-RoBERTa·KoELECTRA | 의도·위험표현·PII 분류 보조 | P2 |
 | KR-FinBERT 계열 | 금융 문서·상담 텍스트 분류 보조 | P2 |
 | LoRA/QLoRA | 반복 실패 업무의 제한적 개선 | 대회 이후 |
@@ -744,6 +830,131 @@ MVP P0는 벡터DB가 없어도 동작하는 구조화 공식 공개근거 카�
 - 접근등급과 허용 사용자
 
 정책엔진이 적용 가능한 후보를 먼저 고르고, LLM은 그 후보만 쉬운 말로 설명한다. URL과 페이지는 LLM이 생성하지 않고 검색 메타데이터에서 서버가 조립한다. 근거나 최신성을 확인할 수 없으면 `확인 불가·행원 재확인 필요`로 남긴다.
+
+### 비상품성 금융지원 서비스 안내
+
+지원 서비스 안내는 공모전 핵심 90초 데모의 필수 상태전이를 변경하지 않는 **P1 고객지원 확장 기능**이다. 목적은 상품을 판매하는 것이 아니라, 고객이 확인한 필요와 금융생활 변화에 대응해 은행이 제공할 수 있는 비상품성 보호·편의 기능의 존재와 이용방법을 찾기 쉽게 설명하는 것이다. 연령은 서비스 홍보·접근성 안내 대상을 정하는 제한적 기준으로 사용할 수 있지만, 서비스 후보의 적합도, 사건 우선순위, AI 점수, 금융조치에는 사용하지 않는다.
+
+#### 안내 가능한 범위
+
+- 정기납부 일정 확인과 자동이체 내역 관리 지원
+- 중복거래·거래완료 여부 확인 지원
+- 큰 글씨·쉬운 표현·한 화면 한 질문 등 접근성 기능
+- 미완료 업무 이어서 하기와 영업점·전화 등 사람 상담 연결
+- 고객이 별도로 동의한 신뢰연락인 지정·공동확인 방법
+- 승인된 공식 소비자보호 절차와 금융교육·디지털 이용 지원
+- 고객이 이미 이용 중인 서비스의 객관적인 사용방법
+
+금융상품의 존재를 단순히 고지해야 하는 경우에도 AI가 특정 상품을 선택하거나 우선순위를 정하지 않는다. 상품 설명·적합성·적정성 확인·가입 권유·계약은 권한 있는 직원과 기존 금융회사 절차로 분리한다. 고객용 출력은 `이용할 수 있는 지원 기능이 있습니다`, `원하면 살펴보거나 직원에게 문의할 수 있습니다`와 같은 선택형·중립형 문장으로 제한한다.
+
+#### 처리 흐름과 역할 분리
+
+```text
+확인된 reasonCodes·고객이 선택한 필요
+→ 정책엔진이 supportNeedCodes 확정
+→ 서비스 카탈로그에서 허용 후보 필터링
+→ P0 템플릿 또는 P1 권한형 RAG가 설명 근거 조회
+→ 선택적으로 자체 LLM이 쉬운 표현만 생성
+→ 출력 스키마·금지표현·근거 일치 검증
+→ 고객 선택 또는 직원 상담 연결
+```
+
+| 구성요소 | 허용 역할 | 금지 역할 |
+|---|---|---|
+| 탐지엔진 | 사유코드와 설명 가능한 변화 근거 제공 | 서비스·상품 추천 |
+| 정책엔진 | `reasonCode → supportNeedCode`, 허용 대상·동의·채널·서비스 유형 결정 | 고객에게 특정 선택 강제 |
+| 서비스 카탈로그 | 서비스명, 이용목적, 공개범위, 조건, 공식 근거, 상담 필요 여부 제공 | 임의의 적합성 점수 생성 |
+| RAG | 정책엔진이 허용한 문서에서 이용방법·조건·근거 검색 | 접근권한 밖 문서 검색, 서비스 후보 신규 생성 |
+| 자체 LLM | 검색된 사실의 쉬운 설명, 선택지·확인질문 초안 | 서비스 ID·노출순위·가입 적합성·사건 상태 변경 |
+| 고객 | 안내 보기, 건너뛰기, 서비스 선택, 직원 상담 요청 | AI 선택의 수동적 수용 강요 |
+| 행원 | 필요한 설명 보완, 상담 연결, 금융상품 절차의 별도 수행 | 탐지 신호를 무단 마케팅에 재사용 |
+
+#### 표준 지원 필요 코드와 서비스 매핑
+
+| `supportNeedCode` | 연결 가능한 사유·고객 선택 | 허용 서비스 예시 |
+|---|---|---|
+| `PAYMENT_SCHEDULE_SUPPORT` | `MISSED_RECURRING`, 납부일 관리가 어려움 | 정기납부 일정 확인, 자동이체 내역 확인, 직원 상담 |
+| `TRANSACTION_CONFIRMATION_SUPPORT` | `DUPLICATE_PAYMENT`, `DUPLICATE_TRANSFER`, 거래완료 확인 필요 | 거래내역·취소·환불 상태 확인, 공식 문의절차 |
+| `TASK_COMPLETION_SUPPORT` | `REPEATED_RETRY`, `UNFINISHED_TASK` | 이어서 하기, 단계별 도움, 사람 상담 |
+| `EASY_ACCESS_SUPPORT` | `REPEATED_CONFIRMATION`, 화면 이해·사용 도움 선택 | 큰 글씨, 쉬운 설명, 확인결과 저장 |
+| `STAFF_CONSULTATION_SUPPORT` | 고객의 상담 요청, 확인 불가 | 영업점·전화·공식 상담채널 연결 |
+| `TRUSTED_CONTACT_SETUP_SUPPORT` | 고객의 공동확인 희망 | 별도 동의 범위·기간 설정과 신뢰연락인 지정 안내 |
+
+사유코드는 안내의 자동 적합성 판정이 아니라 후보 검색의 입력일 뿐이다. 고객이 도움을 원하지 않으면 안내를 건너뛸 수 있고, `PENDING_BANK_REVIEW` 등 기존 사건 상태는 서비스 선택 여부와 독립적으로 유지한다. `NOT_MY_TRANSACTION`처럼 기존 FDS·긴급 은행연락 안내가 필요한 응답에서는 일반 서비스 탐색보다 공식 긴급경로를 우선한다.
+
+#### 서비스 카탈로그 최소 계약
+
+```json
+{
+  "serviceId": "CS-001",
+  "serviceType": "NON_PRODUCT_SUPPORT",
+  "name": "정기납부 일정 확인 지원",
+  "supportNeedCodes": ["PAYMENT_SCHEDULE_SUPPORT"],
+  "allowedAudience": ["CUSTOMER", "STAFF"],
+  "accessClass": "CUSTOMER_GUIDANCE",
+  "requiresConsent": true,
+  "requiresStaffReview": false,
+  "customerSelectable": true,
+  "salesProduct": false,
+  "sourceDocumentId": "SERVICE-DEMO-001",
+  "version": "1.0",
+  "effectiveFrom": "2026-08-19",
+  "effectiveTo": null
+}
+```
+
+`serviceType`은 최소 `NON_PRODUCT_SUPPORT`, `FINANCIAL_PRODUCT_INFORMATION`으로 구분한다. P1 고객 자동안내는 `NON_PRODUCT_SUPPORT`만 허용한다. `FINANCIAL_PRODUCT_INFORMATION`은 `recommendationAllowed=false`, `staffConsultationRequired=true`를 강제하고 고객용 자동 순위화에서 제외한다. 공모전 합성 서비스는 `sourceType=SYNTHETIC_DEMO_SERVICE`와 `실제 은행 서비스가 아닌 시연용 안내`를 화면에 표시한다.
+
+#### P0·P1·PoC 구현 범위
+
+| 단계 | 구현 방식 | 수용 조건 |
+|---|---|---|
+| P0 | 고정 `reasonCode → supportNeedCode → serviceId` 정책표와 검증된 문구 템플릿 | LLM·벡터DB 없이 재현 가능, 기존 90초 데모에 영향 없음 |
+| P1 | 합성 서비스 설명서와 공식 공개자료를 청크화하고 자체 호스팅 임베딩·LLM으로 권한형 RAG 구성 | 허용 서비스 안에서만 검색·표현, 템플릿 폴백, 출처 표시 |
+| 금융회사 PoC | 은행이 승인한 실제 지원 서비스 카탈로그와 고객 공개 가능 문서로 교체 | 문서별 RBAC, 효력일 검증, 행원 검토, 읽기 전용 시작 |
+| 고객 확장 | 동의 고객에게 쉬운 설명·선택·상담 연결 제공 | 상품추천 금지, 건너뛰기·이의제기·상담 연결 제공 |
+
+초기 RAG 문서는 `정기납부 일정 확인`, `거래결과 확인`, `쉬운 금융 모드`, `직원 상담 연결`, `신뢰연락인 지정`, `디지털 금융 이용 지원`의 6종으로 제한한다. 문서는 Markdown 등 구조화 형식으로 작성하고 `serviceId`, 문서유형, 공개대상, 버전, 효력기간, 출처, 접근등급을 필수 메타데이터로 갖는다.
+
+#### 로컬 의미검색 최소 시연
+
+P1에서 생성형 LLM 전체 연결이 일정상 어려워도, 외부 API 없이 실행되는 소형 한국어·다국어 임베딩 모델로 고객의 지원 필요 문장과 승인된 서비스 문서를 의미검색하는 최소 시연을 구성할 수 있다. 예를 들어 `공과금 날짜를 자꾸 놓쳐요`를 `PAYMENT_SCHEDULE_SUPPORT` 및 `CS-001` 문서와 연결한다. 이 검색은 서비스 적합성 판정이 아니라 정책엔진이 이미 허용한 후보 안에서 관련 설명을 찾는 작업이다.
+
+```text
+고객의 선택 또는 최소화된 지원 필요 문장
+→ 금지정보·직접식별자 제거
+→ 정책엔진이 허용 serviceIds 확정
+→ 로컬 임베딩으로 허용 문서만 top-k 검색
+→ 임계값·접근등급·효력기간 검증
+→ 템플릿 또는 자체 LLM이 쉬운 설명 생성
+```
+
+- 임베딩 모델·토크나이저·문서 인덱스·chunking 버전과 checksum을 고정한다.
+- 고객 자유문장이 없어도 버튼형 `supportNeedCode`만으로 전체 흐름이 작동해야 한다.
+- 검색 점수가 임계값보다 낮거나 top-k 결과가 서로 충돌하면 임의 안내를 생성하지 않고 직원 상담 또는 고정 카탈로그 화면으로 전환한다.
+- 생성형 LLM이 없어도 검색된 서비스명·공식 설명·이용방법은 서버 템플릿으로 표시한다.
+- P0 공개 데모에 선택적으로 포함할 경우 합성 문장과 합성 서비스 문서만 사용하고, 이를 실제 은행 내부문서 RAG라고 표현하지 않는다.
+
+#### 출력 검증과 감사
+
+- 검색 결과의 모든 문장은 허용된 `serviceId`와 `sourceDocumentId`에 연결한다.
+- 고객 출력에는 서비스명, 지원 목적, 이용방법, 선택 가능 여부, 공식 출처·기준일을 표시한다.
+- LLM이 반환한 `serviceId`, URL, 연락처, 이용조건을 신뢰하지 않고 서버 카탈로그 값으로 다시 조립한다.
+- 근거 없음, 효력기간 만료, 접근권한 불일치, 스키마 오류, 금지표현 탐지 시 템플릿으로 전환하거나 `직원에게 확인이 필요합니다`로 종료한다.
+- `SERVICE_GUIDANCE_OFFERED`, `SERVICE_GUIDANCE_SKIPPED`, `SERVICE_SELECTED`, `STAFF_CONSULTATION_REQUESTED`, `SERVICE_GUIDANCE_BLOCKED`를 감사 이벤트로 기록한다.
+- 감사로그에는 입력 사유코드, 고객이 선택한 필요, 허용 후보, 최종 노출 서비스, 문서·정책·프롬프트·모델 버전, 고객 선택을 저장하되 원문 자유문장은 최소화한다.
+
+#### 서비스 안내 평가 지표
+
+- 허용되지 않은 서비스 노출률 0%
+- 금융상품 자동추천·판매성 문구 발생 0건
+- 근거 없는 서비스·URL·연락처 생성 0건
+- 서비스 설명과 출처 일치율 100%
+- 접근등급 위반 검색·출력 0건
+- LLM 장애 시 템플릿 폴백 성공률 100%
+- 쉬운 말 이해도와 고객 과업완료율
+- 안내 후 직원 상담 전환율과 상담기록 수정률
+- 고객의 건너뛰기·동의철회·이의제기 정상 처리율 100%
 
 ### P1 최소화·가명화 모델 입력
 
@@ -844,6 +1055,7 @@ flowchart LR
 | `consent` | 분석·신뢰연락인 동의, 철회, 최소정보 정책 |
 | `policy` | 우선순위, 정상종결 조건, 공식 공개근거·합성 데모 업무조치 후보, 실행 금지 |
 | `explanation` | P0 템플릿·공식 공개근거, P1 자체 금융특화 LLM·권한형 내부 규정검색, 출력검증 |
+| `support` | P1 비상품성 지원 필요 코드, 서비스 카탈로그, 허용 후보 필터, 고객 선택·상담연결. P0 핵심 데모와 분리 |
 | `demo` | 익명 세션 capability, 시나리오 seed, `demoRunId`, Reset, 3개 화면 |
 | `audit` | 사건·근거·결정·모델·문서·직원 override 이력 |
 
@@ -860,6 +1072,10 @@ GET  /api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts
 GET  /api/v1/demo/sessions/{sessionId}/alerts/{alertId}
 POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context
 GET  /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit
+
+GET  /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/support-services
+POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/support-needs
+POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/support-services/{serviceId}/select
 
 GET  /api/v1/demo/sessions/{sessionId}/staff/cases
 GET  /api/v1/demo/sessions/{sessionId}/cases/{caseId}
@@ -882,6 +1098,7 @@ POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 | `recurring_obligation` | obligation_code, expected_cycle, grace_period |
 | `baseline_snapshot` | feature_code, window, median, mad, readiness, algorithm_version |
 | `anomaly_signal` | demo_run_id, reason_code, baseline_value, current_value, alert_evidence_ids |
+| `ai_advisory_score` | demo_run_id, alert_id, algorithm_type, model_version, feature_version, artifact_hash, anomaly_score, score_band, status, calculated_at |
 | `alert_incident` | demo_run_id, alert_id, alert_snapshot_at, pre_decision, post_decision, state, reason_codes |
 | `context_event` | demo_run_id, response_code, context_evidence_code, source, effective_at, observed_at, ingested_at, valid_to |
 | `consent_snapshot` | purpose, recipient, fields, duration, status, proof_hash, granted_at, revoked_at |
@@ -892,6 +1109,8 @@ POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 | `follow_up_task` | case_id, task_type, due_at, assigned_role, status, completed_at |
 | `source_document` | issuer, source_url, version, effective_from/to, access_class, sha256 |
 | `knowledge_chunk` | document_id, page, section, text, embedding_version |
+| `support_service_catalog` | service_id, service_type, support_need_codes, allowed_audience, access_class, consent_required, staff_review_required, sales_product, source_document_id, version, effective_from/to |
+| `support_guidance_event` | demo_run_id, alert_id, support_need_code, allowed_service_ids, displayed_service_ids, selected_service_id, result_code, versions, occurred_at |
 | `decision_audit` | audit_id, demo_run_id, trace_id, actor_type/id, target_type/id, event_type, before/after_state, versions, evidence_hash, occurred_at |
 
 `occurredAt`과 `postedAt`, 문서 효력시간과 시스템 수집시간을 분리한다. 원본 근거와 판단 snapshot은 불변 버전으로 관리한다.
@@ -1065,13 +1284,21 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 - capability 기반 세션 소유권·역할 검증과 교차세션 IDOR·비허용 Origin·멱등충돌 시험
 - 기획서·기능명세서·화면·코드의 용어·수치 일치
 
+P0 필수항목이 모두 안정화된 뒤에만 다음 P0-AI 선택 트랙을 진행한다.
+
+- Isolation Forest 고정 모델·특징 manifest와 오프라인 A/B/C/D 비교평가
+- 행원 화면의 비권위적 AI 보조점수·모델 버전·근거 표시
+- 모델 미배치·오류 시 기존 규칙·정책·템플릿 결과 동일성 검증
+
 ### P1 — 완성도 향상
 
 - 자체 호스팅 금융특화 LLM의 사건요약·쉬운 설명·질문·상담기록·사후관리 생성
 - 내부 규정·공식문서 권한형 벡터 RAG와 pgvector
 - 큰 글씨·고대비·읽어주기
 - 납부일정·필수생활비·중복거래 확인
-- 비교군 A/B/C 평가 대시보드
+- 비상품성 지원 서비스 카탈로그, 지원 필요 코드, 고객 선택·상담연결
+- 합성 서비스 문서 6종의 로컬 임베딩 의미검색과 템플릿 폴백
+- 비교군 A/B/C/D 평가 대시보드
 - 탐지 결과 설명 시각화
 - 평가 리포트 자동 생성
 - 고급 모니터링 대시보드와 복구 자동화
@@ -1142,6 +1369,7 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 - [ ] 미동의 연락은 `BLOCKED_BY_CONSENT`로 차단된다.
 - [ ] 행원 승인 전 외부 발송·계좌 실행이 0건이다.
 - [ ] 자체 모델이 없어도 전체 데모가 동작한다.
+- [ ] P0-AI 선택 트랙을 노출할 경우 Isolation Forest 점수가 실제 고정 모델·특징 manifest에서 생성되고 `advisoryOnly=true`로 표시된다.
 - [ ] 모든 상태전이와 직원 override가 감사로그에 남는다.
 
 ### 탐지·데이터 안전
@@ -1161,7 +1389,10 @@ MVP 기본경로는 GPU가 없어도 동작해야 한다. 오픈웨이트 sLLM�
 
 - [ ] 질병·인지상태 점수·라벨이 0개다.
 - [ ] 개인정보·계좌·카드·주민번호 형식 입력이 차단된다.
-- [ ] P0에서는 모델을 호출하지 않고, P1 모델에는 직접식별자를 제거한 최소화·가명화 구조화 사실만 전달한다.
+- [ ] P0 권위 경로는 모델을 호출하지 않는다. P0-AI 선택 트랙과 P1 모델에는 직접식별자를 제거한 최소화·가명화 구조화 사실만 전달한다.
+- [ ] AI 보조점수는 `reasonCode`, 사건 상태, 연락권한, `actionCode`를 변경하지 않는다.
+- [ ] 비상품성 서비스 안내는 정책엔진이 허용한 `serviceId`만 사용하고 금융상품 자동추천·판매성 문구가 0건이다.
+- [ ] 서비스 검색 근거의 문서 ID·버전·효력기간·접근등급이 검증되고, 근거가 없으면 템플릿 또는 직원확인으로 전환한다.
 - [ ] 근거 없는 공식·합성 데모 업무조치 안내가 없고 합성 규칙을 실제 은행 내부규정으로 표시하지 않는다.
 - [ ] timeout, 5xx, schema 오류가 템플릿으로 폴백된다.
 - [ ] 프롬프트 인젝션과 비허용 출처를 차단한다.

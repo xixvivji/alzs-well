@@ -8,7 +8,13 @@ public enum DetectionErrorCode implements ErrorCode {
     BASELINE_NOT_FOUND(HttpStatus.NOT_FOUND, "DETECTION_BASELINE_NOT_FOUND", "기준선을 찾을 수 없습니다."),
     SIGNAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DETECTION_SIGNAL_NOT_FOUND", "변화신호를 찾을 수 없습니다."),
     SNAPSHOT_NOT_READY(HttpStatus.UNPROCESSABLE_ENTITY, "DETECTION_SNAPSHOT_NOT_READY",
-            "기준선 계산에 필요한 합성 snapshot이 준비되지 않았습니다.");
+            "기준선 계산에 필요한 합성 snapshot이 준비되지 않았습니다."),
+    DATASET_NOT_FOUND(HttpStatus.NOT_FOUND, "SYNTHETIC_DATASET_NOT_FOUND", "합성 데이터셋을 찾을 수 없습니다."),
+    DATASET_STATE_CONFLICT(HttpStatus.CONFLICT, "SYNTHETIC_DATASET_STATE_CONFLICT",
+            "현재 상태에서는 합성 데이터셋 작업을 수행할 수 없습니다."),
+    IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "DETECTION_IDEMPOTENCY_CONFLICT",
+            "같은 멱등키가 다른 탐지 실행 요청에 사용되었습니다."),
+    DETECTION_RUN_NOT_FOUND(HttpStatus.NOT_FOUND, "DETECTION_RUN_NOT_FOUND", "탐지 실행을 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
