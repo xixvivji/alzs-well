@@ -211,9 +211,9 @@ develop 최신화
 
 SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 요구한다. 현재 프런트 `frontend/lib/demo-session.ts`는 페이지 간 상태 유지를 위해 `sessionStorage`를 사용한다. 실서비스 또는 외부 공개 전에 메모리+BFF/HttpOnly 경계로 바꾸거나, 보안 검토를 거쳐 SSOT를 명시적으로 개정해야 한다. 조용히 현 구현을 기준으로 삼지 않는다.
 
-### 11.2 고객 응답 Map
+### 11.2 고객 응답 DTO
 
-현재 고객 프로필 7개 API는 `Map<String, Object>` 응답을 사용한다. 필드는 최종 명세 6.1에 고정했지만 다음 고객 API 개발 전에 typed response record로 교체하는 것이 우선이다.
+고객 프로필 7개 API는 `CustomerResponses`의 typed record를 사용한다. 신규 고객 API도 `Map<String, Object>` 대신 명시적 응답 record를 추가하고 OpenAPI schema가 구체적으로 생성되는지 확인한다.
 
 ### 11.3 합성 인증 한계
 
@@ -226,9 +226,8 @@ SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 �
 ## 12. 추천 다음 작업
 
 1. capability의 `sessionStorage` 불일치 해소
-2. 고객 프로필 Map 응답을 typed DTO로 전환
-3. 구현된 50개 operation에 OpenAPI 설명·예시·authority metadata 보강
-4. 다음 P1 wave 5~10개의 상세 계약 확정
-5. Docker Compose 실제 기동·Flyway·health·핵심 API smoke test를 CI에 추가
+2. 구현된 50개 operation에 OpenAPI 설명·예시·authority metadata 보강
+3. 다음 P1 wave 5~10개의 상세 계약 확정
+4. Docker Compose 실제 기동·Flyway·health·핵심 API smoke test를 CI에 추가
 
-새 개발자는 4번에서 바로 API를 고르기 전에 1~3번 중 자신의 담당 범위를 확인해야 한다.
+새 개발자는 3번에서 다음 API를 고르기 전에 1~2번 중 자신의 담당 범위를 확인해야 한다.

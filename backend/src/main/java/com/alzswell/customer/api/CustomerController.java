@@ -5,6 +5,11 @@ import com.alzswell.common.api.ApiResponses;
 import com.alzswell.customer.api.CustomerRequests.AccessibilitySettingsCommand;
 import com.alzswell.customer.api.CustomerRequests.DisplayProfileCommand;
 import com.alzswell.customer.api.CustomerRequests.PreferencesCommand;
+import com.alzswell.customer.api.CustomerResponses.AccessibilitySettings;
+import com.alzswell.customer.api.CustomerResponses.CustomerSummary;
+import com.alzswell.customer.api.CustomerResponses.DataSummary;
+import com.alzswell.customer.api.CustomerResponses.DisplayProfile;
+import com.alzswell.customer.api.CustomerResponses.Preferences;
 import com.alzswell.customer.application.CustomerProfileService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
@@ -34,7 +39,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getCustomerSummary(
+    public ResponseEntity<ApiResponse<CustomerSummary>> getCustomerSummary(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId
     ) {
         return ApiResponses.ok(
@@ -47,7 +52,7 @@ public class CustomerController {
     @PatchMapping("/{customerId}/display-profile")
     @PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_WRITE')) or "
             + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
-    public ResponseEntity<ApiResponse<Object>> updateDisplayProfile(
+    public ResponseEntity<ApiResponse<DisplayProfile>> updateDisplayProfile(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @Valid @RequestBody DisplayProfileCommand request
     ) {
@@ -60,7 +65,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}/preferences")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getPreferences(
+    public ResponseEntity<ApiResponse<Preferences>> getPreferences(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId
     ) {
         return ApiResponses.ok(
@@ -73,7 +78,7 @@ public class CustomerController {
     @PatchMapping("/{customerId}/preferences")
     @PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_WRITE')) or "
             + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> patchPreferences(
+    public ResponseEntity<ApiResponse<Preferences>> patchPreferences(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @Valid @RequestBody PreferencesCommand request
     ) {
@@ -86,7 +91,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}/accessibility-settings")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getAccessibilitySettings(
+    public ResponseEntity<ApiResponse<AccessibilitySettings>> getAccessibilitySettings(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId
     ) {
         return ApiResponses.ok(
@@ -99,7 +104,7 @@ public class CustomerController {
     @PutMapping("/{customerId}/accessibility-settings")
     @PreAuthorize("(#customerId == authentication.name and hasAuthority('CUSTOMER_PROFILE_WRITE')) or "
             + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> putAccessibilitySettings(
+    public ResponseEntity<ApiResponse<AccessibilitySettings>> putAccessibilitySettings(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @Valid @RequestBody AccessibilitySettingsCommand request
     ) {
@@ -112,7 +117,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}/data-summary")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getDataSummary(
+    public ResponseEntity<ApiResponse<DataSummary>> getDataSummary(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId
     ) {
         return ApiResponses.ok(
