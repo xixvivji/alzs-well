@@ -98,10 +98,34 @@ jobs:
   compose:
     name: Docker Compose validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: alzs-well-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      BACKEND_PORT: "18080"
+      GATEWAY_BIND_ADDRESS: 127.0.0.1
+      POSTGRES_DB: alzs_well_ci
+      POSTGRES_USER: alzswell_ci_admin
+      POSTGRES_PASSWORD: ci-only-admin-password-please-never-use-in-production
+      POSTGRES_MIGRATION_PASSWORD: ci-only-migration-password-never-use-in-production
+      POSTGRES_APP_PASSWORD: ci-only-runtime-password-never-use-in-production
+      CORS_CUSTOMER_ALLOWED_ORIGINS: https://customer-ci.example.invalid
+      CORS_STAFF_ALLOWED_ORIGINS: https://staff-ci.example.invalid
+      DEMO_STAFF_USERNAME: ci-demo-staff
+      DEMO_STAFF_PASSWORD: ci-only-demo-staff-password-never-use-in-production
     steps:
       - uses: actions/checkout@v7
       - name: Validate production compose rendering
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
+      - name: Boot the isolated stack and smoke test core APIs
+        run: bash .github/scripts/compose-smoke.sh
+      - name: Upload Compose smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compose-smoke-evidence
+          path: artifacts/compose-smoke
+          if-no-files-found: warn
+          retention-days: 14
 
   dependency-review:
     name: Dependency review
