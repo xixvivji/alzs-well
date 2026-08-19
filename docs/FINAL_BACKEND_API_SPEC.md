@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 82개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 88개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 182개 |
+| 카탈로그·백로그 | 176개 |
 
-업무 `IMPLEMENTED` 82개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건·후속일정 12개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 76개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 83개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 88개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건·후속일정 12개, P1 운영형 인앱 알림·설정·미리보기 6개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 82개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 89개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 264개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개, 운영형 행원 사건·후속일정 12개로 총 82개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 83개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 76개가 노출된다. 나머지 182개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개, 운영형 행원 사건·후속일정 12개, 운영형 인앱 알림·설정·미리보기 6개로 총 88개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 89개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 82개가 노출된다. 나머지 176개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1247,6 +1247,8 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P2 | POST | /api/v1/support/inquiries | 실제 문의 접수 기능 참조 | REFERENCE_ONLY |
 | P2 | GET | /api/v1/support/inquiries/{inquiryId} | 실제 문의 진행상태 참조 | REFERENCE_ONLY |
 
+앞의 P1 6개는 Flyway V27의 `customer_inbox_message`, `customer_notification_preference`와 함께 구현했다. 목록은 `(createdAt, messageId)` 복합 커서를 사용하고 읽음 처리와 설정 변경은 `expectedVersion` 낙관적 잠금을 적용한다. 고객은 자신의 알림만 조회·변경할 수 있으며 미리보기는 `NOTIFICATION_PREVIEW` 권한과 승인 템플릿 코드만 허용한다. 모든 응답은 `externalDeliveryExecuted=false` 또는 `externalDeliveryEnabled=false`를 명시하며 문자·푸시·전화·외부 예약을 실행하지 않는다.
+
 #### 3.3.21 감사·컴플라이언스·정보권리 — 8개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1343,7 +1345,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 83개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 89개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2102,7 +2104,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "26",
+        "schemaVersion": "27",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2686,7 +2688,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "26",
+    "schemaVersion": "27",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
