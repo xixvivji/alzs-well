@@ -44,7 +44,17 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 3. `REFERENCE_ONLY`는 Spring Controller나 실행 버튼을 생성하지 않는다.
 4. 실제 이체·주문·대출·계좌개설·지급정지·한도변경·외부 연락은 공개 데모에서 실행하지 않는다.
 5. API 수가 많아도 현재 구조는 MSA가 아니라 도메인 패키지로 분리한 모듈형 모놀리스다.
-6. P0 요청·응답 계약은 본 문서에 통합하고 Spring 코드에서 OpenAPI 3.1로 자동 생성한다. `/v3/api-docs`는 프론트 타입 생성용이며 Swagger UI의 요청 실행 기능은 비활성화한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
+6. P0 요청·응답 계약은 본 문서에 통합하고 Spring 코드에서 OpenAPI 3.1로 자동 생성한다. `/v3/api-docs`는 프론트 타입 생성용이며 Swagger UI의 요청 실행 기능은 비활성화한다. 구현된 모든 operation은 설명, 권한, 데이터 분류, 런타임 경계, 외부 실행 여부와 표준 오류 예시를 포함해야 하며 계약 테스트가 누락을 차단한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
+
+OpenAPI 확장 필드는 다음 의미로 고정한다.
+
+| 필드 | 의미 |
+|---|---|
+| `x-alzs-authority-mode` | `PUBLIC`, `DEMO_CAPABILITY`, `STAFF_BOOTSTRAP`, `BEARER`, `BEARER_AUTHORITY` 중 인증 방식 |
+| `x-alzs-required-authorities` | 호출에 필요한 세부 권한 또는 capability 역할 |
+| `x-alzs-data-classification` | 현재 구현은 항상 `SYNTHETIC_ONLY` |
+| `x-alzs-runtime-boundary` | 내부 소유 구현 또는 합성 외부기관 adapter 경계 |
+| `x-alzs-external-action` | 현재 구현은 항상 `NEVER`; 실제 금융 실행·외부 연락 없음 |
 
 ## AIR_GAPPED_DEMO 네트워크 격리 결정
 

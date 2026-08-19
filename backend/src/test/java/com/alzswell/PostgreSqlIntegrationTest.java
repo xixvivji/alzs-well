@@ -215,6 +215,32 @@ class PostgreSqlIntegrationTest {
                 .sum();
         assertThat(operationCount).isEqualTo(82);
 
+        assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
+        List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
+                .flatMap(path -> List.of("get", "post", "put", "patch", "delete").stream()
+                        .filter(path::has)
+                        .map(path::path))
+                .toList();
+        assertThat(operations).allSatisfy(operation -> {
+            assertThat(operation.path("summary").asText()).isNotBlank();
+            assertThat(operation.path("description").asText()).isNotBlank();
+            assertThat(operation.path("x-alzs-authority-mode").asText()).isNotBlank();
+            assertThat(operation.path("x-alzs-required-authorities").isArray()).isTrue();
+            assertThat(operation.path("x-alzs-data-classification").asText()).isEqualTo("SYNTHETIC_ONLY");
+            assertThat(operation.path("x-alzs-runtime-boundary").asText()).isNotBlank();
+            assertThat(operation.path("x-alzs-external-action").asText()).isEqualTo("NEVER");
+            assertThat(operation.path("responses").path("400").path("content")
+                    .path("application/json").path("example").path("traceId").asText()).isNotBlank();
+        });
+
+        JsonNode inboxRead = specification.path("paths")
+                .path("/api/v1/customers/{customerId}/inbox/{messageId}/read").path("post");
+        assertThat(inboxRead.path("security").toString()).contains("BearerAuth");
+        assertThat(inboxRead.path("x-alzs-required-authorities").toString()).contains("INBOX_WRITE");
+        assertThat(inboxRead.path("responses").has("401")).isTrue();
+        assertThat(inboxRead.path("responses").has("403")).isTrue();
+        assertThat(inboxRead.path("responses").has("409")).isTrue();
+
         JsonNode alertParameters = specification.path("paths")
                 .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")
                 .path("get")
