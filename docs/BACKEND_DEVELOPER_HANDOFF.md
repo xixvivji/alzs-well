@@ -133,6 +133,8 @@ PostgreSQL은 먼저 실행되어 있어야 한다. development 기본 DB 접속
 - Flyway는 신규 버전 파일만 추가하며 기존 migration을 수정하지 않는다.
 - PostgreSQL Testcontainers 통합 테스트가 정상·오류·동시성 경계를 검증한다.
 - `/v3/api-docs` operation 수와 schema가 계약 테스트를 통과한다.
+- 모든 노출 operation에 summary·description과 `x-alzs-authority-mode`, `x-alzs-required-authorities`, `x-alzs-data-classification`, `x-alzs-runtime-boundary`, `x-alzs-external-action`이 존재한다.
+- 인증 API는 `BearerAuth`, 데모 API는 `DemoCapability` 또는 `DemoStaffBootstrap` 보안 scheme을 사용한다. 공통 400·401·403·409 응답 예시는 traceId를 포함한다.
 - API 명세의 상태가 `IMPLEMENTED`로 변경된다.
 - 백엔드 테스트, JaCoCo, SpotBugs/FindSecBugs, Compose CI가 통과한다.
 - 실제 외부 호출·전송·금융 실행이 0건임을 유지한다.
@@ -232,7 +234,7 @@ SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 �
 ## 12. 추천 다음 작업
 
 1. capability의 `sessionStorage` 불일치 해소
-2. 구현된 89개 operation에 OpenAPI 설명·예시·authority metadata 보강
+2. 구현된 89개 operation의 도메인별 summary·개별 오류 예시를 지속적으로 구체화
 3. 운영형 인앱 알림함 API의 프론트 연동과 사용성 검증
 4. Docker Compose 실제 기동·Flyway·health·핵심 API smoke test를 CI에 추가
 

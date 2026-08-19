@@ -10,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -39,6 +42,23 @@ class AuthSessionIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired JdbcTemplate jdbcTemplate;
+
+    @Test
+    void fullFeatureOpenApiPublishesMetadataForAllImplementedOperations() throws Exception {
+        JsonNode specification = body(mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
+                .flatMap(path -> List.of("get", "post", "put", "patch", "delete").stream()
+                        .filter(path::has).map(path::path))
+                .toList();
+        assertThat(operations).hasSize(89).allSatisfy(operation -> {
+            assertThat(operation.path("summary").asText()).isNotBlank();
+            assertThat(operation.path("description").asText()).isNotBlank();
+            assertThat(operation.path("x-alzs-authority-mode").asText()).isNotBlank();
+            assertThat(operation.path("x-alzs-required-authorities").isArray()).isTrue();
+            assertThat(operation.path("x-alzs-external-action").asText()).isEqualTo("NEVER");
+        });
+    }
 
     @Test
     void loginMePermissionsRefreshAndLogoutFormAClosedSessionLoop() throws Exception {
