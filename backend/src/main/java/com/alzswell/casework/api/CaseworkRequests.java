@@ -2,9 +2,12 @@ package com.alzswell.casework.api;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public final class CaseworkRequests {
@@ -29,4 +32,19 @@ public final class CaseworkRequests {
     ) {}
 
     public record NoteCommand(@NotBlank @Size(max = 500) String noteText) {}
+
+    public record FollowUpCommand(
+            @NotBlank @Pattern(regexp = "CUSTOMER_RECHECK|BRANCH_CONSULTATION|INTERNAL_REVIEW")
+            String followUpType,
+            @NotNull @Future OffsetDateTime scheduledAt,
+            @NotBlank @Size(max = 300) String purpose,
+            @Positive long expectedCaseVersion
+    ) {}
+
+    public record FollowUpUpdateCommand(
+            @NotBlank @Pattern(regexp = "RESCHEDULE|COMPLETE|CANCEL") String actionCode,
+            OffsetDateTime scheduledAt,
+            @Size(max = 500) String outcome,
+            @Positive long expectedVersion
+    ) {}
 }

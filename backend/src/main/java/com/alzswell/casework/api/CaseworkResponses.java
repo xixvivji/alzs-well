@@ -56,4 +56,13 @@ public final class CaseworkResponses {
     ) {}
 
     public record CaseNotes(UUID caseId, List<CaseNote> items, int count) {}
+
+    public record FollowUp(
+            UUID followUpId, UUID caseId, String followUpType, String status,
+            OffsetDateTime scheduledAt, String purpose, String outcome, long version,
+            String createdBy, OffsetDateTime createdAt, OffsetDateTime updatedAt,
+            boolean idempotencyReplayed, boolean externalContactExecuted
+    ) {}
+
+    public record FollowUps(UUID caseId, List<FollowUp> items, int count) {}
 }
