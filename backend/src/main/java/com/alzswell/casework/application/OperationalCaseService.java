@@ -3,12 +3,19 @@ package com.alzswell.casework.application;
 import com.alzswell.casework.api.CaseworkErrorCode;
 import com.alzswell.casework.api.CaseworkRequests.AssignmentCommand;
 import com.alzswell.casework.api.CaseworkRequests.GuidancePlanCommand;
+import com.alzswell.casework.api.CaseworkRequests.NoteCommand;
 import com.alzswell.casework.api.CaseworkRequests.ReviewCommand;
 import com.alzswell.casework.api.CaseworkResponses.CaseDetail;
+import com.alzswell.casework.api.CaseworkResponses.CaseEvidence;
+import com.alzswell.casework.api.CaseworkResponses.CaseNote;
+import com.alzswell.casework.api.CaseworkResponses.CaseNotes;
 import com.alzswell.casework.api.CaseworkResponses.CaseQueue;
 import com.alzswell.casework.api.CaseworkResponses.CaseSummary;
+import com.alzswell.casework.api.CaseworkResponses.CaseTimeline;
 import com.alzswell.casework.api.CaseworkResponses.CaseTransition;
+import com.alzswell.casework.api.CaseworkResponses.EvidenceItem;
 import com.alzswell.casework.api.CaseworkResponses.GuidancePlan;
+import com.alzswell.casework.api.CaseworkResponses.TimelineEvent;
 import com.alzswell.common.exception.BusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -96,7 +103,7 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public CaseTransition assign(UUID caseId, AssignmentCommand command) {
+    public CaseTransition assign(UUID caseId, AssignmentCommand command, String actor) {
         CaseSummary current = detail(caseId).caseSummary();
         if (current.taskStatus().equals("COMPLETED") || current.version() != command.expectedVersion()) {
             throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
@@ -108,8 +115,112 @@ public class OperationalCaseService {
                  where case_id = ? and case_version = ? and task_status <> 'COMPLETED'
                 """, command.assignedTeam(), command.assignedTo(), now, caseId, command.expectedVersion());
         if (updated != 1) throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
+        jdbcTemplate.update("""
+                insert into operational_case_activity (
+                    activity_id, case_id, activity_type, actor_subject, detail, occurred_at
+                ) values (?, ?, 'CASE_ASSIGNED', ?, ?::jsonb, ?)
+                """, UUID.randomUUID(), caseId, actor,
+                json(java.util.Map.of("assignedTeam", command.assignedTeam(),
+                        "assignedTo", command.assignedTo())), now);
         return transition(caseId, current.taskStatus(), current.taskStatus(), command.expectedVersion() + 1,
                 "ASSIGN", now, false);
+    }
+
+    @Transactional(readOnly = true)
+    public CaseEvidence evidence(UUID caseId) {
+        CaseDetail caseDetail = detail(caseId);
+        CaseSummary summary = caseDetail.caseSummary();
+        List<EvidenceItem> items = jdbcTemplate.query("""
+                select evidence_id, evidence_type, source_reference, occurred_at, amount, currency,
+                       description, integrity_hash
+                  from customer_signal_evidence_snapshot
+                 where signal_id = ? order by occurred_at, evidence_id
+                """, (rs, rowNum) -> {
+                    java.math.BigDecimal amount = rs.getBigDecimal("amount");
+                    return new EvidenceItem(rs.getObject("evidence_id", UUID.class),
+                            rs.getString("evidence_type"), rs.getString("source_reference"),
+                            rs.getObject("occurred_at", OffsetDateTime.class),
+                            amount == null ? null : amount.toPlainString(), rs.getString("currency"),
+                            rs.getString("description"), rs.getString("integrity_hash"));
+                }, summary.signalId());
+        List<String[]> signal = jdbcTemplate.query("""
+                select baseline_value::text, current_value::text, unit
+                  from customer_detection_signal where signal_id = ?
+                """, (rs, rowNum) -> new String[]{rs.getString(1), rs.getString(2), rs.getString(3)},
+                summary.signalId());
+        if (signal.size() != 1) throw new BusinessException(CaseworkErrorCode.CASE_NOT_FOUND);
+        return new CaseEvidence(caseId, summary.signalId(), caseDetail.reasonCode(), signal.getFirst()[0],
+                signal.getFirst()[1], signal.getFirst()[2], items, items.size(), true);
+    }
+
+    @Transactional(readOnly = true)
+    public CaseTimeline timeline(UUID caseId) {
+        CaseDetail caseDetail = detail(caseId);
+        UUID alertId = caseDetail.caseSummary().alertId();
+        List<TimelineEvent> items = jdbcTemplate.query("""
+                select event_type, actor_subject, previous_state, resulting_state, summary, occurred_at
+                  from (
+                    select 'CASE_CREATED'::varchar as event_type, null::varchar as actor_subject,
+                           null::varchar as previous_state, 'PENDING'::varchar as resulting_state,
+                           '운영형 행원 사건 생성'::varchar as summary, created_at as occurred_at
+                      from operational_protection_case where case_id = ?
+                    union all
+                    select event_type, null::varchar, previous_state, resulting_state,
+                           '고객 경보 상태 변경'::varchar, created_at
+                      from operational_alert_audit_event where alert_id = ?
+                    union all
+                    select activity_type, actor_subject, null::varchar, null::varchar,
+                           '담당 팀·행원 배정'::varchar, occurred_at
+                      from operational_case_activity where case_id = ?
+                    union all
+                    select action_code, reviewer_subject, previous_status, resulting_status,
+                           '행원 검토 상태 변경'::varchar, created_at
+                      from operational_case_review_event where case_id = ?
+                    union all
+                    select 'GUIDANCE_APPROVED'::varchar, approved_by, 'IN_REVIEW'::varchar,
+                           'GUIDANCE_APPROVED'::varchar, '고객 안내계획 승인'::varchar, approved_at
+                      from operational_guidance_plan where case_id = ?
+                    union all
+                    select 'INTERNAL_NOTE_ADDED'::varchar, created_by, null::varchar, null::varchar,
+                           '행원 내부 메모 등록'::varchar, created_at
+                      from operational_case_note where case_id = ?
+                  ) timeline order by occurred_at, event_type
+                """, (rs, rowNum) -> new TimelineEvent(rs.getString("event_type"),
+                        rs.getString("actor_subject"), rs.getString("previous_state"),
+                        rs.getString("resulting_state"), rs.getString("summary"),
+                        rs.getObject("occurred_at", OffsetDateTime.class)),
+                caseId, alertId, caseId, caseId, caseId, caseId);
+        return new CaseTimeline(caseId, items, items.size());
+    }
+
+    @Transactional(readOnly = true)
+    public CaseNotes notes(UUID caseId) {
+        detail(caseId);
+        List<CaseNote> items = jdbcTemplate.query("""
+                select note_id, case_id, note_text, created_by, integrity_hash, created_at
+                  from operational_case_note where case_id = ? order by created_at, note_id
+                """, (rs, rowNum) -> mapNote(rs, false), caseId);
+        return new CaseNotes(caseId, items, items.size());
+    }
+
+    @Transactional
+    public CaseNote addNote(UUID caseId, NoteCommand command, String idempotencyKey, String actor) {
+        lockCase(caseId);
+        String keyHash = sha256(idempotencyKey);
+        String normalized = command.noteText().trim();
+        String requestHash = sha256(caseId + "|" + normalized);
+        CaseNote replay = findNote(caseId, keyHash, requestHash, true);
+        if (replay != null) return replay;
+        UUID noteId = UUID.randomUUID();
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        String integrityHash = sha256(caseId + "|" + noteId + "|" + actor + "|" + normalized + "|" + now);
+        jdbcTemplate.update("""
+                insert into operational_case_note (
+                    note_id, case_id, note_text, created_by, request_hash,
+                    idempotency_key_hash, integrity_hash, created_at
+                ) values (?, ?, ?, ?, ?, ?, ?, ?)
+                """, noteId, caseId, normalized, actor, requestHash, keyHash, integrityHash, now);
+        return new CaseNote(noteId, caseId, normalized, actor, integrityHash, now, false);
     }
 
     @Transactional
@@ -208,6 +319,32 @@ public class OperationalCaseService {
                             rs.getObject("created_at", OffsetDateTime.class), true);
                 }, caseId, keyHash);
         return rows.isEmpty() ? null : rows.getFirst();
+    }
+
+    private CaseNote findNote(UUID caseId, String keyHash, String requestHash, boolean replayed) {
+        List<CaseNote> rows = jdbcTemplate.query("""
+                select note_id, case_id, note_text, created_by, request_hash, integrity_hash, created_at
+                  from operational_case_note where case_id = ? and idempotency_key_hash = ?
+                """, (rs, rowNum) -> {
+                    if (!secureHashEquals(rs.getString("request_hash"), requestHash)) {
+                        throw new BusinessException(CaseworkErrorCode.NOTE_IDEMPOTENCY_CONFLICT);
+                    }
+                    return mapNote(rs, replayed);
+                }, caseId, keyHash);
+        return rows.isEmpty() ? null : rows.getFirst();
+    }
+
+    private CaseNote mapNote(ResultSet rs, boolean replayed) throws SQLException {
+        return new CaseNote(rs.getObject("note_id", UUID.class), rs.getObject("case_id", UUID.class),
+                rs.getString("note_text"), rs.getString("created_by"), rs.getString("integrity_hash"),
+                rs.getObject("created_at", OffsetDateTime.class), replayed);
+    }
+
+    private void lockCase(UUID caseId) {
+        List<UUID> rows = jdbcTemplate.query(
+                "select case_id from operational_protection_case where case_id = ? for update",
+                (rs, rowNum) -> rs.getObject("case_id", UUID.class), caseId);
+        if (rows.size() != 1) throw new BusinessException(CaseworkErrorCode.CASE_NOT_FOUND);
     }
 
     private CursorPoint cursor(UUID caseId) {

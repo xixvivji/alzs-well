@@ -2,9 +2,14 @@ package com.alzswell.casework.api;
 
 import com.alzswell.casework.api.CaseworkRequests.AssignmentCommand;
 import com.alzswell.casework.api.CaseworkRequests.GuidancePlanCommand;
+import com.alzswell.casework.api.CaseworkRequests.NoteCommand;
 import com.alzswell.casework.api.CaseworkRequests.ReviewCommand;
 import com.alzswell.casework.api.CaseworkResponses.CaseDetail;
+import com.alzswell.casework.api.CaseworkResponses.CaseEvidence;
+import com.alzswell.casework.api.CaseworkResponses.CaseNote;
+import com.alzswell.casework.api.CaseworkResponses.CaseNotes;
 import com.alzswell.casework.api.CaseworkResponses.CaseQueue;
+import com.alzswell.casework.api.CaseworkResponses.CaseTimeline;
 import com.alzswell.casework.api.CaseworkResponses.CaseTransition;
 import com.alzswell.casework.api.CaseworkResponses.GuidancePlan;
 import com.alzswell.casework.application.OperationalCaseService;
@@ -62,9 +67,10 @@ public class OperationalCaseController {
     @PutMapping("/{caseId}/assignment")
     @PreAuthorize("hasAuthority('STAFF_CASE_ASSIGN')")
     public ResponseEntity<ApiResponse<CaseTransition>> assign(
-            @PathVariable UUID caseId, @Valid @RequestBody AssignmentCommand command) {
+            @PathVariable UUID caseId, @Valid @RequestBody AssignmentCommand command,
+            Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_ASSIGNED", "사건 담당 팀과 행원을 배정했습니다.",
-                caseService.assign(caseId, command));
+                caseService.assign(caseId, command, authentication.getName()));
     }
 
     @PostMapping("/{caseId}/reviews")
@@ -87,5 +93,38 @@ public class OperationalCaseController {
         return ApiResponses.created("STAFF_GUIDANCE_PLAN_APPROVED",
                 "외부 실행 없이 고객 안내계획을 승인했습니다.",
                 caseService.approveGuidance(caseId, command, authentication.getName()));
+    }
+
+    @GetMapping("/{caseId}/evidence")
+    @PreAuthorize("hasAuthority('STAFF_CASE_READ')")
+    public ResponseEntity<ApiResponse<CaseEvidence>> evidence(@PathVariable UUID caseId) {
+        return ApiResponses.ok("STAFF_CASE_EVIDENCE_RETRIEVED", "사건의 불변 합성 근거를 조회했습니다.",
+                caseService.evidence(caseId));
+    }
+
+    @GetMapping("/{caseId}/timeline")
+    @PreAuthorize("hasAuthority('STAFF_CASE_READ')")
+    public ResponseEntity<ApiResponse<CaseTimeline>> timeline(@PathVariable UUID caseId) {
+        return ApiResponses.ok("STAFF_CASE_TIMELINE_RETRIEVED", "사건 통합 타임라인을 조회했습니다.",
+                caseService.timeline(caseId));
+    }
+
+    @GetMapping("/{caseId}/notes")
+    @PreAuthorize("hasAnyAuthority('STAFF_CASE_READ', 'STAFF_CASE_NOTE')")
+    public ResponseEntity<ApiResponse<CaseNotes>> notes(@PathVariable UUID caseId) {
+        return ApiResponses.ok("STAFF_CASE_NOTES_RETRIEVED", "사건 내부 메모를 조회했습니다.",
+                caseService.notes(caseId));
+    }
+
+    @PostMapping("/{caseId}/notes")
+    @PreAuthorize("hasAuthority('STAFF_CASE_NOTE')")
+    public ResponseEntity<ApiResponse<CaseNote>> addNote(
+            @PathVariable UUID caseId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody NoteCommand command,
+            Authentication authentication) {
+        return ApiResponses.created("STAFF_CASE_NOTE_CREATED", "외부 전송 없이 사건 내부 메모를 등록했습니다.",
+                caseService.addNote(caseId, command, idempotencyKey, authentication.getName()));
     }
 }

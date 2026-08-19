@@ -27,4 +27,6 @@ public final class CaseworkRequests {
             List<@Pattern(regexp = "FDS_REVIEW|DELAYED_TRANSFER_GUIDANCE|SECURITY_SETTINGS_GUIDANCE|BRANCH_CONSULTATION") String> selectedActionCodes,
             @Positive long expectedVersion
     ) {}
+
+    public record NoteCommand(@NotBlank @Size(max = 500) String noteText) {}
 }

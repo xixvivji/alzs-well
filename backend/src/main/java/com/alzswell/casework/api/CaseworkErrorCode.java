@@ -9,6 +9,8 @@ public enum CaseworkErrorCode implements ErrorCode {
             "현재 사건 상태 또는 버전에서는 요청을 처리할 수 없습니다."),
     REVIEW_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "STAFF_CASE_REVIEW_IDEMPOTENCY_CONFLICT",
             "같은 멱등키가 다른 사건 검토 요청에 사용되었습니다."),
+    NOTE_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "STAFF_CASE_NOTE_IDEMPOTENCY_CONFLICT",
+            "같은 멱등키가 다른 내부 메모 요청에 사용되었습니다."),
     GUIDANCE_ALREADY_APPROVED(HttpStatus.CONFLICT, "STAFF_GUIDANCE_ALREADY_APPROVED",
             "안내계획이 이미 승인되었습니다.");
 

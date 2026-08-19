@@ -38,9 +38,11 @@ class OperationalCaseIntegrationTest {
 
     @BeforeEach
     void resetWorkflow() {
-        jdbcTemplate.update("delete from operational_guidance_plan");
-        jdbcTemplate.update("delete from operational_case_review_event");
-        jdbcTemplate.update("delete from operational_protection_case");
+        jdbcTemplate.execute("""
+                truncate table operational_case_note, operational_case_activity,
+                    operational_case_review_event, operational_guidance_plan,
+                    operational_protection_case
+                """);
         jdbcTemplate.update("delete from operational_alert_context_event");
         jdbcTemplate.update("delete from operational_alert_audit_event");
         jdbcTemplate.update("""
@@ -76,12 +78,33 @@ class OperationalCaseIntegrationTest {
         mockMvc.perform(get("/api/v1/staff/cases/{caseId}", caseId).with(staff("STAFF_CASE_READ")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.customerResponseCode").value("NOT_SURE"));
+        mockMvc.perform(get("/api/v1/staff/cases/{caseId}/evidence", caseId)
+                        .with(staff("STAFF_CASE_READ")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].evidenceId").exists())
+                .andExpect(jsonPath("$.data.syntheticData").value(true));
 
         mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
                         .with(staff("STAFF_CASE_ASSIGN")).contentType(APPLICATION_JSON)
                         .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\"STAFF_01\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.version").value(2));
+
+        String noteBody = "{\"noteText\":\"고객 응답과 합성 근거를 확인했습니다.\"}";
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/notes", caseId)
+                        .with(staff("STAFF_CASE_NOTE")).header("Idempotency-Key", "case-note-0001")
+                        .contentType(APPLICATION_JSON).content(noteBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.idempotencyReplayed").value(false));
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/notes", caseId)
+                        .with(staff("STAFF_CASE_NOTE")).header("Idempotency-Key", "case-note-0001")
+                        .contentType(APPLICATION_JSON).content(noteBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.idempotencyReplayed").value(true));
+        mockMvc.perform(get("/api/v1/staff/cases/{caseId}/notes", caseId)
+                        .with(staff("STAFF_CASE_READ")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.count").value(1));
 
         String reviewBody = "{\"actionCode\":\"START_REVIEW\",\"note\":\"합성 사건 검토 시작\",\"expectedVersion\":2}";
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/reviews", caseId)
@@ -111,6 +134,12 @@ class OperationalCaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.currentStatus").value("COMPLETED"))
                 .andExpect(jsonPath("$.data.financialActionExecuted").value(false));
+
+        mockMvc.perform(get("/api/v1/staff/cases/{caseId}/timeline", caseId)
+                        .with(staff("STAFF_CASE_READ")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.count").value(7))
+                .andExpect(jsonPath("$.data.items[0].eventType").exists());
     }
 
     @Test

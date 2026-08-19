@@ -32,4 +32,28 @@ public final class CaseworkResponses {
             String approvedBy, OffsetDateTime approvedAt, long caseVersion,
             boolean delivered, boolean externalExecutionCreated
     ) {}
+
+    public record EvidenceItem(
+            UUID evidenceId, String evidenceType, String sourceReference, OffsetDateTime occurredAt,
+            String amount, String currency, String description, String integrityHash
+    ) {}
+
+    public record CaseEvidence(
+            UUID caseId, UUID signalId, String reasonCode, String baselineValue, String currentValue,
+            String unit, List<EvidenceItem> items, int count, boolean syntheticData
+    ) {}
+
+    public record TimelineEvent(
+            String eventType, String actorSubject, String previousState, String resultingState,
+            String summary, OffsetDateTime occurredAt
+    ) {}
+
+    public record CaseTimeline(UUID caseId, List<TimelineEvent> items, int count) {}
+
+    public record CaseNote(
+            UUID noteId, UUID caseId, String noteText, String createdBy, String integrityHash,
+            OffsetDateTime createdAt, boolean idempotencyReplayed
+    ) {}
+
+    public record CaseNotes(UUID caseId, List<CaseNote> items, int count) {}
 }

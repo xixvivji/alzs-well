@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.11.0**
+> 문서 버전: **1.12.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-19 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **257개** |
+| 전체 API operation | **261개** |
 | API 도메인 | **25개** |
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **23개** |
-| P1 제품 핵심 백로그 | **156개** |
+| P1 제품 핵심 백로그 | **160개** |
 | P2 은행·증권 확장 백로그 | **78개** |
-| ALZ's well 소유 `OWNED` | **167개** |
+| ALZ's well 소유 `OWNED` | **171개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 257개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 261개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 75개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 79개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 182개 |
 
-업무 `IMPLEMENTED` 75개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건 5개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 69개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 76개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 79개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행·승격 8개, P1 운영형 경보·생활맥락 6개, P1 운영형 행원 사건 9개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 73개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 80개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
-여기서 API 257개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 261개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -128,7 +128,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 25개 도메인·257개 API 마스터 카탈로그
+3. 25개 도메인·261개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 12개 상세 계약
 6. P0-B 11개 상세 계약
@@ -844,13 +844,13 @@ OPEN
 | 전체 | **255** |
 | P0-A 기존 핵심 데모 | **12** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **156** |
+| P1 제품 핵심 | **160** |
 | P2 은행·증권 확장 | **78** |
-| OWNED | **167** |
+| OWNED | **171** |
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개, 운영형 행원 사건 5개로 총 75개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 76개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 69개가 노출된다. 나머지 182개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행·승격 8개, 운영형 경보·생활맥락 6개, 운영형 행원 사건 9개로 총 79개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 80개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 73개가 노출된다. 나머지 182개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1174,13 +1174,17 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P0-A | POST | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context | 기존 데모 맥락 응답·재평가 | OWNED |
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit | 기존 데모 판단·동의 감사이력 | OWNED |
 
-#### 3.3.17 행원 사건·코파일럿·후속관리 — 18개
+#### 3.3.17 행원 사건·코파일럿·후속관리 — 22개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P1 | GET | /api/v1/staff/cases | 운영 행원 사건큐 | OWNED |
 | P1 | GET | /api/v1/staff/cases/{caseId} | 운영 사건 상세 | OWNED |
 | P1 | PUT | /api/v1/staff/cases/{caseId}/assignment | 담당자·팀 배정 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/timeline | 운영 사건·경보·검토 통합 타임라인 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/evidence | 운영 사건의 불변 합성 근거 묶음 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/notes | 운영 사건 추가 전용 내부 메모 목록 | OWNED |
+| P1 | POST | /api/v1/staff/cases/{caseId}/notes | 운영 사건 내부 메모 등록 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/timeline | 사건·신호·맥락·감사 타임라인 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/evidence | 합성 근거 거래·신호·공식 출처 묶음 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes | 행원 내부 메모 목록 | OWNED |
@@ -1336,7 +1340,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “257개 API 카탈로그를 설계했고 P0 23개를 포함한 76개 코드 operation을 구현했다”고 표현한다. 257개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “261개 API 카탈로그를 설계했고 P0 23개를 포함한 80개 코드 operation을 구현했다”고 표현한다. 261개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2095,7 +2099,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "24",
+        "schemaVersion": "25",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2679,7 +2683,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "24",
+    "schemaVersion": "25",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3714,6 +3718,10 @@ GET  /api/v1/staff/cases/{caseId}
 PUT  /api/v1/staff/cases/{caseId}/assignment
 POST /api/v1/staff/cases/{caseId}/reviews
 POST /api/v1/staff/cases/{caseId}/guidance-plans
+GET  /api/v1/staff/cases/{caseId}/evidence
+GET  /api/v1/staff/cases/{caseId}/timeline
+GET  /api/v1/staff/cases/{caseId}/notes
+POST /api/v1/staff/cases/{caseId}/notes
 ```
 
 ### 6.7.1 권한과 사건 생성
@@ -3742,6 +3750,15 @@ POST /api/v1/staff/cases/{caseId}/guidance-plans
 - 안내계획은 배정된 `IN_REVIEW` 사건에 한 번만 승인할 수 있다.
 - 응답은 `delivered=false`, `externalExecutionCreated=false`다. 실제 FDS 실행, 지연이체 신청, 설정 변경, 영업점 예약을 수행하지 않는다.
 - 사건 응답도 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
+
+### 6.7.4 근거·타임라인·내부 메모
+
+- 사건 근거는 연결된 `customer_detection_signal`과 생성 당시의 `customer_signal_evidence_snapshot`만 읽으며 `syntheticData=true`를 명시한다.
+- 타임라인은 사건 생성, 경보 상태변경, 담당자 배정, 검토 상태전이, 안내계획 승인, 내부 메모 등록을 시간순으로 반환한다.
+- 내부 메모 조회는 `STAFF_CASE_READ|STAFF_CASE_NOTE`, 등록은 `STAFF_CASE_NOTE` 권한이 필요하다.
+- 메모는 수정·삭제 API가 없고 DB trigger도 update/delete를 거절하는 추가 전용 기록이다.
+- 메모 등록은 `Idempotency-Key`가 필수이며 원문 키는 저장하지 않는다. 같은 키의 다른 내용은 `409 STAFF_CASE_NOTE_IDEMPOTENCY_CONFLICT`다.
+- 타임라인에는 내부 메모의 존재와 작성자만 표시하고 메모 본문은 notes API에서만 반환한다.
 
 ---
 

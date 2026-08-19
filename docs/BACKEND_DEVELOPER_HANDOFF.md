@@ -8,10 +8,10 @@
 ## 1. 시작 전에 알아야 할 결론
 
 - 현재 구조는 MSA가 아니라 도메인 패키지로 나눈 모듈형 모놀리스다.
-- API 카탈로그는 257개이며 구현된 업무 API는 75개다. 직원 capability 발급 경로까지 포함한 코드 operation은 76개다.
+- API 카탈로그는 261개이며 구현된 업무 API는 79개다. 직원 capability 발급 경로까지 포함한 코드 operation은 80개다.
 - 나머지 182개는 구현 완료가 아니라 P1·P2·참조 카탈로그다.
 - 공개 데모는 완전 합성데이터만 사용한다. 실제 금융기관, 마이데이터, 가족 연락, 송금, 주문, 차단, 외부 LLM을 호출하지 않는다.
-- 기존 Flyway V1~V24는 수정하지 않는다. 다음 스키마 변경은 반드시 V25부터 추가한다.
+- 기존 Flyway V1~V25는 수정하지 않는다. 다음 스키마 변경은 반드시 V26부터 추가한다.
 - 구현 순서는 `SSOT → API 상세 계약 → Flyway → Java 코드 → 통합 테스트 → OpenAPI·문서`다.
 
 ## 2. 문서와 코드의 우선순위
@@ -99,7 +99,7 @@ PostgreSQL은 먼저 실행되어 있어야 한다. development 기본 DB 접속
 | 고객 기준선·변화신호 | 7 | 최종 명세 6.4 |
 | 합성 데이터셋·탐지 실행·승격 | 8 | 최종 명세 6.5 |
 | 운영형 경보·생활맥락 | 6 | 최종 명세 6.6 |
-| 운영형 행원 사건 | 5 | 최종 명세 6.7 |
+| 운영형 행원 사건 | 9 | 최종 명세 6.7 |
 | 직원 capability 발급 | 업무 집계 외 1 | 최종 명세 5.2.1-A |
 
 ## 6. API 하나를 구현하기 전 Definition of Ready
@@ -231,8 +231,8 @@ SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 �
 ## 12. 추천 다음 작업
 
 1. capability의 `sessionStorage` 불일치 해소
-2. 구현된 76개 operation에 OpenAPI 설명·예시·authority metadata 보강
-3. 운영형 사건의 근거·타임라인·내부 메모 API 계약 확정
+2. 구현된 80개 operation에 OpenAPI 설명·예시·authority metadata 보강
+3. 운영형 사건 후속 일정 API 계약 확정
 4. Docker Compose 실제 기동·Flyway·health·핵심 API smoke test를 CI에 추가
 
 새 개발자는 3번에서 다음 API를 고르기 전에 1~2번 중 자신의 담당 범위를 확인해야 한다.
