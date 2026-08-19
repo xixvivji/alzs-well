@@ -96,12 +96,21 @@ class PostgreSqlIntegrationTest {
                       ,'baseline_calculation_job'
                       ,'synthetic_detection_dataset'
                       ,'synthetic_detection_run'
+                      ,'operational_alert'
+                      ,'operational_alert_context_event'
+                      ,'operational_alert_audit_event'
+                      ,'detection_run_promotion'
+                      ,'operational_protection_case'
+                      ,'operational_case_review_event'
+                      ,'operational_guidance_plan'
+                      ,'operational_case_activity'
+                      ,'operational_case_note'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(40);
+        assertThat(tableCount).isEqualTo(49);
     }
 
     @Test
@@ -161,7 +170,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("21"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("25"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -194,13 +203,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(53);
+        assertThat(specification.path("paths").size()).isEqualTo(68);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(56);
+        assertThat(operationCount).isEqualTo(73);
 
         JsonNode alertParameters = specification.path("paths")
                 .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")

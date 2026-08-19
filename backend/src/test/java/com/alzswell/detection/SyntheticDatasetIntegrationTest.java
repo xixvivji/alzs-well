@@ -39,7 +39,8 @@ class SyntheticDatasetIntegrationTest {
 
     @Test
     @WithMockUser(username = "detection-admin", authorities = {
-            "SYNTHETIC_DATASET_ADMIN", "DETECTION_RUN_CREATE", "DETECTION_RUN_READ"
+            "SYNTHETIC_DATASET_ADMIN", "DETECTION_RUN_CREATE", "DETECTION_RUN_READ",
+            "DETECTION_PROMOTE", "DETECTION_PROMOTION_READ"
     })
     void registersValidatesIngestsAndDetectsFromSyntheticObservations() throws Exception {
         UUID datasetId = createDataset(validDatasetJson());
@@ -95,9 +96,44 @@ class SyntheticDatasetIntegrationTest {
                 .andExpect(jsonPath("$.data.inputPayloadHash").isNotEmpty())
                 .andExpect(jsonPath("$.data.resultHash").isNotEmpty());
 
+        mockMvc.perform(get("/api/v1/detection-runs/{runId}/promotion", runId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DETECTION_PROMOTION_NOT_FOUND"));
+
+        MvcResult promotionResult = mockMvc.perform(
+                        post("/api/v1/detection-runs/{runId}/promotion", runId))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value("DETECTION_RUN_PROMOTED"))
+                .andExpect(jsonPath("$.data.promotedSignalCount").value(3))
+                .andExpect(jsonPath("$.data.promotedAlertCount").value(3))
+                .andExpect(jsonPath("$.data.idempotencyReplayed").value(false))
+                .andExpect(jsonPath("$.data.financialActionExecuted").value(false))
+                .andExpect(jsonPath("$.data.externalNotificationSent").value(false))
+                .andReturn();
+        String promotionId = objectMapper.readTree(promotionResult.getResponse().getContentAsByteArray())
+                .path("data").path("promotionId").asText();
+
+        mockMvc.perform(post("/api/v1/detection-runs/{runId}/promotion", runId))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.promotionId").value(promotionId))
+                .andExpect(jsonPath("$.data.idempotencyReplayed").value(true));
+        mockMvc.perform(get("/api/v1/detection-runs/{runId}/promotion", runId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.promotionResultHash").isNotEmpty());
+
         Integer runCount = jdbcTemplate.queryForObject(
                 "select count(*) from synthetic_detection_run where customer_id = ?", Integer.class, CUSTOMER_ID);
         assertThat(runCount).isEqualTo(1);
+        Integer promotedSignals = jdbcTemplate.queryForObject(
+                "select count(*) from customer_detection_signal where source_detection_run_id = ?",
+                Integer.class, runId);
+        Integer promotedAlerts = jdbcTemplate.queryForObject("""
+                select count(*) from operational_alert a
+                  join customer_detection_signal s on s.signal_id = a.signal_id
+                 where s.source_detection_run_id = ?
+                """, Integer.class, runId);
+        assertThat(promotedSignals).isEqualTo(3);
+        assertThat(promotedAlerts).isEqualTo(3);
     }
 
     @Test
@@ -121,6 +157,10 @@ class SyntheticDatasetIntegrationTest {
         mockMvc.perform(post("/api/v1/admin/synthetic-datasets")
                         .contentType(APPLICATION_JSON)
                         .content(validDatasetJson()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("COMMON_FORBIDDEN"));
+
+        mockMvc.perform(post("/api/v1/detection-runs/{runId}/promotion", UUID.randomUUID()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("COMMON_FORBIDDEN"));
     }
