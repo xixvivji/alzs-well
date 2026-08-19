@@ -1,5 +1,6 @@
 package com.alzswell.identity;
 
+import static org.hamcrest.Matchers.hasItems;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -56,8 +57,10 @@ class AuthSessionIntegrationTest {
                 .andExpect(jsonPath("$.data.roles[0]").value("CUSTOMER"));
         mockMvc.perform(get("/api/v1/auth/me/permissions").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.permissions[0]").value("CUSTOMER_PROFILE_READ"))
-                .andExpect(jsonPath("$.data.permissions[1]").value("CUSTOMER_PROFILE_WRITE"));
+                .andExpect(jsonPath("$.data.permissions").value(hasItems(
+                        "CUSTOMER_PROFILE_READ", "CUSTOMER_PROFILE_WRITE",
+                        "FINANCIAL_CONNECTION_READ", "DETECTION_READ", "DETECTION_CALCULATE",
+                        "ALERT_READ", "ALERT_RESPOND")));
         mockMvc.perform(get("/api/v1/customers/SYN_CUSTOMER_FIN_MGMT_001")
                         .header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk());

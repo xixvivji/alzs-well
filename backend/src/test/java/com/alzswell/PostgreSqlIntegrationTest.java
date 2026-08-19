@@ -96,12 +96,15 @@ class PostgreSqlIntegrationTest {
                       ,'baseline_calculation_job'
                       ,'synthetic_detection_dataset'
                       ,'synthetic_detection_run'
+                      ,'operational_alert'
+                      ,'operational_alert_context_event'
+                      ,'operational_alert_audit_event'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(40);
+        assertThat(tableCount).isEqualTo(43);
     }
 
     @Test
@@ -161,7 +164,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("21"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("22"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -194,13 +197,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(53);
+        assertThat(specification.path("paths").size()).isEqualTo(59);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(56);
+        assertThat(operationCount).isEqualTo(62);
 
         JsonNode alertParameters = specification.path("paths")
                 .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")

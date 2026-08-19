@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.8.0**
+> 문서 버전: **1.9.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-19 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 62개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 68개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 193개 |
+| 카탈로그·백로그 | 187개 |
 
-업무 `IMPLEMENTED` 62개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행 6개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 56개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 63개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 68개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 6개, P1 합성 금융기관·연결 조회 4개, P1 기준선·신호 7개, P1 합성 데이터셋·탐지 실행 6개, P1 운영형 경보·생활맥락 6개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 62개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 69개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 255개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -850,7 +850,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행 6개로 총 62개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 63개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 56개가 노출된다. 나머지 193개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 6개, 합성 금융기관·연결 조회 4개, 기준선·신호 7개, 합성 데이터셋·탐지 실행 6개, 운영형 경보·생활맥락 6개로 총 68개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 69개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 62개가 노출된다. 나머지 187개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1334,7 +1334,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “255개 API 카탈로그를 설계했고 P0 23개를 포함한 63개 코드 operation을 구현했다”고 표현한다. 255개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “255개 API 카탈로그를 설계했고 P0 23개를 포함한 69개 코드 operation을 구현했다”고 표현한다. 255개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2093,7 +2093,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "21",
+        "schemaVersion": "22",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2677,7 +2677,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "21",
+    "schemaVersion": "22",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3635,7 +3635,58 @@ GET /api/v1/detection-runs/{detectionRunId}
 
 ---
 
-## 6.6 미구현 API를 CONTRACT로 승격하는 규칙
+## 6.6 P1 운영형 경보·생활맥락 상세 계약
+
+이 절의 6개 operation은 `IMPLEMENTED-PRIVATE-SYNTHETIC-ONLY`다. 기존 합성 변화신호를 고객이 이해할 수 있는 경보로 보여주고 생활맥락을 확인하지만, 금융거래 차단·지급정지·외부 알림·가족 연락은 실행하지 않는다.
+
+```http
+GET  /api/v1/customers/{customerId}/alerts?state=AWAITING_CONTEXT&severity=HIGH
+GET  /api/v1/alerts/{alertId}
+GET  /api/v1/alerts/{alertId}/context-options
+POST /api/v1/alerts/{alertId}/context-responses
+POST /api/v1/alerts/{alertId}/defer
+GET  /api/v1/alerts/{alertId}/audit
+```
+
+### 6.6.1 권한·소유권
+
+- 자신의 목록·상세·선택지·감사이력: `ALERT_READ`
+- 자신의 생활맥락 응답·확인 연기: `ALERT_RESPOND`
+- 사설 검증 관리자 전체 조회·응답: `ALERT_READ_ALL`, `ALERT_RESPOND_ALL`
+- 다른 고객의 경보는 존재 여부를 노출하지 않고 `404 ALERT_NOT_FOUND`로 응답한다.
+
+### 6.6.2 상태전이와 동시성
+
+- 최초 상태는 `AWAITING_CONTEXT`다.
+- `AWAITING_CONTEXT|DEFERRED → CLOSED_NORMAL`: 고객이 `EXPECTED_CHANGE`로 확인한 경우다.
+- `AWAITING_CONTEXT|DEFERRED → BANK_REVIEW`: `UNRECOGNIZED|NOT_SURE` 응답인 경우다.
+- 확인 연기는 `AWAITING_CONTEXT|DEFERRED → DEFERRED`이며 서버 현재시각보다 미래이고 최대 7일 이내여야 한다.
+- 변경 요청은 `expectedVersion`을 사용한다. 버전 또는 상태가 오래되면 `409 ALERT_STATE_CONFLICT`다.
+- 생활맥락 제출은 `Idempotency-Key`가 필수다. 같은 요청은 최초 결과를 재생하고 다른 요청에 키를 재사용하면 `409 ALERT_IDEMPOTENCY_CONFLICT`다. 원문 키는 저장하지 않는다.
+
+### 6.6.3 안전 응답과 감사
+
+- 모든 변경 응답은 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
+- 맥락 선택지는 `EXPECTED_CHANGE`, `UNRECOGNIZED`, `NOT_SURE` 세 개로 제한한다.
+- 감사이력은 `ALERT_CREATED`, `ALERT_DEFERRED`, `CONTEXT_RESPONDED` 이벤트의 이전·결과 상태, 최소 상세, 무결성 해시를 시간순으로 제공한다.
+- `CLOSED_NORMAL`은 워크플로 종결일 뿐 금융상 불이익이나 계좌조치가 아니다.
+- `BANK_REVIEW`는 검토 필요 상태이며 실제 사건 배정·금융조치가 실행됐다는 뜻이 아니다.
+
+응답 코드:
+
+- `200 CUSTOMER_ALERTS_RETRIEVED`
+- `200 ALERT_RETRIEVED`
+- `200 ALERT_CONTEXT_OPTIONS_RETRIEVED`
+- `200 ALERT_CONTEXT_APPLIED`
+- `200 ALERT_DEFERRED`
+- `200 ALERT_AUDIT_RETRIEVED`
+- `404 ALERT_NOT_FOUND`
+- `409 ALERT_STATE_CONFLICT`
+- `409 ALERT_IDEMPOTENCY_CONFLICT`
+
+---
+
+## 6.7 미구현 API를 CONTRACT로 승격하는 규칙
 
 현재 카탈로그·백로그 200개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 
