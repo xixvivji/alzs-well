@@ -135,7 +135,7 @@ public class OpenApiConfiguration {
             addStandardError(operation, "401", "COMMON_UNAUTHORIZED", "인증 정보가 없거나 유효하지 않습니다.");
             addStandardError(operation, "403", "COMMON_FORBIDDEN", "요청한 자원에 접근할 권한이 없습니다.");
         }
-        if (method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PUT
+        if ((method == PathItem.HttpMethod.POST && !path.equals("/api/v1/knowledge/search")) || method == PathItem.HttpMethod.PUT
                 || method == PathItem.HttpMethod.PATCH || method == PathItem.HttpMethod.DELETE) {
             addStandardError(operation, "409", "COMMON_CONFLICT", "현재 자원 버전 또는 상태와 요청이 충돌합니다.");
         }
@@ -164,6 +164,9 @@ public class OpenApiConfiguration {
             return List.of(method == PathItem.HttpMethod.GET ? "INBOX_READ" : "INBOX_WRITE");
         }
         if (path.equals("/api/v1/notification-previews")) return List.of("NOTIFICATION_PREVIEW");
+        if (path.equals("/api/v1/knowledge/search")) return List.of("KNOWLEDGE_SEARCH");
+        if (path.startsWith("/api/v1/knowledge/")) return List.of("KNOWLEDGE_READ");
+        if (path.equals("/api/v1/guidance-candidates")) return List.of("GUIDANCE_CANDIDATE_READ");
         if (path.startsWith("/api/v1/staff/follow-ups/")) return List.of("STAFF_FOLLOW_UP");
         if (path.startsWith("/api/v1/staff/cases")) return staffCaseAuthorities(path, method);
         if (path.contains("/alerts")) {
