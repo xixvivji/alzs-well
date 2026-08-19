@@ -35,6 +35,7 @@ venv/
 /output/
 /analysis/
 /archive/
+/artifacts/
 /models/
 *.safetensors
 *.onnx

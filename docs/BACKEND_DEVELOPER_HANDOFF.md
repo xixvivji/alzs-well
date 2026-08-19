@@ -236,6 +236,6 @@ SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 �
 1. capability의 `sessionStorage` 불일치 해소
 2. 구현된 89개 operation의 도메인별 summary·개별 오류 예시를 지속적으로 구체화
 3. 운영형 인앱 알림함 API의 프론트 연동과 사용성 검증
-4. Docker Compose 실제 기동·Flyway·health·핵심 API smoke test를 CI에 추가
+4. Compose 스모크 증적의 보존기간·실패 로그를 운영 기준에 맞게 확장
 
 새 개발자는 3번에서 다음 API를 고르기 전에 1~2번 중 자신의 담당 범위를 확인해야 한다.
