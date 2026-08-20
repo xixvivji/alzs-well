@@ -1,6 +1,7 @@
 package com.alzswell.detection.application;
 
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.AuditActor;
 import com.alzswell.detection.api.DetectionErrorCode;
 import com.alzswell.detection.api.DetectionPromotionResponses.DetectionPromotion;
 import com.alzswell.detection.api.SyntheticDatasetRequests.EvidenceInput;
@@ -37,7 +38,7 @@ public class DetectionPromotionService {
     }
 
     @Transactional
-    public DetectionPromotion promote(UUID detectionRunId) {
+    public DetectionPromotion promote(UUID detectionRunId, AuditActor actor) {
         RunSource source = lockRun(detectionRunId);
         DetectionPromotion replay = find(detectionRunId, true);
         if (replay != null) return replay;
@@ -78,7 +79,7 @@ public class DetectionPromotionService {
                     ) values (?, ?, ?, 'AWAITING_CONTEXT', ?, ?, 1, ?, ?)
                     """, alertId, signalId, source.customerId(), detected.severity(),
                     detected.reasonCode(), now, now);
-            writeAlertCreatedAudit(alertId, signalId, detectionRunId, now);
+            writeAlertCreatedAudit(alertId, signalId, detectionRunId, actor, now);
             signalIds.add(signalId);
             alertIds.add(alertId);
         }
@@ -144,16 +145,21 @@ public class DetectionPromotionService {
         }
     }
 
-    private void writeAlertCreatedAudit(UUID alertId, UUID signalId, UUID runId, OffsetDateTime now) {
+    private void writeAlertCreatedAudit(
+            UUID alertId, UUID signalId, UUID runId, AuditActor actor, OffsetDateTime now) {
         String detail = json(java.util.Map.of("signalId", signalId, "detectionRunId", runId,
                 "syntheticData", true));
         jdbcTemplate.update("""
                 insert into operational_alert_audit_event (
                     audit_event_id, alert_id, event_type, previous_state, resulting_state,
-                    detail, integrity_hash, created_at
-                ) values (?, ?, 'ALERT_CREATED', null, 'AWAITING_CONTEXT', ?::jsonb, ?, ?)
+                    detail, integrity_hash, created_at, actor_principal_id, actor_customer_id,
+                    actor_session_id, actor_type
+                ) values (?, ?, 'ALERT_CREATED', null, 'AWAITING_CONTEXT', ?::jsonb, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID(), alertId, detail,
-                sha256(alertId + "|ALERT_CREATED|AWAITING_CONTEXT|" + detail + "|" + now), now);
+                sha256(alertId + "|ALERT_CREATED|AWAITING_CONTEXT|" + detail + "|"
+                        + actor.principalId() + "|" + actor.customerId() + "|"
+                        + actor.sessionId() + "|" + actor.actorType() + "|" + now), now,
+                actor.principalId(), actor.customerId(), actor.sessionId(), actor.actorType());
     }
 
     private DetectionPromotion find(UUID runId, boolean replayed) {

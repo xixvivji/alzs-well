@@ -18,6 +18,7 @@ import com.alzswell.casework.api.CaseworkResponses.FollowUps;
 import com.alzswell.casework.application.OperationalCaseService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
+import com.alzswell.common.security.AuditActor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -73,7 +74,7 @@ public class OperationalCaseController {
             @PathVariable UUID caseId, @Valid @RequestBody AssignmentCommand command,
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_ASSIGNED", "사건 담당 팀과 행원을 배정했습니다.",
-                caseService.assign(caseId, command, authentication.getName()));
+                caseService.assign(caseId, command, AuditActor.from(authentication).legacyActorId()));
     }
 
     @PostMapping("/{caseId}/reviews")
@@ -85,7 +86,8 @@ public class OperationalCaseController {
             @Valid @RequestBody ReviewCommand command,
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_REVIEW_APPLIED", "사건 검토 상태를 변경했습니다.",
-                caseService.review(caseId, command, idempotencyKey, authentication.getName()));
+                caseService.review(caseId, command, idempotencyKey,
+                        AuditActor.from(authentication).legacyActorId()));
     }
 
     @PostMapping("/{caseId}/guidance-plans")
@@ -95,7 +97,8 @@ public class OperationalCaseController {
             Authentication authentication) {
         return ApiResponses.created("STAFF_GUIDANCE_PLAN_APPROVED",
                 "외부 실행 없이 고객 안내계획을 승인했습니다.",
-                caseService.approveGuidance(caseId, command, authentication.getName()));
+                caseService.approveGuidance(caseId, command,
+                        AuditActor.from(authentication).legacyActorId()));
     }
 
     @GetMapping("/{caseId}/evidence")
@@ -128,7 +131,8 @@ public class OperationalCaseController {
             @Valid @RequestBody NoteCommand command,
             Authentication authentication) {
         return ApiResponses.created("STAFF_CASE_NOTE_CREATED", "외부 전송 없이 사건 내부 메모를 등록했습니다.",
-                caseService.addNote(caseId, command, idempotencyKey, authentication.getName()));
+                caseService.addNote(caseId, command, idempotencyKey,
+                        AuditActor.from(authentication).legacyActorId()));
     }
 
     @GetMapping("/{caseId}/follow-ups")
@@ -149,7 +153,8 @@ public class OperationalCaseController {
             @Valid @RequestBody FollowUpCommand command,
             Authentication authentication) {
         return ApiResponses.created("STAFF_CASE_FOLLOW_UP_CREATED", "외부 연락 없이 후속 일정을 등록했습니다.",
-                caseService.createFollowUp(caseId, command, idempotencyKey, authentication.getName()));
+                caseService.createFollowUp(caseId, command, idempotencyKey,
+                        AuditActor.from(authentication).legacyActorId()));
     }
 
 }

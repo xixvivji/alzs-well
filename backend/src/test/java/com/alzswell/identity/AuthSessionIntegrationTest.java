@@ -192,6 +192,20 @@ class AuthSessionIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void staffCorsAllowsOnlyTheStaffOrigin() throws Exception {
+        mockMvc.perform(options("/api/v1/staff/cases")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(options("/api/v1/staff/cases")
+                        .header("Origin", "http://localhost:4173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4173"));
+    }
+
     private JsonNode body(String json) throws Exception {
         return objectMapper.readTree(json);
     }

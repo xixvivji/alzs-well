@@ -28,7 +28,7 @@ public class DemoAuditWriter {
             ObjectMapper objectMapper,
             @Value("${app.versions.policy:context-policy-v1.0.0}") String policyVersion,
             @Value("${app.versions.algorithm:baseline-rules-v2.0.0}") String algorithmVersion,
-            @Value("${app.versions.schema:7}") String schemaVersion
+            @Value("${app.versions.schema}") String schemaVersion
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;

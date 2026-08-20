@@ -16,7 +16,12 @@ public record AuditActor(UUID principalId, String customerId, UUID sessionId, St
         UUID sessionId = authentication.getDetails() instanceof AuthenticatedSession session
                 ? session.sessionId() : null;
         boolean staff = authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().endsWith("_ALL"));
+                .map(authority -> authority.getAuthority())
+                .anyMatch(authority -> authority.startsWith("STAFF_")
+                        || authority.endsWith("_ALL")
+                        || authority.equals("DETECTION_PROMOTE")
+                        || authority.equals("DETECTION_RUN_CREATE")
+                        || authority.equals("SYNTHETIC_DATASET_ADMIN"));
         return new AuditActor(principalId, customerId, sessionId, staff ? "STAFF" : "CUSTOMER");
     }
 

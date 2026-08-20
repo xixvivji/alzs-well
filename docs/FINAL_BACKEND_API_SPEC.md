@@ -1162,7 +1162,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/revoke | JSON 본문으로 지정 철회 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/contact-attempts | 실제 외부 연락 기능 참조 | REFERENCE_ONLY |
 
-앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의와 scope로 구현했고, V32에서 목적별 허용 scope 매트릭스와 조회·평가 감사이력, 생성 멱등성을 보강했다. 신뢰연락인 P1 5개는 Flyway V31의 지정·최소 scope·변경이력에 V32 보안 강화를 적용했다. 생성과 변경 시 잠근 유효 동의를 확인하며 동의 철회 시 관련 지정을 `REVOKED_BY_CONSENT`로 함께 비활성화한다. 연락처는 `*`가 포함된 마스킹 값만 저장하고, 별도 수신자 인증 API가 없으므로 `recipientAccepted=false`, `acceptanceStatus=PENDING_ACCEPTANCE`, `authorizedToAct=false`, `externalContactEnabled=false`, `externalContactExecuted=false`를 유지한다. 생성 API는 `Idempotency-Key`가 필수이며 철회 사유는 URL이 아닌 JSON 본문으로 전달한다. 실제 연락 시도 API는 계속 `REFERENCE_ONLY`다.
+앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의와 scope로 구현했고, V32에서 목적별 허용 scope 매트릭스와 조회·평가 감사이력, 생성 멱등성을 보강했다. 신뢰연락인 P1 5개는 Flyway V31의 지정·최소 scope·변경이력에 V32 보안 강화를 적용했다. V33은 동의 목적의 불변성, 연락처 마스킹 정규화, 신뢰연락인 조회 감사와 기존 운영 이벤트의 인증 principal 식별을 추가로 강제한다. 동의와 신뢰연락인 생성은 원문 키가 아닌 hash를 저장하고 `INSERT ... ON CONFLICT DO NOTHING`으로 동시 동일키 요청도 한 행만 만든다. 생성과 변경 시 잠근 유효 동의를 확인하며 동의 철회 시 관련 지정을 `REVOKED_BY_CONSENT`로 함께 비활성화한다. 연락처는 서버가 허용된 형식으로 정규화한 마스킹 값만 저장하고, 별도 수신자 인증 API가 없으므로 `recipientAccepted=false`, `acceptanceStatus=PENDING_ACCEPTANCE`, `authorizedToAct=false`, `externalContactEnabled=false`, `externalContactExecuted=false`를 유지한다. 생성 API는 `Idempotency-Key`가 필수이며 철회 사유는 URL이 아닌 JSON 본문으로 전달한다. 실제 연락 시도 API는 계속 `REFERENCE_ONLY`다.
 
 마지막 API는 공개 데모에서 호출하지 않는다. 데모에서는 정책 평가 결과 BLOCKED_BY_CONSENT만 감사로그에 남긴다.
 
@@ -2121,7 +2121,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "31",
+        "schemaVersion": "33",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2652,7 +2652,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V33과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
 
 #### 공개 설정
 
@@ -2705,7 +2705,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "31",
+    "schemaVersion": "33",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

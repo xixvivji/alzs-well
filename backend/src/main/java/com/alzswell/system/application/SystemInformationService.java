@@ -49,7 +49,7 @@ public class SystemInformationService {
             @Value("${app.demo.session-ttl-seconds:7200}") long sessionTtlSeconds,
             @Value("${app.demo.default-locale:ko-KR}") String defaultLocale,
             @Value("${app.versions.api:v1}") String apiVersion,
-            @Value("${app.versions.schema:7}") String schemaVersion,
+            @Value("${app.versions.schema}") String schemaVersion,
             @Value("${app.versions.fixture:fin-mgmt-ab-v2.0.0}") String fixtureVersion,
             @Value("${app.versions.algorithm:baseline-rules-v2.0.0}") String algorithmVersion,
             @Value("${app.versions.policy:context-policy-v1.0.0}") String policyVersion,
@@ -84,11 +84,22 @@ public class SystemInformationService {
         boolean flywayReady;
         try {
             databaseReady = Integer.valueOf(1).equals(jdbcTemplate.queryForObject("select 1", Integer.class));
-            Integer migrationCount = jdbcTemplate.queryForObject(
-                    "select count(*) from flyway_schema_history where success = true",
+            String latestSuccessfulVersion = jdbcTemplate.queryForObject(
+                    """
+                    select version
+                      from flyway_schema_history
+                     where success = true and version is not null
+                     order by installed_rank desc
+                     limit 1
+                    """,
+                    String.class
+            );
+            Integer failedMigrationCount = jdbcTemplate.queryForObject(
+                    "select count(*) from flyway_schema_history where success = false",
                     Integer.class
             );
-            flywayReady = migrationCount != null && migrationCount >= expectedSchemaVersion();
+            flywayReady = schemaVersion.equals(latestSuccessfulVersion)
+                    && Integer.valueOf(0).equals(failedMigrationCount);
         } catch (DataAccessException exception) {
             databaseReady = false;
             flywayReady = false;
@@ -166,11 +177,4 @@ public class SystemInformationService {
         return ready ? "UP" : "DOWN";
     }
 
-    private int expectedSchemaVersion() {
-        try {
-            return Integer.parseInt(schemaVersion);
-        } catch (NumberFormatException exception) {
-            return Integer.MAX_VALUE;
-        }
-    }
 }
