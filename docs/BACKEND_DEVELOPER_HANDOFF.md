@@ -199,6 +199,16 @@ public ResponseEntity<ApiResponse<ExampleResponse>> create(
 - 정렬키가 같은 항목
 - 필터와 cursor를 함께 사용한 누락·중복 방지
 
+핵심 폐루프 E2E:
+
+- `BackendCoreFlowE2ETest`를 기준으로 기준선 계산부터 안내계획 승인까지 실제 HTTP 호출로 연결한다.
+- 탐지 run·승격·경보·사건·안내계획이 각각 한 번만 생성됐는지 PostgreSQL에서 확인한다.
+- 경보 감사이력과 사건 타임라인이 단절 없이 이어지고 실제 금융 실행·외부 알림이 0건인지 확인한다.
+- 동일 요청 재시도는 기존 자원을 반환하고, 같은 멱등키의 다른 요청과 오래된 버전은 충돌해야 한다.
+- 실패한 상태전이 뒤에는 맥락 이벤트·사건이 일부만 생성되지 않아야 하며 타 고객 조회는 숨겨야 한다.
+- 호출자가 전달한 `X-Trace-Id`는 응답 헤더와 본문에서 동일해야 한다.
+- 실행 명령은 `./gradlew test --tests 'com.alzswell.e2e.BackendCoreFlowE2ETest'`다.
+
 ## 10. Git 작업 규칙
 
 ```text
