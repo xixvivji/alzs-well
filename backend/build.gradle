@@ -89,6 +89,7 @@ jacocoTestCoverageVerification {
 tasks.named('check') {
 	dependsOn tasks.named('jacocoTestCoverageVerification')
 	dependsOn tasks.named('spotbugsMain')
+	dependsOn tasks.named('spotbugsTest')
 }
 
 spotbugs {
@@ -99,6 +100,13 @@ spotbugs {
 }
 
 tasks.named('spotbugsMain') {
+	reports {
+		html.required = true
+		xml.required = true
+	}
+}
+
+tasks.named('spotbugsTest') {
 	reports {
 		html.required = true
 		xml.required = true

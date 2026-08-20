@@ -361,7 +361,8 @@ T0는 경보 생성 시점의 불변 원시거래·기준선·특징·사유코�
 | `gateEvaluated` | 이번 명령에서 연락 정책을 평가했는지 |
 | `consentSnapshotId` | 평가에 사용한 불변 동의 snapshot |
 | `consentStatus` | `GRANTED`, `NOT_GRANTED`, `REVOKED`, `EXPIRED` |
-| `recipientAccepted` | 지정 연락인이 초대·연락처 처리에 동의했는지 |
+| `recipientAccepted` | 수신자 인증을 거친 수락 여부. 현재 외부 초대 기능 전에는 항상 `false` |
+| `acceptanceStatus` | 현재 `PENDING_ACCEPTANCE` 또는 `UNVERIFIED`; 고객 요청만으로 수락 처리 금지 |
 | `triggerMatched` | 고객이 동의한 발동조건에 해당하는지 |
 | `fieldScopeMatched` | 보내려는 최소정보가 동의 범위 안인지 |
 | `validityMatched` | 동의 기간·철회 상태가 유효한지 |
@@ -1158,10 +1159,10 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | POST | /api/v1/customers/{customerId}/trusted-contacts | 신뢰연락인 지정 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 동의 범위·유효기간 조회 | OWNED |
 | P1 | PATCH | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 최소정보 범위 수정 | OWNED |
-| P1 | DELETE | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 지정 철회 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/revoke | JSON 본문으로 지정 철회 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/contact-attempts | 실제 외부 연락 기능 참조 | REFERENCE_ONLY |
 
-앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의, scope, 추가 전용 변경이력으로 구현했다. 신뢰연락인 P1 5개는 Flyway V31의 지정·최소 scope·변경이력으로 구현했으며, 생성과 변경 시 `TRUSTED_CONTACT_DISCLOSURE` 목적 및 `CONTACT_MINIMUM` scope의 유효 동의를 강제한다. 연락처는 마스킹된 값만 저장하고 `authorizedToAct=false`, `externalContactEnabled=false`, `externalContactExecuted=false`를 고정한다. 실제 연락 시도 API는 계속 `REFERENCE_ONLY`다.
+앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의와 scope로 구현했고, V32에서 목적별 허용 scope 매트릭스와 조회·평가 감사이력, 생성 멱등성을 보강했다. 신뢰연락인 P1 5개는 Flyway V31의 지정·최소 scope·변경이력에 V32 보안 강화를 적용했다. 생성과 변경 시 잠근 유효 동의를 확인하며 동의 철회 시 관련 지정을 `REVOKED_BY_CONSENT`로 함께 비활성화한다. 연락처는 `*`가 포함된 마스킹 값만 저장하고, 별도 수신자 인증 API가 없으므로 `recipientAccepted=false`, `acceptanceStatus=PENDING_ACCEPTANCE`, `authorizedToAct=false`, `externalContactEnabled=false`, `externalContactExecuted=false`를 유지한다. 생성 API는 `Idempotency-Key`가 필수이며 철회 사유는 URL이 아닌 JSON 본문으로 전달한다. 실제 연락 시도 API는 계속 `REFERENCE_ONLY`다.
 
 마지막 API는 공개 데모에서 호출하지 않는다. 데모에서는 정책 평가 결과 BLOCKED_BY_CONSENT만 감사로그에 남긴다.
 

@@ -46,8 +46,7 @@ class OperationalCaseIntegrationTest {
                     operational_case_review_event, operational_guidance_plan,
                     operational_protection_case
                 """);
-        jdbcTemplate.update("delete from operational_alert_context_event");
-        jdbcTemplate.update("delete from operational_alert_audit_event");
+        jdbcTemplate.update("truncate operational_alert_context_event, operational_alert_audit_event");
         jdbcTemplate.update("""
                 update operational_alert
                    set state = 'AWAITING_CONTEXT', alert_version = 1, deferred_until = null,

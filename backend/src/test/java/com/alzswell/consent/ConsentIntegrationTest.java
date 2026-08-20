@@ -29,6 +29,7 @@ class ConsentIntegrationTest {
     @Test @WithMockUser(username=CUSTOMER_ID,authorities={"CONSENT_READ","CONSENT_WRITE","DISCLOSURE_EVALUATE"})
     void grantsEvaluatesAuditsAndWithdrawsConsentWithoutExternalDisclosure()throws Exception{
         MvcResult created=mockMvc.perform(post("/api/v1/customers/{customerId}/consents",CUSTOMER_ID)
+                        .header("Idempotency-Key","consent-test-001")
                         .contentType(MediaType.APPLICATION_JSON).content("""
                         {"purposeCode":"PROTECTION_GUIDANCE","scopes":["BASELINE_SIGNAL","PROTECTION_CASE"],
                          "expiresAt":"2099-12-31T00:00:00Z"}
@@ -46,7 +47,7 @@ class ConsentIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("""
                         {"consentId":"%s","purposeCode":"PROTECTION_GUIDANCE",
                          "requestedScopes":["PROTECTION_CASE"]}
-                        """.formatted(consentId)))
+                        """.replace("%s",consentId)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.decision").value("ALLOW_MINIMUM_SCOPE"))
                 .andExpect(jsonPath("$.data.externalDisclosureRequested").value(false))
                 .andExpect(jsonPath("$.data.externalDisclosureCreated").value(false));

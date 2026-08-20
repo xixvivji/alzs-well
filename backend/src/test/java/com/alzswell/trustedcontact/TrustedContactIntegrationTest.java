@@ -16,12 +16,16 @@ class TrustedContactIntegrationTest {
     @Test @WithMockUser(username=CUSTOMER,authorities={"CONSENT_WRITE","TRUSTED_CONTACT_READ","TRUSTED_CONTACT_WRITE"})
     void managesDesignationWithoutAuthorityOrExternalContact()throws Exception{
         MvcResult consent=mockMvc.perform(post("/api/v1/customers/{id}/consents",CUSTOMER).contentType(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key","trusted-consent-001")
                 .content("{\"purposeCode\":\"TRUSTED_CONTACT_DISCLOSURE\",\"scopes\":[\"CONTACT_MINIMUM\"],\"expiresAt\":\"2099-12-31T00:00:00Z\"}"))
                 .andExpect(status().isCreated()).andReturn();
         String consentId=mapper.readTree(consent.getResponse().getContentAsByteArray()).path("data").path("consentId").asText();
         MvcResult created=mockMvc.perform(post("/api/v1/customers/{id}/trusted-contacts",CUSTOMER).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"consentId\":\""+consentId+"\",\"displayName\":\"가족 1\",\"relationshipCode\":\"FAMILY\",\"maskedContact\":\"010-****-1234\",\"recipientAccepted\":true,\"scopes\":[\"ALERT_REASON_SUMMARY\"],\"expiresAt\":\"2099-01-01T00:00:00Z\"}"))
+                .header("Idempotency-Key","trusted-contact-001")
+                .content("{\"consentId\":\""+consentId+"\",\"displayName\":\"가족 1\",\"relationshipCode\":\"FAMILY\",\"maskedContact\":\"010-****-1234\",\"scopes\":[\"ALERT_REASON_SUMMARY\"],\"expiresAt\":\"2099-01-01T00:00:00Z\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.authorizedToAct").value(false))
+                .andExpect(jsonPath("$.data.recipientAccepted").value(false))
+                .andExpect(jsonPath("$.data.acceptanceStatus").value("PENDING_ACCEPTANCE"))
                 .andExpect(jsonPath("$.data.externalContactEnabled").value(false)).andReturn();
         JsonNode data=mapper.readTree(created.getResponse().getContentAsByteArray()).path("data");
         String id=data.path("contactId").asText();long version=data.path("version").asLong();
@@ -32,8 +36,9 @@ class TrustedContactIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"expectedVersion\":"+version+",\"scopes\":[\"CONTACT_REQUEST_STATUS\"],\"expiresAt\":\"2098-01-01T00:00:00Z\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.scopes[0]").value("CONTACT_REQUEST_STATUS")).andReturn();
         long next=mapper.readTree(updated.getResponse().getContentAsByteArray()).path("data").path("version").asLong();
-        mockMvc.perform(delete("/api/v1/customers/{customer}/trusted-contacts/{id}",CUSTOMER,id)
-                        .param("expectedVersion",Long.toString(next)).param("reason","고객 철회"))
+        mockMvc.perform(post("/api/v1/customers/{customer}/trusted-contacts/{id}/revoke",CUSTOMER,id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedVersion\":"+next+",\"reason\":\"고객 철회\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("REVOKED"));
     }
     @Test @WithMockUser(username="OTHER",authorities="TRUSTED_CONTACT_READ")
