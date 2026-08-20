@@ -5,6 +5,7 @@ import com.alzswell.casework.api.CaseworkResponses.FollowUp;
 import com.alzswell.casework.application.OperationalCaseService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
+import com.alzswell.common.security.AuditActor;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ public class OperationalFollowUpController {
             @PathVariable UUID followUpId, @Valid @RequestBody FollowUpUpdateCommand command,
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_FOLLOW_UP_UPDATED", "후속 일정 상태를 변경했습니다.",
-                caseService.updateFollowUp(followUpId, command, authentication.getName()));
+                caseService.updateFollowUp(followUpId, command,
+                        AuditActor.from(authentication).legacyActorId()));
     }
 }

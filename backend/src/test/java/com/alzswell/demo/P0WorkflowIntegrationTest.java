@@ -448,7 +448,7 @@ class P0WorkflowIntegrationTest {
                   "scheduledAt":"%s",
                   "reason":"정기납부 처리 상태를 다시 확인합니다."
                 }
-                """.formatted(OffsetDateTime.now().plusDays(5));
+                """.replace("%s",OffsetDateTime.now().plusDays(5).toString());
         JsonNode created = read(client.staff(post(
                         "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
                 .header("Idempotency-Key", "p1-follow-up-0001")
@@ -527,7 +527,7 @@ class P0WorkflowIntegrationTest {
                   "scheduledAt":"%s",
                   "reason":"두 번째 내부 확인 일정을 등록합니다."
                 }
-                """.formatted(OffsetDateTime.now().plusDays(6));
+                """.replace("%s",OffsetDateTime.now().plusDays(6).toString());
         JsonNode next = read(client.staff(post(
                         "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
                 .header("Idempotency-Key", "p1-follow-up-0002")
@@ -583,7 +583,7 @@ class P0WorkflowIntegrationTest {
                           "note":"내부에서 처리 상태를 다시 확인합니다.",
                           "followUpAt":"%s"
                         }
-                        """.formatted(OffsetDateTime.now().plusDays(4))), session));
+                        """.replace("%s",OffsetDateTime.now().plusDays(4).toString())), session));
         UUID followUpId = UUID.fromString(scheduled.at("/data/followUpId").asText());
         assertThat(scheduled.at("/data/currentState").asText()).isEqualTo("FOLLOW_UP_REQUIRED");
 

@@ -119,12 +119,13 @@ class PostgreSqlIntegrationTest {
                       ,'trusted_contact'
                       ,'trusted_contact_scope'
                       ,'trusted_contact_event'
+                      ,'consent_access_audit_event'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(63);
+        assertThat(tableCount).isEqualTo(64);
     }
 
     @Test
@@ -152,6 +153,40 @@ class PostgreSqlIntegrationTest {
                 .andExpect(jsonPath("$.data.checks.syntheticFixtures").value("UP"))
                 .andExpect(jsonPath("$.data.checks.policyCatalog").value("UP"))
                 .andExpect(jsonPath("$.data.checks.safeGuardrails").value("UP"));
+    }
+
+    @Test
+    @Transactional
+    void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
+        jdbcTemplate.update("delete from flyway_schema_history where version = '33'");
+
+        mockMvc.perform(get("/api/v1/system/readiness"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SYSTEM_NOT_READY"))
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.checks.database").value("UP"))
+                .andExpect(jsonPath("$.data.checks.flyway").value("DOWN"));
+    }
+
+    @Test
+    @Transactional
+    void readinessRejectsDatabaseWithAFailedMigration() throws Exception {
+        jdbcTemplate.update("""
+                insert into flyway_schema_history (
+                    installed_rank, version, description, type, script, checksum,
+                    installed_by, execution_time, success
+                )
+                select coalesce(max(installed_rank), 0) + 1, '34', 'simulated failure',
+                       'SQL', 'V34__simulated_failure.sql', null, current_user, 0, false
+                  from flyway_schema_history
+                """);
+
+        mockMvc.perform(get("/api/v1/system/readiness"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SYSTEM_NOT_READY"))
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.checks.database").value("UP"))
+                .andExpect(jsonPath("$.data.checks.flyway").value("DOWN"));
     }
 
     @Test
@@ -185,7 +220,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("31"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("33"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -218,7 +253,7 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(92);
+        assertThat(specification.path("paths").size()).isEqualTo(93);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)

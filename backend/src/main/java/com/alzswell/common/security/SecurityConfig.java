@@ -189,6 +189,7 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/v1/demo/sessions", customerIssuance);
         source.registerCorsConfiguration("/api/v1/auth/**", customerApi);
+        source.registerCorsConfiguration("/api/v1/staff/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/staff/sessions/*/capability", staffIssuance);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/staff/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/cases/**", staffApi);

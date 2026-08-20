@@ -11,7 +11,7 @@
 - API 카탈로그는 264개이며 구현된 업무 API는 109개다. 직원 capability 발급 경로까지 포함한 코드 operation은 110개다.
 - 나머지 155개는 구현 완료가 아니라 P1·P2·참조 카탈로그다.
 - 공개 데모는 완전 합성데이터만 사용한다. 실제 금융기관, 마이데이터, 가족 연락, 송금, 주문, 차단, 외부 LLM을 호출하지 않는다.
-- 기존 Flyway V1~V31은 수정하지 않는다. 다음 스키마 변경은 반드시 V32부터 추가한다.
+- 기존 Flyway V1~V33은 수정하지 않는다. 다음 스키마 변경은 반드시 V34부터 추가한다.
 - 구현 순서는 `SSOT → API 상세 계약 → Flyway → Java 코드 → 통합 테스트 → OpenAPI·문서`다.
 
 ## 2. 문서와 코드의 우선순위
@@ -39,7 +39,7 @@
 
 ```bash
 cd backend
-./gradlew clean test jacocoTestReport jacocoTestCoverageVerification spotbugsMain --no-daemon
+./gradlew clean check jacocoTestReport jacocoTestCoverageVerification --no-daemon
 ```
 
 API 카탈로그 합계·중복 검증:

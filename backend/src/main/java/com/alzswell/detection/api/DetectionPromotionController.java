@@ -2,11 +2,13 @@ package com.alzswell.detection.api;
 
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
+import com.alzswell.common.security.AuditActor;
 import com.alzswell.detection.api.DetectionPromotionResponses.DetectionPromotion;
 import com.alzswell.detection.application.DetectionPromotionService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,10 +26,11 @@ public class DetectionPromotionController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('DETECTION_PROMOTE')")
-    public ResponseEntity<ApiResponse<DetectionPromotion>> promote(@PathVariable UUID detectionRunId) {
+    public ResponseEntity<ApiResponse<DetectionPromotion>> promote(
+            @PathVariable UUID detectionRunId, Authentication authentication) {
         return ApiResponses.created("DETECTION_RUN_PROMOTED",
                 "합성 탐지 실행 결과를 운영형 변화신호와 경보로 승격했습니다.",
-                promotionService.promote(detectionRunId));
+                promotionService.promote(detectionRunId, AuditActor.from(authentication)));
     }
 
     @GetMapping

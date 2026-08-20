@@ -45,7 +45,7 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3; do
-            if ./gradlew test jacocoTestReport jacocoTestCoverageVerification spotbugsMain --no-daemon 2>&1 | tee gradle-attempt.log; then
+            if ./gradlew check jacocoTestReport jacocoTestCoverageVerification --no-daemon 2>&1 | tee gradle-attempt.log; then
               exit 0
             fi
             if ! grep -Eq 'status code 429|Too Many Requests' gradle-attempt.log || [ "$attempt" -eq 3 ]; then

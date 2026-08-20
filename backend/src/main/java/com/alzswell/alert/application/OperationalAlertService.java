@@ -12,6 +12,7 @@ import com.alzswell.alert.api.AlertResponses.AuditTrail;
 import com.alzswell.alert.api.AlertResponses.ContextOption;
 import com.alzswell.alert.api.AlertResponses.ContextOptions;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.AuditActor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -88,7 +89,7 @@ public class OperationalAlertService {
 
     @Transactional
     public AlertTransition respond(UUID alertId, ContextResponseCommand command, String idempotencyKey,
-                                   String actorCustomerId, boolean respondAll) {
+                                   String actorCustomerId, boolean respondAll, AuditActor auditActor) {
         AlertDetail detail = alert(alertId, actorCustomerId, respondAll);
         String keyHash = sha256(idempotencyKey);
         String requestHash = sha256(alertId + "|" + command.responseCode() + "|" + command.expectedVersion());
@@ -115,22 +116,25 @@ public class OperationalAlertService {
         jdbcTemplate.update("""
                 insert into operational_alert_context_event (
                     context_event_id, alert_id, response_code, previous_state, resulting_state,
-                    request_hash, idempotency_key_hash, created_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?)
+                    request_hash, idempotency_key_hash, created_at, actor_principal_id,
+                    actor_customer_id, actor_session_id, actor_type
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, eventId, alertId, command.responseCode(), detail.alert().state(), nextState,
-                requestHash, keyHash, now);
+                requestHash, keyHash, now, auditActor.principalId(), auditActor.customerId(),
+                auditActor.sessionId(), auditActor.actorType());
         UUID caseId = nextState.equals("BANK_REVIEW") ? createProtectionCase(detail.alert(), now) : null;
         writeAudit(alertId, "CONTEXT_RESPONDED", detail.alert().state(), nextState,
                 caseId == null
                         ? Map.of("contextEventId", eventId, "responseCode", command.responseCode())
                         : Map.of("contextEventId", eventId, "responseCode", command.responseCode(),
-                                "caseId", caseId), now);
+                                "caseId", caseId), auditActor, now);
         return transition(alertId, detail.alert().state(), nextState, command.expectedVersion() + 1,
                 command.responseCode(), null, now, false);
     }
 
     @Transactional
-    public AlertTransition defer(UUID alertId, DeferCommand command, String actorCustomerId, boolean respondAll) {
+    public AlertTransition defer(UUID alertId, DeferCommand command, String actorCustomerId,
+                                 boolean respondAll, AuditActor auditActor) {
         AlertDetail detail = alert(alertId, actorCustomerId, respondAll);
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (command.deferredUntil().isAfter(now.plusDays(7))
@@ -145,7 +149,7 @@ public class OperationalAlertService {
                 """, command.deferredUntil(), now, alertId, command.expectedVersion());
         if (updated != 1) throw new BusinessException(AlertErrorCode.STATE_CONFLICT);
         writeAudit(alertId, "ALERT_DEFERRED", detail.alert().state(), "DEFERRED",
-                Map.of("deferredUntil", command.deferredUntil().toString()), now);
+                Map.of("deferredUntil", command.deferredUntil().toString()), auditActor, now);
         return transition(alertId, detail.alert().state(), "DEFERRED", command.expectedVersion() + 1,
                 null, command.deferredUntil(), now, false);
     }
@@ -183,17 +187,20 @@ public class OperationalAlertService {
     }
 
     private void writeAudit(UUID alertId, String eventType, String previousState, String resultingState,
-                            Map<String, Object> detail, OffsetDateTime now) {
+                            Map<String, Object> detail, AuditActor actor, OffsetDateTime now) {
         UUID auditId = UUID.randomUUID();
         String detailJson = json(detail);
         String integrityHash = sha256(alertId + "|" + eventType + "|" + previousState + "|"
-                + resultingState + "|" + detailJson + "|" + now);
+                + resultingState + "|" + detailJson + "|" + actor.principalId() + "|"
+                + actor.customerId() + "|" + actor.sessionId() + "|" + actor.actorType() + "|" + now);
         jdbcTemplate.update("""
                 insert into operational_alert_audit_event (
                     audit_event_id, alert_id, event_type, previous_state, resulting_state,
-                    detail, integrity_hash, created_at
-                ) values (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
-                """, auditId, alertId, eventType, previousState, resultingState, detailJson, integrityHash, now);
+                    detail, integrity_hash, created_at, actor_principal_id, actor_customer_id,
+                    actor_session_id, actor_type
+                ) values (?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?)
+                """, auditId, alertId, eventType, previousState, resultingState, detailJson, integrityHash, now,
+                actor.principalId(), actor.customerId(), actor.sessionId(), actor.actorType());
     }
 
     private UUID createProtectionCase(AlertSummary alert, OffsetDateTime now) {
