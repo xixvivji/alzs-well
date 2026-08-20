@@ -1279,6 +1279,14 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P2 | POST | /api/v1/customers/{customerId}/privacy/deletion-requests | 삭제 요청과 법적 예외 기록 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/privacy/correction-requests | 데이터 정정 요청 | OWNED |
 
+앞의 P1 감사·컴플라이언스 조회 4개는 Flyway V36의 전용 최소권한과 함께 구현한다. 감사 검색은
+`decision_audit`, 경보·사건·동의·신뢰연락인·정책·기능 플래그의 append-only 이력을 통합하되
+원본을 수정하지 않는다. `(occurredAt,eventId)` 불투명 cursor와 source/event/customer/기간 필터를
+사용한다. 판단 추적은 정책·알고리즘·상태·무결성 hash를 반환하고, 데이터 출처 조회는
+`DETECTION_RUN`, `SIGNAL`, `ALERT`, `CASE`, `POLICY`의 합성 lineage만 제공한다. 응답은 항상
+`externalProviderCalled=false`, `externalActionExecuted=false`다. `AUDIT_READ_ALL`과
+`COMPLIANCE_TRACE_READ`는 기존 역할에 자동 부여하지 않고 별도 승인된 주체에만 할당한다.
+
 #### 3.3.22 관리자 규칙·정책·모델 — 10개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1293,6 +1301,17 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P1 | GET | /api/v1/admin/algorithms/versions | 탐지 알고리즘 버전 | OWNED |
 | P1 | GET | /api/v1/admin/feature-flags | 환경별 기능 플래그 | OWNED |
 | P2 | PUT | /api/v1/admin/feature-flags/{flagKey} | 승인된 기능 플래그 변경 | OWNED |
+
+앞의 관리자 규칙·정책 버전 P1/P2 8개는 Flyway V34의 `detection_policy_version`과 append-only
+`detection_policy_event`로 구현한다. 규칙 묶음은 `DRAFT → ACTIVE → RETIRED`로 전이하며 활성 버전은
+항상 하나만 허용한다. 수정은 `expectedVersion` 낙관적 잠금을 사용하고, rollback은 과거 행을 다시
+활성화하지 않고 동일 규칙의 새 ACTIVE 버전을 생성한다. 탐지 실행은 당시의 `policyVersion`과
+`policySnapshotHash`를 `synthetic_detection_run`에 고정해 이후 정책 변경과 무관하게 재현할 수 있다.
+알고리즘 버전 조회는 `advisoryAiUsed=false`, `externalProviderCalled=false`를 명시한다.
+기능 플래그 2개는 Flyway V35의 승인 희망값과 append-only 변경이력으로 구현한다. API는 Spring
+런타임 설정을 동적으로 바꾸지 않으며 `desiredEnabled`, `runtimeEnabled`, `appliedToRuntime`,
+`restartRequired`를 분리해 반환한다. 외부 실행·외부 송신·외부 모델 가드레일은 API 변경 불가이고,
+사설 기능 활성화도 공개 배포에서는 거부한다. 실제 적용은 승인된 배포 환경변수와 재기동을 거쳐야 한다.
 
 #### 3.3.23 운영·배치·합성 탐지·연동 상태 — 16개
 
@@ -1362,7 +1381,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 110개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 124개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2121,7 +2140,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "33",
+        "schemaVersion": "36",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2652,7 +2671,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V33과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V36과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
 
 #### 공개 설정
 
@@ -2705,7 +2724,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "33",
+    "schemaVersion": "36",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

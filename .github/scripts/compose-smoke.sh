@@ -10,7 +10,10 @@ export BACKEND_PORT
 GATEWAY_PORT="${BACKEND_PORT}"
 ARTIFACT_DIRECTORY="${COMPOSE_SMOKE_ARTIFACT_DIR:-${REPOSITORY_ROOT}/artifacts/compose-smoke}"
 BASE_URL="http://127.0.0.1:${GATEWAY_PORT}"
+EXPECTED_SCHEMA_VERSION="${EXPECTED_SCHEMA_VERSION:-$(sed -n 's/^    schema: "\([^"]*\)"/\1/p' "${BACKEND_DIRECTORY}/src/main/resources/application.yml")}"
 SESSION_HEADER_FILE="$(mktemp "${TMPDIR:-/tmp}/alzs-well-smoke-headers.XXXXXX")"
+
+test -n "${EXPECTED_SCHEMA_VERSION}"
 
 mkdir -p "${ARTIFACT_DIRECTORY}"
 # 초기 개발 버전이 남긴 capability 헤더 증적은 재실행 전에 제거한다.
@@ -40,7 +43,8 @@ curl --fail --silent --show-error "${BASE_URL}/api/v1/system/readiness" \
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/versions" \
   | tee "${ARTIFACT_DIRECTORY}/versions.json" \
-  | jq -e '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == "33"' > /dev/null
+  | jq -e --arg schema_version "${EXPECTED_SCHEMA_VERSION}" \
+      '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == $schema_version' > /dev/null
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/public-config" \
   | tee "${ARTIFACT_DIRECTORY}/public-config.json" \
@@ -57,4 +61,4 @@ grep -qi '^X-Demo-Customer-Capability:' "${SESSION_HEADER_FILE}"
 printf '%s\n' 'HTTP 201; X-Demo-Customer-Capability header present; value intentionally not retained' \
   > "${ARTIFACT_DIRECTORY}/session-contract.txt"
 
-echo "Compose smoke test passed: PostgreSQL, Flyway V33, backend, gateway, readiness, guardrails, demo session"
+echo "Compose smoke test passed: PostgreSQL, Flyway V${EXPECTED_SCHEMA_VERSION}, backend, gateway, readiness, guardrails, demo session"

@@ -21,7 +21,16 @@ public enum DetectionErrorCode implements ErrorCode {
     PROMOTION_SOURCE_INVALID(HttpStatus.UNPROCESSABLE_ENTITY, "DETECTION_PROMOTION_SOURCE_INVALID",
             "탐지 결과와 합성 원본의 특징이 일치하지 않습니다."),
     PROMOTION_BASELINE_MISMATCH(HttpStatus.UNPROCESSABLE_ENTITY, "DETECTION_PROMOTION_BASELINE_MISMATCH",
-            "운영형 신호로 승격할 기준선 snapshot이 없거나 값이 일치하지 않습니다.");
+            "운영형 신호로 승격할 기준선 snapshot이 없거나 값이 일치하지 않습니다."),
+    POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "DETECTION_POLICY_NOT_FOUND", "탐지 정책을 찾을 수 없습니다."),
+    POLICY_STATE_CONFLICT(HttpStatus.CONFLICT, "DETECTION_POLICY_STATE_CONFLICT",
+            "현재 상태에서는 탐지 정책 작업을 수행할 수 없습니다."),
+    POLICY_VERSION_CONFLICT(HttpStatus.CONFLICT, "DETECTION_POLICY_VERSION_CONFLICT",
+            "탐지 정책이 다른 요청에 의해 변경되었습니다."),
+    POLICY_RULE_INVALID(HttpStatus.UNPROCESSABLE_ENTITY, "DETECTION_POLICY_RULE_INVALID",
+            "탐지 정책 규칙 구성이 올바르지 않습니다."),
+    ACTIVE_POLICY_NOT_FOUND(HttpStatus.SERVICE_UNAVAILABLE, "DETECTION_ACTIVE_POLICY_NOT_FOUND",
+            "활성 탐지 정책을 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
