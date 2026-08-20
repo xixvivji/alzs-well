@@ -112,12 +112,19 @@ class PostgreSqlIntegrationTest {
                       ,'knowledge_document'
                       ,'knowledge_document_version'
                       ,'knowledge_passage'
+                      ,'customer_protection_enrollment'
+                      ,'customer_consent'
+                      ,'customer_consent_scope'
+                      ,'customer_consent_event'
+                      ,'trusted_contact'
+                      ,'trusted_contact_scope'
+                      ,'trusted_contact_event'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(56);
+        assertThat(tableCount).isEqualTo(63);
     }
 
     @Test
@@ -150,6 +157,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessReturnsServiceUnavailableWhenThePolicyCatalogIsMissing() throws Exception {
+        jdbcTemplate.update("delete from customer_protection_enrollment");
         jdbcTemplate.update("delete from protection_action_catalog");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
@@ -177,7 +185,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("28"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("31"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -210,13 +218,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(81);
+        assertThat(specification.path("paths").size()).isEqualTo(92);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(88);
+        assertThat(operationCount).isEqualTo(103);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)

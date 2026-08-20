@@ -5,7 +5,9 @@ REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BACKEND_DIRECTORY="${REPOSITORY_ROOT}/backend"
 ENV_FILE="${COMPOSE_ENV_FILE:-${BACKEND_DIRECTORY}/.env.example}"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-alzs-well-smoke}"
-GATEWAY_PORT="${BACKEND_PORT:-18080}"
+BACKEND_PORT="${BACKEND_PORT:-18080}"
+export BACKEND_PORT
+GATEWAY_PORT="${BACKEND_PORT}"
 ARTIFACT_DIRECTORY="${COMPOSE_SMOKE_ARTIFACT_DIR:-${REPOSITORY_ROOT}/artifacts/compose-smoke}"
 BASE_URL="http://127.0.0.1:${GATEWAY_PORT}"
 SESSION_HEADER_FILE="$(mktemp "${TMPDIR:-/tmp}/alzs-well-smoke-headers.XXXXXX")"
@@ -38,7 +40,7 @@ curl --fail --silent --show-error "${BASE_URL}/api/v1/system/readiness" \
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/versions" \
   | tee "${ARTIFACT_DIRECTORY}/versions.json" \
-  | jq -e '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == "28"' > /dev/null
+  | jq -e '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == "31"' > /dev/null
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/public-config" \
   | tee "${ARTIFACT_DIRECTORY}/public-config.json" \
@@ -55,4 +57,4 @@ grep -qi '^X-Demo-Customer-Capability:' "${SESSION_HEADER_FILE}"
 printf '%s\n' 'HTTP 201; X-Demo-Customer-Capability header present; value intentionally not retained' \
   > "${ARTIFACT_DIRECTORY}/session-contract.txt"
 
-echo "Compose smoke test passed: PostgreSQL, Flyway V28, backend, gateway, readiness, guardrails, demo session"
+echo "Compose smoke test passed: PostgreSQL, Flyway V31, backend, gateway, readiness, guardrails, demo session"
