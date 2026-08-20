@@ -179,6 +179,11 @@ public class OpenApiConfiguration {
                     ? "CONSENT_READ or CONSENT_READ_ALL" : "CONSENT_WRITE or CONSENT_WRITE_ALL");
         }
         if (path.endsWith("/disclosure-evaluations")) return List.of("DISCLOSURE_EVALUATE");
+        if (path.contains("/trusted-contacts")) {
+            return List.of(method == PathItem.HttpMethod.GET
+                    ? "TRUSTED_CONTACT_READ or TRUSTED_CONTACT_READ_ALL"
+                    : "TRUSTED_CONTACT_WRITE or TRUSTED_CONTACT_WRITE_ALL");
+        }
         if (path.startsWith("/api/v1/staff/follow-ups/")) return List.of("STAFF_FOLLOW_UP");
         if (path.startsWith("/api/v1/staff/cases")) return staffCaseAuthorities(path, method);
         if (path.contains("/alerts")) {

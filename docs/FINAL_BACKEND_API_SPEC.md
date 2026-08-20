@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 104개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 109개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 160개 |
+| 카탈로그·백로그 | 155개 |
 
-업무 `IMPLEMENTED` 104개는 기존 98개와 P1 목적별 동의·철회·이력·정보제공 평가 6개다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 98개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 105개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED` 109개는 기존 104개와 P1 신뢰연락인 지정 관리 5개다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 103개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 110개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 264개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -860,7 +860,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 목적별 동의·철회·이력·정보제공 평가 6개를 포함해 총 104개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 105개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 98개가 노출된다. 나머지 160개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 신뢰연락인 지정 관리 5개를 포함해 총 109개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 110개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 103개가 노출된다. 나머지 155개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1161,7 +1161,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | DELETE | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 지정 철회 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/contact-attempts | 실제 외부 연락 기능 참조 | REFERENCE_ONLY |
 
-앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의, scope, 추가 전용 변경이력으로 구현했다. 고객 소유권과 읽기·쓰기 권한을 분리하고 철회에는 `expectedVersion` 낙관적 잠금을 적용한다. 정보제공 평가는 동의 상태·유효기간·목적·최소 scope를 결정론적으로 검사하지만 `externalDisclosureRequested=false`, `externalDisclosureCreated=false`를 강제해 실제 제3자 전송을 만들지 않는다. 신뢰연락인 5개 API는 아직 구현 전이다.
+앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의, scope, 추가 전용 변경이력으로 구현했다. 신뢰연락인 P1 5개는 Flyway V31의 지정·최소 scope·변경이력으로 구현했으며, 생성과 변경 시 `TRUSTED_CONTACT_DISCLOSURE` 목적 및 `CONTACT_MINIMUM` scope의 유효 동의를 강제한다. 연락처는 마스킹된 값만 저장하고 `authorizedToAct=false`, `externalContactEnabled=false`, `externalContactExecuted=false`를 고정한다. 실제 연락 시도 API는 계속 `REFERENCE_ONLY`다.
 
 마지막 API는 공개 데모에서 호출하지 않는다. 데모에서는 정책 평가 결과 BLOCKED_BY_CONSENT만 감사로그에 남긴다.
 
@@ -1361,7 +1361,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 105개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 110개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2120,7 +2120,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "30",
+        "schemaVersion": "31",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2704,7 +2704,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "30",
+    "schemaVersion": "31",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
