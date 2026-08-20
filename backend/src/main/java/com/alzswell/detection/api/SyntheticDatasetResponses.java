@@ -35,7 +35,8 @@ public final class SyntheticDatasetResponses {
 
     public record DetectionRun(
             UUID detectionRunId, UUID datasetId, String customerId, String status,
-            String algorithmVersion, List<DetectedSignal> signals, int signalCount,
+            String algorithmVersion, String policyVersion, String policySnapshotHash,
+            List<DetectedSignal> signals, int signalCount,
             OffsetDateTime startedAt, OffsetDateTime completedAt, String inputPayloadHash,
             String resultHash, String requestHash, boolean idempotencyReplayed,
             boolean advisoryAiUsed, boolean externalExecutionCreated

@@ -2,6 +2,7 @@ package com.alzswell.detection.application;
 
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.detection.api.DetectionErrorCode;
+import com.alzswell.detection.api.DetectionPolicyRequests.RuleInput;
 import com.alzswell.detection.api.SyntheticDatasetRequests.CreateDatasetCommand;
 import com.alzswell.detection.api.SyntheticDatasetRequests.EvidenceInput;
 import com.alzswell.detection.api.SyntheticDatasetRequests.FeatureObservation;
@@ -31,15 +32,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SyntheticDatasetService {
-    private static final String ALGORITHM_VERSION = "baseline-rules-v2.0.0";
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final DetectionPolicyService detectionPolicyService;
 
-    public SyntheticDatasetService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
+    public SyntheticDatasetService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
+                                   DetectionPolicyService detectionPolicyService) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.detectionPolicyService = detectionPolicyService;
     }
 
     @Transactional
@@ -132,7 +135,8 @@ public class SyntheticDatasetService {
         if (!detail.dataset().customerId().equals(customerId) || !detail.dataset().status().equals("INGESTED")) {
             throw new BusinessException(DetectionErrorCode.DATASET_STATE_CONFLICT);
         }
-        List<DetectedSignal> signals = detect(detail.observations());
+        DetectionPolicyService.ActivePolicy policy = detectionPolicyService.activePolicy();
+        List<DetectedSignal> signals = detect(detail.observations(), policy.rules());
         UUID runId = UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now(clock);
         String requestHash = sha256("POST|" + customerId + "|" + datasetId);
@@ -141,11 +145,13 @@ public class SyntheticDatasetService {
         int inserted = jdbcTemplate.update("""
                 insert into synthetic_detection_run (
                     detection_run_id, dataset_id, customer_id, status, algorithm_version,
+                    policy_version, policy_snapshot_hash,
                     idempotency_key_hash, request_hash, input_payload_hash, result_payload,
                     result_hash, signal_count, started_at, completed_at
-                ) values (?, ?, ?, 'COMPLETED', ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?)
+                ) values (?, ?, ?, 'COMPLETED', ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?)
                 on conflict (customer_id, idempotency_key_hash) do nothing
-                """, runId, datasetId, customerId, ALGORITHM_VERSION, keyHash, requestHash,
+                """, runId, datasetId, customerId, DetectionPolicyService.ALGORITHM_VERSION,
+                policy.versionCode(), policy.rulesHash(), keyHash, requestHash,
                 detail.dataset().payloadHash(), resultJson, resultHash, signals.size(), now, now);
         if (inserted == 0) {
             DetectionRun concurrentReplay = requiredRun(customerId, keyHash, true);
@@ -154,7 +160,8 @@ public class SyntheticDatasetService {
             }
             return concurrentReplay;
         }
-        return new DetectionRun(runId, datasetId, customerId, "COMPLETED", ALGORITHM_VERSION, signals,
+        return new DetectionRun(runId, datasetId, customerId, "COMPLETED",
+                DetectionPolicyService.ALGORITHM_VERSION, policy.versionCode(), policy.rulesHash(), signals,
                 signals.size(), now, now, detail.dataset().payloadHash(), resultHash, requestHash,
                 false, false, false);
     }
@@ -163,6 +170,7 @@ public class SyntheticDatasetService {
     public DetectionRun run(UUID runId) {
         List<DetectionRun> rows = jdbcTemplate.query("""
                 select detection_run_id, dataset_id, customer_id, status, algorithm_version,
+                       policy_version, policy_snapshot_hash,
                        result_payload::text, signal_count, started_at, completed_at,
                        input_payload_hash, result_hash, request_hash
                   from synthetic_detection_run where detection_run_id = ?
@@ -196,24 +204,27 @@ public class SyntheticDatasetService {
         return List.copyOf(errors);
     }
 
-    private List<DetectedSignal> detect(List<FeatureObservation> observations) {
-        return observations.stream()
-                .filter(item -> item.currentValue().compareTo(item.baselineValue()) > 0)
-                .map(item -> new DetectedSignal(item.featureCode(), severity(item),
-                        item.baselineValue().toPlainString(), item.currentValue().toPlainString(), item.unit(),
-                        item.featureCode(), item.evidence().stream().map(EvidenceInput::sourceReference).toList()))
-                .toList();
-    }
-
-    private String severity(FeatureObservation observation) {
-        java.math.BigDecimal delta = observation.currentValue().subtract(observation.baselineValue());
-        if (observation.featureCode().equals("REPEATED_CONFIRMATION") && delta.intValue() < 4) return "MEDIUM";
-        return "HIGH";
+    private List<DetectedSignal> detect(List<FeatureObservation> observations, List<RuleInput> rules) {
+        java.util.Map<String, RuleInput> byFeature = rules.stream().collect(
+                java.util.stream.Collectors.toUnmodifiableMap(RuleInput::featureCode, rule -> rule));
+        return observations.stream().filter(item -> {
+                    RuleInput rule = byFeature.get(item.featureCode());
+                    return rule != null && item.currentValue().subtract(item.baselineValue())
+                            .compareTo(rule.triggerDelta()) > 0;
+                }).map(item -> {
+                    RuleInput rule = byFeature.get(item.featureCode());
+                    java.math.BigDecimal delta = item.currentValue().subtract(item.baselineValue());
+                    String severity = delta.compareTo(rule.highDelta()) >= 0 ? "HIGH" : "MEDIUM";
+                    return new DetectedSignal(item.featureCode(), severity,
+                            item.baselineValue().toPlainString(), item.currentValue().toPlainString(), item.unit(),
+                            rule.reasonCode(), item.evidence().stream().map(EvidenceInput::sourceReference).toList());
+                }).toList();
     }
 
     private DetectionRun findRun(String customerId, String keyHash, boolean replayed) {
         List<DetectionRun> rows = jdbcTemplate.query("""
                 select detection_run_id, dataset_id, customer_id, status, algorithm_version,
+                       policy_version, policy_snapshot_hash,
                        result_payload::text, signal_count, started_at, completed_at,
                        input_payload_hash, result_hash, request_hash
                   from synthetic_detection_run
@@ -231,7 +242,8 @@ public class SyntheticDatasetService {
     private DetectionRun mapRun(java.sql.ResultSet rs, boolean replayed) throws java.sql.SQLException {
         return new DetectionRun(rs.getObject("detection_run_id", UUID.class),
                 rs.getObject("dataset_id", UUID.class), rs.getString("customer_id"), rs.getString("status"),
-                rs.getString("algorithm_version"), signals(rs.getString("result_payload")),
+                rs.getString("algorithm_version"), rs.getString("policy_version"),
+                rs.getString("policy_snapshot_hash"), signals(rs.getString("result_payload")),
                 rs.getInt("signal_count"), rs.getObject("started_at", OffsetDateTime.class),
                 rs.getObject("completed_at", OffsetDateTime.class), rs.getString("input_payload_hash"),
                 rs.getString("result_hash"), rs.getString("request_hash"), replayed, false, false);

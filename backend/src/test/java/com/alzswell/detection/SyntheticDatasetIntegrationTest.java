@@ -66,6 +66,8 @@ class SyntheticDatasetIntegrationTest {
                         .content("{\"datasetId\":\"" + datasetId + "\"}"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.data.signalCount").value(3))
+                .andExpect(jsonPath("$.data.policyVersion").value("detection-policy-v1.0.0"))
+                .andExpect(jsonPath("$.data.policySnapshotHash").isNotEmpty())
                 .andExpect(jsonPath("$.data.signals[0].reasonCode").isNotEmpty())
                 .andExpect(jsonPath("$.data.idempotencyReplayed").value(false))
                 .andExpect(jsonPath("$.data.advisoryAiUsed").value(false))
