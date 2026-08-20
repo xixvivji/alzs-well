@@ -174,6 +174,11 @@ public class OpenApiConfiguration {
         if (path.endsWith("/protection-enrollments")) {
             return List.of("PROTECTION_ENROLLMENT_READ or PROTECTION_ENROLLMENT_READ_ALL");
         }
+        if (path.contains("/consents")) {
+            return List.of(method == PathItem.HttpMethod.GET
+                    ? "CONSENT_READ or CONSENT_READ_ALL" : "CONSENT_WRITE or CONSENT_WRITE_ALL");
+        }
+        if (path.endsWith("/disclosure-evaluations")) return List.of("DISCLOSURE_EVALUATE");
         if (path.startsWith("/api/v1/staff/follow-ups/")) return List.of("STAFF_FOLLOW_UP");
         if (path.startsWith("/api/v1/staff/cases")) return staffCaseAuthorities(path, method);
         if (path.contains("/alerts")) {

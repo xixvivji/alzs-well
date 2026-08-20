@@ -40,7 +40,7 @@ curl --fail --silent --show-error "${BASE_URL}/api/v1/system/readiness" \
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/versions" \
   | tee "${ARTIFACT_DIRECTORY}/versions.json" \
-  | jq -e '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == "29"' > /dev/null
+  | jq -e '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == "30"' > /dev/null
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/public-config" \
   | tee "${ARTIFACT_DIRECTORY}/public-config.json" \
@@ -57,4 +57,4 @@ grep -qi '^X-Demo-Customer-Capability:' "${SESSION_HEADER_FILE}"
 printf '%s\n' 'HTTP 201; X-Demo-Customer-Capability header present; value intentionally not retained' \
   > "${ARTIFACT_DIRECTORY}/session-contract.txt"
 
-echo "Compose smoke test passed: PostgreSQL, Flyway V29, backend, gateway, readiness, guardrails, demo session"
+echo "Compose smoke test passed: PostgreSQL, Flyway V30, backend, gateway, readiness, guardrails, demo session"
