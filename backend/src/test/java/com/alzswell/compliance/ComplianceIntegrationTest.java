@@ -2,6 +2,7 @@ package com.alzswell.compliance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +20,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.http.MediaType;
+import org.springframework.dao.DataAccessException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -41,8 +45,37 @@ class ComplianceIntegrationTest {
 
     @BeforeEach
     void seedDecisions() {
+        jdbcTemplate.execute("truncate table audit_export_request_event, audit_export_request");
         firstDecision = insertDecision("AUDIT_TEST_FIRST", "sha256:audit-first", OffsetDateTime.now().plusMinutes(1));
         secondDecision = insertDecision("AUDIT_TEST_SECOND", "sha256:audit-second", OffsetDateTime.now().plusMinutes(2));
+    }
+
+    @Test
+    @WithMockUser(username="approved-auditor",authorities="AUDIT_EXPORT_REQUEST")
+    void createsIdempotentInternalExportRequestWithoutArtifactOrTransfer() throws Exception {
+        String body="""
+                {"from":"2026-01-01T00:00:00Z","to":"2026-02-01T00:00:00Z",
+                 "sourceTypes":["DECISION","ALERT"],"purposeCode":"INTERNAL_AUDIT",
+                 "approvalReference":"APPROVAL-2026-001"}
+                """;
+        MvcResult first=mockMvc.perform(post("/api/v1/audit/export-requests")
+                        .header("Idempotency-Key","audit-export-001")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.status").value("PENDING_APPROVAL"))
+                .andExpect(jsonPath("$.data.artifactCreated").value(false))
+                .andExpect(jsonPath("$.data.downloadEnabled").value(false))
+                .andExpect(jsonPath("$.data.externalTransferExecuted").value(false)).andReturn();
+        String id=objectMapper.readTree(first.getResponse().getContentAsByteArray()).at("/data/requestId").asText();
+        mockMvc.perform(post("/api/v1/audit/export-requests").header("Idempotency-Key","audit-export-001")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.requestId").value(id));
+        mockMvc.perform(post("/api/v1/audit/export-requests").header("Idempotency-Key","audit-export-001")
+                        .contentType(MediaType.APPLICATION_JSON).content(body.replace("INTERNAL_AUDIT","REGULATORY_REVIEW")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("AUDIT_EXPORT_IDEMPOTENCY_CONFLICT"));
+        assertThat(jdbcTemplate.queryForObject("select count(*) from audit_export_request",Integer.class)).isEqualTo(1);
+        UUID eventId=jdbcTemplate.queryForObject("select event_id from audit_export_request_event",UUID.class);
+        assertThatThrownBy(()->jdbcTemplate.update("delete from audit_export_request_event where event_id=?",eventId))
+                .isInstanceOf(DataAccessException.class).hasMessageContaining("append-only");
     }
 
     @Test

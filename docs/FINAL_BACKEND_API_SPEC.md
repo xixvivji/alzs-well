@@ -1287,6 +1287,20 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 `externalProviderCalled=false`, `externalActionExecuted=false`다. `AUDIT_READ_ALL`과
 `COMPLIANCE_TRACE_READ`는 기존 역할에 자동 부여하지 않고 별도 승인된 주체에만 할당한다.
 
+P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37의
+`compliance_retention_policy`, `customer_privacy_request`, 추가 전용
+`customer_privacy_request_event`와 함께 구현했다. 삭제 요청은 데이터를 즉시 파기하지 않고
+`LEGAL_HOLD_REVIEW` 상태와 `RETENTION_POLICY_REVIEW_REQUIRED` 예외를 기록한다. 정정 요청도
+원본을 직접 덮어쓰지 않고 검토 요청만 생성한다. 두 생성 API는 고객·요청유형·`Idempotency-Key`를
+범위로 원자적 멱등성을 보장하며 다른 payload 재사용은 `409 IDEMPOTENCY_CONFLICT`로 거절한다.
+응답은 항상 `deletionExecuted=false`, `externalActionExecuted=false`이고 외부 기관이나 모델을 호출하지 않는다.
+
+감사자료 내보내기 요청은 Flyway V38의 `audit_export_request`와 추가 전용
+`audit_export_request_event`로 구현했다. 이 API는 승인 대기 작업만 만들며 파일, 다운로드 URL,
+외부 전송을 생성하지 않는다. `AUDIT_EXPORT_REQUEST`는 기존 역할에 자동 부여하지 않는다.
+요청 기간은 과거의 정상 범위여야 하고, 주체·`Idempotency-Key` 범위의 원자적 멱등 처리를 적용한다.
+응답은 `artifactCreated=false`, `downloadEnabled=false`, `externalTransferExecuted=false`를 강제한다.
+
 #### 3.3.22 관리자 규칙·정책·모델 — 10개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1381,7 +1395,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 124개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 128개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2140,7 +2154,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "36",
+        "schemaVersion": "38",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2671,7 +2685,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V36과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V38과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
 
 #### 공개 설정
 
@@ -2724,7 +2738,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "36",
+    "schemaVersion": "38",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

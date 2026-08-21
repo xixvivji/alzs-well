@@ -7,6 +7,9 @@ import com.alzswell.compliance.api.ComplianceResponses.AuditEventList;
 import com.alzswell.compliance.api.ComplianceResponses.DataProvenance;
 import com.alzswell.compliance.api.ComplianceResponses.DecisionTrace;
 import com.alzswell.compliance.application.ComplianceQueryService;
+import com.alzswell.compliance.application.AuditExportRequestService;
+import com.alzswell.common.security.AuditActor;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -21,13 +24,29 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @Validated
 public class ComplianceController {
     private final ComplianceQueryService service;
+    private final AuditExportRequestService exportService;
 
-    public ComplianceController(ComplianceQueryService service) { this.service = service; }
+    public ComplianceController(ComplianceQueryService service, AuditExportRequestService exportService) {
+        this.service = service; this.exportService = exportService;
+    }
+
+    @PostMapping("/api/v1/audit/export-requests")
+    @PreAuthorize("hasAuthority('AUDIT_EXPORT_REQUEST')")
+    public ResponseEntity<ApiResponse<ComplianceResponses.AuditExportRequest>> requestExport(
+            @RequestHeader("Idempotency-Key") @Size(min=8,max=100) @Pattern(regexp="[A-Za-z0-9._:-]+") String key,
+            @Valid @RequestBody ComplianceRequests.AuditExportRequest request, Authentication authentication) {
+        return ApiResponses.created("AUDIT_EXPORT_REQUESTED", "감사자료 내부 승인 요청을 등록했습니다.",
+                exportService.create(request,key,AuditActor.from(authentication)));
+    }
 
     @GetMapping("/api/v1/audit/events")
     @PreAuthorize("hasAuthority('AUDIT_READ_ALL')")
