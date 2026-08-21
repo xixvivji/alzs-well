@@ -116,4 +116,17 @@ class PrivacyRequestIntegrationTest {
                         .content("{\"targetType\":\"CUSTOMER_PROFILE\",\"reasonCode\":\"CUSTOMER_REQUEST\"}"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "privacy-staff", authorities = "PRIVACY_REQUEST_WRITE_ALL")
+    void staffDelegationRejectsUnknownCustomerBeforeCreatingARequest() throws Exception {
+        mockMvc.perform(post("/api/v1/customers/{customerId}/privacy/deletion-requests", "UNKNOWN_CUSTOMER")
+                        .header("Idempotency-Key", "privacy-unknown-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetType\":\"CUSTOMER_PROFILE\",\"reasonCode\":\"CUSTOMER_REQUEST\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PRIVACY_CUSTOMER_NOT_FOUND"));
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from customer_privacy_request", Integer.class)).isZero();
+    }
 }

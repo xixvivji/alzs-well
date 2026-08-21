@@ -104,11 +104,11 @@ public class DetectionPolicyService {
 
     @Transactional
     public PolicyDetail publish(UUID policyId, AuditActor actor) {
+        serializeActivation();
         PolicyDetail draft = policyForUpdate(policyId);
         if (!draft.policy().status().equals("DRAFT")) {
             throw new BusinessException(DetectionErrorCode.POLICY_STATE_CONFLICT);
         }
-        serializeActivation();
         OffsetDateTime now = OffsetDateTime.now(clock);
         jdbcTemplate.update("update detection_policy_version set status='RETIRED' where status='ACTIVE'");
         String versionCode = nextVersionCode(now);
@@ -123,11 +123,11 @@ public class DetectionPolicyService {
 
     @Transactional
     public PolicyDetail rollback(UUID sourcePolicyId, AuditActor actor) {
+        serializeActivation();
         PolicyDetail source = policyForUpdate(sourcePolicyId);
         if (!Set.of("ACTIVE", "RETIRED").contains(source.policy().status())) {
             throw new BusinessException(DetectionErrorCode.POLICY_STATE_CONFLICT);
         }
-        serializeActivation();
         OffsetDateTime now = OffsetDateTime.now(clock);
         UUID id = UUID.randomUUID();
         String versionCode = nextVersionCode(now);

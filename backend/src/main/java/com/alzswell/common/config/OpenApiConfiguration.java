@@ -160,6 +160,35 @@ public class OpenApiConfiguration {
     }
 
     private List<String> authorities(String path, PathItem.HttpMethod method) {
+        if (path.contains("/staff-access-grants")) {
+            return List.of(method == PathItem.HttpMethod.GET
+                    ? "STAFF_ACCESS_GRANT_READ" : "STAFF_ACCESS_GRANT_WRITE");
+        }
+        if (path.startsWith("/api/v1/staff-access-policy/")) return List.of("STAFF_ACCESS_EVALUATE");
+        if (path.startsWith("/api/v1/staff/customers/") && path.endsWith("/financial-intent-summary")) {
+            return List.of("FINANCIAL_INTENT_SHARED_READ");
+        }
+        if (path.contains("/financial-intents") || path.endsWith("/continuity-preparation")) {
+            return List.of(method == PathItem.HttpMethod.GET ? "FINANCIAL_INTENT_READ" : "FINANCIAL_INTENT_WRITE");
+        }
+        if (path.contains("/privacy/")) {
+            return List.of("PRIVACY_REQUEST_WRITE or PRIVACY_REQUEST_WRITE_ALL");
+        }
+        if (path.equals("/api/v1/compliance/retention-policies")) return List.of("RETENTION_POLICY_READ");
+        if (path.startsWith("/api/v1/audit/export-requests")) return List.of("AUDIT_EXPORT_REQUEST");
+        if (path.startsWith("/api/v1/audit/events")) return List.of("AUDIT_READ_ALL");
+        if (path.startsWith("/api/v1/compliance/decision-traces")
+                || path.startsWith("/api/v1/compliance/data-provenance")) {
+            return List.of("COMPLIANCE_TRACE_READ");
+        }
+        if (path.startsWith("/api/v1/admin/rules") || path.startsWith("/api/v1/admin/policies/versions")
+                || path.startsWith("/api/v1/admin/algorithms/versions")) {
+            return List.of(method == PathItem.HttpMethod.GET ? "DETECTION_POLICY_READ" : "DETECTION_POLICY_WRITE");
+        }
+        if (path.startsWith("/api/v1/admin/synthetic-datasets")) return List.of("SYNTHETIC_DATASET_ADMIN");
+        if (path.startsWith("/api/v1/admin/feature-flags")) {
+            return List.of(method == PathItem.HttpMethod.GET ? "FEATURE_FLAG_READ" : "FEATURE_FLAG_WRITE");
+        }
         if (path.contains("/inbox") || path.endsWith("/notification-preferences")) {
             return List.of(method == PathItem.HttpMethod.GET ? "INBOX_READ" : "INBOX_WRITE");
         }
@@ -262,7 +291,13 @@ public class OpenApiConfiguration {
                 || path.endsWith("/follow-ups")
                 || path.contains("/follow-ups/")
                 || path.endsWith("/review")
-                || path.endsWith("/guidance-plan");
+                || path.endsWith("/guidance-plan")
+                || path.endsWith("/drafts")
+                || path.endsWith("/draft")
+                || path.endsWith("/approve")
+                || path.endsWith("/revoke")
+                || path.contains("/privacy/")
+                || (path.endsWith("/staff-access-grants"));
     }
 
     private void addHeader(Operation operation, String name, boolean required, String description) {

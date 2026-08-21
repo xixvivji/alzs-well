@@ -9,13 +9,14 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public final class CaseworkRequests {
     private CaseworkRequests() {}
 
     public record AssignmentCommand(
             @NotBlank @Size(max = 80) @Pattern(regexp = "[A-Za-z0-9._:-]+") String assignedTeam,
-            @NotBlank @Size(max = 80) @Pattern(regexp = "[A-Za-z0-9._:-]+") String assignedTo,
+            @NotNull UUID assignedTo,
             @Positive long expectedVersion
     ) {}
 

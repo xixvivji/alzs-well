@@ -109,6 +109,25 @@ class ComplianceIntegrationTest {
     }
 
     @Test
+    void cursorPreservesPostgresMicrosecondsBetweenPages() throws Exception {
+        UUID microFirst = insertDecision("AUDIT_MICRO_FIRST", "sha256:audit-micro-first",
+                OffsetDateTime.parse("2099-08-21T00:00:00.123100Z"));
+        UUID microSecond = insertDecision("AUDIT_MICRO_SECOND", "sha256:audit-micro-second",
+                OffsetDateTime.parse("2099-08-21T00:00:00.123900Z"));
+        MvcResult page = mockMvc.perform(get("/api/v1/audit/events")
+                        .queryParam("sourceType", "DECISION").queryParam("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].sourceId").value(microSecond.toString()))
+                .andReturn();
+        String cursor = objectMapper.readTree(page.getResponse().getContentAsByteArray())
+                .at("/data/nextCursor").asText();
+        mockMvc.perform(get("/api/v1/audit/events").queryParam("sourceType", "DECISION")
+                        .queryParam("limit", "1").queryParam("cursor", cursor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].sourceId").value(microFirst.toString()));
+    }
+
+    @Test
     void returnsDecisionTraceAndPolicyProvenanceWithoutExternalCalls() throws Exception {
         mockMvc.perform(get("/api/v1/compliance/decision-traces/{decisionId}", secondDecision))
                 .andExpect(status().isOk())

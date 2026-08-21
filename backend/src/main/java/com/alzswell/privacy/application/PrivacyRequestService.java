@@ -6,6 +6,7 @@ import com.alzswell.privacy.api.PrivacyErrorCode;
 import com.alzswell.privacy.api.PrivacyResponses.PrivacyRequest;
 import com.alzswell.privacy.api.PrivacyResponses.RetentionPolicy;
 import com.alzswell.privacy.api.PrivacyResponses.RetentionPolicyList;
+import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
@@ -19,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PrivacyRequestService {
-    private final JdbcClient jdbc; private final Clock clock;
-    public PrivacyRequestService(JdbcClient jdbc,Clock clock){this.jdbc=jdbc;this.clock=clock;}
+    private final JdbcClient jdbc; private final Clock clock; private final StaffAccessPolicyService staffAccess;
+    public PrivacyRequestService(JdbcClient jdbc,Clock clock,StaffAccessPolicyService staffAccess){this.jdbc=jdbc;this.clock=clock;this.staffAccess=staffAccess;}
 
     @Transactional(readOnly=true)
     public RetentionPolicyList retentionPolicies(){
@@ -34,6 +35,10 @@ public class PrivacyRequestService {
     @Transactional
     public PrivacyRequest create(String customerId,String type,String targetType,String targetReference,
             String reasonCode,String correctedValue,String idempotencyKey,AuditActor actor){
+        Boolean customerExists=jdbc.sql("select exists(select 1 from customer_profile where customer_id=?)")
+                .param(customerId).query(Boolean.class).single();
+        if(!Boolean.TRUE.equals(customerExists)) throw new BusinessException(PrivacyErrorCode.CUSTOMER_NOT_FOUND);
+        staffAccess.require(actor,customerId,"PRIVACY_REQUEST_WRITE","PRIVACY_REQUEST",type);
         String requestHash=hash(String.join("|",type,targetType,String.valueOf(targetReference),reasonCode,String.valueOf(correctedValue)));
         OffsetDateTime now=OffsetDateTime.now(clock); UUID id=UUID.randomUUID();
         int inserted=jdbc.sql("""

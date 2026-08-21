@@ -56,16 +56,17 @@ public class OperationalCaseController {
             @Pattern(regexp = "PENDING|IN_REVIEW|GUIDANCE_APPROVED|COMPLETED") String status,
             @RequestParam(required = false) @Pattern(regexp = "HIGH|MEDIUM|LOW") String priority,
             @RequestParam(required = false) UUID cursor,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+            Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_QUEUE_RETRIEVED", "운영형 행원 사건큐를 조회했습니다.",
-                caseService.queue(status, priority, cursor, limit));
+                caseService.queue(status, priority, cursor, limit, AuditActor.from(authentication)));
     }
 
     @GetMapping("/{caseId}")
     @PreAuthorize("hasAuthority('STAFF_CASE_READ')")
-    public ResponseEntity<ApiResponse<CaseDetail>> detail(@PathVariable UUID caseId) {
+    public ResponseEntity<ApiResponse<CaseDetail>> detail(@PathVariable UUID caseId, Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_RETRIEVED", "운영형 행원 사건 상세를 조회했습니다.",
-                caseService.detail(caseId));
+                caseService.detail(caseId, AuditActor.from(authentication)));
     }
 
     @PutMapping("/{caseId}/assignment")
@@ -74,7 +75,7 @@ public class OperationalCaseController {
             @PathVariable UUID caseId, @Valid @RequestBody AssignmentCommand command,
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_ASSIGNED", "사건 담당 팀과 행원을 배정했습니다.",
-                caseService.assign(caseId, command, AuditActor.from(authentication).legacyActorId()));
+                caseService.assign(caseId, command, AuditActor.from(authentication)));
     }
 
     @PostMapping("/{caseId}/reviews")
@@ -87,7 +88,7 @@ public class OperationalCaseController {
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_REVIEW_APPLIED", "사건 검토 상태를 변경했습니다.",
                 caseService.review(caseId, command, idempotencyKey,
-                        AuditActor.from(authentication).legacyActorId()));
+                        AuditActor.from(authentication)));
     }
 
     @PostMapping("/{caseId}/guidance-plans")
@@ -97,29 +98,28 @@ public class OperationalCaseController {
             Authentication authentication) {
         return ApiResponses.created("STAFF_GUIDANCE_PLAN_APPROVED",
                 "외부 실행 없이 고객 안내계획을 승인했습니다.",
-                caseService.approveGuidance(caseId, command,
-                        AuditActor.from(authentication).legacyActorId()));
+                caseService.approveGuidance(caseId, command, AuditActor.from(authentication)));
     }
 
     @GetMapping("/{caseId}/evidence")
     @PreAuthorize("hasAuthority('STAFF_CASE_READ')")
-    public ResponseEntity<ApiResponse<CaseEvidence>> evidence(@PathVariable UUID caseId) {
+    public ResponseEntity<ApiResponse<CaseEvidence>> evidence(@PathVariable UUID caseId, Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_EVIDENCE_RETRIEVED", "사건의 불변 합성 근거를 조회했습니다.",
-                caseService.evidence(caseId));
+                caseService.evidence(caseId, AuditActor.from(authentication)));
     }
 
     @GetMapping("/{caseId}/timeline")
     @PreAuthorize("hasAuthority('STAFF_CASE_READ')")
-    public ResponseEntity<ApiResponse<CaseTimeline>> timeline(@PathVariable UUID caseId) {
+    public ResponseEntity<ApiResponse<CaseTimeline>> timeline(@PathVariable UUID caseId, Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_TIMELINE_RETRIEVED", "사건 통합 타임라인을 조회했습니다.",
-                caseService.timeline(caseId));
+                caseService.timeline(caseId, AuditActor.from(authentication)));
     }
 
     @GetMapping("/{caseId}/notes")
     @PreAuthorize("hasAnyAuthority('STAFF_CASE_READ', 'STAFF_CASE_NOTE')")
-    public ResponseEntity<ApiResponse<CaseNotes>> notes(@PathVariable UUID caseId) {
+    public ResponseEntity<ApiResponse<CaseNotes>> notes(@PathVariable UUID caseId, Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_NOTES_RETRIEVED", "사건 내부 메모를 조회했습니다.",
-                caseService.notes(caseId));
+                caseService.notes(caseId, AuditActor.from(authentication)));
     }
 
     @PostMapping("/{caseId}/notes")
@@ -132,16 +132,17 @@ public class OperationalCaseController {
             Authentication authentication) {
         return ApiResponses.created("STAFF_CASE_NOTE_CREATED", "외부 전송 없이 사건 내부 메모를 등록했습니다.",
                 caseService.addNote(caseId, command, idempotencyKey,
-                        AuditActor.from(authentication).legacyActorId()));
+                        AuditActor.from(authentication)));
     }
 
     @GetMapping("/{caseId}/follow-ups")
     @PreAuthorize("hasAnyAuthority('STAFF_CASE_READ', 'STAFF_FOLLOW_UP')")
     public ResponseEntity<ApiResponse<FollowUps>> followUps(
             @PathVariable UUID caseId,
-            @RequestParam(required = false) @Pattern(regexp = "SCHEDULED|COMPLETED|CANCELLED") String status) {
+            @RequestParam(required = false) @Pattern(regexp = "SCHEDULED|COMPLETED|CANCELLED") String status,
+            Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_FOLLOW_UPS_RETRIEVED", "사건 내부 후속 일정을 조회했습니다.",
-                caseService.followUps(caseId, status));
+                caseService.followUps(caseId, status, AuditActor.from(authentication)));
     }
 
     @PostMapping("/{caseId}/follow-ups")
@@ -154,7 +155,7 @@ public class OperationalCaseController {
             Authentication authentication) {
         return ApiResponses.created("STAFF_CASE_FOLLOW_UP_CREATED", "외부 연락 없이 후속 일정을 등록했습니다.",
                 caseService.createFollowUp(caseId, command, idempotencyKey,
-                        AuditActor.from(authentication).legacyActorId()));
+                        AuditActor.from(authentication)));
     }
 
 }

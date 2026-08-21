@@ -6,6 +6,7 @@ import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.trustedcontact.api.TrustedContactRequests.*;
 import com.alzswell.trustedcontact.api.TrustedContactResponses.*;
+import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Array;
@@ -25,14 +26,17 @@ public class TrustedContactService {
     private static final Pattern SAFE_MASK = Pattern.compile("^[0-9+]{2,4}-\\*{3,8}-[0-9]{2,4}$");
     private final JdbcClient jdbc;
     private final Clock clock;
+    private final StaffAccessPolicyService staffAccess;
 
-    public TrustedContactService(JdbcClient jdbc, Clock clock) {
+    public TrustedContactService(JdbcClient jdbc, Clock clock, StaffAccessPolicyService staffAccess) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.staffAccess = staffAccess;
     }
 
     @Transactional
     public ContactList list(String customerId, AuditActor actor) {
+        staffAccess.require(actor, customerId, "TRUSTED_CONTACT_READ", "TRUSTED_CONTACT", null);
         OffsetDateTime now = OffsetDateTime.now(clock);
         List<Contact> items = jdbc.sql("""
                 select t.*,
@@ -51,6 +55,7 @@ public class TrustedContactService {
 
     @Transactional
     public Contact detail(String customerId, UUID id, AuditActor actor) {
+        staffAccess.require(actor, customerId, "TRUSTED_CONTACT_READ", "TRUSTED_CONTACT", id.toString());
         Contact contact = find(customerId, id);
         auditRead(customerId, contact.consentId(), id, "TRUSTED_CONTACT_DETAIL_READ", actor,
                 hash("trusted-contact-detail:" + id), OffsetDateTime.now(clock));
@@ -59,6 +64,7 @@ public class TrustedContactService {
 
     @Transactional
     public Contact create(String customerId, CreateCommand command, String idempotencyKey, AuditActor actor) {
+        staffAccess.require(actor, customerId, "TRUSTED_CONTACT_WRITE", "TRUSTED_CONTACT", null);
         OffsetDateTime now = OffsetDateTime.now(clock);
         String masked = normalizeMasked(command.maskedContact());
         List<String> scopes = normalize(command.scopes());
@@ -90,6 +96,7 @@ public class TrustedContactService {
 
     @Transactional
     public Contact update(String customerId, UUID id, UpdateCommand command, AuditActor actor) {
+        staffAccess.require(actor, customerId, "TRUSTED_CONTACT_WRITE", "TRUSTED_CONTACT", id.toString());
         Contact before = find(customerId, id);
         OffsetDateTime now = OffsetDateTime.now(clock);
         lockConsent(customerId, before.consentId(), command.expiresAt(), now);
@@ -107,6 +114,7 @@ public class TrustedContactService {
 
     @Transactional
     public Contact revoke(String customerId, UUID id, RevokeCommand command, AuditActor actor) {
+        staffAccess.require(actor, customerId, "TRUSTED_CONTACT_WRITE", "TRUSTED_CONTACT", id.toString());
         Contact before = find(customerId, id);
         OffsetDateTime now = OffsetDateTime.now(clock);
         int changed = jdbc.sql("""
@@ -172,10 +180,13 @@ public class TrustedContactService {
         jdbc.sql("""
                 insert into trusted_contact_event(
                     event_id,contact_id,event_type,actor_id,reason,occurred_at,row_version,
-                    actor_principal_id,actor_customer_id,actor_session_id,actor_type
-                ) values(?,?,?,?,?,?,?,?,?,?,?)
-                """).params(UUID.randomUUID(), id, type, actor.legacyActorId(), reason, at, version,
-                actor.principalId(), actor.customerId(), actor.sessionId(), actor.actorType()).update();
+                    actor_principal_id,actor_customer_id,actor_session_id,actor_type,status_snapshot,scope_snapshot
+                ) select ?,t.contact_id,?,?,?,?,?,?,?,?,?,t.status,
+                    coalesce((select array_agg(s.scope_code order by s.scope_code)
+                                from trusted_contact_scope s where s.contact_id=t.contact_id),'{}')
+                    from trusted_contact t where t.contact_id=?
+                """).params(UUID.randomUUID(), type, actor.legacyActorId(), reason, at, version,
+                actor.principalId(), actor.customerId(), actor.sessionId(), actor.actorType(), id).update();
     }
 
     private void auditRead(String customerId, UUID consentId, UUID contactId, String eventType,

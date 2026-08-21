@@ -18,6 +18,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -33,9 +35,11 @@ public class AuthSessionService {
     private final int maxActiveSessions;
     private final int loginFailureLimit;
     private final long loginFailureWindowSeconds;
+    private final TransactionTemplate transactionTemplate;
 
     public AuthSessionService(JdbcTemplate jdbcTemplate, IdentityProviderPort identityProvider,
             AuthSecurityEventService securityEventService, Clock clock,
+            PlatformTransactionManager transactionManager,
             @Value("${app.auth.access-ttl-seconds:900}") long accessTtlSeconds,
             @Value("${app.auth.refresh-ttl-seconds:28800}") long refreshTtlSeconds,
             @Value("${app.auth.absolute-ttl-seconds:86400}") long absoluteTtlSeconds,
@@ -57,37 +61,32 @@ public class AuthSessionService {
         this.maxActiveSessions = maxActiveSessions;
         this.loginFailureLimit = loginFailureLimit;
         this.loginFailureWindowSeconds = loginFailureWindowSeconds;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    @Transactional
     public TokenPair login(String loginId, String password) {
         String normalizedLoginId = loginId.trim();
         String loginIdHash = hash(normalizedLoginId);
         OffsetDateTime now = OffsetDateTime.now(clock);
-        // 동일 ID의 병렬 실패가 count-then-insert 사이를 통과하지 않도록 transaction 단위로 직렬화한다.
-        jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
-            try (java.sql.PreparedStatement statement = connection.prepareStatement(
-                    "select pg_advisory_xact_lock(hashtextextended(?, 0))")) {
-                statement.setString(1, loginIdHash);
-                statement.execute();
-            }
-            return null;
-        });
-        if (securityEventService.isRateLimited(loginIdHash,
-                now.minusSeconds(loginFailureWindowSeconds), loginFailureLimit)) {
-            securityEventService.record(loginIdHash, "RATE_LIMITED", now);
+        Long attemptId = securityEventService.reserve(loginIdHash,
+                now.minusSeconds(loginFailureWindowSeconds), loginFailureLimit, now);
+        if (attemptId == null) {
             throw new BusinessException(AuthErrorCode.LOGIN_RATE_LIMITED);
         }
+        IdentityProviderPort.AuthenticatedPrincipal principal;
         try {
-            IdentityProviderPort.AuthenticatedPrincipal principal =
-                    identityProvider.authenticate(normalizedLoginId, password);
-            TokenPair pair = createSession(principal.principalId(), now);
-            securityEventService.record(loginIdHash, "SUCCEEDED", now);
-            return pair;
+            principal = identityProvider.authenticate(normalizedLoginId, password);
         } catch (BusinessException exception) {
-            securityEventService.record(loginIdHash, "FAILED", now);
+            securityEventService.complete(attemptId, "FAILED");
+            throw exception;
+        } catch (RuntimeException exception) {
+            securityEventService.complete(attemptId, "ERROR");
             throw exception;
         }
+        securityEventService.complete(attemptId, "SUCCEEDED");
+        TokenPair pair = transactionTemplate.execute(status -> createSession(principal.principalId(), now));
+        if (pair == null) throw new IllegalStateException("인증 세션 생성 transaction 결과가 없습니다.");
+        return pair;
     }
 
     @Transactional(noRollbackFor = BusinessException.class)

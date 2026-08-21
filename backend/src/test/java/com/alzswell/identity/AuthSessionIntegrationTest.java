@@ -51,7 +51,7 @@ class AuthSessionIntegrationTest {
                 .flatMap(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has).map(path::path))
                 .toList();
-        assertThat(operations).hasSize(135).allSatisfy(operation -> {
+        assertThat(operations).hasSize(141).allSatisfy(operation -> {
             assertThat(operation.path("summary").asText()).isNotBlank();
             assertThat(operation.path("description").asText()).isNotBlank();
             assertThat(operation.path("x-alzs-authority-mode").asText()).isNotBlank();
@@ -149,6 +149,15 @@ class AuthSessionIntegrationTest {
         mockMvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("AUTH_LOGIN_RATE_LIMITED"));
+        mockMvc.perform(post("/api/v1/auth/login").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests());
+        String loginHash = com.alzswell.identity.application.AuthSessionService.hash(loginId);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from auth_login_event where login_id_hash=? and outcome='FAILED'
+                """, Integer.class, loginHash)).isEqualTo(10);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from auth_login_event where login_id_hash=? and outcome='RATE_LIMITED'
+                """, Integer.class, loginHash)).isEqualTo(2);
     }
 
     @Test

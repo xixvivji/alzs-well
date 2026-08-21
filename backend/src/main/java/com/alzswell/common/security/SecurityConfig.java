@@ -190,6 +190,16 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/api/v1/demo/sessions", customerIssuance);
         source.registerCorsConfiguration("/api/v1/auth/**", customerApi);
         source.registerCorsConfiguration("/api/v1/staff/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/admin/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/audit/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/compliance/decision-traces/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/compliance/data-provenance/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/detection-runs/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/detection-promotions/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/synthetic-datasets/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/signals/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/staff-access-policy/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/customers/*/staff-access-grants/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/staff/sessions/*/capability", staffIssuance);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/staff/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/cases/**", staffApi);

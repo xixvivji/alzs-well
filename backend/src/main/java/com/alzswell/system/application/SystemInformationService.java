@@ -107,6 +107,7 @@ public class SystemInformationService {
 
         boolean fixtureReady = false;
         boolean policyReady = false;
+        boolean detectionPolicyReady = false;
         boolean safeGuardrails = syntheticDataOnly
                 && !externalActionsEnabled
                 && "AIR_GAPPED_DEMO".equals(networkMode)
@@ -127,20 +128,27 @@ public class SystemInformationService {
                         select count(*) from protection_action_catalog
                          where execution_type = 'GUIDANCE_ONLY' and checked_at is not null
                         """, Integer.class);
+                Integer activeDetectionPolicyCount = jdbcTemplate.queryForObject(
+                        "select count(*) from detection_policy_version where status = 'ACTIVE'",
+                        Integer.class);
                 fixtureReady = Integer.valueOf(1).equals(fixtureCount);
                 policyReady = policyCount != null && policyCount >= 2 && !policyVersion.isBlank();
+                detectionPolicyReady = Integer.valueOf(1).equals(activeDetectionPolicyCount);
             } catch (DataAccessException exception) {
                 fixtureReady = false;
                 policyReady = false;
+                detectionPolicyReady = false;
             }
         }
         checks.put("database", upOrDown(databaseReady));
         checks.put("flyway", upOrDown(flywayReady));
         checks.put("syntheticFixtures", upOrDown(fixtureReady));
         checks.put("policyCatalog", upOrDown(policyReady));
+        checks.put("detectionPolicy", upOrDown(detectionPolicyReady));
         checks.put("safeGuardrails", upOrDown(safeGuardrails));
 
-        boolean ready = databaseReady && flywayReady && fixtureReady && policyReady && safeGuardrails;
+        boolean ready = databaseReady && flywayReady && fixtureReady && policyReady
+                && detectionPolicyReady && safeGuardrails;
         return new SystemReadinessResponse(ready, ready ? "READY" : "NOT_READY", checks);
     }
 

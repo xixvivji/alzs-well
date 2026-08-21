@@ -32,7 +32,6 @@ public class OperationalFollowUpController {
             @PathVariable UUID followUpId, @Valid @RequestBody FollowUpUpdateCommand command,
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_FOLLOW_UP_UPDATED", "후속 일정 상태를 변경했습니다.",
-                caseService.updateFollowUp(followUpId, command,
-                        AuditActor.from(authentication).legacyActorId()));
+                caseService.updateFollowUp(followUpId, command, AuditActor.from(authentication)));
     }
 }

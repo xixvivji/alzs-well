@@ -51,14 +51,46 @@ public class ComplianceQueryService {
                      null,e.occurred_at from customer_consent_event e join customer_consent c on c.consent_id=e.consent_id
               union all
               select 'TRUSTED_CONTACT:'||e.event_id,'TRUSTED_CONTACT',e.event_id::text,e.event_type,e.actor_id,c.customer_id,
-                     'TRUSTED_CONTACT',e.contact_id::text,null,c.status,
-                     jsonb_build_object('reason',e.reason,'rowVersion',e.row_version),null,e.occurred_at
+                     'TRUSTED_CONTACT',e.contact_id::text,null,e.status_snapshot,
+                     jsonb_build_object('reason',e.reason,'rowVersion',e.row_version,'scopes',e.scope_snapshot),null,e.occurred_at
                 from trusted_contact_event e join trusted_contact c on c.contact_id=e.contact_id
               union all
               select 'CONSENT_ACCESS:'||evaluation_id,'CONSENT_ACCESS',evaluation_id::text,event_type,
                      coalesce(actor_principal_id::text,actor_customer_id,actor_type),customer_id,
-                     'CONSENT',consent_id::text,null,decision,detail,request_hash,occurred_at
+                     'CONSENT',consent_id::text,null,decision,
+                     detail || jsonb_build_object('policyVersion',policy_version),request_hash,occurred_at
                 from consent_access_audit_event
+              union all
+              select 'PRIVACY_REQUEST:'||e.event_id,'PRIVACY_REQUEST',e.event_id::text,e.event_type,
+                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),r.customer_id,
+                     'PRIVACY_REQUEST',e.request_id::text,null,e.status_snapshot,e.detail,null,e.occurred_at
+                from customer_privacy_request_event e join customer_privacy_request r on r.request_id=e.request_id
+              union all
+              select 'AUDIT_EXPORT:'||e.event_id,'AUDIT_EXPORT',e.event_id::text,e.event_type,
+                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),r.actor_customer_id,
+                     'AUDIT_EXPORT',e.request_id::text,null,e.status_snapshot,e.detail,null,e.occurred_at
+                from audit_export_request_event e join audit_export_request r on r.request_id=e.request_id
+              union all
+              select 'FINANCIAL_INTENT:'||e.event_id,'FINANCIAL_INTENT',e.event_id::text,e.event_type,
+                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),i.customer_id,
+                     'FINANCIAL_INTENT',e.intent_id::text,null,e.status_snapshot,
+                     e.detail || jsonb_build_object('version',e.version),null,e.occurred_at
+                from financial_intent_event e join financial_intent i on i.intent_id=e.intent_id
+              union all
+              select 'CASE_NOTE:'||n.note_id,'CASE_NOTE',n.note_id::text,'INTERNAL_NOTE_ADDED',n.created_by,c.customer_id,
+                     'CASE',n.case_id::text,null,null,jsonb_build_object('note',n.note_text),n.integrity_hash,n.created_at
+                from operational_case_note n join operational_protection_case c on c.case_id=n.case_id
+              union all
+              select 'CASE_FOLLOW_UP:'||e.follow_up_event_id,'CASE_FOLLOW_UP',e.follow_up_event_id::text,e.event_type,
+                     e.actor_subject,c.customer_id,'CASE',e.case_id::text,e.previous_status,e.resulting_status,
+                     e.detail,e.integrity_hash,e.created_at
+                from operational_case_follow_up_event e join operational_protection_case c on c.case_id=e.case_id
+              union all
+              select 'STAFF_ACCESS:'||e.event_id,'STAFF_ACCESS',e.event_id::text,e.event_type,
+                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),g.customer_id,
+                     'STAFF_ACCESS_GRANT',e.grant_id::text,null,e.status_snapshot,
+                     e.detail || jsonb_build_object('scopes',e.scopes_snapshot),null,e.occurred_at
+                from staff_access_grant_event e join staff_access_grant g on g.grant_id=e.grant_id
               union all
               select 'POLICY:'||event_id,'POLICY',event_id::text,event_type,actor_subject,null,
                      'DETECTION_POLICY',policy_id::text,from_status,to_status,'{}'::jsonb,rules_hash,occurred_at
@@ -223,7 +255,8 @@ public class ComplianceQueryService {
     }
 
     private String encode(AuditEvent event) {
-        String raw = event.occurredAt().toInstant().toEpochMilli() + "|" + event.eventId();
+        Instant instant = event.occurredAt().toInstant();
+        String raw = "v2|" + instant.getEpochSecond() + "|" + instant.getNano() + "|" + event.eventId();
         return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -231,6 +264,12 @@ public class ComplianceQueryService {
         if (value == null) return null;
         try {
             String raw = new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8);
+            if (raw.startsWith("v2|")) {
+                String[] parts = raw.split("\\|", 4);
+                if (parts.length != 4) throw new IllegalArgumentException("cursor parts");
+                Instant instant = Instant.ofEpochSecond(Long.parseLong(parts[1]), Integer.parseInt(parts[2]));
+                return new Cursor(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC), parts[3]);
+            }
             String[] parts = raw.split("\\|", 2);
             return new Cursor(OffsetDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(parts[0])), ZoneOffset.UTC), parts[1]);
         } catch (RuntimeException exception) {
