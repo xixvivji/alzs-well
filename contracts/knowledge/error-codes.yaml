@@ -45,6 +45,11 @@ errors:
     httpStatus: 403
     cliExitCode: 3
     retryable: false
+  - code: REPOSITORY_ROOT_REQUIRED
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
   - code: SOURCE_PATH_OUTSIDE_CORPUS
     category: SOURCE_SECURITY
     httpStatus: 422
@@ -58,6 +63,21 @@ errors:
   - code: SOURCE_NOT_FOUND
     category: SOURCE
     httpStatus: 404
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_TOO_LARGE
+    category: SOURCE_SECURITY
+    httpStatus: 413
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_ENCODING_INVALID
+    category: SOURCE
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_TYPE_UNSUPPORTED
+    category: SOURCE
+    httpStatus: 415
     cliExitCode: 4
     retryable: false
   - code: SOURCE_HASH_MISMATCH
