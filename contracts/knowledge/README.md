@@ -111,6 +111,30 @@ sourceTransformations:
 
 원래 credential 값은 어디에도 기록하지 않는다. source 경로의 `..` 구간, 저장소 밖 경로, 심볼릭 링크는 schema 통과 여부와 관계없이 ingestion 보안 검증에서 거부한다.
 
+### 저장소 루트와 `sourcePath`
+
+`sourcePath`는 프로세스의 현재 작업 디렉터리가 아니라 **명시적으로 주입된 저장소 루트 기준 POSIX 상대 경로**다. 절대 경로, `..` 구간, 역슬래시와 경로 구성요소 중 하나라도 심볼릭 링크인 입력은 거부한다.
+
+CLI는 다음 우선순위로 저장소 루트를 받는다.
+
+1. `--repo-root` 인자
+2. `ALZS_REPO_ROOT` 환경변수
+
+둘 다 없으면 `REPOSITORY_ROOT_REQUIRED`로 실행을 시작하지 않는다. ingestion 런타임은 `git rev-parse`나 현재 작업 디렉터리로 저장소 루트를 암묵적으로 추론하지 않는다. 배포 이미지에 `.git` 디렉터리가 없을 수 있기 때문이다. 경로를 정규화한 뒤 실제 대상이 주입된 저장소 루트 아래에 남는지 다시 확인하며, 실패 시 `SOURCE_PATH_OUTSIDE_CORPUS` 또는 `SOURCE_SYMLINK_FORBIDDEN`을 반환한다.
+
+### 원문 크기·형식·인코딩 가드
+
+첫 HTML ingestion 계약은 다음을 강제한다.
+
+- 파일 크기는 경로 검증 후 본문을 메모리에 읽기 전에 확인한다.
+- HTML 원문 최대 크기는 `5,242,880` bytes(5 MiB)다. 초과하면 `SOURCE_TOO_LARGE`로 실패한다.
+- 지원 형식은 구현이 명시적으로 허용한 확장자와 파일 signature가 일치해야 한다. 지원하지 않거나 불일치하면 `SOURCE_TYPE_UNSUPPORTED`로 실패한다.
+- 텍스트는 UTF-8 또는 UTF-8 BOM만 허용하고 strict 모드로 디코딩한다. 휴리스틱 인코딩 감지나 자동 재인코딩은 하지 않는다.
+- HTML charset 선언이 있으면 UTF-8이어야 한다. 서로 충돌하거나 UTF-8 이외의 선언이면 `SOURCE_ENCODING_INVALID`로 실패한다.
+- 디코딩 오류의 원본 바이트, 문서 본문과 credential 값은 오류 응답·로그·감사 이벤트에 기록하지 않는다.
+
+향후 PDF, HWP/HWPX 등 형식을 추가할 때는 형식별 최대 바이트 수와 signature 검증 규칙을 구현 전에 이 계약에 추가한다.
+
 ## 결정론적 chunk ID
 
 chunk ID 입력 배열의 위치와 형식은 다음과 같다.

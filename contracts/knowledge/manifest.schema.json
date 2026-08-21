@@ -63,13 +63,23 @@
       ]
     },
     "sourcePath": {
+      "description": "POSIX relative path resolved from an explicitly supplied repository root; never from the process current working directory",
       "type": "string",
       "minLength": 1,
       "maxLength": 500,
       "pattern": "^[A-Za-z0-9._/-]+$",
-      "not": {
-        "pattern": "(^|/)\\.\\.(/|$)"
-      }
+      "allOf": [
+        {
+          "not": {
+            "pattern": "^/"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(^|/)\\.\\.(/|$)"
+          }
+        }
+      ]
     },
     "sourceUrl": {
       "type": ["string", "null"],
