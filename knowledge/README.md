@@ -6,7 +6,7 @@
 
 - `official-source/`: 외부 기관이 공개한 공식 원문 보존본 93개와 SHA-256 목록
 - `internal-policy/`: ALZ's well이 자체 작성한 서비스·보안·RAG 정책 13종
-- `manifests/`: 문서별 승인·버전·출처·효력·이용조건 메타데이터(후속 구축)
+- `manifests/`: 문서별 승인·버전·출처·효력·이용조건 메타데이터
 - `evaluation/`: 개인정보가 없는 합성 RAG 평가 데이터(후속 구축)
 - `derived/`: 추출 텍스트·청크·임베딩·검색 인덱스·실행 리포트(버전 관리 제외)
 
@@ -16,6 +16,7 @@
 - 자체 정책은 `INTERNAL_POLICY`로 분류하며 법령·감독규정·공식 안내로 표현하지 않는다.
 - 공식 원문도 승인·최신성·효력기간 검토 전에는 RAG 검색 대상으로 사용하지 않는다.
 - FastAPI는 승인 상태를 변경하지 않고 승인된 manifest만 소비한다. 최종 ACL과 효력 판정은 Spring Boot가 담당한다.
+- manifest와 citation의 공용 규칙은 `contracts/knowledge/`를 단일 기준으로 사용한다.
 
 ## 원본 보존과 Git LFS
 

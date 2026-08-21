@@ -1,0 +1,58 @@
+{
+  "contractVersion": "1.0.0",
+  "algorithm": "NFC_EACH_STRING_THEN_RFC8785_UTF8_SHA256",
+  "vectors": [
+    {
+      "name": "korean-section-path",
+      "input": [
+        "DOC-FSC-SAFE-BLOCK-001",
+        "2025-08",
+        ["안심차단", "신청 방법"],
+        1,
+        "sha256:237c5ec148b7417f1c4d0fa8010ceae541aa2b26766bbf516e6bd72b67afdb2c",
+        "structure-ko-v1"
+      ],
+      "canonicalJson": "[\"DOC-FSC-SAFE-BLOCK-001\",\"2025-08\",[\"안심차단\",\"신청 방법\"],1,\"sha256:237c5ec148b7417f1c4d0fa8010ceae541aa2b26766bbf516e6bd72b67afdb2c\",\"structure-ko-v1\"]",
+      "expectedChunkId": "chk_070fc725c8bed9d1b6ec59fd7f742d0cb95cd9572558ef08055bf9922c570b70"
+    },
+    {
+      "name": "empty-section-path",
+      "input": [
+        "DOC-SYN-EMPTY-PATH-001",
+        "1.0.0",
+        [],
+        1,
+        "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "structure-ko-v1"
+      ],
+      "canonicalJson": "[\"DOC-SYN-EMPTY-PATH-001\",\"1.0.0\",[],1,\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"structure-ko-v1\"]",
+      "expectedChunkId": "chk_fdd04caac55ee14f79720739d2855d54004ca15d3ac7ea7ad124afd477456b46"
+    },
+    {
+      "name": "synthetic-citation",
+      "input": [
+        "DOC-SYN-CONTRACT-001",
+        "1.0.0",
+        ["합성 안심 안내", "신청 방법"],
+        1,
+        "sha256:237c5ec148b7417f1c4d0fa8010ceae541aa2b26766bbf516e6bd72b67afdb2c",
+        "structure-ko-v1"
+      ],
+      "canonicalJson": "[\"DOC-SYN-CONTRACT-001\",\"1.0.0\",[\"합성 안심 안내\",\"신청 방법\"],1,\"sha256:237c5ec148b7417f1c4d0fa8010ceae541aa2b26766bbf516e6bd72b67afdb2c\",\"structure-ko-v1\"]",
+      "expectedChunkId": "chk_65b4505aedbcfff7fc3ffbd6775a65e312f18e9fd22f1104e5bfcc6bb6e3ba38"
+    },
+    {
+      "name": "nfd-input-normalizes-to-nfc",
+      "input": [
+        "DOC-SYN-NFC-001",
+        "1.0.0",
+        ["안심", "신청"],
+        1,
+        "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "structure-ko-v1"
+      ],
+      "canonicalJson": "[\"DOC-SYN-NFC-001\",\"1.0.0\",[\"안심\",\"신청\"],1,\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"structure-ko-v1\"]",
+      "expectedChunkId": "chk_7e30ea8cb719c8907942e8db39abc6bd3ec8e17486b9a38417d960ffa36e05a5"
+    }
+  ]
+}

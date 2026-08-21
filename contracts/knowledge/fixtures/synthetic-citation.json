@@ -1,0 +1,19 @@
+{
+  "contractVersion": "1.0.0",
+  "documentId": "DOC-SYN-CONTRACT-001",
+  "versionLabel": "1.0.0",
+  "chunkId": "chk_65b4505aedbcfff7fc3ffbd6775a65e312f18e9fd22f1104e5bfcc6bb6e3ba38",
+  "chunkOrder": 1,
+  "title": "합성 지식 계약 검증 안내",
+  "issuer": "ALZ's well 테스트",
+  "heading": "신청 방법",
+  "sectionPath": ["합성 안심 안내", "신청 방법"],
+  "page": null,
+  "citationLabel": "합성 지식 계약 검증 안내, 신청 방법",
+  "sourceUrl": null,
+  "sourceHash": "sha256:232e71a1e03d58e8afd24e291ea341e67b7b6c302263f88a9ec06504dec3d653",
+  "textHash": "sha256:237c5ec148b7417f1c4d0fa8010ceae541aa2b26766bbf516e6bd72b67afdb2c",
+  "retrievedAsOf": "2026-08-21",
+  "retrievalMethod": "KEYWORD",
+  "indexVersion": "synthetic-index-v1"
+}

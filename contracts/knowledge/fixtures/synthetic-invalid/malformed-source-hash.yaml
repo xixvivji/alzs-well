@@ -1,0 +1,24 @@
+contractVersion: "1.0.0"
+documentId: DOC-SYN-INVALID-HASH-001
+versionLabel: "1.0.0"
+title: 잘못된 해시 문서
+issuer: ALZ's well 테스트
+sourceType: SYNTHETIC_FIXTURE
+sourcePath: contracts/knowledge/fixtures/synthetic-source.html
+sourceUrl: null
+sourceHash: sha256:not-a-valid-digest
+sourceTransformations: []
+documentType: SYNTHETIC_FIXTURE
+classification: INTERNAL
+audience: STAFF
+allowedRoles:
+  - PROTECTION_STAFF
+effectiveFrom: "2026-08-21"
+effectiveTo: null
+checkedAt: "2026-08-21"
+usageRights: SYNTHETIC_UNRESTRICTED
+approvalStatus: APPROVED
+lifecycleStatus: ACTIVE
+approvedBy: synthetic-contract-reviewer
+approvedAt: "2026-08-21T00:00:00Z"
+supersedes: null

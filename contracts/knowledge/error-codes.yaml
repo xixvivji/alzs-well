@@ -1,0 +1,92 @@
+contractVersion: "1.0.0"
+errors:
+  - code: CONTRACT_VERSION_UNSUPPORTED
+    category: CONTRACT
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: MANIFEST_SCHEMA_INVALID
+    category: MANIFEST
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: MANIFEST_DUPLICATE_KEY
+    category: MANIFEST
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: MANIFEST_ALIAS_FORBIDDEN
+    category: MANIFEST
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: DOCUMENT_NOT_APPROVED
+    category: GOVERNANCE
+    httpStatus: 409
+    cliExitCode: 3
+    retryable: false
+  - code: DOCUMENT_NOT_ACTIVE
+    category: GOVERNANCE
+    httpStatus: 409
+    cliExitCode: 3
+    retryable: false
+  - code: DOCUMENT_NOT_EFFECTIVE
+    category: GOVERNANCE
+    httpStatus: 409
+    cliExitCode: 3
+    retryable: false
+  - code: KNOWLEDGE_ROLE_DENIED
+    category: AUTHORIZATION
+    httpStatus: 403
+    cliExitCode: 3
+    retryable: false
+  - code: KNOWLEDGE_AUDIENCE_DENIED
+    category: AUTHORIZATION
+    httpStatus: 403
+    cliExitCode: 3
+    retryable: false
+  - code: SOURCE_PATH_OUTSIDE_CORPUS
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_SYMLINK_FORBIDDEN
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_NOT_FOUND
+    category: SOURCE
+    httpStatus: 404
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_HASH_MISMATCH
+    category: SOURCE_SECURITY
+    httpStatus: 409
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_TRANSFORMATION_UNSUPPORTED
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: EXTRACTION_FAILED
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: NO_EXTRACTABLE_CONTENT
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: CHUNK_VALIDATION_FAILED
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: OUTPUT_WRITE_FAILED
+    category: STORAGE
+    httpStatus: 500
+    cliExitCode: 6
+    retryable: true
