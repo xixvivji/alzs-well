@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **264개** |
-| API 도메인 | **25개** |
+| 전체 API operation | **271개** |
+| API 도메인 | **26개** |
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **23개** |
-| P1 제품 핵심 백로그 | **163개** |
+| P1 제품 핵심 백로그 | **170개** |
 | P2 은행·증권 확장 백로그 | **78개** |
-| ALZ's well 소유 `OWNED` | **174개** |
+| ALZ's well 소유 `OWNED` | **181개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 264개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 271개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 109개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 134개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 155개 |
+| 카탈로그·백로그 | 137개 |
 
-업무 `IMPLEMENTED` 109개는 기존 104개와 P1 신뢰연락인 지정 관리 5개다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 103개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 110개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 금융생활 의향 관리 7개를 포함해 134개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 128개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 135개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
-여기서 API 264개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -138,7 +138,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 25개 도메인·264개 API 마스터 카탈로그
+3. 26개 도메인·271개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 12개 상세 계약
 6. P0-B 11개 상세 계약
@@ -852,16 +852,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **264** |
+| 전체 | **271** |
 | P0-A 기존 핵심 데모 | **12** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **163** |
+| P1 제품 핵심 | **170** |
 | P2 은행·증권 확장 | **78** |
-| OWNED | **174** |
+| OWNED | **181** |
 | EXTERNAL_INTEGRATION | **68** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 신뢰연락인 지정 관리 5개를 포함해 총 109개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 110개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 103개가 노출된다. 나머지 155개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 금융생활 의향 관리 7개를 포함해 총 134개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 135개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 128개가 노출된다. 나머지 137개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -958,6 +958,23 @@ KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 �
 | P2 | POST | /api/v1/customers/{customerId}/data-export-requests | 고객 데이터 사본 요청 | OWNED |
 
 P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expectedVersion` 낙관적 잠금, V15 Bearer 인증 주체와 customerId 소유권·읽기/쓰기 권한 검증 및 계약 테스트까지 구현했다. `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이므로 공개 합성데모에는 노출하지 않는다. 실제 공개 노출은 기업 IdP 어댑터 구현과 보안 검증 후에만 허용한다. P2 데이터 사본 요청은 구현 전이다.
+
+#### 3.3.3-A 금융생활 준비·의향 — 7개
+
+| 우선순위 | Method | Path | 용도 | 경계 |
+|---|---|---|---|---|
+| P1 | GET | /api/v1/customers/{customerId}/continuity-preparation | 준비상태와 최신 승인 의향 조회 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/financial-intents/drafts | 고객 확인 전 구조화 초안 생성 | OWNED |
+| P1 | PUT | /api/v1/customers/{customerId}/financial-intents/{intentId}/draft | 승인 전 초안 수정 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/financial-intents/{intentId}/approve | 법적 효력 제한 확인 후 고객 승인 | OWNED |
+| P1 | GET | /api/v1/customers/{customerId}/financial-intents/versions | 불변 버전 이력 조회 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/financial-intents/{intentId}/revoke | 최신 승인 의향 철회 | OWNED |
+| P1 | GET | /api/v1/staff/customers/{customerId}/financial-intent-summary | 동의한 항목만 행원 요약 조회 | OWNED |
+
+Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 구현한다. 초안은 고객 승인 전 효력이 없고,
+승인은 법적 후견·유언·대리권을 만들지 않는다는 고정 면책 확인이 필수다. 행원 응답은 `shareScopes`에
+포함된 항목만 반환하며 철회된 의향은 조회하지 않는다. 모든 응답은 `legallyBinding=false`,
+`healthInferenceUsed=false`이며 의향은 건강상태·위험도·사건 우선순위 산정에 사용하지 않는다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -1395,7 +1412,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “264개 API 카탈로그를 설계했고 P0 23개를 포함한 128개 코드 operation을 구현했다”고 표현한다. 264개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “271개 API 카탈로그를 설계했고 P0 23개를 포함한 135개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2154,7 +2171,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "38",
+        "schemaVersion": "39",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2685,7 +2702,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V38과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V39와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
 
 #### 공개 설정
 
@@ -2738,7 +2755,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "38",
+    "schemaVersion": "39",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
