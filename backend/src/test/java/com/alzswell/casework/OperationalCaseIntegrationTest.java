@@ -47,7 +47,8 @@ class OperationalCaseIntegrationTest {
     @BeforeEach
     void resetWorkflow() {
         jdbcTemplate.execute("""
-                truncate table operational_case_follow_up_event, operational_case_follow_up,
+                truncate table staff_access_grant_event, staff_access_grant,
+                    operational_case_follow_up_event, operational_case_follow_up,
                     operational_case_note, operational_case_activity,
                     operational_case_review_event, operational_guidance_plan,
                     operational_protection_case
@@ -96,9 +97,20 @@ class OperationalCaseIntegrationTest {
 
         mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
                         .header("Authorization", "Bearer " + staffAccessToken).contentType(APPLICATION_JSON)
-                        .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\"STAFF_01\",\"expectedVersion\":1}"))
+                        .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\""
+                                + STAFF_PRINCIPAL_ID + "\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.version").value(2));
+
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/notes", caseId)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-note-sensitive-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"noteText\":\"계좌번호 123456789012를 확인함\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from operational_case_note where case_id=?", Integer.class, caseId)).isZero();
 
         String noteBody = "{\"noteText\":\"고객 응답과 합성 근거를 확인했습니다.\"}";
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/notes", caseId)
@@ -246,6 +258,12 @@ class OperationalCaseIntegrationTest {
                 insert into auth_principal_role (principal_id, role_code)
                 values (?, 'PROTECTION_STAFF') on conflict do nothing
                 """, STAFF_PRINCIPAL_ID);
+        jdbcTemplate.update("""
+                insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,
+                    status,granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
+                values(?,?,?,'CASE_PROTECTION',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
+                    'CASE_NOTE','CASE_FOLLOW_UP'],'ACTIVE',?,now(),now()+interval '1 day',repeat('a',64),repeat('b',64),1)
+                """, UUID.randomUUID(), STAFF_PRINCIPAL_ID, CUSTOMER_ID, STAFF_PRINCIPAL_ID);
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content("""

@@ -4,6 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.util.UUID;
+import java.time.OffsetDateTime;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -13,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -25,6 +28,7 @@ class OperationalInboxIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired ObjectMapper objectMapper;
 
     @Test @WithMockUser(username=CUSTOMER,authorities={"INBOX_READ","INBOX_WRITE"})
     void readsMessageAndUpdatesPreferencesWithoutExternalDelivery() throws Exception {
@@ -61,5 +65,21 @@ class OperationalInboxIntegrationTest {
     void rejectsMalformedCursor() throws Exception {
         mockMvc.perform(get("/api/v1/customers/{customerId}/inbox",CUSTOMER).param("cursor","broken"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INBOX_INVALID_CURSOR"));
+    }
+
+    @Test @WithMockUser(username=CUSTOMER,authorities="INBOX_READ")
+    void cursorPreservesPostgresMicrosecondsBetweenPages() throws Exception {
+        UUID first=UUID.fromString("95000000-0000-0000-0000-000000000001");
+        UUID second=UUID.fromString("95000000-0000-0000-0000-000000000002");
+        jdbc.update("insert into customer_inbox_message(message_id,customer_id,message_type,title,body,message_version,created_at) values(?,?, 'SERVICE_NOTICE','첫 알림','첫 본문',1,?) on conflict do nothing",
+                first,CUSTOMER,OffsetDateTime.parse("2099-01-01T00:00:00.123100Z"));
+        jdbc.update("insert into customer_inbox_message(message_id,customer_id,message_type,title,body,message_version,created_at) values(?,?, 'SERVICE_NOTICE','둘째 알림','둘째 본문',1,?) on conflict do nothing",
+                second,CUSTOMER,OffsetDateTime.parse("2099-01-01T00:00:00.123900Z"));
+        MvcResult page=mockMvc.perform(get("/api/v1/customers/{customerId}/inbox",CUSTOMER).param("limit","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].messageId").value(second.toString()))
+                .andReturn();
+        String cursor=objectMapper.readTree(page.getResponse().getContentAsByteArray()).at("/data/nextCursor").asText();
+        mockMvc.perform(get("/api/v1/customers/{customerId}/inbox",CUSTOMER).param("limit","1").param("cursor",cursor))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].messageId").value(first.toString()));
     }
 }

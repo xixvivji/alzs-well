@@ -133,12 +133,14 @@ class PostgreSqlIntegrationTest {
                       ,'financial_intent_revision'
                       ,'financial_intent_event'
                       ,'financial_intent_command'
+                      ,'staff_access_grant'
+                      ,'staff_access_grant_event'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(77);
+        assertThat(tableCount).isEqualTo(79);
     }
 
     @Test
@@ -155,6 +157,41 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void runtimeRoleCannotRewriteImmutableHistory() {
+        if (!runtimeRoleExists()) return;
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','staff_access_grant_event','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','staff_access_grant_event','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','financial_intent_revision','DELETE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','knowledge_passage','UPDATE')",
+                Boolean.class)).isFalse();
+    }
+
+    @Test
+    @Transactional
+    void futureTablesDoNotAutomaticallyGrantRuntimeUpdateOrDelete() {
+        if (!runtimeRoleExists()) return;
+        jdbcTemplate.execute("create table v40_default_privilege_probe(id integer primary key)");
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','v40_default_privilege_probe','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','v40_default_privilege_probe','DELETE')",
+                Boolean.class)).isFalse();
+    }
+
+    private boolean runtimeRoleExists() {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                "select exists(select 1 from pg_roles where rolname='alzswell_app')", Boolean.class));
+    }
+
+    @Test
     void readinessApiChecksDatabaseFlywayFixturesAndPolicyCatalog() throws Exception {
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isOk())
@@ -165,13 +202,14 @@ class PostgreSqlIntegrationTest {
                 .andExpect(jsonPath("$.data.checks.flyway").value("UP"))
                 .andExpect(jsonPath("$.data.checks.syntheticFixtures").value("UP"))
                 .andExpect(jsonPath("$.data.checks.policyCatalog").value("UP"))
+                .andExpect(jsonPath("$.data.checks.detectionPolicy").value("UP"))
                 .andExpect(jsonPath("$.data.checks.safeGuardrails").value("UP"));
     }
 
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '39'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '40'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -216,6 +254,17 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void readinessRejectsDatabaseWithoutExactlyOneActiveDetectionPolicy() throws Exception {
+        jdbcTemplate.update("update detection_policy_version set status='RETIRED' where status='ACTIVE'");
+
+        mockMvc.perform(get("/api/v1/system/readiness"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.checks.detectionPolicy").value("DOWN"));
+    }
+
+    @Test
     void publicConfigExposesAirGappedSyntheticOnlyGuardrails() throws Exception {
         mockMvc.perform(get("/api/v1/system/public-config"))
                 .andExpect(status().isOk())
@@ -233,7 +282,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("39"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("40"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -259,6 +308,23 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void corsKeepsCustomerOriginsOutOfStaffOnlyApis() throws Exception {
+        mockMvc.perform(options("/api/v1/admin/rules")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(options("/api/v1/customers/SYN_CUSTOMER_FIN_MGMT_001/staff-access-grants")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(options("/api/v1/admin/rules")
+                        .header("Origin", "http://localhost:4173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4173"));
+    }
+
+    @Test
     void openApiPublishesTheEnabledTypedApiContractAsReadOnlyDocumentation() throws Exception {
         MvcResult result = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
@@ -266,13 +332,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(116);
+        assertThat(specification.path("paths").size()).isEqualTo(121);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(128);
+        assertThat(operationCount).isEqualTo(134);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
@@ -334,6 +400,15 @@ class PostgreSqlIntegrationTest {
                 .map(parameter -> parameter.path("name").asText())
                 .toList();
         assertThat(followUpPatchParameterNames).contains("Idempotency-Key");
+
+        assertThat(specification.path("paths")
+                .path("/api/v1/customers/{customerId}/staff-access-grants").path("post")
+                .path("x-alzs-required-authorities").toString()).contains("STAFF_ACCESS_GRANT_WRITE");
+        assertThat(specification.path("paths").path("/api/v1/admin/rules").path("post")
+                .path("x-alzs-required-authorities").toString()).contains("DETECTION_POLICY_WRITE");
+        assertThat(specification.path("paths")
+                .path("/api/v1/staff/customers/{customerId}/financial-intent-summary").path("get")
+                .path("x-alzs-required-authorities").toString()).contains("FINANCIAL_INTENT_SHARED_READ");
 
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());

@@ -101,13 +101,20 @@ public class OperationalInboxService {
                 readAt,rs.getLong("message_version"),rs.getObject("created_at",OffsetDateTime.class),false);
     }
     private String encode(InboxMessage message) {
-        String raw=message.createdAt().toInstant().toEpochMilli()+":"+message.messageId();
+        Instant instant=message.createdAt().toInstant();
+        String raw="v2:"+instant.getEpochSecond()+":"+instant.getNano()+":"+message.messageId();
         return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
     private Cursor decode(String value) {
         if (value==null || value.isBlank()) return null;
         try {
             String raw=new String(Base64.getUrlDecoder().decode(value),StandardCharsets.UTF_8);
+            if(raw.startsWith("v2:")) {
+                String[] parts=raw.split(":",4);
+                if(parts.length!=4) throw new IllegalArgumentException("cursor parts");
+                Instant instant=Instant.ofEpochSecond(Long.parseLong(parts[1]),Integer.parseInt(parts[2]));
+                return new Cursor(OffsetDateTime.ofInstant(instant,ZoneOffset.UTC),UUID.fromString(parts[3]));
+            }
             int split=raw.indexOf(':');
             return new Cursor(OffsetDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(raw.substring(0,split))),ZoneOffset.UTC),
                     UUID.fromString(raw.substring(split+1)));

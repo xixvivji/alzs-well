@@ -14,12 +14,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import com.alzswell.identity.application.AuthSessionService.AuthenticatedPrincipal;
+import com.alzswell.identity.application.AuthSessionService.AuthenticatedSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -32,6 +37,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class BackendCoreFlowE2ETest {
     private static final String CUSTOMER_ID = "SYN_CUSTOMER_FIN_MGMT_001";
+    private static final UUID STAFF_PRINCIPAL_ID = UUID.fromString("92000000-0000-0000-0000-000000000099");
 
     @Container
     @ServiceConnection
@@ -40,6 +46,25 @@ class BackendCoreFlowE2ETest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void prepareStaffAccess() {
+        jdbcTemplate.execute("truncate staff_access_grant_event, staff_access_grant");
+        jdbcTemplate.update("""
+                insert into auth_principal(principal_id,login_id,customer_id,display_name,password_hash,status,created_at,updated_at)
+                select ?,'e2e-protection-staff',customer_id,'E2E 보호업무 담당자',password_hash,'ACTIVE',now(),now()
+                  from auth_principal where login_id='synthetic-customer'
+                on conflict(principal_id) do update set status='ACTIVE',updated_at=now()
+                """, STAFF_PRINCIPAL_ID);
+        jdbcTemplate.update("insert into auth_principal_role(principal_id,role_code) values(?,'PROTECTION_STAFF') on conflict do nothing",
+                STAFF_PRINCIPAL_ID);
+        jdbcTemplate.update("""
+                insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
+                    granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
+                values(?,?,?,'E2E_CASE',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE'],
+                    'ACTIVE',?,now(),now()+interval '1 day',repeat('c',64),repeat('d',64),1)
+                """, UUID.randomUUID(), STAFF_PRINCIPAL_ID, CUSTOMER_ID, STAFF_PRINCIPAL_ID);
+    }
 
     @Test
     void connectsSyntheticDataToReviewedProtectionCaseWithoutExternalExecution() throws Exception {
@@ -79,9 +104,9 @@ class BackendCoreFlowE2ETest {
                         .with(staff())
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"assignedTeam":"SAFE_TEAM_E2E","assignedTo":"STAFF_E2E",
+                                {"assignedTeam":"SAFE_TEAM_E2E","assignedTo":"__STAFF_ID__",
                                  "expectedVersion":1}
-                                """))
+                                """.replace("__STAFF_ID__", STAFF_PRINCIPAL_ID.toString())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.version").value(2));
 
@@ -355,11 +380,14 @@ class BackendCoreFlowE2ETest {
     }
 
     private RequestPostProcessor staff() {
-        return user("e2e-protection-staff").authorities(
+        var token = new UsernamePasswordAuthenticationToken(
+                new AuthenticatedPrincipal(STAFF_PRINCIPAL_ID, CUSTOMER_ID), null, java.util.List.of(
                 new SimpleGrantedAuthority("STAFF_CASE_READ"),
                 new SimpleGrantedAuthority("STAFF_CASE_ASSIGN"),
                 new SimpleGrantedAuthority("STAFF_CASE_REVIEW"),
-                new SimpleGrantedAuthority("STAFF_GUIDANCE_APPROVE"));
+                new SimpleGrantedAuthority("STAFF_GUIDANCE_APPROVE")));
+        token.setDetails(new AuthenticatedSession(UUID.fromString("92000000-0000-0000-0000-000000000098")));
+        return authentication(token);
     }
 
     private String datasetJson() {

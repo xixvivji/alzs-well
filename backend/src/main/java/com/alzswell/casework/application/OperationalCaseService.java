@@ -21,6 +21,10 @@ import com.alzswell.casework.api.CaseworkResponses.FollowUp;
 import com.alzswell.casework.api.CaseworkResponses.FollowUps;
 import com.alzswell.casework.api.CaseworkResponses.TimelineEvent;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.AuditActor;
+import com.alzswell.common.security.SensitiveTextPolicy;
+import com.alzswell.staffaccess.api.StaffAccessErrorCode;
+import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,48 +47,69 @@ public class OperationalCaseService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final StaffAccessPolicyService staffAccess;
+    private final SensitiveTextPolicy sensitiveTextPolicy;
 
-    public OperationalCaseService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
+    public OperationalCaseService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
+            StaffAccessPolicyService staffAccess, SensitiveTextPolicy sensitiveTextPolicy) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.staffAccess = staffAccess;
+        this.sensitiveTextPolicy = sensitiveTextPolicy;
     }
 
-    @Transactional(readOnly = true)
-    public CaseQueue queue(String status, String priority, UUID cursor, int limit) {
+    @Transactional
+    public CaseQueue queue(String status, String priority, UUID cursor, int limit, AuditActor actor) {
+        requireStaffPrincipal(actor);
+        OffsetDateTime now = OffsetDateTime.now(clock);
         List<CaseSummary> items;
         if (cursor == null) {
             items = jdbcTemplate.query("""
-                    select * from operational_protection_case
-                     where (cast(? as varchar) is null or task_status = ?)
-                       and (cast(? as varchar) is null or review_priority = ?)
-                     order by case review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end,
-                              created_at, case_id
+                    select c.* from operational_protection_case c
+                     where exists(select 1 from staff_access_grant g
+                                  where g.staff_principal_id=? and g.customer_id=c.customer_id
+                                    and g.status='ACTIVE' and g.expires_at>? and 'CASE_READ'=any(g.scopes))
+                       and (cast(? as varchar) is null or c.task_status = ?)
+                       and (cast(? as varchar) is null or c.review_priority = ?)
+                     order by case c.review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end,
+                              c.created_at, c.case_id
                      limit ?
-                    """, this::mapSummary, status, status, priority, priority, limit);
+                    """, this::mapSummary, actor.principalId(), now, status, status, priority, priority, limit);
         } else {
             CursorPoint point = cursor(cursor);
             items = jdbcTemplate.query("""
-                    select * from operational_protection_case
-                     where (cast(? as varchar) is null or task_status = ?)
-                       and (cast(? as varchar) is null or review_priority = ?)
+                    select c.* from operational_protection_case c
+                     where exists(select 1 from staff_access_grant g
+                                  where g.staff_principal_id=? and g.customer_id=c.customer_id
+                                    and g.status='ACTIVE' and g.expires_at>? and 'CASE_READ'=any(g.scopes))
+                       and (cast(? as varchar) is null or c.task_status = ?)
+                       and (cast(? as varchar) is null or c.review_priority = ?)
                        and (
-                         case review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end > ?
-                         or (case review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end = ?
-                             and (created_at > ? or (created_at = ? and case_id > ?)))
+                         case c.review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end > ?
+                         or (case c.review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end = ?
+                             and (c.created_at > ? or (c.created_at = ? and c.case_id > ?)))
                        )
-                     order by case review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end,
-                              created_at, case_id
+                     order by case c.review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end,
+                              c.created_at, c.case_id
                      limit ?
-                    """, this::mapSummary, status, status, priority, priority, point.priorityRank(),
+                    """, this::mapSummary, actor.principalId(), now, status, status, priority, priority, point.priorityRank(),
                     point.priorityRank(), point.createdAt(), point.createdAt(), point.caseId(), limit);
         }
+        items.stream().map(CaseSummary::customerId).distinct().forEach(customerId ->
+                staffAccess.require(actor, customerId, "CASE_READ", "CASE_QUEUE", null));
         UUID nextCursor = items.size() == limit ? items.getLast().caseId() : null;
         return new CaseQueue(items, items.size(), nextCursor);
     }
 
-    @Transactional(readOnly = true)
-    public CaseDetail detail(UUID caseId) {
+    @Transactional
+    public CaseDetail detail(UUID caseId, AuditActor actor) {
+        CaseDetail value = detailRaw(caseId);
+        staffAccess.require(actor, value.caseSummary().customerId(), "CASE_READ", "CASE", caseId.toString());
+        return value;
+    }
+
+    private CaseDetail detailRaw(UUID caseId) {
         List<CaseDetail> rows = jdbcTemplate.query("""
                 select c.*, a.state as alert_state, a.reason_code, a.severity,
                        ce.response_code, gp.guidance_plan_id, gp.selected_action_codes::text
@@ -107,8 +132,10 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public CaseTransition assign(UUID caseId, AssignmentCommand command, String actor) {
-        CaseSummary current = detail(caseId).caseSummary();
+    public CaseTransition assign(UUID caseId, AssignmentCommand command, AuditActor actor) {
+        CaseSummary current = detailRaw(caseId).caseSummary();
+        staffAccess.require(actor, current.customerId(), "CASE_ASSIGN", "CASE", caseId.toString());
+        requireEligibleAssignee(command.assignedTo(), current.customerId());
         if (current.taskStatus().equals("COMPLETED") || current.version() != command.expectedVersion()) {
             throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
         }
@@ -117,22 +144,22 @@ public class OperationalCaseService {
                 update operational_protection_case
                    set assigned_team = ?, assigned_to = ?, case_version = case_version + 1, updated_at = ?
                  where case_id = ? and case_version = ? and task_status <> 'COMPLETED'
-                """, command.assignedTeam(), command.assignedTo(), now, caseId, command.expectedVersion());
+                """, command.assignedTeam(), command.assignedTo().toString(), now, caseId, command.expectedVersion());
         if (updated != 1) throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
         jdbcTemplate.update("""
                 insert into operational_case_activity (
                     activity_id, case_id, activity_type, actor_subject, detail, occurred_at
                 ) values (?, ?, 'CASE_ASSIGNED', ?, ?::jsonb, ?)
-                """, UUID.randomUUID(), caseId, actor,
+                """, UUID.randomUUID(), caseId, actor.legacyActorId(),
                 json(java.util.Map.of("assignedTeam", command.assignedTeam(),
-                        "assignedTo", command.assignedTo())), now);
+                        "assignedTo", command.assignedTo().toString())), now);
         return transition(caseId, current.taskStatus(), current.taskStatus(), command.expectedVersion() + 1,
                 "ASSIGN", now, false);
     }
 
-    @Transactional(readOnly = true)
-    public CaseEvidence evidence(UUID caseId) {
-        CaseDetail caseDetail = detail(caseId);
+    @Transactional
+    public CaseEvidence evidence(UUID caseId, AuditActor actor) {
+        CaseDetail caseDetail = detail(caseId, actor);
         CaseSummary summary = caseDetail.caseSummary();
         List<EvidenceItem> items = jdbcTemplate.query("""
                 select evidence_id, evidence_type, source_reference, occurred_at, amount, currency,
@@ -157,9 +184,9 @@ public class OperationalCaseService {
                 signal.getFirst()[1], signal.getFirst()[2], items, items.size(), true);
     }
 
-    @Transactional(readOnly = true)
-    public CaseTimeline timeline(UUID caseId) {
-        CaseDetail caseDetail = detail(caseId);
+    @Transactional
+    public CaseTimeline timeline(UUID caseId, AuditActor actor) {
+        CaseDetail caseDetail = detail(caseId, actor);
         UUID alertId = caseDetail.caseSummary().alertId();
         List<TimelineEvent> items = jdbcTemplate.query("""
                 select event_type, actor_subject, previous_state, resulting_state, summary, occurred_at
@@ -201,9 +228,9 @@ public class OperationalCaseService {
         return new CaseTimeline(caseId, items, items.size());
     }
 
-    @Transactional(readOnly = true)
-    public CaseNotes notes(UUID caseId) {
-        detail(caseId);
+    @Transactional
+    public CaseNotes notes(UUID caseId, AuditActor actor) {
+        detail(caseId, actor);
         List<CaseNote> items = jdbcTemplate.query("""
                 select note_id, case_id, note_text, created_by, integrity_hash, created_at
                   from operational_case_note where case_id = ? order by created_at, note_id
@@ -212,28 +239,30 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public CaseNote addNote(UUID caseId, NoteCommand command, String idempotencyKey, String actor) {
-        lockCase(caseId);
+    public CaseNote addNote(UUID caseId, NoteCommand command, String idempotencyKey, AuditActor actor) {
+        CaseSummary current = lockCaseSummary(caseId);
+        requireAssigned(current, actor, "CASE_NOTE");
         String keyHash = sha256(idempotencyKey);
-        String normalized = command.noteText().trim();
+        String normalized = sensitiveTextPolicy.validate(command.noteText(), "noteText");
         String requestHash = sha256(caseId + "|" + normalized);
         CaseNote replay = findNote(caseId, keyHash, requestHash, true);
         if (replay != null) return replay;
         UUID noteId = UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now(clock);
-        String integrityHash = sha256(caseId + "|" + noteId + "|" + actor + "|" + normalized + "|" + now);
+        String integrityHash = sha256(caseId + "|" + noteId + "|" + actor.legacyActorId() + "|" + normalized + "|" + now);
         jdbcTemplate.update("""
                 insert into operational_case_note (
                     note_id, case_id, note_text, created_by, request_hash,
                     idempotency_key_hash, integrity_hash, created_at
                 ) values (?, ?, ?, ?, ?, ?, ?, ?)
-                """, noteId, caseId, normalized, actor, requestHash, keyHash, integrityHash, now);
-        return new CaseNote(noteId, caseId, normalized, actor, integrityHash, now, false);
+                """, noteId, caseId, normalized, actor.legacyActorId(), requestHash, keyHash, integrityHash, now);
+        return new CaseNote(noteId, caseId, normalized, actor.legacyActorId(), integrityHash, now, false);
     }
 
-    @Transactional(readOnly = true)
-    public FollowUps followUps(UUID caseId, String status) {
-        detail(caseId);
+    @Transactional
+    public FollowUps followUps(UUID caseId, String status, AuditActor actor) {
+        CaseDetail caseDetail = detailRaw(caseId);
+        staffAccess.require(actor, caseDetail.caseSummary().customerId(), "CASE_READ", "CASE_FOLLOW_UP", caseId.toString());
         List<FollowUp> items = jdbcTemplate.query("""
                 select follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
                        outcome, follow_up_version, created_by, created_at, updated_at
@@ -245,10 +274,11 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public FollowUp createFollowUp(UUID caseId, FollowUpCommand command, String idempotencyKey, String actor) {
+    public FollowUp createFollowUp(UUID caseId, FollowUpCommand command, String idempotencyKey, AuditActor actor) {
         CaseSummary current = lockCaseSummary(caseId);
+        requireAssigned(current, actor, "CASE_FOLLOW_UP");
         String keyHash = sha256(idempotencyKey);
-        String normalizedPurpose = command.purpose().trim();
+        String normalizedPurpose = sensitiveTextPolicy.validate(command.purpose(), "purpose");
         String requestHash = sha256(caseId + "|" + command.followUpType() + "|" + command.scheduledAt()
                 + "|" + normalizedPurpose + "|" + command.expectedCaseVersion());
         FollowUp replay = findFollowUp(caseId, keyHash, requestHash, true);
@@ -273,23 +303,24 @@ public class OperationalCaseService {
                     created_by, created_at, updated_at
                 ) values (?, ?, ?, 'SCHEDULED', ?, ?, null, 1, ?, ?, ?, ?, ?)
                 """, followUpId, caseId, command.followUpType(), command.scheduledAt(), normalizedPurpose,
-                keyHash, requestHash, actor, now, now);
-        writeFollowUpEvent(followUpId, caseId, "FOLLOW_UP_CREATED", null, "SCHEDULED", actor,
+                keyHash, requestHash, actor.legacyActorId(), now, now);
+        writeFollowUpEvent(followUpId, caseId, "FOLLOW_UP_CREATED", null, "SCHEDULED", actor.legacyActorId(),
                 java.util.Map.of("scheduledAt", command.scheduledAt().toString(),
                         "followUpType", command.followUpType()), now);
         return requiredFollowUp(followUpId, false);
     }
 
     @Transactional
-    public FollowUp updateFollowUp(UUID followUpId, FollowUpUpdateCommand command, String actor) {
+    public FollowUp updateFollowUp(UUID followUpId, FollowUpUpdateCommand command, AuditActor actor) {
         FollowUp current = lockFollowUp(followUpId);
+        requireAssigned(detailRaw(current.caseId()).caseSummary(), actor, "CASE_FOLLOW_UP");
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (!current.status().equals("SCHEDULED") || current.version() != command.expectedVersion()) {
             throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_STATE_CONFLICT);
         }
         String nextStatus;
         OffsetDateTime nextScheduled = current.scheduledAt();
-        String outcome = command.outcome() == null ? null : command.outcome().trim();
+        String outcome = command.outcome() == null ? null : sensitiveTextPolicy.validate(command.outcome(), "outcome");
         String eventType;
         if (command.actionCode().equals("RESCHEDULE") && command.scheduledAt() != null
                 && command.scheduledAt().isAfter(now) && command.scheduledAt().isBefore(now.plusDays(90))
@@ -316,16 +347,18 @@ public class OperationalCaseService {
                  where follow_up_id = ? and follow_up_version = ? and status = 'SCHEDULED'
                 """, nextStatus, nextScheduled, outcome, now, followUpId, command.expectedVersion());
         if (updated != 1) throw new BusinessException(CaseworkErrorCode.FOLLOW_UP_STATE_CONFLICT);
-        writeFollowUpEvent(followUpId, current.caseId(), eventType, current.status(), nextStatus, actor,
+        writeFollowUpEvent(followUpId, current.caseId(), eventType, current.status(), nextStatus, actor.legacyActorId(),
                 java.util.Map.of("actionCode", command.actionCode()), now);
         return requiredFollowUp(followUpId, false);
     }
 
     @Transactional
-    public CaseTransition review(UUID caseId, ReviewCommand command, String idempotencyKey, String reviewer) {
-        CaseSummary current = detail(caseId).caseSummary();
+    public CaseTransition review(UUID caseId, ReviewCommand command, String idempotencyKey, AuditActor reviewer) {
+        CaseSummary current = detailRaw(caseId).caseSummary();
+        requireAssigned(current, reviewer, "CASE_REVIEW");
+        String safeNote = sensitiveTextPolicy.validate(command.note(), "note");
         String keyHash = sha256(idempotencyKey);
-        String requestHash = sha256(caseId + "|" + command.actionCode() + "|" + command.note()
+        String requestHash = sha256(caseId + "|" + command.actionCode() + "|" + safeNote
                 + "|" + command.expectedVersion());
         CaseTransition replay = findReviewReplay(caseId, keyHash, requestHash, current.version());
         if (replay != null) return replay;
@@ -338,7 +371,7 @@ public class OperationalCaseService {
                 """, next, now, caseId, command.expectedVersion(), current.taskStatus());
         if (updated != 1) {
             CaseTransition concurrent = findReviewReplay(caseId, keyHash, requestHash,
-                    detail(caseId).caseSummary().version());
+                    detailRaw(caseId).caseSummary().version());
             if (concurrent != null) return concurrent;
             throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
         }
@@ -348,14 +381,15 @@ public class OperationalCaseService {
                     reviewer_subject, note, request_hash, idempotency_key_hash, created_at
                 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID(), caseId, command.actionCode(), current.taskStatus(), next,
-                reviewer, command.note(), requestHash, keyHash, now);
+                reviewer.legacyActorId(), safeNote, requestHash, keyHash, now);
         return transition(caseId, current.taskStatus(), next, command.expectedVersion() + 1,
                 command.actionCode(), now, false);
     }
 
     @Transactional
-    public GuidancePlan approveGuidance(UUID caseId, GuidancePlanCommand command, String approver) {
-        CaseSummary current = detail(caseId).caseSummary();
+    public GuidancePlan approveGuidance(UUID caseId, GuidancePlanCommand command, AuditActor approver) {
+        CaseSummary current = detailRaw(caseId).caseSummary();
+        requireAssigned(current, approver, "CASE_GUIDANCE");
         if (current.version() != command.expectedVersion() || !current.taskStatus().equals("IN_REVIEW")
                 || current.assignedTo() == null) {
             throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
@@ -380,8 +414,8 @@ public class OperationalCaseService {
                     guidance_plan_id, case_id, selected_action_codes, approved_by, approved_at,
                     delivered, external_execution_created
                 ) values (?, ?, ?::jsonb, ?, ?, false, false)
-                """, planId, caseId, json(actions), approver, now);
-        return new GuidancePlan(planId, caseId, actions, approver, now, command.expectedVersion() + 1,
+                """, planId, caseId, json(actions), approver.legacyActorId(), now);
+        return new GuidancePlan(planId, caseId, actions, approver.legacyActorId(), now, command.expectedVersion() + 1,
                 false, false);
     }
 
@@ -488,6 +522,37 @@ public class OperationalCaseService {
                 this::mapSummary, caseId);
         if (rows.size() != 1) throw new BusinessException(CaseworkErrorCode.CASE_NOT_FOUND);
         return rows.getFirst();
+    }
+
+    private void requireStaffPrincipal(AuditActor actor) {
+        if (!"STAFF".equals(actor.actorType()) || actor.principalId() == null) {
+            throw new BusinessException(StaffAccessErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void requireEligibleAssignee(UUID principalId, String customerId) {
+        Boolean eligible = jdbcTemplate.queryForObject("""
+                select exists(
+                    select 1
+                      from auth_principal p
+                      join auth_principal_role r on r.principal_id = p.principal_id
+                     where p.principal_id = ?
+                       and p.status = 'ACTIVE'
+                       and r.role_code = 'PROTECTION_STAFF'
+                )
+                """, Boolean.class, principalId);
+        if (!Boolean.TRUE.equals(eligible)
+                || !staffAccess.hasActiveGrant(principalId, customerId, "CASE_READ")) {
+            throw new BusinessException(StaffAccessErrorCode.PRINCIPAL_NOT_ELIGIBLE);
+        }
+    }
+
+    private void requireAssigned(CaseSummary current, AuditActor actor, String scope) {
+        requireStaffPrincipal(actor);
+        staffAccess.require(actor, current.customerId(), scope, "CASE", current.caseId().toString());
+        if (current.assignedTo() == null || !current.assignedTo().equals(actor.principalId().toString())) {
+            throw new BusinessException(StaffAccessErrorCode.ACCESS_DENIED);
+        }
     }
 
     private void writeFollowUpEvent(UUID followUpId, UUID caseId, String eventType, String previousStatus,
