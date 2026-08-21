@@ -1,0 +1,65 @@
+package com.alzswell.intent.application;
+
+import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.AuditActor;
+import com.alzswell.intent.api.FinancialIntentErrorCode;
+import com.alzswell.intent.api.FinancialIntentRequests.*;
+import com.alzswell.intent.api.FinancialIntentResponses.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Supplier;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class FinancialIntentService {
+ private final JdbcClient jdbc; private final Clock clock;
+ public FinancialIntentService(JdbcClient jdbc,Clock clock){this.jdbc=jdbc;this.clock=clock;}
+
+ @Transactional(readOnly=true) public Preparation preparation(String customer){
+  List<Intent> rows=jdbc.sql("select * from financial_intent where customer_id=? and status='APPROVED'").param(customer).query(this::map).list();
+  return new Preparation(rows.isEmpty()?"NOT_PREPARED":"READY",rows.isEmpty()?null:rows.getFirst(),true);
+ }
+ @Transactional public Intent create(String customer,Draft c,String key,AuditActor actor){
+  String hash=hash(c.toString()); return command(customer+":CREATE",key,hash,()->{
+   OffsetDateTime now=OffsetDateTime.now(clock);UUID id=UUID.randomUUID();
+   int count=jdbc.sql("insert into financial_intent(intent_id,customer_id,status,version,payment_continuity,explanation_mode,help_condition,share_scopes,disclaimer_accepted,created_at,updated_at) values(?,?,'DRAFT',1,?,?,?,?::varchar[],false,?,?) on conflict do nothing")
+    .params(id,customer,c.paymentContinuity(),c.explanationMode(),c.helpCondition(),array(c.shareScopes()),now,now).update();
+   if(count!=1)throw new BusinessException(FinancialIntentErrorCode.INVALID_STATE);
+   snapshot(id,1,"DRAFT",c.paymentContinuity(),c.explanationMode(),c.helpCondition(),c.shareScopes(),false,now);event(id,"DRAFT_CREATED","DRAFT",1,actor,null,now);return find(customer,id);
+  });
+ }
+ @Transactional public Intent update(String customer,UUID id,Update c,String key,AuditActor actor){
+  return command(id+":UPDATE",key,hash(c.toString()),()->{
+   Intent old=find(customer,id);if(!old.status().equals("DRAFT"))throw new BusinessException(FinancialIntentErrorCode.INVALID_STATE);
+   long next=c.expectedVersion()+1;OffsetDateTime now=OffsetDateTime.now(clock);
+   int n=jdbc.sql("update financial_intent set version=?,payment_continuity=?,explanation_mode=?,help_condition=?,share_scopes=?::varchar[],updated_at=? where intent_id=? and customer_id=? and status='DRAFT' and version=?")
+    .params(next,c.paymentContinuity(),c.explanationMode(),c.helpCondition(),array(c.shareScopes()),now,id,customer,c.expectedVersion()).update();
+   if(n!=1)throw new BusinessException(FinancialIntentErrorCode.VERSION_CONFLICT);
+   snapshot(id,next,"DRAFT",c.paymentContinuity(),c.explanationMode(),c.helpCondition(),c.shareScopes(),false,now);event(id,"DRAFT_UPDATED","DRAFT",next,actor,null,now);return find(customer,id);
+  });
+ }
+ @Transactional public Intent approve(String customer,UUID id,Approve c,String key,AuditActor actor){
+  return command(id+":APPROVE",key,hash(c.toString()),()->transition(customer,id,c.expectedVersion(),"DRAFT","APPROVED","APPROVED",null,actor));
+ }
+ @Transactional public Intent revoke(String customer,UUID id,Revoke c,String key,AuditActor actor){
+  return command(id+":REVOKE",key,hash(c.toString()),()->transition(customer,id,c.expectedVersion(),"APPROVED","REVOKED","REVOKED",c.reason(),actor));
+ }
+ @Transactional(readOnly=true) public Versions versions(String customer){List<Intent> items=jdbc.sql("select f.customer_id,r.*,f.created_at,f.approved_at,f.revoked_at from financial_intent_revision r join financial_intent f using(intent_id) where f.customer_id=? order by r.recorded_at desc").param(customer).query(this::mapRevision).list();return new Versions(items,items.size());}
+ @Transactional(readOnly=true) public StaffSummary staff(String customer){Intent i=preparation(customer).latestApproved();if(i==null)throw new BusinessException(FinancialIntentErrorCode.NOT_FOUND);List<String>s=i.shareScopes();return new StaffSummary(i.intentId(),customer,i.version(),s.contains("PAYMENT_PREFERENCE")?i.paymentContinuity():null,s.contains("EXPLANATION_PREFERENCE")?i.explanationMode():null,s.contains("HELP_CONDITION")?i.helpCondition():null,s,false,true);}
+
+ private Intent transition(String customer,UUID id,long expected,String from,String to,String event,String reason,AuditActor actor){Intent old=find(customer,id);if(!old.status().equals(from))throw new BusinessException(FinancialIntentErrorCode.INVALID_STATE);long next=expected+1;OffsetDateTime now=OffsetDateTime.now(clock);String timeColumn=to.equals("APPROVED")?"approved_at":"revoked_at";int n=jdbc.sql("update financial_intent set status=?,version=?,disclaimer_accepted=case when ?='APPROVED' then true else disclaimer_accepted end,"+timeColumn+"=?,updated_at=? where intent_id=? and customer_id=? and status=? and version=?").params(to,next,to,now,now,id,customer,from,expected).update();if(n!=1)throw new BusinessException(FinancialIntentErrorCode.VERSION_CONFLICT);Intent value=find(customer,id);snapshot(id,next,to,value.paymentContinuity(),value.explanationMode(),value.helpCondition(),value.shareScopes(),value.disclaimerAccepted(),now);event(id,event,to,next,actor,reason,now);return value;}
+ private Intent command(String scope,String key,String requestHash,Supplier<Intent> action){int inserted=jdbc.sql("insert into financial_intent_command(command_scope,idempotency_key,request_hash,created_at) values(?,?,?,?) on conflict do nothing").params(scope,key,requestHash,OffsetDateTime.now(clock)).update();if(inserted==0){var row=jdbc.sql("select request_hash,result_intent_id,result_version from financial_intent_command where command_scope=? and idempotency_key=?").params(scope,key).query((r,n)->new Object[]{r.getString(1),r.getObject(2,UUID.class),r.getLong(3)}).single();if(!same(requestHash,(String)row[0]))throw new BusinessException(FinancialIntentErrorCode.IDEMPOTENCY_CONFLICT);return jdbc.sql("select f.customer_id,r.*,f.created_at,f.approved_at,f.revoked_at from financial_intent_revision r join financial_intent f using(intent_id) where r.intent_id=? and r.version=?").params(row[1],row[2]).query(this::mapRevision).single();}Intent result=action.get();jdbc.sql("update financial_intent_command set result_intent_id=?,result_version=? where command_scope=? and idempotency_key=?").params(result.intentId(),result.version(),scope,key).update();return result;}
+ private Intent find(String customer,UUID id){return jdbc.sql("select * from financial_intent where customer_id=? and intent_id=?").params(customer,id).query(this::map).optional().orElseThrow(()->new BusinessException(FinancialIntentErrorCode.NOT_FOUND));}
+ private Intent map(java.sql.ResultSet r,int n)throws java.sql.SQLException{return new Intent(r.getObject("intent_id",UUID.class),r.getString("customer_id"),r.getString("status"),r.getLong("version"),r.getString("payment_continuity"),r.getString("explanation_mode"),r.getString("help_condition"),List.of((String[])r.getArray("share_scopes").getArray()),r.getBoolean("disclaimer_accepted"),r.getObject("created_at",OffsetDateTime.class),r.getObject("updated_at",OffsetDateTime.class),r.getObject("approved_at",OffsetDateTime.class),r.getObject("revoked_at",OffsetDateTime.class),false,false);}
+ private Intent mapRevision(java.sql.ResultSet r,int n)throws java.sql.SQLException{String status=r.getString("status");OffsetDateTime recorded=r.getObject("recorded_at",OffsetDateTime.class);return new Intent(r.getObject("intent_id",UUID.class),r.getString("customer_id"),status,r.getLong("version"),r.getString("payment_continuity"),r.getString("explanation_mode"),r.getString("help_condition"),List.of((String[])r.getArray("share_scopes").getArray()),r.getBoolean("disclaimer_accepted"),r.getObject("created_at",OffsetDateTime.class),recorded,status.equals("APPROVED")?recorded:null,status.equals("REVOKED")?recorded:null,false,false);}
+ private void snapshot(UUID id,long v,String status,String p,String e,String h,List<String>s,boolean d,OffsetDateTime now){jdbc.sql("insert into financial_intent_revision values(?,?,?,?,?,?,?::varchar[],?,?)").params(id,v,status,p,e,h,array(s),d,now).update();}
+ private void event(UUID id,String type,String status,long v,AuditActor a,String reason,OffsetDateTime now){jdbc.sql("insert into financial_intent_event(event_id,intent_id,event_type,status_snapshot,version,actor_principal_id,actor_customer_id,actor_session_id,actor_type,detail,occurred_at) values(?,?,?,?,?,?,?,?,?,jsonb_build_object('reason',cast(? as varchar)),?)").params(UUID.randomUUID(),id,type,status,v,a.principalId(),a.customerId(),a.sessionId(),a.actorType(),reason,now).update();}
+ private static String array(List<String>s){return "{"+String.join(",",s)+"}";}private static String hash(String s){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}private static boolean same(String a,String b){return MessageDigest.isEqual(HexFormat.of().parseHex(a),HexFormat.of().parseHex(b));}
+}
