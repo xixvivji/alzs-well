@@ -1,0 +1,1668 @@
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+
+<html lang="ko">
+<head>
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, minimum-scale=1.0, user-scalable=yes, target-densitydpi=medium-dpi"> 
+<link rel="shortcut icon" href="/scourt/common/images/favicon.ico" type="image/x-icon" />
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui-1.8.22.custom.css">
+
+<script type="text/javascript" src="/js/portal/jquery-1.8.3.js"></script>
+<script type="text/javascript" src="/js/portal/jquery-ui-1.8.21.custom.min.js"></script>
+<script type="text/javascript" src="/js/portal/common_old.js"></script>
+<script type="text/javascript" src="/js/portal/common.js"></script>
+<script type="text/javascript" src="/js/portal/embed.js"></script>
+
+<script type="text/javascript">
+window.onload=function(){
+	//var loc = location.href;
+	var mobileYn = detectmob();
+	var nodes = $("div.navibox").children();
+	
+	var menuNm="";
+	nodes.each(function(){
+		if("home" == $(this).attr("class") || "midNavi" == $(this).attr("class") || "spot" == $(this).attr("class")){
+			menuNm+=""+$(this).text();
+		}
+	});
+	
+	//메뉴명
+	//menuNm = menuNm.substring(1);
+	if(''!=menuNm){
+		fn_reg_menu_log(mobileYn, menuNm);
+	}
+};
+</script>
+
+
+<meta http-equiv="Content-Type" content="text/html; charset=euc-kr">
+<link rel="stylesheet" type="text/css"
+	href="/supreme/common/css/reset.css">
+<link rel="stylesheet" type="text/css"
+	href="/supreme/common/css/layout.css">
+
+<script type="text/javascript" src="/supreme/common/js/jquery.js"></script>
+<script type="text/javascript" src="/supreme/common/js/basic.js"></script>
+<!--[if lt IE9]<!-->
+<script type="text/javascript"
+	src="/supreme/common/js/respond.min.js"></script>
+<!--<![endif]-->
+
+<title>대법원 &gt; 재판 &gt; 주요판결 상세</title>
+<script type="text/JavaScript">
+<!--
+//게시판 목록 롤오버
+function listover(obj){
+	obj.className="listover";
+}
+function listout(obj){
+	obj.className="listout";
+}
+function download(file,name){
+var form = document.downForm;
+form.file.value= file;
+form.path.value='001';
+form.downFile.value=name;
+form.action="https://file.scourt.go.kr//AttachDownload";
+form.submit();
+}
+function downHwp(file,name){
+var form = document.downForm;
+form.file.value= file;
+form.path.value='005';
+form.downFile.value=name;
+form.action="https://file.scourt.go.kr//AttachDownload";
+		form.submit();
+	}
+	function RealOpen() {
+		window
+				.open(
+						'http://forms.real.com/netzip/intl/intl_getrde601.html?lang=kr&h=software-dl.real.com&f=windows/RealPlayer10-5GOLD_ko.exe&p=RealPlayer&oem=rp10_kr&src=downloadr,061504_intl_r1choice_kr_kr,061504radiopass_choice_dl_krkr&tagtype=ie&type=rp10_kr',
+						'', '');
+	}
+//-->
+</script>
+
+
+</head>
+
+<body>
+
+	<!-- container -->
+	<div class="container">
+
+		<!-- back -->
+		<div class="back"></div>
+		<!-- // back -->
+
+		<!--  header -->
+		
+
+    
+<!-- sub_mod -->
+
+	
+
+
+
+<!-- 2019.11.20 박희정 사법행정자문회의 추가 (설문) -->
+
+
+
+<!-- sub_mod end -->
+
+	<div class="access">
+		<a href="#content">본문 바로가기</a>
+		<a href="#navi">주메뉴로 바로가기</a>  
+	</div>
+	
+		<!-- header -->
+		<div class="header">
+
+			<!-- top -->
+			<div class="topOuter">
+				<div class="topInner">
+					<div class="category">
+						<a class="btnCategory" href="/portal/main.jsp">대국민서비스</a>
+						<a class="btnCategory btnSelected" href="/supreme/supreme.jsp" title="선택됨">대법원</a>
+						<a class="btnCategory" href="/region/location/RegionLocationListAction.work">각급법원</a>
+						<a class="btnCategory" href="/judiciary/index.html">사법부 소개</a>
+					</div>
+					<div class="utilMenu">
+						<div class="topLink">
+							<ul>
+								<li><a href="/scourt/index.html">HOME</a><span>|</span></li>
+								<li><a href="https://www.scourt.go.kr/portal/gongbo/PeoplePopupList.work?gubun=7" target="_blank" title="법원사람들(새창)">법원사람들</a><span>|</span></li>
+								<li><a href="/kids/index.html" target="_blank" title="어린이(새창)">어린이</a><span>|</span></li>
+								<li><a href="https://eng.scourt.go.kr/" target="_blank" title="English(새창)">English</a></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- //top -->
+			<!-- gnbOuter -->
+			<div class="gnbOuter">
+				<div class="gnbInner">					
+					<div class="logo">
+						<h1><a href="/supreme/supreme.jsp" title="대법원"><img src="/supreme/common/images/logo.png" alt="대한민국 법원 대법원"></a></h1>
+					</div>
+
+					
+
+					<!-- menu gnbMenu -->
+					<div class="gnbMenu" id="navi">
+						<ul class="dep1">
+							<li class="st1"><a href="javascript:;">재판</a>
+								<ul class="dep2">
+									<li><a href="/supreme/info/JpBoardListAction.work?gubun=1">대법원 주요 재판 안내</a>
+										<ul class="dep3">
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=1">선고</a></li>
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=2">진행</a></li>
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=3">변론</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/NewsListAction2.work?gubun=4&amp;type=5">주요 판결</a></li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=710&amp;pageSize=9">공개 변론</a>
+										<ul class="dep3">
+											<li><a href="/supreme/media/MediaActivityListAction.work?gubun=710&amp;pageSize=9">동영상</a></li>
+											<li><a href="/supreme/cases/CasesListAction.work">방청안내</a></li>
+											<li><a href="/attend/AttendList.work">온라인 방청 신청</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=706&amp;pageSize=9">선고 영상</a></li>
+									<li><a href="/supreme/sup_deci/process/process01/index.html">재판 절차</a>
+										<ul class="dep3">
+											<li><a href="/supreme/sup_deci/process/process01/index.html">상소절차 개요</a></li>
+											<li><a href="/supreme/sup_deci/process/process02/index.html">민사·행정·특허·가사</a></li>
+											<li><a href="/supreme/sup_deci/process/process03/index.html">형사</a></li>
+										</ul>
+									</li>
+									<li style="margin-top:20px; width:250px;"><a href="/supreme/sup_deci/reserve/reserve01/index.html" >재판기록 열람ㆍ복사 예약 안내</a>
+										<ul class="dep3">
+										<li><a href="/supreme/sup_deci/reserve/reserve01/index.html" >예약 절차</a></li>
+										<li><a href="/supreme/sup_deci/reserve/reserve02/index.html" >민사</a></li>
+										<li><a href="/supreme/sup_deci/reserve/reserve03/index.html" >형사</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="st2"><a href="javascript:;">소식</a>
+								<ul class="dep2">
+									<li><a href="/supreme/news/NewsListAction.work?gubun=701">대법원</a>
+										<ul class="dep3">
+											<li><a href="/supreme/news/NewsListAction.work?gubun=701">새소식</a></li>
+											<li><a href="/supreme/media/MediaActivityListAction.work?gubun=715&amp;pageSize=9">포토뉴스</a></li>
+											<li><a href="/supreme/news/NewsListAction.work?gubun=702">보도자료/언론보도해명</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/NewsListAction.work?gubun=38">대법원장</a>
+										<ul class="dep3">
+											<li><a href="/supreme/news/NewsListAction.work?gubun=38">연설문</a></li>
+											<li><a href="/supreme/info/justice/JusticeActivityListAction.work?gubun=1&amp;pageSize=9">동정</a></li>
+											<!--li><a href="/supreme/media/MediaActivityListAction.work?gubun=711&amp;pageSize=9">영상 자료</a></li-->
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="st3"><a href="javascript:;">청사안내</a>
+								<ul class="dep2">
+									<li><a href="/supreme/building/overview/index.html">청사 소개</a></li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=703&amp;pageSize=3">청사 갤러리</a></li>
+									<li><a href="https://museum.scourt.go.kr/" target="_blank">법원전시관</a></li>
+									<li><a href="/supreme/building/map/index.html">찾아오시는 길</a></li>
+									<li><a href="/supreme/building/security/index.html">보안검색</a></li>
+								</ul>
+							</li>
+							<li class="st4"><a href="javascript:;">견학안내</a>
+								<ul class="dep2">
+									<li><a href="/supreme/building/tour/guide/index.html">대법원 단체견학 안내</a>
+										<ul class="dep3">
+											<li><a href="/supreme/building/tour/guide/index.html">단체견학안내</a></li>
+											<li><a href="/supreme/groupvisit/GroupVisitCal.work">단체견학신청</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="st5"><a href="javascript:;">대법원소개</a>
+								<ul class="dep2">
+									<li><a href="/supreme/composition/chief/message/index.html">대법원장</a>
+										<ul class="dep3">
+											<li><a href="/supreme/composition/chief/message/index.html">인사말</a></li>
+											<li><a href="/supreme/composition/chief/profile/index.html">약력</a></li>
+											<li><a href="/supreme/composition/chief/former/index.html">역대 대법원장</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=Y">대법관</a>
+										<ul class="dep3">
+											<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=Y">대법관</a></li>
+											<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=N">역대 대법관</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/composition/history/index.html">대법원 역사</a></li>
+									<li><a href="/supreme/composition/duty/duty01/index.html">대법원 기능</a>
+										<ul class="dep3">
+											<li><a href="/supreme/composition/duty/duty01/index.html">재판</a></li>
+											<li><a href="/supreme/composition/duty/duty02/index.html">사법행정</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/composition/cons/index.html">대법원의 구성</a></li>
+									<li class="last"><a href="/supreme/composition/admin/comp/index.html">대법원의 기관</a>
+										<ul class="dep3">
+											<li><a href="/supreme/composition/admin/comp/index.html">법원행정처</a></li>
+											<li><a href="/supreme/composition/admin/training/index.html">사법연수원</a></li>
+											<li><a href="/supreme/composition/admin/jpri/index.html">사법정책연구원</a></li>
+											<li><a href="/supreme/composition/admin/teach/index.html">법원공무원교육원</a></li>
+											<li><a href="/supreme/composition/admin/lib/index.html">법원도서관</a></li>
+											<li><a href="/supreme/composition/admin/ethics/index.html">윤리감사관</a></li>
+											<li><a href="/supreme/composition/admin/sc/index.html">양형위원회</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li class="st6"><a href="javascript:;">사법정책자문위원회</a>
+								<ul class="dep2">
+									<li><a href="/supreme/plcadv/plcadv01.jsp">소개</a>
+										<ul class="dep3">
+											<li><a href="/supreme/plcadv/plcadv01.jsp">사법정책자문위원회</a></li>
+											<li><a href="/supreme/plcadv/plcadv02.jsp">위원장 및 위원</a></li>
+											<li><a href="/supreme/advisory/adv_0101.jsp">기존위원회(사법행정자문회의)</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/NewsListAction2.work?gubun=911">소식</a>
+										<ul class="dep3">
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=911">공지사항</a></li>
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=912">보도자료</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/NewsListAction2.work?gubun=913">정보</a>
+										<ul class="dep3">
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=913">회의자료</a></li>
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=914">회의결과</a></li>
+											<li><a href="/supreme/plcadv/plcadv03.jsp">사법정책자문위원회 규칙</a></li>
+											<li><a href="/supreme/plcadv/plcadv04.jsp">사법정책자문위원회 운영세칙</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/plcadv/plcadv.jsp">위원공간</a></li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+					<!-- //menu gnbMenu -->
+					
+					<!-- search btn -->
+					<div class="menuSubBtn">
+						<a href="javascript:;" class="searchButton"><img src="/supreme/common/images/btn_search.gif" alt="통합검색하기"></a>					
+						<a href="javascript:;" class="btnMenuAll">메뉴전체보기</a>
+					</div>
+					<!-- // search btn -->
+					
+					<!-- search -->
+					<div class="search unVis">
+						<form name="searchForm_top" method="post" action="/search/total/TotalSearch.work">
+						<input type="hidden" name="searchWord" value="">
+						<input type="hidden" name="section" value="">
+						<input type="hidden" name="search_kind" value="">
+						<input type="hidden" name="pg" value="">
+						<label for="search_total">통합검색 선택</label>
+						<select class="searchSelect" id="search_total" name="category">
+							<option value="">통합검색</option>
+							<option value="home_category">카테고리</option>
+							<option value="home_web">웹페이지</option>
+							<option value="home_board">게시판</option>
+							<option value="home_doc">양식</option>
+							<option value="home_minwon">전자민원센터</option>
+							<option value="home_attach">첨부파일</option>
+						</select>
+						<label for="search_word">검색어</label>					
+						<input class="searchInput" id="search_word" name="dpWord" type="text" onkeypress="fn_keywordSearch_top()">
+						<a class="searchBtn" href="javascript:search_btn_top();"><span class="hide">검색하기</span></a>
+						</form>
+						<div><a class="search_close_m" href="javascript:;" >통합검색 닫기 <span style="font-weight:bold;">X</span></a></div>
+					</div>
+					<!-- //search -->	
+					
+					<!-- menu allMenu -->
+					<div class="allMenu unVis">
+						
+						<div class="subMenuView"><a href="#">하위메뉴 펼치기 ▼</a></div>
+						<div class="top_m">
+							<div class="sns_m">
+								<ul>
+									<li><a href="#"><img src="/supreme/common/images/btn_facebook.png" alt="facebook 바로가기"></a></li>
+									<li><a href="#"><img src="/supreme/common/images/btn_twitter.png" alt="x 바로가기"></a></li>
+									<li><a href="#"><img src="/supreme/common/images/btn_naverblog.png" alt="네이버블로그 바로가기"></a></li>
+									<li><a href="#"><img src="/supreme/common/images/btn_daumblog.png" alt="다음블로그 바로가기"></a></li>
+									<li><a href="#"><img src="/supreme/common/images/btn_youtube.png" alt="Youtube 바로가기"></a></li>
+								</ul>
+							</div>
+							<!--div><a class="btnMenuAll_m menu_close_m" href="#">전체메뉴닫기</a></div-->
+						</div>
+						
+						<div class="topLink_m">
+							<ul>
+								<li><a href="/scourt/index.html">HOME</a><span>|</span></li>
+								<li><a href="/kids/index.html" target="_blank" title="어린이(새창)">어린이</a><span>|</span></li>
+								<li><a class="last" href="https://eng.scourt.go.kr/" target="_blank">English</a></li>
+							</ul>
+						</div><br>
+						<ul class="dep1">
+							<li><a>재판</a>
+								<ul class="dep2">
+									<li><a class="mPlus" href="javascript:;">대법원 주요 재판 안내</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=1">선고</a></li>
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=2">진행</a></li>
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=3">변론</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/NewsListAction2.work?gubun=4&amp;type=5">주요 판결</a></li>
+									<li><a class="mPlus" href="javascript:;">공개 변론</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/media/MediaActivityListAction.work?gubun=710&amp;pageSize=9">동영상</a></li>
+											<li><a href="/supreme/cases/CasesListAction.work">방청안내</a></li>
+											<li><a href="/attend/AttendList.work">온라인 방청 신청</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=706&amp;pageSize=9">선고 영상</a></li>
+									<li><a href="javascript:;" class="mPlus">재판 절차</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/sup_deci/process/process01/index.html">상소절차 개요</a></li>
+											<li><a href="/supreme/sup_deci/process/process02/index.html">민사·행정·특허·가사</a></li>
+											<li><a href="/supreme/sup_deci/process/process03/index.html">형사</a></li>
+										</ul>
+									</li>
+									<li><a href="javascript:;" class="mPlus">재판기록 열람ㆍ복사 예약 안내</a>
+										<ul class="dep3 unVis">
+										<li><a href="/supreme/sup_deci/reserve/reserve01/index.html" >예약 절차</a></li>
+										<li><a href="/supreme/sup_deci/reserve/reserve02/index.html" >민사</a></li>
+										<li><a href="/supreme/sup_deci/reserve/reserve03/index.html" >형사</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>소식</a>
+								<ul class="dep2">
+									<li><a href="javascript:;" class="mPlus">대법원</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction.work?gubun=701">새소식</a></li>
+											<li><a href="/supreme/media/MediaActivityListAction.work?gubun=715&amp;pageSize=9">포토뉴스</a></li>
+											<li><a href="/supreme/news/NewsListAction.work?gubun=702">보도자료/언론보도해명</a></li>
+										</ul>
+									</li>
+									<li><a href="javascript:;" class="mPlus">대법원장</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction.work?gubun=38">연설문</a></li>
+											<li><a href="/supreme/info/justice/JusticeActivityListAction.work?gubun=1&amp;pageSize=9">동정</a></li>
+											<!--li><a href="/supreme/media/MediaActivityListAction.work?gubun=711&amp;pageSize=9">영상 자료</a></li-->
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>청사안내</a>
+								<ul class="dep2">
+									<li><a href="/supreme/building/overview/index.html">청사 소개</a></li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=703&amp;pageSize=3">청사 갤러리</a></li>
+									<li><a href="https://museum.scourt.go.kr/" target="_blank">법원전시관</a></li>
+									<li><a href="/supreme/building/map/index.html">찾아오시는 길</a></li>
+									<li><a href="/supreme/building/security/index.html">보안검색</a></li>
+								</ul>
+							</li>
+							<li><a>견학안내</a>
+								<ul class="dep2">
+									<li><a href="#" class="mPlus">대법원 단체견학 안내</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/building/tour/guide/index.html">단체견학안내</a></li>
+											<li><a href="/supreme/groupvisit/GroupVisitCal.work">단체견학신청</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>대법원소개</a>
+								<ul class="dep2">
+									<li><a href="javascript:;" class="mPlus">대법원장</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/composition/chief/message/index.html">인사말</a></li>
+											<li><a href="/supreme/composition/chief/profile/index.html">약력</a></li>
+											<li><a href="/supreme/composition/chief/former/index.html">역대 대법원장</a></li>
+										</ul>
+									</li>
+									<li><a href="javascript:;" class="mPlus">대법관</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=Y">대법관</a></li>
+											<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=N">역대 대법관</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/composition/history/index.html">대법원 역사</a></li>
+									<li><a href="javascript:;" class="mPlus">대법원 기능</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/composition/duty/duty01/index.html">재판</a></li>
+											<li><a href="/supreme/composition/duty/duty02/index.html">사법행정</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/composition/cons/index.html">대법원의 구성</a></li>
+									<li class="last"><a class="mPlus" href="javascript:;">대법원의 기관</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/composition/admin/comp/index.html">법원행정처</a></li>
+											<li><a href="/supreme/composition/admin/training/index.html">사법연수원</a></li>
+											<li><a href="/supreme/composition/admin/jpri/index.html">사법정책연구원</a></li>
+											<li><a href="/supreme/composition/admin/teach/index.html">법원공무원교육원</a></li>
+											<li><a href="/supreme/composition/admin/lib/index.html">법원도서관</a></li>
+											<li><a href="/supreme/composition/admin/ethics/index.html">윤리감사관</a></li>
+											<li><a href="/supreme/composition/admin/sc/index.html">양형위원회</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>사법정책자문위원회</a>
+								<ul class="dep2">
+									<li><a href="javascript:;" class="mPlus">소개</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/plcadv/plcadv01.jsp">사법정책자문위원회</a></li>
+											<li><a href="/supreme/plcadv/plcadv02.jsp">위원장 및 위원</a></li>
+											<li><a href="/supreme/advisory/adv_0101.jsp">기존위원회(사법행정자문회의)</a></li>
+										</ul>
+									</li>
+									<li><a href="javascript:;" class="mPlus">소식</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=911">공지사항</a></li>
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=912">보도자료</a></li>
+										</ul>
+									</li>
+									<li><a href="javascript:;" class="mPlus">정보</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=913">회의자료</a></li>
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=914">회의결과</a></li>
+											<li><a href="/supreme/plcadv/plcadv03.jsp">사법행정자문회의 규칙</a></li>
+											<li><a href="/supreme/plcadv/plcadv04.jsp">사법행정자문회의 운영세칙</a></li>
+										</ul>
+									</li>
+									<li class="last"><a href="/supreme/plcadv/plcadv.jsp">위원공간</a></li>
+								</ul>
+							</li>
+						</ul>
+						<div><a class="btnMenuAll_m menu_close_m" href="javascript:;" >전체메뉴 닫기 <span style="font-weight:bold;">X</span></a></div>
+					</div>
+					<!-- //menu allMenu -->
+					
+				</div>
+				<!-- // gnbInner -->
+			</div>
+			<!-- // gnbOuter -->
+		</div>
+		<!-- //header -->
+
+		<!-- //header -->
+
+		<!-- subContainerOut -->
+		<div class="subContainerOut">
+			<!-- subContainer -->
+			<div class="subContainer">
+
+				<!--  mainFrame -->
+				<div class="mainFrame">
+
+					<!-- titleBox -->
+					<div class="titleBox">
+						<div class="conTitle">주요판결</div>
+
+						
+
+
+
+		<div class="navibox">
+			<div class="home">대법원</div>
+
+			<div class="midNavi"><span>></span>재판</div>
+			
+				<div class="spot"><span>></span>주요 판결</div>
+			
+
+			<div class="sns"><a href="#">sns 공유하기 열기</a></div>
+		<div class="snsBox">
+			<div class="snsBoxIn">
+				<span>공유하기</span>
+				<a href="javascript:sendSns('facebook','');" title="facebook(새창열림)"><img src="/portal/common/images/btn_facebook.png" alt="facebook 공유하기"></a>
+				<a href="javascript:sendSns('twitter','');" title="x(새창열림)"><img src="/portal/common/images/btn_twitter.png" alt="x 공유하기"></a>
+				<a href="javascript:sendSns('band','');" title="band(새창열림)"><img src="/portal/common/images/btn_band.png" alt="band 공유하기"></a>
+				<a href="javascript:sendSns('cstory','');" title="카카오스토리(새창열림)"><img src="/portal/common/images/btn_cstory.png" alt="카카오스토리 공유하기"></a>
+			</div>
+		</div>
+			<div class="print"><a href="javascript:printF();" title="인쇄(새창열림)">print하기</a></div>
+		</div>
+
+<!-- sendSns(sns, url, txt) -->
+
+
+						<!-- location -->
+						<!-- <div class="navibox">
+							<div class="home">Home</div>
+							<div class="midNavi"><span>></span>소식</div>
+							<div class="midNavi"><span>></span>대법원</div>
+							<div class="spot"><span>></span>주요판결</div>
+						</div> -->
+						<!-- //location-->
+					</div>
+					<!-- //titleBox -->
+
+					<!-- subMenu -->
+					<div class="subMenu">
+					</div>
+					<!-- //subMenu -->
+
+					<!-- content -->
+					<div class="content" id="content">
+
+						<h2><span class="hide">주요판결</span></h2>
+						<div class="conTitle">
+							<div class="title">주요판결</div>
+						</div>
+
+						<!--  contentIn -->
+						<div class="contentIn">
+							<!--  tableResult -->
+							<div class="infoBox">
+								판례를 검색하시려면 <a
+									href="https://portal.scourt.go.kr/pgp/index.on?m=PGP1001M01&l=N&c=900"
+									target="_blank" title="종합법률정보(새창으로 열림)"><b>종합법률정보</b></a>로
+								접속하십시오.
+							</div>
+							<!-- tableHor-->
+							<table class="tableVer" summary="주요판결 : 제목, 첨부파일, 내용으로 구성">
+
+								<tr>
+									<th width="22%">제목</th>
+									<td colspan="3">대법원 2021. 6. 10. 선고 중요결정 요지</td>
+								</tr>
+								<tr>
+									<th>첨부파일</th>
+									<td colspan="3" class="attTxt">
+									<!--2021.04.15 양우정 주요판결(판례속보 4)첨부파일 2개이상 가능하도록 수정-->	
+									
+										
+											
+											
+												<a href="https://www.scourt.go.kr/sjudge/1625215000450_173640.pdf" target="_blank" >law210701(6.10.결정).pdf</a>
+											
+											
+												&nbsp;<br /><a href="https://www.scourt.go.kr/sjudge/1625215000495_173640.hwpx" target="_blank" >law210701(6.10.결정).hwpx</a>
+											
+											
+											
+											
+										
+										
+										
+									</td>
+								</tr>
+								<tr>
+									<td colspan="4" class="contArea">
+										
+
+										<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>[민&nbsp;&nbsp;&nbsp; 사]</p><!--StartFragment-->
+<p class="1" style="TEXT-AUTOSPACE: "><span style="FONT-FAMILY: 휴먼고딕; LETTER-SPACING: 0.5pt"><font face="굴림">2020스596 성년후견 개시 (가) 재항고기각</font></span></p>
+<p class="1" style="TEXT-AUTOSPACE: "><span style="FONT-FAMILY: 휴먼고딕; LETTER-SPACING: 0.5pt"><font face="굴림">[성년후견 개시 청구에 대하여 한정후견을 개시한 사건]</font></span></p>
+<p class="1" style="TEXT-AUTOSPACE: "><span style="FONT-FAMILY: 휴먼고딕; LETTER-SPACING: 0.5pt"><font face="굴림">◇1. 후견심판에서 법원이 청구취지에 기속되는지 여부, 2. 의사의 감정 없이 성년후견이나 한정후견을 개시할 수 있는지 여부◇ <br />
+</font></span></p>
+<p class="2" style="TEXT-AUTOSPACE: "><span style="FONT-FAMILY: 새굴림; LETTER-SPACING: 0pt"></span></p>
+<div id="hwpEditorBoardContent" class="hwp_editor_board_content" data-jsonlen="9087" data-hjsonver="1.0"><!--[data-hwpjson]{
+"documentPr": {
+"di": "",
+"dp": {
+"dn": "test.hwp",
+"ta": 1,
+"d1": 5,
+"d2": 1,
+"dv": 0,
+"dr": 1,
+"do": 1,
+"vj": "1.0",
+"an": "Hancom Office Hangul",
+"av": "9, 6, 1, 9212",
+"ao": "WIN",
+"ab": "32",
+"ar": "LE",
+"as": "Windows_Unknown_Version"
+},
+"dis": false,
+"ds": {
+"ti": "",
+"la": "ko",
+"cr": "",
+"su": "",
+"de": "",
+"cd": "2021-07-02T17:36:28.701Z",
+"md": "1601-01-01T09:00:00.000Z",
+"pd": "1601-01-01T09:00:00.000Z",
+"ke": ""
+}
+},
+"dh": {
+"do": {
+"pa": 1,
+"fo": 1,
+"en": 1,
+"pi": 1,
+"tb": 1,
+"eq": 1
+},
+"fo": [ ],
+"cd": {
+"tp": 0,
+"lc": {
+"af": false,
+"ui": false,
+"fu": false,
+"dn": false,
+"ul": false,
+"el": false,
+"at": false,
+"tq": false,
+"da": false,
+"dw": false,
+"dj": false,
+"bc": false,
+"bu": false,
+"al": false,
+"ab": false,
+"ap": false,
+"an": false,
+"aa": false,
+"ds": false,
+"de": false,
+"as": false,
+"cp": false,
+"ao": false,
+"et": false,
+"ay": false,
+"am": false,
+"a1": false,
+"bt": false,
+"av": false,
+"dh": false,
+"dp": false,
+"d1": false,
+"mf": false,
+"bl": false,
+"ag": false,
+"dg": false,
+"ae": false,
+"df": false,
+"do": false,
+"dl": false,
+"di": false,
+"d2": false,
+"d3": false,
+"ob": false,
+"d4": false,
+"ev": false,
+"d5": false,
+"d6": false,
+"a2": false,
+"dc": false
+}
+},
+"ld": {
+"pa": "",
+"pi": true,
+"fo": false
+}
+},
+"bf": {
+"01D76F1D5C9592C0000004F3": {
+"id": 1,
+"td": false,
+"sh": false,
+"st": 0,
+"sc": 0,
+"si": false,
+"bt": 0,
+"bi": false,
+"cl": 0,
+"bc": false,
+"lt": 0,
+"lw": 0,
+"lc": 0,
+"rt": 0,
+"rw": 0,
+"rc": 0,
+"tt": 0,
+"tw": 0,
+"tc": 0,
+"bbt": 0,
+"bbw": 0,
+"bbc": 0,
+"dt": 1,
+"dw": 0,
+"dc": 0,
+"fi": { }
+},
+"01D76F1D5C9592C0000004F4": {
+"id": 2,
+"td": false,
+"sh": false,
+"st": 0,
+"sc": 0,
+"si": false,
+"bt": 0,
+"bi": false,
+"cl": 0,
+"bc": false,
+"lt": 0,
+"lw": 0,
+"lc": 0,
+"rt": 0,
+"rw": 0,
+"rc": 0,
+"tt": 0,
+"tw": 0,
+"tc": 0,
+"bbt": 0,
+"bbw": 0,
+"bbc": 0,
+"dt": 1,
+"dw": 0,
+"dc": 0,
+"fi": {
+"wb": {
+"fc": 4294967295,
+"hc": 4278190080,
+"al": 0,
+"hs": -1
+}
+}
+}
+},
+"cp": {
+"01D76F1D5C9592C0000004F5": {
+"id": 0,
+"he": 1100,
+"tc": 0,
+"sc": 4294967295,
+"uf": false,
+"uk": false,
+"sm": 0,
+"bf": "01D76F1D5C9592C0000004F4",
+"f1": "휴먼명조",
+"t1": 1,
+"f2": "HCI Poppy",
+"t2": 2,
+"f3": "한양신명조",
+"t3": 2,
+"f4": "한양신명조",
+"t4": 2,
+"f5": "한양신명조",
+"t5": 2,
+"f6": "한양신명조",
+"t6": 2,
+"f7": "명조",
+"t7": 2,
+"r1": 100,
+"r2": 100,
+"r3": 100,
+"r4": 100,
+"r5": 100,
+"r6": 100,
+"r7": 100,
+"s1": 0,
+"s2": 0,
+"s3": 0,
+"s4": 0,
+"s5": 0,
+"s6": 0,
+"s7": 0,
+"e1": 100,
+"e2": 100,
+"e3": 100,
+"e4": 100,
+"e5": 100,
+"e6": 100,
+"e7": 100,
+"o1": 0,
+"o2": 0,
+"o3": 0,
+"o4": 0,
+"o5": 0,
+"o6": 0,
+"o7": 0,
+"it": false,
+"bo": false,
+"ut": 0,
+"us": 1,
+"uc": 0,
+"st": false,
+"ss": 1,
+"so": 0,
+"ot": 0,
+"ht": 0,
+"hc": 0,
+"hx": 0,
+"hy": 0,
+"em": false,
+"en": false,
+"su": false,
+"sb": false
+},
+"01D76F1D5C9592C0000004F6": {
+"id": 1,
+"he": 1100,
+"tc": 0,
+"sc": 4294967295,
+"uf": false,
+"uk": false,
+"sm": 0,
+"bf": "01D76F1D5C9592C0000004F3",
+"f1": "새굴림",
+"t1": 1,
+"f2": "새굴림",
+"t2": 1,
+"f3": "새굴림",
+"t3": 1,
+"f4": "새굴림",
+"t4": 1,
+"f5": "새굴림",
+"t5": 1,
+"f6": "새굴림",
+"t6": 1,
+"f7": "새굴림",
+"t7": 1,
+"r1": 100,
+"r2": 100,
+"r3": 100,
+"r4": 100,
+"r5": 100,
+"r6": 100,
+"r7": 100,
+"s1": 0,
+"s2": 0,
+"s3": 0,
+"s4": 0,
+"s5": 0,
+"s6": 0,
+"s7": 0,
+"e1": 100,
+"e2": 100,
+"e3": 100,
+"e4": 100,
+"e5": 100,
+"e6": 100,
+"e7": 100,
+"o1": 0,
+"o2": 0,
+"o3": 0,
+"o4": 0,
+"o5": 0,
+"o6": 0,
+"o7": 0,
+"it": false,
+"bo": true,
+"ut": 0,
+"us": 1,
+"uc": 0,
+"st": false,
+"ss": 1,
+"so": 0,
+"ot": 0,
+"ht": 0,
+"hc": 0,
+"hx": 0,
+"hy": 0,
+"em": false,
+"en": false,
+"su": false,
+"sb": false
+},
+"01D76F1D5C9592C0000004F7": {
+"id": 2,
+"he": 1100,
+"tc": 0,
+"sc": 4294967295,
+"uf": false,
+"uk": false,
+"sm": 0,
+"bf": "01D76F1D5C9592C0000004F3",
+"f1": "휴먼고딕",
+"t1": 1,
+"f2": "HCI Hollyhock",
+"t2": 2,
+"f3": "한양중고딕",
+"t3": 2,
+"f4": "한양중고딕",
+"t4": 2,
+"f5": "한양신명조",
+"t5": 2,
+"f6": "한양중고딕",
+"t6": 2,
+"f7": "명조",
+"t7": 2,
+"r1": 100,
+"r2": 100,
+"r3": 100,
+"r4": 100,
+"r5": 100,
+"r6": 100,
+"r7": 100,
+"s1": 5,
+"s2": 5,
+"s3": 5,
+"s4": 5,
+"s5": 5,
+"s6": 5,
+"s7": 5,
+"e1": 100,
+"e2": 100,
+"e3": 100,
+"e4": 100,
+"e5": 100,
+"e6": 100,
+"e7": 100,
+"o1": 0,
+"o2": 0,
+"o3": 0,
+"o4": 0,
+"o5": 0,
+"o6": 0,
+"o7": 0,
+"it": false,
+"bo": true,
+"ut": 0,
+"us": 1,
+"uc": 0,
+"st": false,
+"ss": 1,
+"so": 0,
+"ot": 0,
+"ht": 0,
+"hc": 0,
+"hx": 0,
+"hy": 0,
+"em": false,
+"en": false,
+"su": false,
+"sb": false
+}
+},
+"tp": {
+"01D76F1D5C9592C0000004F8": {
+"id": 0,
+"al": false,
+"ar": false,
+"tp": [ ]
+}
+},
+"nu": { },
+"bu": { },
+"pp": {
+"01D76F1D5C9592C0000004F9": {
+"id": 0,
+"ah": 0,
+"av": 0,
+"ht": 0,
+"hi": "",
+"hl": 0,
+"tp": "01D76F1D5C9592C0000004F8",
+"kb": 0,
+"kn": true,
+"ko": false,
+"kk": false,
+"kl": false,
+"kp": false,
+"kw": 0,
+"co": 0,
+"fl": false,
+"st": false,
+"sl": false,
+"ae": false,
+"aa": false,
+"mi": 0,
+"ml": 0,
+"mr": 0,
+"mp": 0,
+"mn": 0,
+"lt": 0,
+"lv": 200,
+"bf": "01D76F1D5C9592C0000004F3",
+"bl": 0,
+"br": 0,
+"bt": 0,
+"bb": 0,
+"bc": false,
+"bi": false
+},
+"01D76F1D5C95B9D0000004FA": {
+"id": 1,
+"ah": 0,
+"av": 0,
+"ht": 0,
+"hi": "",
+"hl": 0,
+"tp": "01D76F1D5C9592C0000004F8",
+"kb": 0,
+"kn": true,
+"ko": false,
+"kk": false,
+"kl": false,
+"kp": false,
+"kw": 0,
+"co": 0,
+"fl": false,
+"st": false,
+"sl": false,
+"ae": false,
+"aa": false,
+"mi": 0,
+"ml": 0,
+"mr": 0,
+"mp": 0,
+"mn": 0,
+"lt": 0,
+"lv": 200,
+"bf": "01D76F1D5C9592C0000004F4",
+"bl": 0,
+"br": 0,
+"bt": 0,
+"bb": 0,
+"bc": false,
+"bi": false
+},
+"01D76F1D5C95B9D0000004FB": {
+"id": 2,
+"ah": 0,
+"av": 0,
+"ht": 0,
+"hi": "",
+"hl": 0,
+"tp": "01D76F1D5C9592C0000004F8",
+"kb": 0,
+"kn": true,
+"ko": false,
+"kk": false,
+"kl": false,
+"kp": false,
+"kw": 0,
+"co": 0,
+"fl": false,
+"st": true,
+"sl": false,
+"ae": false,
+"aa": false,
+"mi": 0,
+"ml": 0,
+"mr": 0,
+"mp": 0,
+"mn": 0,
+"lt": 0,
+"lv": 200,
+"bf": "01D76F1D5C9592C0000004F4",
+"bl": 0,
+"br": 0,
+"bt": 0,
+"bb": 0,
+"bc": false,
+"bi": false
+}
+},
+"st": {
+"01D76F1D5C95B9D0000004FC": {
+"id": 0,
+"ty": 0,
+"na": "바탕글",
+"en": "Normal",
+"pp": "01D76F1D5C95B9D0000004FA",
+"cp": "01D76F1D5C9592C0000004F5",
+"ns": "01D76F1D5C95B9D0000004FC",
+"li": 1042,
+"lf": false
+},
+"01D76F1D5C95B9D0000004FD": {
+"id": 1,
+"ty": 0,
+"na": "사건명",
+"en": "",
+"pp": "01D76F1D5C95B9D0000004FB",
+"cp": "01D76F1D5C9592C0000004F7",
+"ns": "01D76F1D5C95B9D0000004FD",
+"li": 1042,
+"lf": false
+},
+"01D76F1D5C95B9D0000004FE": {
+"id": 2,
+"ty": 0,
+"na": "제목",
+"en": "",
+"pp": "01D76F1D5C9592C0000004F9",
+"cp": "01D76F1D5C9592C0000004F6",
+"ns": "01D76F1D5C95B9D0000004FE",
+"li": 1042,
+"lf": false
+}
+},
+"mp": { },
+"ro": {
+"hp": "01D76F1D5C9592C0000004F0",
+"01D76F1D5C9592C0000004F0": {
+"np": "01D76F1D5C9592C0000004F1",
+"id": 0,
+"pp": "01D76F1D5C95B9D0000004FB",
+"si": "01D76F1D5C95B9D0000004FD",
+"bf": 3,
+"ru": [
+{
+"cp": "01D76F1D5C9592C0000004F7",
+"ch": [
+{
+"cc": 2,
+"ci": 1936024420,
+"co": "01D76F1D5C9592C0000004EE"
+}
+,
+{
+"cc": 2,
+"ci": 1668246628,
+"co": "01D76F1D5C9592C0000004EF"
+}
+,
+{
+"t": "2020스596   성년후견 개시   (가)   재항고기각"
+}
+]
+}
+]
+},
+"01D76F1D5C9592C0000004F1": {
+"np": "01D76F1D5C9592C0000004F2",
+"id": -2147483648,
+"pp": "01D76F1D5C95B9D0000004FB",
+"si": "01D76F1D5C95B9D0000004FD",
+"bf": 0,
+"ru": [
+{
+"cp": "01D76F1D5C9592C0000004F7",
+"ch": [
+{
+"t": "[성년후견 개시 청구에 대하여 한정후견을 개시한 사건]"
+}
+]
+}
+]
+},
+"01D76F1D5C9592C0000004F2": {
+"np": "",
+"id": -2147483648,
+"pp": "01D76F1D5C9592C0000004F9",
+"si": "01D76F1D5C95B9D0000004FE",
+"bf": 0,
+"ru": [
+{
+"cp": "01D76F1D5C9592C0000004F6",
+"ch": [
+{
+"t": "◇1. 후견심판에서 법원이 청구취지에 기속되는지 여부, 2. 의사의 감정 없이 성년후견이나 한정후견을 개시할 수 있는지 여부◇ "
+}
+]
+}
+]
+}
+},
+"sl": { },
+"cs": {
+"01D76F1D5C9592C0000004EE": {
+"cc": 2,
+"ci": 1936024420,
+"td": 0,
+"tv": false,
+"sc": 1134,
+"ts": 8000,
+"ms": "",
+"os": "",
+"gl": 0,
+"gc": 0,
+"gw": false,
+"ns": 0,
+"np": 0,
+"ni": 0,
+"nt": 0,
+"ne": 0,
+"hh": false,
+"hf": false,
+"hm": false,
+"fb": false,
+"hb": false,
+"fi": false,
+"hi": false,
+"hp": false,
+"he": false,
+"sl": false,
+"lr": 0,
+"lc": 0,
+"ld": 0,
+"ls": 0,
+"pp": {
+"ls": false,
+"wi": 59528,
+"he": 84188,
+"gt": 0,
+"ml": 8504,
+"mr": 8504,
+"mt": 5668,
+"mb": 4252,
+"mh": 4252,
+"mf": 4252,
+"mg": 0
+},
+"fn": {
+"at": 0,
+"au": "",
+"ap": "",
+"ac": ")",
+"as": false,
+"ll": -1,
+"lt": 1,
+"lw": 1,
+"lc": 0,
+"sa": 850,
+"sb": 567,
+"st": 283
+,
+"nt": 0,
+"nn": 1,
+"pp": 0,
+"pb": false
+},
+"en": {
+"at": 0,
+"au": "",
+"ap": "",
+"ac": ")",
+"as": false,
+"ll": 0,
+"lt": 1,
+"lw": 1,
+"lc": 0,
+"sa": 850,
+"sb": 567,
+"st": 0
+,
+"nt": 0,
+"nn": 1,
+"pp": 0,
+"pb": false
+},
+"pb": [
+{
+"ty": 0,
+"bf": "01D76F1D5C9592C0000004F3",
+"tb": true,
+"hi": false,
+"fi": false,
+"fa": 0,
+"ol": 1417,
+"or": 1417,
+"ot": 1417,
+"ob": 1417
+},
+{
+"ty": 1,
+"bf": "01D76F1D5C9592C0000004F3",
+"tb": true,
+"hi": false,
+"fi": false,
+"fa": 0,
+"ol": 1417,
+"or": 1417,
+"ot": 1417,
+"ob": 1417
+},
+{
+"ty": 2,
+"bf": "01D76F1D5C9592C0000004F3",
+"tb": true,
+"hi": false,
+"fi": false,
+"fa": 0,
+"ol": 1417,
+"or": 1417,
+"ot": 1417,
+"ob": 1417
+}
+],
+"mp": [ ]
+}
+,
+"01D76F1D5C9592C0000004EF": {
+"cc": 2,
+"ci": 1668246628,
+"ty": 0,
+"la": 0,
+"co": 1,
+"ss": true,
+"sg": 0,
+"lt": 0,
+"lw": 0,
+"lc": 0,
+"cs": [ ]
+}
+},
+"bi": [ ],
+"bidt": { }
+}--></div>
+<p>&nbsp;</p> 
+										
+									</td>
+								</tr>
+							</table>
+							<!-- //tableHor  -->
+							<table class="tableVer">
+								
+									<tr>
+										
+											<th class="t_prev">이전글</th>
+										
+										
+										<td class="tit"><a
+											href="NewsViewAction2.work?seqnum=7790&amp;gubun=4&amp;searchOption=&amp;searchWord=">
+												
+													
+													
+														제3자의 채권침해에 따른 불법행위 성립 여부가 쟁점이 된 사건[대법원 2021. 6. 30. 선고 중요판결]
+													
+												
+										</a></td>
+									</tr>
+								
+									<tr>
+										
+										
+											<th class="t_next">다음글</th>
+										
+										<td class="tit"><a
+											href="NewsViewAction2.work?seqnum=7788&amp;gubun=4&amp;searchOption=&amp;searchWord=">
+												
+													
+													
+														성년후견 개시 청구에 대하여 한정후견을 개시한 사건[대법원 2021. 6. 10.자 중요결정]
+													
+												
+										</a></td>
+									</tr>
+								
+							</table>
+							<!-- Button Box -->
+							<div class="btnBox">
+								<a class="blueBtn"
+									href="/supreme/news/NewsListAction2.work?gubun=4&amp;pageIndex=1&amp;searchWord=&amp;type=">목록</a>
+							</div>
+							<!-- // Button Box -->
+						</div>
+						<!-- //contentIn -->
+
+					</div>
+					<!-- // content -->
+				</div>
+				<!-- //mainFrame -->
+
+			</div>
+			<!-- // subContainer -->
+		</div>
+		<!-- // subContainerOut -->
+
+		<!-- footer -->
+		
+
+
+		<!-- footer -->
+		<div class="footerOut">
+
+			<div class="linkLineOut">
+				<!-- linkLineIn -->
+				<div class="linkLineIn">
+				
+					<!-- footsns -->
+					<div class="footsns">
+						<dl>
+                        	<dt>소통채널 바로가기 : </dt>
+                            <dd>
+						<ul>
+							<li><a class="facebook" href="http://www.facebook.com/scourtkorea" target="_blank" title="대법원 페이스북(새창)"><span class="hide">대법원 페이스북(새창)</span></a></li>
+							<li><a class="twitter" href="https://x.com/scourtkorea" target="_blank" title="대법원 엑스(새창)"><span class="hide">대법원 엑스(새창)</span></a></li>
+							<li><a class="youtube" href="http://www.youtube.com/user/scourtkorea" target="_blank" title="대법원 유튜브(새창)"><span class="hide">대법원 유튜브(새창)</span></a></li> 
+							<li><a class="instagram" href="https://www.instagram.com/scourtkorea/" target="_blank" title="대법원 인스타그램(새창)"><span class="hide">대법원 인스타그램(새창)</span></a></li> 
+							<li><a class="naverblog" href="http://blog.naver.com/law_zzang" target="_blank" title="대법원 네이버 블로그(새창)"><span class="hide">대법원 네이버 블로그(새창)</span></a></li> 
+							<li><a class="daumblog" href="http://blog.daum.net/law_zzang" target="_blank" title="대법원 다음 블로그(새창)"><span class="hide">대법원 다음 블로그(새창)</span></a></li> 
+							<li><a class="kakao" href="http://story.kakao.com/ch/scourt/app" target="_blank" title="대법원 카카오스토리(새창)"><span class="hide">대법원 카카오스토리(새창)</span></a></li>
+						</ul>
+                            </dd>
+                        </dl>
+					</div>
+					<!-- //footsns -->
+					
+					<!-- footLink -->
+					<div class="footLink">
+						<ul>
+							<li><a class="link1" href="/supreme/building/map/index.html">위치안내</a></li>
+							<li><a class="link2" href="/supreme/building/tour/guide/index.html">단체견학안내</a></li>
+							<li><a class="link3" href="https://museum.scourt.go.kr/" target="_blank">법원전시관</a></li>
+						</ul>
+					</div>
+					<!-- //footLink -->
+					
+				</div>
+				<!--  // linkLineIn -->
+			</div>
+			<!--  //linkLineOut -->
+			
+			
+			<!--  sitemapOut -->
+			<div class="sitemapOut">
+				<!-- sitemapIn -->
+				<div class="sitemapIn">
+					
+					<ul class="dep1">
+							<li><a>재판</a>
+								<ul class="dep2">
+									<li><a class="mPlus" href="/supreme/info/JpBoardListAction.work?gubun=1">대법원 주요 재판 안내</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=1">선고</a></li>
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=2">진행</a></li>
+											<li><a href="/supreme/info/JpBoardListAction.work?gubun=3">변론</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/news/NewsListAction2.work?gubun=4&amp;type=5">주요 판결</a></li>
+									<li><a class="mPlus" href="/supreme/media/MediaActivityListAction.work?gubun=710&amp;pageSize=9">공개 변론</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/media/MediaActivityListAction.work?gubun=710&amp;pageSize=9">동영상</a></li>
+											<li><a href="/supreme/cases/CasesListAction.work">방청안내</a></li>
+											<li><a href="/attend/AttendList.work">온라인 방청 신청</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=706&amp;pageSize=9">선고 영상</a></li>
+									<li><a class="mPlus" href="/supreme/sup_deci/process/process01/index.html">재판 절차</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/sup_deci/process/process01/index.html">상소절차 개요</a></li>
+											<li><a href="/supreme/sup_deci/process/process02/index.html">민사·행정·특허·가사</a></li>
+											<li><a href="/supreme/sup_deci/process/process03/index.html">형사</a></li>
+										</ul>
+									</li>
+									<li style="width:200px;"><a class="mPlus">재판기록 열람ㆍ복사 예약 안내</a>
+										<ul class="dep3 unVis">
+										<li><a href="/supreme/sup_deci/reserve/reserve01/index.html" >예약 절차</a></li>
+										<li><a href="/supreme/sup_deci/reserve/reserve02/index.html" >민사</a></li>
+										<li><a href="/supreme/sup_deci/reserve/reserve03/index.html" >형사</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>소식</a>
+								<ul class="dep2">
+									<li><a class="mPlus" href="/supreme/news/NewsListAction.work?gubun=701">대법원</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction.work?gubun=701">새소식</a></li>
+											<li><a href="/supreme/media/MediaActivityListAction.work?gubun=715&amp;pageSize=9">포토뉴스</a></li>
+											<li><a href="/supreme/news/NewsListAction.work?gubun=702">보도자료/언론보도해명</a></li>
+										</ul>
+									</li>
+									<li><a class="mPlus" href="#">대법원장</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction.work?gubun=38">연설문</a></li>
+											<li><a href="/supreme/info/justice/JusticeActivityListAction.work?gubun=1&amp;pageSize=9">동정</a></li>
+											<!--li><a href="/supreme/media/MediaActivityListAction.work?gubun=711&amp;pageSize=9">영상 자료</a></li-->
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>청사안내</a>
+								<ul class="dep2">
+									<li><a href="/supreme/building/overview/index.html">청사 소개</a></li>
+									<li><a href="/supreme/media/MediaActivityListAction.work?gubun=703&amp;pageSize=3">청사 갤러리</a></li>
+									<li><a href="https://museum.scourt.go.kr/" target="_blank">법원전시관</a></li>
+									<li><a href="/supreme/building/map/index.html">찾아오시는 길</a></li>
+									<li><a href="/supreme/building/security/index.html">보안검색</a></li>
+								</ul>
+							</li>
+							<li><a>견학안내</a>
+								<ul class="dep2">
+									<li><a class="mPlus" href="/supreme/building/tour/guide/index.html">대법원 단체견학 안내</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/building/tour/guide/index.html">단체견학안내</a></li>
+											<li><a href="/supreme/groupvisit/GroupVisitCal.work">단체견학신청</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>대법원소개</a>
+								<ul class="dep2">
+									<li><a class="mPlus" href="/supreme/composition/chief/message/index.html">대법원장</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/composition/chief/message/index.html">인사말</a></li>
+											<li><a href="/supreme/composition/chief/profile/index.html">약력</a></li>
+											<li><a href="/supreme/composition/chief/former/index.html">역대 대법원장</a></li>
+										</ul>
+									</li>
+									<li><a class="mPlus" href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=Y">대법관</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=Y">대법관</a></li>
+											<li><a href="/supreme/news/ChfJusticeListAction.work?gubun=705&amp;top=N">역대 대법관</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/composition/history/index.html">대법원 역사</a></li>
+								</ul>
+							</li>
+							<li>
+								<ul class="dep2 pt20">	
+									
+									<li><a class="mPlus" href="/supreme/composition/duty/duty01/index.html">대법원 기능</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/composition/duty/duty01/index.html">재판</a></li>
+											<li><a href="/supreme/composition/duty/duty02/index.html">사법행정</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/composition/cons/index.html">대법원의 구성</a></li>
+									<li class="last"><a class="mPlus" href="/supreme/composition/admin/comp/index.html">대법원의 기관</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/composition/admin/comp/index.html">법원행정처</a></li>
+											<li><a href="/supreme/composition/admin/training/index.html">사법연수원</a></li>
+											<li><a href="/supreme/composition/admin/jpri/index.html">사법정책연구원</a></li>
+											<li><a href="/supreme/composition/admin/teach/index.html">법원공무원교육원</a></li>
+											<li><a href="/supreme/composition/admin/lib/index.html">법원도서관</a></li>
+											<li><a href="/supreme/composition/admin/ethics/index.html">윤리감사관</a></li>
+											<li><a href="/supreme/composition/admin/sc/index.html">양형위원회</a></li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+							<li><a>사법정책자문위원회</a>
+								<ul class="dep2">
+									<li><a class="mPlus" href="/supreme/plcadv/plcadv01.jsp">소개</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/plcadv/plcadv01.jsp">사법정책자문위원회</a></li>
+											<li><a href="/supreme/plcadv/plcadv02.jsp">위원장장 및 위원</a></li>
+											<li><a href="/supreme/advisory/adv_0101.jsp">기존위원회(사법행정자문회의)</a></li>
+										</ul>
+									</li>
+									<li><a class="mPlus" href="/supreme/news/NewsListAction.work?gubun=911">소식</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=911">공지사항</a></li>
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=912">보도자료</a></li>
+										</ul>
+									</li>
+									<li><a class="mPlus" href="/supreme/news/NewsListAction.work?gubun=913">정보</a>
+										<ul class="dep3 unVis">
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=913">회의자료</a></li>
+											<li><a href="/supreme/news/NewsListAction2.work?gubun=914">회의결과</a></li>
+											<li><a href="/supreme/plcadv/plcadv03.jsp">사법정책자문위원회 규칙</a></li>
+											<li><a href="/supreme/plcadv/plcadv04.jsp">사법정책자문위원회 운영세칙</a></li>
+										</ul>
+									</li>
+									<li><a href="/supreme/plcadv/plcadv.jsp">위원공간</a></li>
+								</ul>
+							</li>
+						</ul>
+					
+				</div>
+				<!-- //sitemapIn -->
+			</div>
+			<!-- //sitemapOut -->
+			
+			<div class="footLine">
+				<!-- footerIn  -->
+				<div class="footerIn">
+					<div class="footerLogo">
+						<img src="/supreme/common/images/footerLogo.png" alt="대한민국법원">
+					</div>
+					<div class="copybox">
+						<div class="footerLink">
+							<ul>
+							<li><a href="/portal/popup/gaein_pop.html" onclick="window.open(this.href, 'info','scrollbars=yes,width=707,height=600', '_blank'); return false;" onkeypress="if(event.keyCode == 13){window.open(this.href,'personalinfo','scrollbars=yes,width=707,height=600', '_blank'); return false;}" title="개인정보처리방침(새창)" style="color: #f3e50b; font-weight: bold; font-size: 14px;">개인정보처리방침</a><span class="ml10"></span></li>
+							<li><a href="/info/location/VideoAction.work?str=etc" target="_blank" title="영상정보처리기기 운영·관리방침(새창으로 열기)">영상정보처리기기 운영·관리방침</a><span class="ml10"></span></li>
+							<li><a href="/portal/popup/jeojak_pop.html" onclick="window.open(this.href, 'info','scrollbars=yes,width=707,height=600', '_blank'); return false;" onkeypress="if(event.keyCode == 13){window.open(this.href,'personalinfo','scrollbars=yes,width=707,height=600', '_blank'); return false;}" title="저작권보호정책(새창)">저작권보호정책</a></li>
+			
+							</ul>
+						</div>
+						<div class="address">
+							(06590) 서울특별시 서초구 서초대로  219(서초동)
+						</div>
+						<div class="tel">
+							대표전화 02)3480-1100 | 홈페이지 이용 문의 02)3480-1715(평일9시~18시)  | 인터넷등기 사용자지원센터 1544-0770
+						</div>
+						<div class="copyright">
+							COPYRIGHTⓒ 2016 SUPREME COURT OF KOREA. ALL RIGHTS RESERVED.
+						</div>
+					</div>
+					<div class="certi">
+					<a title="새창" href="http://www.wa.or.kr/board/list.asp?search=total&SearchString=www.scourt.go.kr&BoardID=0006" target="_blank">
+ 					<img src="/judiciary/common/images/certi.png" alt="(사)한국장애인단체총연합회 한국웹접근성인증평가원 웹 접근성 우수사이트 인증마크(WA인증마크)">
+ 					</a>
+					</div>				
+				</div>
+				<!-- //footerIn -->
+			</div>		
+		</div>
+		<!-- // footer -->
+	
+		<div class="top_btn">
+			<a href="#"><img src="/portal/common/images/top_btn.png" alt="top"></a>
+		</div>
+		<!-- // footer -->
+
+	</div>
+	<!-- // container -->
+
+</body>
+</html>

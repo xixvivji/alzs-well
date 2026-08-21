@@ -1,0 +1,5 @@
+knowledge/official-source/**/*.pdf filter=lfs diff=lfs merge=lfs -text
+knowledge/official-source/**/*.hwp filter=lfs diff=lfs merge=lfs -text
+knowledge/official-source/**/*.hwpx filter=lfs diff=lfs merge=lfs -text
+knowledge/official-source/** -whitespace
+knowledge/internal-policy/**/*.md -whitespace
