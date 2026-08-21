@@ -17,11 +17,16 @@
 
 충돌 시 상위 계층과 최신 효력 문서를 우선한다. 공개 사례자료로 가상 기관의 조건을 확정하지 않는다.
 
-## 문서 생명주기
+## 문서 상태
 
-`RECEIVED → QUARANTINED → REVIEWED → APPROVED → ACTIVE → SUPERSEDED/EXPIRED → DISPOSED`
+- 반입 실행: `RECEIVED → QUARANTINED → REVIEWED`
+- 승인: `DRAFT → IN_REVIEW → APPROVED/REJECTED`
+- 검색 생명주기: `PENDING_ACTIVATION → ACTIVE → SUPERSEDED/EXPIRED/RETIRED`
+- 물리적 폐기: 별도 보존·폐기 승인과 `DISPOSED` 감사기록
 
-현재 코드 카탈로그의 외부 노출 상태는 `APPROVED`, `EXPIRED`이며, 세부 반입 상태는 수집·운영 테이블에서 관리한다. 승인 전 문서는 검색 인덱스에 넣지 않는다.
+`SUPERSEDED`는 새 버전 대체, `EXPIRED`는 효력기간 종료, `RETIRED`는 운영상 철회를 뜻한다. `DISPOSED`는 검색 생명주기 상태가 아니며 원문·파생물·백업의 실제 폐기와 증적을 별도로 관리한다.
+
+현재 코드 카탈로그의 외부 노출 상태는 `APPROVED`, `EXPIRED`이며, 세부 승인·생명주기 분리는 P1 계약과 V40에서 관리한다. 승인 전 문서는 검색 인덱스에 넣지 않는다.
 
 ## 필수 메타데이터
 
@@ -47,4 +52,3 @@
 ## 감사
 
 사용자·역할, 질의 해시, 필터, 검색 문서·문단, 문서버전, 모델·프롬프트 정책버전, 생성·폴백 결과를 기록한다. 원문 질의와 민감정보는 최소화한다.
-

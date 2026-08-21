@@ -1,0 +1,28 @@
+contractVersion: "1.0.0"
+documentId: DOC-FSC-SAFE-BLOCK-001
+versionLabel: "2025-04-29"
+title: 비대면 계좌개설·여신거래 안심차단 안내
+issuer: 금융위원회
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/14_public-response-guides/FSC_2025_financial_transaction_safety_block_source.html
+sourceUrl: https://www.fsc.go.kr/no040103/84442
+sourceHash: sha256:c0e54c4909e12fde07bea3c9c058d86e8ab0f698cb4ddee6f8193164209bb228
+sourceTransformations:
+  - type: CREDENTIAL_REDACTION
+    ruleId: PUBLIC_WEB_CREDENTIAL_REDACTION_V1
+    replacement: REDACTED_SOURCE_CREDENTIAL
+documentType: PUBLIC_GUIDE
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2025-04-29"
+effectiveTo: null
+checkedAt: "2026-08-21"
+usageRights: REVIEW_REQUIRED
+approvalStatus: IN_REVIEW
+lifecycleStatus: PENDING_ACTIVATION
+approvedBy: null
+approvedAt: null
+supersedes: null
