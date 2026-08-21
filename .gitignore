@@ -41,6 +41,10 @@ venv/
 *.onnx
 *.pt
 
+# RAG extraction, chunking, embeddings, indexes, and runtime evidence
+/knowledge/derived/
+/ai-service/data/derived/
+
 # Superseded project documents kept only in the local archive
 /Ansim_Rhythm_Project_Final_Direction.md
 /Ansim_Rhythm_Project_Final_Summary.md
