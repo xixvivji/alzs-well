@@ -27,4 +27,9 @@ public final class ComplianceResponses {
             String resourceType, UUID resourceId, List<ProvenanceNode> lineage,
             boolean syntheticData, boolean externalProviderCalled, OffsetDateTime observedAt
     ) {}
+    public record AuditExportRequest(
+            UUID requestId, String status, OffsetDateTime from, OffsetDateTime to, List<String> sourceTypes,
+            String purposeCode, String approvalReference, OffsetDateTime requestedAt, OffsetDateTime expiresAt,
+            boolean artifactCreated, boolean downloadEnabled, boolean externalTransferExecuted
+    ) {}
 }
