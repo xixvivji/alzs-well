@@ -9,12 +9,3 @@ paths = [
   '''(^|/)archive/legacy-docs/2026-08-14/API_SPEC\.md$'''
 ]
 regexes = ['''Idempotency-Key:\s*[A-Za-z0-9_-]+''']
-
-[[allowlists]]
-description = "개인정보 API 통합 테스트의 비밀이 아닌 고정 멱등키 fixture"
-regexTarget = "secret"
-paths = ['''(^|/)backend/src/test/java/com/alzswell/privacy/PrivacyRequestIntegrationTest\.java$''']
-regexes = [
-  '''privacy-correct-001''',
-  '''privacy-forbidden-001'''
-]
