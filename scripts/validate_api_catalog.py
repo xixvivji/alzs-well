@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "docs" / "FINAL_BACKEND_API_SPEC.md"
 EXPECTED_PRIORITIES = {"P0-A": 12, "P0-B": 11, "P1": 170, "P2": 78}
 EXPECTED_BOUNDARIES = {
-    "OWNED": 181,
-    "EXTERNAL_INTEGRATION": 68,
+    "OWNED": 182,
+    "EXTERNAL_INTEGRATION": 67,
     "REFERENCE_ONLY": 22,
 }
 ROW = re.compile(

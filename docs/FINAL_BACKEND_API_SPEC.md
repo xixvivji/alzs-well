@@ -21,8 +21,8 @@
 | P0 구현 목표 합계 | **23개** |
 | P1 제품 핵심 백로그 | **170개** |
 | P2 은행·증권 확장 백로그 | **78개** |
-| ALZ's well 소유 `OWNED` | **181개** |
-| 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
+| ALZ's well 소유 `OWNED` | **182개** |
+| 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
 API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 271개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
@@ -857,8 +857,8 @@ OPEN
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
 | P1 제품 핵심 | **170** |
 | P2 은행·증권 확장 | **78** |
-| OWNED | **181** |
-| EXTERNAL_INTEGRATION | **68** |
+| OWNED | **182** |
+| EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
 현재 실제 업무 구현은 고객별 직원 접근권 6개와 금융생활 의향 관리 7개를 포함해 총 140개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 141개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 134개가 노출된다. 나머지 131개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
