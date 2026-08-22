@@ -179,6 +179,12 @@ public class OpenApiConfiguration {
                 || path.endsWith("/counterparties")) {
             return List.of(method == PathItem.HttpMethod.GET ? "TRANSACTION_READ" : "TRANSACTION_WRITE");
         }
+        if (path.endsWith("/financial-summary") || path.endsWith("/asset-breakdown")
+                || path.endsWith("/asset-trends") || path.endsWith("/liabilities")
+                || path.endsWith("/cashflow-summary") || path.endsWith("/expense-summary")
+                || path.endsWith("/asset-calendar") || path.endsWith("/data-freshness")) {
+            return List.of("FINANCIAL_OVERVIEW_READ");
+        }
         if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")
                 || path.endsWith("/account-groups")) {
             return List.of(method == PathItem.HttpMethod.GET ? "ACCOUNT_READ" : "ACCOUNT_WRITE");
