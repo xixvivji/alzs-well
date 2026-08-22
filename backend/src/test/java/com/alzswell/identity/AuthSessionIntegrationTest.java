@@ -51,7 +51,7 @@ class AuthSessionIntegrationTest {
                 .flatMap(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has).map(path::path))
                 .toList();
-        assertThat(operations).hasSize(168).allSatisfy(operation -> {
+        assertThat(operations).hasSize(176).allSatisfy(operation -> {
             assertThat(operation.path("summary").asText()).isNotBlank();
             assertThat(operation.path("description").asText()).isNotBlank();
             assertThat(operation.path("x-alzs-authority-mode").asText()).isNotBlank();
@@ -82,7 +82,7 @@ class AuthSessionIntegrationTest {
                         "FINANCIAL_CONNECTION_READ", "DETECTION_READ", "DETECTION_CALCULATE",
                         "ALERT_READ", "ALERT_RESPOND", "RECURRING_PAYMENT_READ",
                         "RECURRING_PAYMENT_WRITE", "ACCOUNT_READ", "ACCOUNT_WRITE",
-                        "TRANSACTION_READ", "TRANSACTION_WRITE")));
+                        "TRANSACTION_READ", "TRANSACTION_WRITE", "FINANCIAL_OVERVIEW_READ")));
         mockMvc.perform(get("/api/v1/customers/SYN_CUSTOMER_FIN_MGMT_001")
                         .header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk());
