@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 158개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 167개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 113개 |
+| 카탈로그·백로그 | 104개 |
 
-업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개를 포함해 158개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 152개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 159개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개를 포함해 167개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 161개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 168개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -861,7 +861,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개를 포함해 총 158개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 159개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 152개가 노출된다. 나머지 113개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개를 포함해 총 167개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 168개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 161개가 노출된다. 나머지 104개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1058,6 +1058,10 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 | P1 | PUT | /api/v1/transactions/{transactionId}/category | 고객 지정 범주 보정 | OWNED |
 | P1 | PUT | /api/v1/transactions/{transactionId}/note | 금융 기억노트 작성 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/transaction-export-requests | 거래내역 파일 생성 요청 | OWNED |
+
+앞의 P1 9개는 Flyway V44의 `financial_transaction_snapshot`, `transaction_enrichment_snapshot`, `customer_transaction_preference`, `customer_transaction_preference_event`로 구현됐다. 원천 거래와 enrichment는 추가 전용 불변 snapshot이며 `TRANSACTION_READ`와 고객 소유권을 서비스 계층에서도 확인한다. 목록·검색은 `occurredAt DESC, transactionId DESC` 복합 정렬과 UUID cursor를 사용하고 기간은 최대 366일, limit은 최대 100으로 제한한다. 검색어는 최대 80자이며 민감정보 정책을 통과한 마스킹 설명·상대방 이름만 검색한다. `q` 원문이 URI access log에 남지 않도록 거래 검색 경로의 Nginx access log는 비활성화한다.
+
+범주·노트 PUT은 `TRANSACTION_WRITE`와 `expectedVersion`을 요구한다. 고객 보정 범주는 고정 enum만 허용하고, 기억노트는 최대 120자이며 식별정보·계좌번호·연락처·질병 표현을 거부한다. 변경은 원천 거래를 수정하지 않고 별도 preference만 갱신하며 추가 전용 이벤트를 남긴다. 버전 충돌은 `409 TRANSACTION_PREFERENCE_VERSION_CONFLICT`, 잘못된 cursor는 `400 TRANSACTION_CURSOR_INVALID`, 기간·금액 범위 오류는 각각 `400 TRANSACTION_DATE_RANGE_INVALID`, `400 TRANSACTION_AMOUNT_RANGE_INVALID`다. 응답은 `syntheticData=true`, `externalActionAvailable=false`, `externalActionExecuted=false`를 유지하며 실제 취소·정정·이체·export를 실행하지 않는다.
 
 #### 3.3.8 정기납부·구독·청구 — 8개
 
@@ -1424,7 +1428,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “271개 API 카탈로그를 설계했고 P0 23개를 포함한 159개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “271개 API 카탈로그를 설계했고 P0 23개를 포함한 168개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2183,7 +2187,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "43",
+        "schemaVersion": "44",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2767,7 +2771,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "43",
+    "schemaVersion": "44",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

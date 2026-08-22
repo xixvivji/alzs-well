@@ -102,6 +102,14 @@ server {
         proxy_pass http://backend:8080;
     }
 
+    # q는 고객이 입력한 안전한 검색어지만 URI query에 포함되므로 원문을 access log에 남기지 않는다.
+    location ~ ^/api/v1/customers/[^/]+/transactions/search$ {
+        access_log off;
+        limit_req zone=demo_read burst=30 nodelay;
+        limit_conn demo_conn 20;
+        proxy_pass http://backend:8080;
+    }
+
     location / {
         limit_req zone=demo_read burst=30 nodelay;
         limit_req zone=demo_mutation burst=10 nodelay;
