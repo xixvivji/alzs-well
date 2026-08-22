@@ -3,6 +3,7 @@ package com.alzswell.account;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -103,6 +105,70 @@ class AccountIntegrationTest {
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("append-only");
         assertThatThrownBy(() -> jdbc.update(
                 "update customer_account_snapshot set current_balance=0 where account_id=?", CHECKING))
+                .isInstanceOf(DataAccessException.class).hasMessageContaining("append-only");
+    }
+
+    @Test
+    void readsRecurringCounterpartiesAndAccountGroups() throws Exception {
+        mockMvc.perform(get("/api/v1/accounts/{id}/recurring-counterparties", CHECKING).with(readUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.items[0].displayName").value("안심통신"))
+                .andExpect(jsonPath("$.data.items[0].confidence").value(0.99))
+                .andExpect(jsonPath("$.data.syntheticData").value(true));
+
+        mockMvc.perform(get("/api/v1/customers/{customerId}/account-groups", CUSTOMER).with(readUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.items[0].groupName").value("생활자금"))
+                .andExpect(jsonPath("$.data.items[0].accounts.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].accounts[0].maskedAccountNumber").value("110-***-**01"));
+    }
+
+    @Test
+    void updatesDisplaySettingWithOwnershipAuthorityAndOptimisticLock() throws Exception {
+        mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"alias\":\"생활 중심\",\"hidden\":true,\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.alias").value("생활 중심"))
+                .andExpect(jsonPath("$.data.hidden").value(true))
+                .andExpect(jsonPath("$.data.rowVersion").value(2));
+
+        mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"hidden\":false,\"expectedVersion\":1}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_DISPLAY_VERSION_CONFLICT"));
+
+        mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .with(user("OTHER_CUSTOMER").authorities(() -> "ACCOUNT_WRITE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"hidden\":false,\"expectedVersion\":2}"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"hidden\":false,\"expectedVersion\":2}"))
+                .andExpect(status().isOk());
+
+        Integer events = jdbc.queryForObject(
+                "select count(*) from account_display_setting_event where account_id=?", Integer.class, CHECKING);
+        org.assertj.core.api.Assertions.assertThat(events).isEqualTo(2);
+    }
+
+    @Test
+    void immutableAccountPreferenceSnapshotsRejectMutation() {
+        assertThatThrownBy(() -> jdbc.update(
+                "delete from financial_counterparty_snapshot where counterparty_id=?",
+                UUID.fromString("95300000-0000-0000-0000-000000000001")))
+                .isInstanceOf(DataAccessException.class).hasMessageContaining("append-only");
+        assertThatThrownBy(() -> jdbc.update(
+                "update customer_account_group_snapshot set group_name='변경' where group_id=?",
+                UUID.fromString("95400000-0000-0000-0000-000000000001")))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("append-only");
     }
 

@@ -175,8 +175,9 @@ public class OpenApiConfiguration {
             return List.of(method == PathItem.HttpMethod.GET
                     ? "RECURRING_PAYMENT_READ" : "RECURRING_PAYMENT_WRITE");
         }
-        if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")) {
-            return List.of("ACCOUNT_READ");
+        if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")
+                || path.endsWith("/account-groups")) {
+            return List.of(method == PathItem.HttpMethod.GET ? "ACCOUNT_READ" : "ACCOUNT_WRITE");
         }
         if (path.contains("/privacy/")) {
             return List.of("PRIVACY_REQUEST_WRITE or PRIVACY_REQUEST_WRITE_ALL");
