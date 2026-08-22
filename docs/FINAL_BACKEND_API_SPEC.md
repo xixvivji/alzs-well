@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 140개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 155개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 131개 |
+| 카탈로그·백로그 | 116개 |
 
-업무 `IMPLEMENTED`는 고객별 직원 접근권 6개와 금융생활 의향 관리 7개를 포함해 140개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 134개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 141개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 조회 8개를 포함해 155개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 149개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 156개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -861,7 +861,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객별 직원 접근권 6개와 금융생활 의향 관리 7개를 포함해 총 140개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 141개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 134개가 노출된다. 나머지 131개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 조회 8개를 포함해 총 155개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 156개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 149개가 노출된다. 나머지 116개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1025,6 +1025,10 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | PATCH | /api/v1/accounts/{accountId}/display-settings | 계좌 별칭·노출 순서 변경 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/account-groups | 고객 지정 계좌 그룹 | OWNED |
 
+앞의 P1 조회 8개는 Flyway V42의 `customer_account_snapshot`, `customer_account_balance_snapshot`, `customer_account_restriction_snapshot`, `customer_account_statement_snapshot`으로 `IMPLEMENTED-SYNTHETIC-READ-ONLY`다. `ACCOUNT_READ` 권한과 고객 소유권을 Controller·서비스 양쪽에서 확인하며 `{accountId}` 단독 경로와 `{statementId}` 상세도 다른 고객의 식별자를 사용하면 404를 반환한다. 계좌번호는 마스킹 형식만 DB 제약으로 허용하고 원문 번호·거래 원문은 저장하지 않는다.
+
+잔액 추세의 `from`, `to`는 `YYYY-MM-DD`이며 생략 시 기준일을 끝으로 최근 약 3개월을 반환하고 최대 366일로 제한한다. 잘못된 기간은 `400 ACCOUNT_BALANCE_DATE_RANGE_INVALID`, 계좌 없음·소유권 불일치는 `404 ACCOUNT_NOT_FOUND`, 명세서 없음은 `404 ACCOUNT_STATEMENT_NOT_FOUND`다. 계좌 목록·상세의 요약 객체는 `providerMode=SYNTHETIC_PROVIDER`, `syntheticData=true`, `externalExecutionAvailable=false`를 유지한다. 상세의 `transferAvailable=false`, `closureAvailable=false`, 명세의 `fileAvailable=false`, `externalDownloadAvailable=false`를 고정하며 실제 은행 API·이체·출금·계좌해지·명세 다운로드를 실행하지 않는다. 나머지 반복상대·표시설정·계좌그룹 3개는 아직 백로그다.
+
 #### 3.3.6 통합자산·현금흐름 — 8개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1067,6 +1071,10 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | GET | /api/v1/recurring-payments/{recurringPaymentId}/occurrences | 과거·예상 발생 내역 | OWNED |
 | P1 | PUT | /api/v1/recurring-payments/{recurringPaymentId}/reminder-settings | 납부 확인 알림 설정 | OWNED |
 | P2 | POST | /api/v1/recurring-payments/{recurringPaymentId}/cancellation-guidance | 해지 방법 안내만 생성 | REFERENCE_ONLY |
+
+앞의 P1 7개는 Flyway V41의 `recurring_payment`, 추가 전용 `recurring_payment_occurrence`, `recurring_payment_reminder_event`와 함께 `IMPLEMENTED-SYNTHETIC-READ-MODEL`이다. 고객 본인의 Bearer 주체와 `RECURRING_PAYMENT_READ|WRITE` 권한을 함께 검사하며 `{recurringPaymentId}` 단독 경로도 서비스 계층에서 소유권을 다시 확인해 교차 고객 IDOR에는 404를 반환한다. 목록·상세·달력·미발생·중복 후보·발생 이력은 기준일 `2026-08-14`의 `SYNTHETIC_PROVIDER` snapshot만 읽는다. 달력 조회는 `from`, `to`를 `YYYY-MM-DD`로 받고 생략하면 기준일이 속한 달부터 두 달 범위를 사용하며 최대 93일로 제한한다.
+
+알림 설정 PUT 본문은 `enabled`, `leadDays(0..30)`, `expectedVersion`을 요구한다. 갱신은 `row_version` 낙관적 잠금으로 수행하고 충돌 시 `409 RECURRING_PAYMENT_VERSION_CONFLICT`, 잘못된 기간은 `400 RECURRING_PAYMENT_DATE_RANGE_INVALID`, 존재하지 않거나 다른 고객 소유인 자원은 `404 RECURRING_PAYMENT_NOT_FOUND`를 반환한다. 알림 채널은 `IN_APP`만 제공하며 `externalDeliveryEnabled=false`, `externalExecutionAvailable=false`, `cancellationAvailable=false`, `externalActionExecuted=false`를 고정한다. 실제 자동이체·결제·해지·SMS·푸시 외부 전송은 생성하지 않는다.
 
 #### 3.3.9 이체·지급 — 10개
 
@@ -1416,7 +1424,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “271개 API 카탈로그를 설계했고 P0 23개를 포함한 141개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “271개 API 카탈로그를 설계했고 P0 23개를 포함한 156개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2175,7 +2183,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "40",
+        "schemaVersion": "42",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2759,7 +2767,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "40",
+    "schemaVersion": "42",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

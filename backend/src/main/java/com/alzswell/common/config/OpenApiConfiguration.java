@@ -171,6 +171,13 @@ public class OpenApiConfiguration {
         if (path.contains("/financial-intents") || path.endsWith("/continuity-preparation")) {
             return List.of(method == PathItem.HttpMethod.GET ? "FINANCIAL_INTENT_READ" : "FINANCIAL_INTENT_WRITE");
         }
+        if (path.contains("/recurring-payments")) {
+            return List.of(method == PathItem.HttpMethod.GET
+                    ? "RECURRING_PAYMENT_READ" : "RECURRING_PAYMENT_WRITE");
+        }
+        if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")) {
+            return List.of("ACCOUNT_READ");
+        }
         if (path.contains("/privacy/")) {
             return List.of("PRIVACY_REQUEST_WRITE or PRIVACY_REQUEST_WRITE_ALL");
         }
