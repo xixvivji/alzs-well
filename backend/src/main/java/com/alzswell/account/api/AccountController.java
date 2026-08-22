@@ -1,10 +1,12 @@
 package com.alzswell.account.api;
 
 import com.alzswell.account.api.AccountResponses.*;
+import com.alzswell.account.api.AccountRequests.UpdateDisplaySetting;
 import com.alzswell.account.application.AccountQueryService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -86,5 +88,30 @@ public class AccountController {
             @PathVariable UUID accountId, @PathVariable UUID statementId, Authentication auth) {
         return ApiResponses.ok("ACCOUNT_STATEMENT_RETRIEVED", "거래명세서 상세를 조회했습니다.",
                 service.statement(auth.getName(), accountId, statementId));
+    }
+
+    @GetMapping("/accounts/{accountId}/recurring-counterparties")
+    @PreAuthorize("hasAuthority('ACCOUNT_READ')")
+    public ResponseEntity<ApiResponse<RecurringCounterpartyList>> recurringCounterparties(
+            @PathVariable UUID accountId, Authentication auth) {
+        return ApiResponses.ok("ACCOUNT_RECURRING_COUNTERPARTIES_RETRIEVED", "반복 거래 상대 분석을 조회했습니다.",
+                service.recurringCounterparties(auth.getName(), accountId));
+    }
+
+    @PatchMapping("/accounts/{accountId}/display-settings")
+    @PreAuthorize("hasAuthority('ACCOUNT_WRITE')")
+    public ResponseEntity<ApiResponse<DisplaySetting>> updateDisplaySetting(
+            @PathVariable UUID accountId, @Valid @RequestBody UpdateDisplaySetting command,
+            Authentication auth) {
+        return ApiResponses.ok("ACCOUNT_DISPLAY_SETTING_UPDATED", "계좌 표시 설정을 변경했습니다.",
+                service.updateDisplaySetting(auth.getName(), accountId, command));
+    }
+
+    @GetMapping("/customers/{customerId}/account-groups")
+    @PreAuthorize("#customerId == authentication.name and hasAuthority('ACCOUNT_READ')")
+    public ResponseEntity<ApiResponse<AccountGroupList>> accountGroups(
+            @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId) {
+        return ApiResponses.ok("ACCOUNT_GROUPS_RETRIEVED", "고객 지정 계좌 그룹을 조회했습니다.",
+                service.accountGroups(customerId));
     }
 }

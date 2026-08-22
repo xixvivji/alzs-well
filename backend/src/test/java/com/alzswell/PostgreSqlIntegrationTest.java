@@ -142,12 +142,18 @@ class PostgreSqlIntegrationTest {
                       ,'customer_account_balance_snapshot'
                       ,'customer_account_restriction_snapshot'
                       ,'customer_account_statement_snapshot'
+                      ,'account_display_setting'
+                      ,'account_display_setting_event'
+                      ,'financial_counterparty_snapshot'
+                      ,'account_recurring_counterparty_snapshot'
+                      ,'customer_account_group_snapshot'
+                      ,'customer_account_group_member_snapshot'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(86);
+        assertThat(tableCount).isEqualTo(92);
     }
 
     @Test
@@ -202,6 +208,21 @@ class PostgreSqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','customer_account_statement_snapshot','UPDATE')",
                 Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','account_display_setting','alias','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','account_display_setting','customer_id','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','financial_counterparty_snapshot','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','account_display_setting_event','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','account_display_setting_event','DELETE')",
+                Boolean.class)).isFalse();
     }
 
     @Test
@@ -240,7 +261,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '42'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '43'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -313,7 +334,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("42"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("43"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -363,13 +384,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(136);
+        assertThat(specification.path("paths").size()).isEqualTo(139);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(149);
+        assertThat(operationCount).isEqualTo(152);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
@@ -405,6 +426,10 @@ class PostgreSqlIntegrationTest {
         JsonNode accountRead = specification.path("paths")
                 .path("/api/v1/accounts/{accountId}/balance").path("get");
         assertThat(accountRead.path("x-alzs-required-authorities").toString()).contains("ACCOUNT_READ");
+
+        JsonNode accountWrite = specification.path("paths")
+                .path("/api/v1/accounts/{accountId}/display-settings").path("patch");
+        assertThat(accountWrite.path("x-alzs-required-authorities").toString()).contains("ACCOUNT_WRITE");
 
         JsonNode alertParameters = specification.path("paths")
                 .path("/api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts")

@@ -39,4 +39,18 @@ public final class AccountResponses {
     public record StatementList(UUID accountId, List<StatementSummary> items, int total, LocalDate dataAsOf) {}
     public record StatementDetail(UUID accountId, StatementSummary statement,
                                   boolean transactionRowsIncluded, boolean externalDownloadAvailable) {}
+    public record RecurringCounterparty(UUID counterpartyId, String displayName, String counterpartyType,
+                                        int occurrenceCount, BigDecimal averageAmount, BigDecimal lastAmount,
+                                        String currency, int estimatedCycleDays, LocalDate nextExpectedOn,
+                                        BigDecimal confidence, LocalDate dataAsOf) {}
+    public record RecurringCounterpartyList(UUID accountId, List<RecurringCounterparty> items,
+                                            int total, boolean syntheticData) {}
+    public record DisplaySetting(UUID accountId, String alias, int displayOrder, boolean hidden,
+                                 long rowVersion, OffsetDateTime updatedAt) {}
+    public record AccountGroupAccount(UUID accountId, String displayName, String maskedAccountNumber,
+                                      String institutionName, int displayOrder) {}
+    public record AccountGroup(UUID groupId, String groupName, int displayOrder,
+                               List<AccountGroupAccount> accounts, LocalDate dataAsOf) {}
+    public record AccountGroupList(List<AccountGroup> items, int total, LocalDate dataAsOf,
+                                   boolean syntheticData) {}
 }
