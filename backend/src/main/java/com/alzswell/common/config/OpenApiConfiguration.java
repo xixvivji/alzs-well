@@ -185,6 +185,12 @@ public class OpenApiConfiguration {
                 || path.endsWith("/asset-calendar") || path.endsWith("/data-freshness")) {
             return List.of("FINANCIAL_OVERVIEW_READ");
         }
+        if (path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")) {
+            return List.of("TRANSFER_PREVIEW_READ");
+        }
+        if (path.equals("/api/v1/transfer-simulations") || path.equals("/api/v1/transfer-validations")) {
+            return List.of("TRANSFER_PREVIEW_EVALUATE");
+        }
         if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")
                 || path.endsWith("/account-groups")) {
             return List.of(method == PathItem.HttpMethod.GET ? "ACCOUNT_READ" : "ACCOUNT_WRITE");
@@ -268,6 +274,7 @@ public class OpenApiConfiguration {
 
     private String runtimeBoundary(String path) {
         return path.startsWith("/api/v1/financial-institutions") || path.contains("/connections")
+                || path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")
                 ? "SYNTHETIC_EXTERNAL_ADAPTER" : "INTERNAL_OWNED";
     }
 
