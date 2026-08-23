@@ -191,6 +191,9 @@ public class OpenApiConfiguration {
         if (path.equals("/api/v1/transfer-simulations") || path.equals("/api/v1/transfer-validations")) {
             return List.of("TRANSFER_PREVIEW_EVALUATE");
         }
+        if (path.endsWith("/cards") || path.startsWith("/api/v1/cards/")) {
+            return List.of("CARD_READ");
+        }
         if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")
                 || path.endsWith("/account-groups")) {
             return List.of(method == PathItem.HttpMethod.GET ? "ACCOUNT_READ" : "ACCOUNT_WRITE");
@@ -275,6 +278,7 @@ public class OpenApiConfiguration {
     private String runtimeBoundary(String path) {
         return path.startsWith("/api/v1/financial-institutions") || path.contains("/connections")
                 || path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")
+                || path.endsWith("/cards") || path.startsWith("/api/v1/cards/")
                 ? "SYNTHETIC_EXTERNAL_ADAPTER" : "INTERNAL_OWNED";
     }
 

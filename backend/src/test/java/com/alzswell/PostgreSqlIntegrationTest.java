@@ -156,12 +156,15 @@ class PostgreSqlIntegrationTest {
                       ,'customer_asset_calendar_snapshot'
                       ,'customer_beneficiary_snapshot'
                       ,'customer_transfer_limit_snapshot'
+                      ,'customer_card_snapshot'
+                      ,'card_transaction_snapshot'
+                      ,'card_statement_snapshot'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(100);
+        assertThat(tableCount).isEqualTo(103);
     }
 
     @Test
@@ -255,6 +258,15 @@ class PostgreSqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','customer_transfer_limit_snapshot','DELETE')",
                 Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','customer_card_snapshot','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','card_transaction_snapshot','DELETE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','card_statement_snapshot','UPDATE')",
+                Boolean.class)).isFalse();
     }
 
     @Test
@@ -293,7 +305,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '46'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '47'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -366,7 +378,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("46"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("47"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -416,13 +428,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(160);
+        assertThat(specification.path("paths").size()).isEqualTo(166);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(173);
+        assertThat(operationCount).isEqualTo(179);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
