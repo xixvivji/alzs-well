@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.16.0**
+> 문서 버전: **1.17.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-24 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 193개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 201개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 78개 |
+| 카탈로그·백로그 | 70개 |
 
-업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자 보유 조회 8개를 포함해 193개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 187개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 194개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 금융보유 조회 8개, 예금·대출 상품 조회·모의계산 8개를 포함해 201개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 195개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 202개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -861,7 +861,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자 보유 조회 8개를 포함해 총 193개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 194개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 187개가 노출된다. 나머지 78개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 금융보유 조회 8개, 예금·대출 상품 조회·모의계산 8개를 포함해 총 201개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 202개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 195개가 노출된다. 나머지 70개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1137,6 +1137,8 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 | P2 | GET | /api/v1/deposit-holdings/{holdingId}/maturity-options | 만기 처리 선택지 조회 | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/deposit-applications | 계좌개설 기능 참조 | REFERENCE_ONLY |
 
+앞의 상품 목록·상세·금리표·이자 모의계산과 만기 선택지 5개는 Flyway V51의 추가 전용 합성 snapshot으로 구현한다. `FINANCIAL_PRODUCT_READ|SIMULATE` 권한을 분리하고, 만기 선택지는 Bearer 고객과 보유 예금의 소유권을 다시 확인한다. 정기예금은 일시예치 단리, 적금은 월 적립금별 잔여월 단리로 계산하며 세금은 합성 추정치다. 가입·만기선택·해지·외부 금융사 호출은 실행하지 않는다.
+
 #### 3.3.12 대출·신용 — 8개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1149,6 +1151,8 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 | P1 | GET | /api/v1/loan-holdings/{loanId}/repayment-schedule | 원리금 상환 일정 | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/loan-applications | 대출 신청 기능 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/loan-applications/{applicationId}/submit | 대출 심사 제출 기능 참조 | REFERENCE_ONLY |
+
+앞의 대출상품 목록·상세·상환 모의계산 3개도 V51 합성 snapshot으로 구현한다. 모의계산은 상품 허용 금액·기간·금리 범위를 검증하고 `EQUAL_PRINCIPAL_ESTIMATE_V1` 원금균등 계산만 수행한다. 고객의 신호·경보·건강·보호업무 데이터는 입력이나 가격결정에 사용하지 않으며 신용조회·심사·신청·외부 호출은 모두 실행하지 않는다.
 
 신호·경보 데이터는 대출 심사나 가격결정에 절대 재사용하지 않는다.
 
@@ -1450,7 +1454,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “271개 API 카탈로그를 설계했고 P0 23개와 P1 170개를 포함한 194개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “271개 API 카탈로그를 설계했고 P0 23개와 P1 170개를 포함한 202개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2209,7 +2213,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "50",
+        "schemaVersion": "51",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2793,7 +2797,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "50",
+    "schemaVersion": "51",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3943,7 +3947,7 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 
 ## 6.10 미구현 API를 CONTRACT로 승격하는 규칙
 
-현재 미구현 카탈로그·백로그 78개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
+현재 미구현 카탈로그·백로그 70개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 
 | 필수 항목 | 기록 내용 |
 |---|---|

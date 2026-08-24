@@ -189,6 +189,13 @@ public class OpenApiConfiguration {
                 || path.endsWith("/asset-calendar") || path.endsWith("/data-freshness")) {
             return List.of("FINANCIAL_OVERVIEW_READ");
         }
+        if (path.contains("/interest-simulations") || path.contains("/repayment-simulations")) {
+            return List.of("FINANCIAL_PRODUCT_SIMULATE");
+        }
+        if (path.startsWith("/api/v1/deposit-products") || path.startsWith("/api/v1/loan-products")
+                || path.endsWith("/maturity-options")) {
+            return List.of("FINANCIAL_PRODUCT_READ");
+        }
         if (path.contains("/deposit-holdings") || path.contains("/loan-holdings")
                 || path.contains("/investment-accounts")) {
             return List.of("FINANCIAL_OVERVIEW_READ");
@@ -289,7 +296,12 @@ public class OpenApiConfiguration {
     }
 
     private String runtimeBoundary(String path) {
+        if (path.contains("/interest-simulations") || path.contains("/repayment-simulations")) {
+            return "INTERNAL_OWNED";
+        }
         return path.startsWith("/api/v1/financial-institutions") || path.contains("/connections")
+                || path.startsWith("/api/v1/deposit-products") || path.startsWith("/api/v1/loan-products")
+                || path.endsWith("/maturity-options")
                 || path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")
                 || path.endsWith("/cards") || path.startsWith("/api/v1/cards/")
                 ? "SYNTHETIC_EXTERNAL_ADAPTER" : "INTERNAL_OWNED";
