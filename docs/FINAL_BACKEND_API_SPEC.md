@@ -609,7 +609,7 @@ OPEN
 7. LLM은 상태, 우선순위, 연락권한, 사유코드와 실행코드를 변경하지 못한다.
 8. 외부 LLM에는 비식별 구조화 요약만 보내고 prompt·completion 원문 로그는 기본 비활성화한다.
 9. 공식 보호수단은 출처, 기준일과 적용조건 없이 반환하지 않는다.
-10. 세션 생성을 제외한 모든 변경 명령은 `Idempotency-Key`와 서버 계산 `requestHash`를 사용하고 직원 사건 변경은 `caseVersion`으로 동시수정을 방지한다. 세션 생성은 비멱등·rate-limited다.
+10. 상태 변경 명령 중 본 명세가 `Idempotency-Key`를 표시한 API는 서버 계산 `requestHash`와 함께 중복 실행을 방지하고, 직원 사건 변경은 `caseVersion`으로 동시수정을 막는다. 조회·검색·평가와 인증 세션 명령은 각 API에 명시된 별도 중복 호출 정책을 따르며 데모 세션 생성은 비멱등·rate-limited다.
 11. actor는 요청 본문이 아니라 인증·세션 주체에서 결정한다.
 12. T0 경보 근거와 T1 맥락 근거는 별도 snapshot으로 저장하며 T1을 T0 탐지 근거로 소급 사용하지 않는다.
 13. Reset은 같은 T0 snapshot을 복원하되 새 `demoRunId`를 발급하고 이전 run의 T1·상태·감사이력을 덮어쓰지 않는다.
@@ -1275,7 +1275,11 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 V48부터 직원 접근권 판정은 `staffPrincipalId + customerId + purposeCode + scope + expiresAt`을 모두 결합한다. 목적별 scope 매트릭스는 동의, 신뢰연락인, 금융의향, 사건, 개인정보 요청, 경보, 보호가입 조회를 서로 분리하며 `*_ALL` 권한도 고객별 grant를 우회하지 않는다. 만료된 grant는 `EXPIRED`로 원자 전환하고 재발급을 허용하며, 허용·거부 판정 모두 `staff_access_decision_audit_event`에 추가 전용으로 보존한다. 자유입력 철회 사유와 탐지 근거 설명은 저장 전에 공통 민감정보 정책을 통과해야 한다.
 
-V48의 `customer_mutation_command`는 계좌 표시, 거래 범주·노트, 정기납부 알림 변경의 원문 멱등키 대신 SHA-256만 저장한다. 동일 scope·동일 키·동일 요청은 최초 JSON 응답을 재생하고, 다른 요청에 같은 키를 사용하면 각 도메인의 `*_IDEMPOTENCY_CONFLICT`를 반환한다.
+V48의 `customer_mutation_command`는 계좌 표시, 거래 범주·노트, 정기납부 알림 변경의 원문 멱등키 대신 SHA-256만 저장한다. 동일 scope·동일 키·동일 요청은 최초 업무 결과를 재사용하고, 다른 요청에 같은 키를 사용하면 각 도메인의 `*_IDEMPOTENCY_CONFLICT`를 반환한다.
+
+V49는 고객 표시·환경·접근성 설정, 경보 연기, 사건 배정·안내승인, 동의·신뢰연락인·직원 접근권 변경까지 같은 저장소를 확장한다. 재생 대상은 상태코드·업무 코드·메시지·data로 구성된 업무 결과이며, `traceId`와 응답 `timestamp`는 현재 HTTP 재요청을 추적하기 위해 새로 발급한다. 완료된 `result_payload`는 DB trigger로 다시 쓰거나 NULL로 되돌릴 수 없다.
+
+V49부터 경보 접근권은 `DETECTION_ADMIN`, 그 밖의 보호업무 접근권은 `PROTECTION_STAFF`에게만 발급할 수 있다. 거부 감사는 업무 트랜잭션이 연결을 반환한 뒤 별도 단일 트랜잭션으로 기록해 풀 크기 1에서도 403을 유지한다. grant의 고객·직원·목적·scope·기간·hash는 생성 후 불변이며 사건 배정 감사는 이벤트 당시 상태 snapshot만 반환한다.
 
 모든 grant에는 grantId, customerId, staffSubjectId, purpose, scopes, grantedAt, expiresAt, revokedAt을 저장한다. purpose와 scopes가 요청 자원에 맞지 않거나 expiresAt이 지났거나 revokedAt이 존재하면 접근을 거절한다. 현재는 내부 `auth_principal`의 활성 `PROTECTION_STAFF`만 주체로 허용하고 외부 은행 IAM을 호출하지 않는다. 실제 도입 시 기업 IdP/IAM adapter가 주체를 검증하더라도 권한 목적·범위·만료·감사 상태는 ALZ's well이 보존한다.
 
@@ -1463,7 +1467,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 |---|---:|---|
 | `Content-Type: application/json` | JSON 본문 사용 시 | 문자 인코딩은 UTF-8 |
 | `X-Trace-Id` | 선택 | 8~64자의 영문·숫자·`.`·`_`·`-`; 없거나 형식이 틀리면 서버가 생성 |
-| `Idempotency-Key` | 세션 생성을 제외한 변경 API에서 필수 | 8~64자의 고유 키; 동일 소유범위·경로·`requestHash` 재요청만 최초 결과를 재사용 |
+| `Idempotency-Key` | 명세에 멱등 명령으로 표시된 상태 변경 API에서 필수 | 8~100자의 고유 키; 동일 소유범위·경로·`requestHash` 재요청만 최초 업무 결과를 재사용 |
 | `X-Demo-Capability` | 모든 세션 범위 API에서 필수 | 고객 세션 생성 또는 인증된 직원 발급 경로에서 받은 256-bit 이상의 불투명 소유권 토큰; URL·본문·로그에 기록 금지 |
 | `X-Demo-Run-Id` | 시나리오 적재 후 run 파생 API에서 필수 | Reset 전후 실행을 구분하는 서버 발급 ID; 오래된 탭의 상태 혼합 방지 |
 | `Authorization: Bearer {token}` | PoC/운영 행원 API | 공개 합성데모에서는 생략; 운영에서는 RBAC 적용 |
@@ -1489,7 +1493,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 
 `POST /api/v1/demo/sessions`는 멱등 API가 아니다. 이 API에서 클라이언트 제공 `Idempotency-Key`를 받거나 전역 namespace로 재사용하지 않는다. Gateway 초기 제한값은 세션 생성 IP당 분당 10회, 전체 조회 IP·capability 각각 분당 120회, 상태변경 IP·capability 각각 분당 30회, 요청 본문 32KiB다. 신뢰 프록시는 환경별 CIDR allowlist로 한정하며 초과 시 `429`와 `Retry-After`를 반환한다. 애플리케이션의 동시 활성 세션 quota 초과는 `429 DEMO_SESSION_RATE_LIMITED`를 반환한다.
 
-그 밖의 변경 API에서 서버는 `HTTP method + 정규화 path + 정규화 query + content-type + canonical JSON body`의 SHA-256을 `requestHash`로 계산한다. 멱등 저장키는 `{sessionId, capabilityHash, capabilityRole, demoRunId, method, path, idempotencyKey}`다. Reset처럼 요청 시점의 run을 닫는 명령도 저장키에는 요청 헤더의 이전 `demoRunId`를 사용한다.
+멱등 명령으로 표시된 API에서 서버는 `HTTP method + 정규화 path + 정규화 query + content-type + canonical JSON body`의 SHA-256을 `requestHash`로 계산한다. 데모 멱등 저장키는 `{sessionId, capabilityHash, capabilityRole, demoRunId, method, path, idempotencyKey}`다. Reset처럼 요청 시점의 run을 닫는 명령도 저장키에는 요청 헤더의 이전 `demoRunId`를 사용한다.
 
 - 동일 저장키와 동일 `requestHash`: 최초 HTTP status·응답 code·resource ID를 그대로 재사용한다.
 - 동일 저장키와 다른 `requestHash`: `409 IDEMPOTENCY_CONFLICT`를 반환하며 상태를 변경하지 않는다.
@@ -2203,7 +2207,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "48",
+        "schemaVersion": "49",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2787,7 +2791,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "48",
+    "schemaVersion": "49",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3309,6 +3313,7 @@ GET /api/v1/customers/{customerId}
 ```http
 PATCH /api/v1/customers/{customerId}/display-profile
 Content-Type: application/json
+Idempotency-Key: {8~100자의 안전한 키}
 ```
 
 ```json
@@ -3322,7 +3327,7 @@ Content-Type: application/json
 - `displayName`: 필수, trim 후 빈 문자열 금지, 최대 80자
 - 성공: `200 CUSTOMER_DISPLAY_PROFILE_UPDATED`
 - 응답 `data`: `customerId`, `displayName`, 증가된 `version`, `updatedAt`
-- 같은 요청의 재전송을 서버가 자동 재생하지 않으므로 클라이언트는 성공 후 최신 version을 저장한다.
+- 같은 고객·키·요청의 재전송은 최초 업무 결과를 재사용하고, 같은 키에 다른 요청은 `409 CUSTOMER_IDEMPOTENCY_CONFLICT`다.
 
 ### 6.1.3 환경설정 조회·부분변경
 
@@ -3330,6 +3335,8 @@ Content-Type: application/json
 GET   /api/v1/customers/{customerId}/preferences
 PATCH /api/v1/customers/{customerId}/preferences
 ```
+
+PATCH는 `Idempotency-Key: {8~100자의 안전한 키}`를 필수로 요구한다.
 
 PATCH 요청:
 
@@ -3356,6 +3363,8 @@ PATCH 요청:
 GET /api/v1/customers/{customerId}/accessibility-settings
 PUT /api/v1/customers/{customerId}/accessibility-settings
 ```
+
+PUT은 `Idempotency-Key: {8~100자의 안전한 키}`를 필수로 요구한다.
 
 PUT 요청:
 
@@ -3788,7 +3797,7 @@ GET  /api/v1/alerts/{alertId}/audit
 - `AWAITING_CONTEXT|DEFERRED → BANK_REVIEW`: `UNRECOGNIZED|NOT_SURE` 응답인 경우다.
 - 확인 연기는 `AWAITING_CONTEXT|DEFERRED → DEFERRED`이며 서버 현재시각보다 미래이고 최대 7일 이내여야 한다.
 - 변경 요청은 `expectedVersion`을 사용한다. 버전 또는 상태가 오래되면 `409 ALERT_STATE_CONFLICT`다.
-- 생활맥락 제출은 `Idempotency-Key`가 필수다. 같은 요청은 최초 결과를 재생하고 다른 요청에 키를 재사용하면 `409 ALERT_IDEMPOTENCY_CONFLICT`다. 원문 키는 저장하지 않는다.
+- 생활맥락 제출과 확인 연기는 `Idempotency-Key`가 필수다. 같은 요청은 최초 결과를 재사용하고 다른 요청에 키를 재사용하면 `409 ALERT_IDEMPOTENCY_CONFLICT`다. 원문 키는 저장하지 않는다.
 
 ### 6.6.3 안전 응답과 감사
 
@@ -3849,12 +3858,14 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 - 완료 사건은 `REOPEN_REVIEW`로 `IN_REVIEW`에 되돌릴 수 있다.
 - `START_REVIEW`는 담당자가 배정된 사건에만 허용한다.
 - 모든 변경은 `expectedVersion`을 사용하고 오래된 요청은 `409 STAFF_CASE_STATE_CONFLICT`다.
+- 담당자 배정은 `Idempotency-Key`가 필수이며 같은 키의 다른 요청은 `409 STAFF_CASE_ASSIGNMENT_IDEMPOTENCY_CONFLICT`다.
 - 검토 요청은 `Idempotency-Key`가 필수이며 원문 키를 저장하지 않는다. 같은 키의 다른 요청은 `409 STAFF_CASE_REVIEW_IDEMPOTENCY_CONFLICT`다.
 
 ### 6.7.3 안내계획 안전경계
 
 - 허용 action은 `FDS_REVIEW`, `DELAYED_TRANSFER_GUIDANCE`, `SECURITY_SETTINGS_GUIDANCE`, `BRANCH_CONSULTATION`이다.
 - 안내계획은 배정된 `IN_REVIEW` 사건에 한 번만 승인할 수 있다.
+- 안내계획 승인은 `Idempotency-Key`가 필수이며 같은 키의 다른 요청은 `409 STAFF_GUIDANCE_IDEMPOTENCY_CONFLICT`다.
 - 응답은 `delivered=false`, `externalExecutionCreated=false`다. 실제 FDS 실행, 지연이체 신청, 설정 변경, 영업점 예약을 수행하지 않는다.
 - 사건 응답도 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
 
@@ -4032,7 +4043,7 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 
 | HTTP | 코드 | 발생 조건 |
 |---:|---|---|
-| 400 | `COMMON_INVALID_INPUT` | 세션 생성을 제외한 변경 API에서 `Idempotency-Key` 누락; `errors.field=Idempotency-Key` |
+| 400 | `COMMON_INVALID_INPUT` | 멱등 명령으로 표시된 API에서 `Idempotency-Key` 누락; `errors.field=Idempotency-Key` |
 | 409 | `IDEMPOTENCY_CONFLICT` | 같은 scope·키를 다른 `requestHash`에 재사용 |
 | 429 | `DEMO_SESSION_RATE_LIMITED` | 비멱등 세션 생성 rate limit 또는 활성 세션 quota 초과 |
 | 429 | `AUTH_LOGIN_RATE_LIMITED` | 같은 로그인 ID hash의 반복 인증 실패 한도 초과 |

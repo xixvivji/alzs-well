@@ -51,9 +51,11 @@ public class StaffAccessController {
     @PreAuthorize("hasAuthority('STAFF_ACCESS_GRANT_WRITE')")
     public ResponseEntity<ApiResponse<StaffAccessResponses.Grant>> revoke(
             @PathVariable @Pattern(regexp = CUSTOMER) String customerId, @PathVariable UUID grantId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String key,
             @Valid @RequestBody StaffAccessRequests.RevokeCommand command, Authentication authentication) {
         return ApiResponses.ok("STAFF_ACCESS_GRANT_REVOKED", "직원 접근권을 철회했습니다.",
-                service.revoke(customerId, grantId, command, AuditActor.from(authentication)));
+                service.revoke(customerId, grantId, command, key, AuditActor.from(authentication)));
     }
 
     @PostMapping("/api/v1/staff-access-policy/evaluations")

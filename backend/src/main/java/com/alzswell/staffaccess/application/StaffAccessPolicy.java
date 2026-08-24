@@ -22,6 +22,15 @@ public final class StaffAccessPolicy {
             PROTECTION_ENROLLMENT_REVIEW, Set.of("PROTECTION_ENROLLMENT_READ"),
             TRUSTED_CONTACT_MANAGEMENT, Set.of("TRUSTED_CONTACT_READ", "TRUSTED_CONTACT_WRITE"));
 
+    public static final Map<String, Set<String>> PURPOSE_ELIGIBLE_ROLES = Map.of(
+            ALERT_MANAGEMENT, Set.of("DETECTION_ADMIN"),
+            CUSTOMER_CONSENT_MANAGEMENT, Set.of("PROTECTION_STAFF"),
+            FINANCIAL_INTENT_REVIEW, Set.of("PROTECTION_STAFF"),
+            PRIVACY_REQUEST_ASSISTANCE, Set.of("PROTECTION_STAFF"),
+            PROTECTION_CASE_MANAGEMENT, Set.of("PROTECTION_STAFF"),
+            PROTECTION_ENROLLMENT_REVIEW, Set.of("PROTECTION_STAFF"),
+            TRUSTED_CONTACT_MANAGEMENT, Set.of("PROTECTION_STAFF"));
+
     public static final Set<String> ALLOWED_SCOPES = PURPOSE_SCOPES.values().stream()
             .flatMap(Set::stream).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -33,5 +42,9 @@ public final class StaffAccessPolicy {
 
     public static boolean allowsAll(String purposeCode, java.util.Collection<String> scopes) {
         return PURPOSE_SCOPES.getOrDefault(purposeCode, Set.of()).containsAll(scopes);
+    }
+
+    public static Set<String> eligibleRoles(String purposeCode) {
+        return PURPOSE_ELIGIBLE_ROLES.getOrDefault(purposeCode, Set.of());
     }
 }

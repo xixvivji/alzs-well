@@ -5,6 +5,7 @@ import static com.alzswell.staffaccess.api.StaffAccessErrorCode.*;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.staffaccess.api.StaffAccessRequests.EvaluationCommand;
 import com.alzswell.staffaccess.api.StaffAccessRequests.GrantCommand;
 import com.alzswell.staffaccess.api.StaffAccessRequests.RevokeCommand;
@@ -37,14 +38,17 @@ public class StaffAccessPolicyService {
     private final Clock clock;
     private final SensitiveTextPolicy sensitiveTextPolicy;
     private final StaffAccessDecisionAuditService decisionAudit;
+    private final MutationIdempotencyService idempotency;
 
     public StaffAccessPolicyService(JdbcClient jdbc, ObjectMapper objectMapper, Clock clock,
-            SensitiveTextPolicy sensitiveTextPolicy, StaffAccessDecisionAuditService decisionAudit) {
+            SensitiveTextPolicy sensitiveTextPolicy, StaffAccessDecisionAuditService decisionAudit,
+            MutationIdempotencyService idempotency) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.sensitiveTextPolicy = sensitiveTextPolicy;
         this.decisionAudit = decisionAudit;
+        this.idempotency = idempotency;
     }
 
     @Transactional
@@ -69,7 +73,7 @@ public class StaffAccessPolicyService {
                 + String.join(",", scopes) + "|" + command.expiresAt());
         Optional<Grant> replay = findByIdempotency(customerId, keyHash);
         if (replay.isPresent()) return verifyReplay(replay.get(), requestHash);
-        requireProtectionStaff(command.staffPrincipalId());
+        requireEligiblePrincipal(command.staffPrincipalId(), command.purposeCode());
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (!command.expiresAt().isAfter(now) || command.expiresAt().isAfter(now.plusDays(90))) {
             throw new BusinessException(STATE_CONFLICT);
@@ -93,7 +97,14 @@ public class StaffAccessPolicyService {
     }
 
     @Transactional
-    public Grant revoke(String customerId, UUID grantId, RevokeCommand command, AuditActor actor) {
+    public Grant revoke(String customerId, UUID grantId, RevokeCommand command, String idempotencyKey,
+            AuditActor actor) {
+        return idempotency.execute("STAFF_ACCESS_REVOKE:" + customerId + ":" + grantId,
+                idempotencyKey, command, Grant.class, IDEMPOTENCY_CONFLICT,
+                () -> revokeOnce(customerId, grantId, command, actor));
+    }
+
+    private Grant revokeOnce(String customerId, UUID grantId, RevokeCommand command, AuditActor actor) {
         requireAuthenticatedStaff(actor);
         Grant before = find(customerId, grantId);
         String safeReason = sensitiveTextPolicy.validate(command.reason(), "철회 사유");
@@ -112,7 +123,11 @@ public class StaffAccessPolicyService {
     public Evaluation evaluate(EvaluationCommand command, AuditActor actor) {
         requireAuthenticatedStaff(actor);
         OffsetDateTime now = OffsetDateTime.now(clock);
-        validatePurposeScope(command.purposeCode(), command.scope());
+        if (!StaffAccessPolicy.allows(command.purposeCode(), command.scope())) {
+            throw audited(STATE_CONFLICT, command.staffPrincipalId(), command.customerId(),
+                    command.purposeCode(), command.scope(), "DENY_INVALID_PURPOSE_SCOPE",
+                    "POLICY_EVALUATION", null, actor, now);
+        }
         expireDueGrants();
         Optional<Grant> grant = activeGrant(command.staffPrincipalId(), command.customerId(),
                 command.purposeCode(), command.scope(), now);
@@ -149,15 +164,18 @@ public class StaffAccessPolicyService {
             String resourceType, String resourceId) {
         if (!"STAFF".equals(actor.actorType())) return null;
         requireAuthenticatedStaff(actor);
-        validatePurposeScope(purposeCode, scope);
         OffsetDateTime now = OffsetDateTime.now(clock);
+        if (!StaffAccessPolicy.allows(purposeCode, scope)) {
+            throw audited(ACCESS_DENIED, actor.principalId(), customerId, purposeCode, scope,
+                    "DENY_INVALID_PURPOSE_SCOPE", resourceType, resourceId, actor, now);
+        }
         expireDueGrants();
         Optional<Grant> active = activeGrant(actor.principalId(), customerId, purposeCode, scope, now);
         UUID evaluationId = UUID.randomUUID();
         if (active.isEmpty()) {
-            decisionAudit.record(evaluationId, null, actor.principalId(), customerId, purposeCode, scope,
-                    false, "DENY_NO_ACTIVE_GRANT", resourceType, resourceId, actor, now);
-            throw new BusinessException(ACCESS_DENIED);
+            throw new StaffAccessAuditException(ACCESS_DENIED, new StaffAccessAuditException.Decision(
+                    evaluationId, null, actor.principalId(), customerId, purposeCode, scope, false,
+                    "DENY_NO_ACTIVE_GRANT", resourceType, resourceId, actor, now));
         }
         Grant grant = active.get();
         event(grant.grantId(), "ACCESS_USED", actor, grant.status(), grant.scopes(),
@@ -214,12 +232,23 @@ public class StaffAccessPolicyService {
         if (!"STAFF".equals(actor.actorType()) || actor.principalId() == null) throw new BusinessException(ACCESS_DENIED);
     }
 
-    private void requireProtectionStaff(UUID principalId) {
+    private void requireEligiblePrincipal(UUID principalId, String purposeCode) {
+        List<String> roles = StaffAccessPolicy.eligibleRoles(purposeCode).stream().sorted().toList();
+        if (roles.isEmpty()) throw new BusinessException(STATE_CONFLICT);
         Boolean eligible = jdbc.sql("""
                 select exists(select 1 from auth_principal p join auth_principal_role r using(principal_id)
-                  where p.principal_id=? and p.status='ACTIVE' and r.role_code='PROTECTION_STAFF')
-                """).param(principalId).query(Boolean.class).single();
+                  where p.principal_id=? and p.status='ACTIVE' and r.role_code=any(?::varchar[]))
+                """).params(principalId, array(roles)).query(Boolean.class).single();
         if (!Boolean.TRUE.equals(eligible)) throw new BusinessException(PRINCIPAL_NOT_ELIGIBLE);
+    }
+
+    private StaffAccessAuditException audited(com.alzswell.common.exception.ErrorCode errorCode,
+            UUID staffPrincipalId, String customerId, String purposeCode, String scope,
+            String decisionCode, String resourceType, String resourceId, AuditActor actor,
+            OffsetDateTime occurredAt) {
+        return new StaffAccessAuditException(errorCode, new StaffAccessAuditException.Decision(
+                UUID.randomUUID(), null, staffPrincipalId, customerId, purposeCode, scope, false,
+                decisionCode, resourceType, resourceId, actor, occurredAt));
     }
 
     private List<String> normalizeScopes(List<String> values) {
@@ -231,10 +260,6 @@ public class StaffAccessPolicyService {
 
     private void validatePurposeScopes(String purposeCode, List<String> scopes) {
         if (!StaffAccessPolicy.allowsAll(purposeCode, scopes)) throw new BusinessException(STATE_CONFLICT);
-    }
-
-    private void validatePurposeScope(String purposeCode, String scope) {
-        if (!StaffAccessPolicy.allows(purposeCode, scope)) throw new BusinessException(STATE_CONFLICT);
     }
 
     @Transactional
@@ -260,10 +285,12 @@ public class StaffAccessPolicyService {
             String detail, OffsetDateTime occurredAt) {
         jdbc.sql("""
                 insert into staff_access_grant_event(event_id,grant_id,event_type,status_snapshot,scopes_snapshot,
-                    actor_principal_id,actor_customer_id,actor_session_id,actor_type,detail,occurred_at)
-                values(?,?,?,?,?::varchar[],?,?,?,?,?::jsonb,?)
-                """).params(UUID.randomUUID(), grantId, type, status, array(scopes), actor.principalId(),
-                actor.customerId(), actor.sessionId(), actor.actorType(), detail, occurredAt).update();
+                    actor_principal_id,actor_customer_id,actor_session_id,actor_type,detail,occurred_at,
+                    customer_id_snapshot,purpose_code_snapshot,staff_principal_id_snapshot,snapshot_accuracy)
+                select ?,g.grant_id,?,?,?::varchar[],?,?,?,?,?::jsonb,?,g.customer_id,g.purpose_code,
+                       g.staff_principal_id,'EXACT' from staff_access_grant g where g.grant_id=?
+                """).params(UUID.randomUUID(), type, status, array(scopes), actor.principalId(),
+                actor.customerId(), actor.sessionId(), actor.actorType(), detail, occurredAt, grantId).update();
     }
 
     private String json(Object value) {

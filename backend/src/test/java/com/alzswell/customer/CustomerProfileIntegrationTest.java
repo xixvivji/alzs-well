@@ -83,6 +83,7 @@ class CustomerProfileIntegrationTest {
                 .andExpect(jsonPath("$.data.version").value(0));
 
         mockMvc.perform(patch("/api/v1/customers/{customerId}/display-profile", CUSTOMER_ID)
+                        .header("Idempotency-Key", "customer-display-0001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"expectedVersion":0,"displayName":"안심 고객"}
@@ -90,8 +91,16 @@ class CustomerProfileIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.displayName").value("안심 고객"))
                 .andExpect(jsonPath("$.data.version").value(1));
+        mockMvc.perform(patch("/api/v1/customers/{customerId}/display-profile", CUSTOMER_ID)
+                        .header("Idempotency-Key", "customer-display-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"expectedVersion\":0,\"displayName\":\"안심 고객\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.displayName").value("안심 고객"))
+                .andExpect(jsonPath("$.data.version").value(1));
 
         mockMvc.perform(patch("/api/v1/customers/{customerId}/preferences", CUSTOMER_ID)
+                        .header("Idempotency-Key", "customer-preferences-0001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"expectedVersion":0,"inAppNotificationEnabled":false}
@@ -102,6 +111,7 @@ class CustomerProfileIntegrationTest {
                 .andExpect(jsonPath("$.data.version").value(1));
 
         mockMvc.perform(put("/api/v1/customers/{customerId}/accessibility-settings", CUSTOMER_ID)
+                        .header("Idempotency-Key", "customer-accessibility-0001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
@@ -127,6 +137,7 @@ class CustomerProfileIntegrationTest {
     @WithMockUser(username = CUSTOMER_ID, authorities = {"CUSTOMER_PROFILE_READ", "CUSTOMER_PROFILE_WRITE"})
     void rejectsStaleVersionAndEmptyPatch() throws Exception {
         mockMvc.perform(patch("/api/v1/customers/{customerId}/display-profile", CUSTOMER_ID)
+                        .header("Idempotency-Key", "customer-display-stale-0001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"expectedVersion":99,"displayName":"충돌"}
@@ -135,6 +146,7 @@ class CustomerProfileIntegrationTest {
                 .andExpect(jsonPath("$.code").value("CUSTOMER_VERSION_CONFLICT"));
 
         mockMvc.perform(patch("/api/v1/customers/{customerId}/preferences", CUSTOMER_ID)
+                        .header("Idempotency-Key", "customer-preferences-empty-0001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"expectedVersion":0}

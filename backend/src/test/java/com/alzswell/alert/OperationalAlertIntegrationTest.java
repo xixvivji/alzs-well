@@ -36,6 +36,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class OperationalAlertIntegrationTest {
     private static final String CUSTOMER_ID = "SYN_CUSTOMER_FIN_MGMT_001";
+    private static final UUID DETECTION_STAFF_ID =
+            UUID.fromString("95000000-0000-0000-0000-000000000001");
 
     @Container
     @ServiceConnection
@@ -54,22 +56,33 @@ class OperationalAlertIntegrationTest {
                    set state = 'AWAITING_CONTEXT', alert_version = 1, deferred_until = null,
                        updated_at = created_at
                 """);
+        jdbcTemplate.update("""
+                insert into auth_principal(principal_id,login_id,customer_id,display_name,password_hash,status,
+                    created_at,updated_at)
+                select ?, 'alert-detection-staff', customer_id, '경보 탐지 직원', password_hash, 'ACTIVE', now(), now()
+                  from auth_principal where login_id='synthetic-customer'
+                on conflict(principal_id) do update set status='ACTIVE',updated_at=now()
+                """, DETECTION_STAFF_ID);
+        jdbcTemplate.update("""
+                insert into auth_principal_role(principal_id,role_code) values(?,'DETECTION_ADMIN')
+                on conflict do nothing
+                """, DETECTION_STAFF_ID);
     }
 
     @Test
     void globalAlertAuthoritiesStillRequireACustomerPurposeGrant() throws Exception {
         UUID alertId = alertId();
-        UUID principalId = jdbcTemplate.queryForObject(
-                "select principal_id from auth_principal where login_id='synthetic-customer'", UUID.class);
         var staff = authentication(new UsernamePasswordAuthenticationToken(
-                new AuthenticatedPrincipal(principalId, CUSTOMER_ID), "n/a",
+                new AuthenticatedPrincipal(DETECTION_STAFF_ID, CUSTOMER_ID), "n/a",
                 java.util.List.of(new SimpleGrantedAuthority("ALERT_READ_ALL"),
-                        new SimpleGrantedAuthority("ALERT_RESPOND_ALL"))));
+                        new SimpleGrantedAuthority("ALERT_RESPOND_ALL"),
+                        new SimpleGrantedAuthority("STAFF_ACCESS_GRANT_WRITE"))));
 
         mockMvc.perform(get("/api/v1/customers/{customerId}/alerts", CUSTOMER_ID).with(staff))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("STAFF_ACCESS_DENIED"));
         mockMvc.perform(post("/api/v1/alerts/{alertId}/defer", alertId).with(staff)
+                        .header("Idempotency-Key", "alert-defer-denied-0001")
                         .contentType(APPLICATION_JSON)
                         .content("{\"deferredUntil\":\"" + OffsetDateTime.now().plusHours(1)
                                 + "\",\"expectedVersion\":1}"))
@@ -80,12 +93,14 @@ class OperationalAlertIntegrationTest {
                 """, Integer.class, CUSTOMER_ID);
         assertThat(denied).isEqualTo(2);
 
-        jdbcTemplate.update("""
-                insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
-                    granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
-                values(?,?,?,'ALERT_MANAGEMENT',array['ALERT_READ','ALERT_RESPOND'],'ACTIVE',?,now(),
-                    now()+interval '1 day',repeat('7',64),repeat('8',64),1)
-                """, UUID.randomUUID(), principalId, CUSTOMER_ID, principalId);
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER_ID).with(staff)
+                        .header("Idempotency-Key", "alert-purpose-grant-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"staffPrincipalId\":\"" + DETECTION_STAFF_ID
+                                + "\",\"purposeCode\":\"ALERT_MANAGEMENT\","
+                                + "\"scopes\":[\"ALERT_READ\",\"ALERT_RESPOND\"],\"expiresAt\":\""
+                                + OffsetDateTime.now().plusDays(1) + "\"}"))
+                .andExpect(status().isCreated());
         mockMvc.perform(get("/api/v1/customers/{customerId}/alerts", CUSTOMER_ID).with(staff))
                 .andExpect(status().isOk());
     }
@@ -116,6 +131,14 @@ class OperationalAlertIntegrationTest {
         UUID alertId = alertId();
         String deferredUntil = OffsetDateTime.now().plusHours(2).toString();
         mockMvc.perform(post("/api/v1/alerts/{alertId}/defer", alertId)
+                        .header("Idempotency-Key", "alert-defer-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"deferredUntil\":\"" + deferredUntil + "\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentState").value("DEFERRED"))
+                .andExpect(jsonPath("$.data.version").value(2));
+        mockMvc.perform(post("/api/v1/alerts/{alertId}/defer", alertId)
+                        .header("Idempotency-Key", "alert-defer-0001")
                         .contentType(APPLICATION_JSON)
                         .content("{\"deferredUntil\":\"" + deferredUntil + "\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())

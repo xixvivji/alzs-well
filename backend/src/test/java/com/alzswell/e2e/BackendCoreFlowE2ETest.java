@@ -102,6 +102,7 @@ class BackendCoreFlowE2ETest {
 
         mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
                         .with(staff())
+                        .header("Idempotency-Key", "core-flow-assignment-001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"assignedTeam":"SAFE_TEAM_E2E","assignedTo":"__STAFF_ID__",
@@ -124,6 +125,7 @@ class BackendCoreFlowE2ETest {
 
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/guidance-plans", caseId)
                         .with(staff())
+                        .header("Idempotency-Key", "core-flow-guidance-001")
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"selectedActionCodes":["FDS_REVIEW","BRANCH_CONSULTATION"],

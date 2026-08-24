@@ -5,7 +5,6 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -16,7 +15,7 @@ public class StaffAccessDecisionAuditService {
         this.jdbc = jdbc;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void record(UUID evaluationId, UUID grantId, UUID staffPrincipalId, String customerId,
             String purposeCode, String scopeCode, boolean allowed, String decisionCode,
             String resourceType, String resourceId, AuditActor actor, OffsetDateTime occurredAt) {

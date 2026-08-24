@@ -36,8 +36,10 @@ public class ConsentController {
     }
     @PostMapping("/consents/{consentId}/withdraw") @PreAuthorize("(#customerId==authentication.name and hasAuthority('CONSENT_WRITE')) or hasAuthority('CONSENT_WRITE_ALL')")
     public ResponseEntity<ApiResponse<Consent>> withdraw(@PathVariable @Pattern(regexp=CUSTOMER_ID_PATTERN) String customerId,
-            @PathVariable UUID consentId,@Valid @RequestBody WithdrawCommand command,org.springframework.security.core.Authentication authentication){
-        return ApiResponses.ok("CONSENT_WITHDRAWN","동의를 철회했습니다.",service.withdraw(customerId,consentId,command,AuditActor.from(authentication)));
+            @PathVariable UUID consentId,@RequestHeader("Idempotency-Key") @Size(min=8,max=100)
+            @Pattern(regexp="[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody WithdrawCommand command,org.springframework.security.core.Authentication authentication){
+        return ApiResponses.ok("CONSENT_WITHDRAWN","동의를 철회했습니다.",service.withdraw(customerId,consentId,command,idempotencyKey,AuditActor.from(authentication)));
     }
     @GetMapping("/consents/{consentId}/history") @PreAuthorize("(#customerId==authentication.name and hasAuthority('CONSENT_READ')) or hasAuthority('CONSENT_READ_ALL')")
     public ResponseEntity<ApiResponse<ConsentHistory>> history(@PathVariable @Pattern(regexp=CUSTOMER_ID_PATTERN) String customerId,@PathVariable UUID consentId,org.springframework.security.core.Authentication authentication){

@@ -3,6 +3,7 @@ package com.alzswell.trustedcontact.application;
 import static com.alzswell.trustedcontact.api.TrustedContactErrorCode.*;
 
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.trustedcontact.api.TrustedContactRequests.*;
@@ -29,13 +30,15 @@ public class TrustedContactService {
     private final Clock clock;
     private final StaffAccessPolicyService staffAccess;
     private final SensitiveTextPolicy sensitiveTextPolicy;
+    private final MutationIdempotencyService idempotency;
 
     public TrustedContactService(JdbcClient jdbc, Clock clock, StaffAccessPolicyService staffAccess,
-            SensitiveTextPolicy sensitiveTextPolicy) {
+            SensitiveTextPolicy sensitiveTextPolicy, MutationIdempotencyService idempotency) {
         this.jdbc = jdbc;
         this.clock = clock;
         this.staffAccess = staffAccess;
         this.sensitiveTextPolicy = sensitiveTextPolicy;
+        this.idempotency = idempotency;
     }
 
     @Transactional
@@ -99,7 +102,14 @@ public class TrustedContactService {
     }
 
     @Transactional
-    public Contact update(String customerId, UUID id, UpdateCommand command, AuditActor actor) {
+    public Contact update(String customerId, UUID id, UpdateCommand command, String idempotencyKey,
+            AuditActor actor) {
+        return idempotency.execute("TRUSTED_CONTACT_UPDATE:" + customerId + ":" + id,
+                idempotencyKey, command, Contact.class, IDEMPOTENCY_CONFLICT,
+                () -> updateOnce(customerId, id, command, actor));
+    }
+
+    private Contact updateOnce(String customerId, UUID id, UpdateCommand command, AuditActor actor) {
         staffAccess.require(actor, customerId, "TRUSTED_CONTACT_MANAGEMENT", "TRUSTED_CONTACT_WRITE", "TRUSTED_CONTACT", id.toString());
         Contact before = find(customerId, id);
         OffsetDateTime now = OffsetDateTime.now(clock);
@@ -117,7 +127,14 @@ public class TrustedContactService {
     }
 
     @Transactional
-    public Contact revoke(String customerId, UUID id, RevokeCommand command, AuditActor actor) {
+    public Contact revoke(String customerId, UUID id, RevokeCommand command, String idempotencyKey,
+            AuditActor actor) {
+        return idempotency.execute("TRUSTED_CONTACT_REVOKE:" + customerId + ":" + id,
+                idempotencyKey, command, Contact.class, IDEMPOTENCY_CONFLICT,
+                () -> revokeOnce(customerId, id, command, actor));
+    }
+
+    private Contact revokeOnce(String customerId, UUID id, RevokeCommand command, AuditActor actor) {
         staffAccess.require(actor, customerId, "TRUSTED_CONTACT_MANAGEMENT", "TRUSTED_CONTACT_WRITE", "TRUSTED_CONTACT", id.toString());
         Contact before = find(customerId, id);
         OffsetDateTime now = OffsetDateTime.now(clock);

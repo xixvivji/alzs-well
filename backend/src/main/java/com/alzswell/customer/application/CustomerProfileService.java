@@ -2,6 +2,7 @@ package com.alzswell.customer.application;
 
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.exception.CommonErrorCode;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.customer.api.CustomerErrorCode;
 import com.alzswell.customer.api.CustomerRequests.AccessibilitySettingsCommand;
 import com.alzswell.customer.api.CustomerRequests.DisplayProfileCommand;
@@ -26,10 +27,13 @@ public class CustomerProfileService {
 
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final MutationIdempotencyService idempotency;
 
-    public CustomerProfileService(JdbcTemplate jdbcTemplate, Clock clock) {
+    public CustomerProfileService(JdbcTemplate jdbcTemplate, Clock clock,
+            MutationIdempotencyService idempotency) {
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.idempotency = idempotency;
     }
 
     @Transactional(readOnly = true)
@@ -64,16 +68,21 @@ public class CustomerProfileService {
     }
 
     @Transactional
-    public void updateDisplayProfile(String customerId, DisplayProfileCommand request) {
-        requireCustomer(customerId);
-        requireUpdated(jdbcTemplate.update(
-                """
-                update customer_profile
-                   set display_name = ?, row_version = row_version + 1, updated_at = ?
-                 where customer_id = ? and row_version = ?
-                """,
-                request.displayName().trim(), OffsetDateTime.now(clock), customerId, request.expectedVersion()
-        ));
+    public DisplayProfile updateDisplayProfile(String customerId, DisplayProfileCommand request,
+            String idempotencyKey) {
+        return idempotency.execute("CUSTOMER_DISPLAY_PROFILE:" + customerId, idempotencyKey, request,
+                DisplayProfile.class, CustomerErrorCode.CUSTOMER_IDEMPOTENCY_CONFLICT, () -> {
+                    requireCustomer(customerId);
+                    requireUpdated(jdbcTemplate.update(
+                            """
+                            update customer_profile
+                               set display_name = ?, row_version = row_version + 1, updated_at = ?
+                             where customer_id = ? and row_version = ?
+                            """,
+                            request.displayName().trim(), OffsetDateTime.now(clock), customerId,
+                            request.expectedVersion()));
+                    return getDisplayProfile(customerId);
+                });
     }
 
     @Transactional(readOnly = true)
@@ -96,26 +105,30 @@ public class CustomerProfileService {
     }
 
     @Transactional
-    public void patchPreferences(String customerId, PreferencesCommand request) {
-        requireCustomer(customerId);
-        if (request.smsNotificationEnabled() == null
-                && request.pushNotificationEnabled() == null
-                && request.inAppNotificationEnabled() == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT, "변경할 환경설정을 하나 이상 입력해 주세요.");
-        }
-        requireUpdated(jdbcTemplate.update(
-                """
-                update customer_preferences
-                   set sms_notification_enabled = coalesce(?, sms_notification_enabled),
-                       push_notification_enabled = coalesce(?, push_notification_enabled),
-                       in_app_notification_enabled = coalesce(?, in_app_notification_enabled),
-                       row_version = row_version + 1, updated_at = ?
-                 where customer_id = ? and row_version = ?
-                """,
-                request.smsNotificationEnabled(), request.pushNotificationEnabled(),
-                request.inAppNotificationEnabled(), OffsetDateTime.now(clock),
-                customerId, request.expectedVersion()
-        ));
+    public Preferences patchPreferences(String customerId, PreferencesCommand request, String idempotencyKey) {
+        return idempotency.execute("CUSTOMER_PREFERENCES:" + customerId, idempotencyKey, request,
+                Preferences.class, CustomerErrorCode.CUSTOMER_IDEMPOTENCY_CONFLICT, () -> {
+                    requireCustomer(customerId);
+                    if (request.smsNotificationEnabled() == null
+                            && request.pushNotificationEnabled() == null
+                            && request.inAppNotificationEnabled() == null) {
+                        throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                                "변경할 환경설정을 하나 이상 입력해 주세요.");
+                    }
+                    requireUpdated(jdbcTemplate.update(
+                            """
+                            update customer_preferences
+                               set sms_notification_enabled = coalesce(?, sms_notification_enabled),
+                                   push_notification_enabled = coalesce(?, push_notification_enabled),
+                                   in_app_notification_enabled = coalesce(?, in_app_notification_enabled),
+                                   row_version = row_version + 1, updated_at = ?
+                             where customer_id = ? and row_version = ?
+                            """,
+                            request.smsNotificationEnabled(), request.pushNotificationEnabled(),
+                            request.inAppNotificationEnabled(), OffsetDateTime.now(clock), customerId,
+                            request.expectedVersion()));
+                    return getPreferences(customerId);
+                });
     }
 
     @Transactional(readOnly = true)
@@ -139,18 +152,23 @@ public class CustomerProfileService {
     }
 
     @Transactional
-    public void putAccessibilitySettings(String customerId, AccessibilitySettingsCommand request) {
-        requireCustomer(customerId);
-        requireUpdated(jdbcTemplate.update(
-                """
-                update customer_accessibility_settings
-                   set large_font = ?, high_contrast = ?, speech_guidance = ?, one_hand_mode = ?,
-                       row_version = row_version + 1, updated_at = ?
-                 where customer_id = ? and row_version = ?
-                """,
-                request.largeFont(), request.highContrast(), request.speechGuidance(), request.oneHandMode(),
-                OffsetDateTime.now(clock), customerId, request.expectedVersion()
-        ));
+    public AccessibilitySettings putAccessibilitySettings(String customerId,
+            AccessibilitySettingsCommand request, String idempotencyKey) {
+        return idempotency.execute("CUSTOMER_ACCESSIBILITY:" + customerId, idempotencyKey, request,
+                AccessibilitySettings.class, CustomerErrorCode.CUSTOMER_IDEMPOTENCY_CONFLICT, () -> {
+                    requireCustomer(customerId);
+                    requireUpdated(jdbcTemplate.update(
+                            """
+                            update customer_accessibility_settings
+                               set large_font = ?, high_contrast = ?, speech_guidance = ?, one_hand_mode = ?,
+                                   row_version = row_version + 1, updated_at = ?
+                             where customer_id = ? and row_version = ?
+                            """,
+                            request.largeFont(), request.highContrast(), request.speechGuidance(),
+                            request.oneHandMode(), OffsetDateTime.now(clock), customerId,
+                            request.expectedVersion()));
+                    return getAccessibilitySettings(customerId);
+                });
     }
 
     @Transactional(readOnly = true)

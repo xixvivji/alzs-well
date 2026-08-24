@@ -97,6 +97,15 @@ class OperationalCaseIntegrationTest {
 
         mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
                         .header("Authorization", "Bearer " + staffAccessToken).contentType(APPLICATION_JSON)
+                        .header("Idempotency-Key", "case-assignment-0001")
+                        .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\""
+                                + STAFF_PRINCIPAL_ID + "\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version").value(2));
+        mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-assignment-0001")
+                        .contentType(APPLICATION_JSON)
                         .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\""
                                 + STAFF_PRINCIPAL_ID + "\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
@@ -175,12 +184,19 @@ class OperationalCaseIntegrationTest {
                 .andExpect(jsonPath("$.data.count").value(1));
 
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/guidance-plans", caseId)
-                        .header("Authorization", "Bearer " + staffAccessToken).contentType(APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-guidance-0001").contentType(APPLICATION_JSON)
                         .content("{\"selectedActionCodes\":[\"FDS_REVIEW\",\"BRANCH_CONSULTATION\"],\"expectedVersion\":4}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.caseVersion").value(5))
                 .andExpect(jsonPath("$.data.delivered").value(false))
                 .andExpect(jsonPath("$.data.externalExecutionCreated").value(false));
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/guidance-plans", caseId)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-guidance-0001").contentType(APPLICATION_JSON)
+                        .content("{\"selectedActionCodes\":[\"FDS_REVIEW\",\"BRANCH_CONSULTATION\"],\"expectedVersion\":4}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.caseVersion").value(5));
 
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/reviews", caseId)
                         .header("Authorization", "Bearer " + staffAccessToken)

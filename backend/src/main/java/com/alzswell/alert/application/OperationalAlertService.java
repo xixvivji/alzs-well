@@ -12,6 +12,7 @@ import com.alzswell.alert.api.AlertResponses.AuditTrail;
 import com.alzswell.alert.api.AlertResponses.ContextOption;
 import com.alzswell.alert.api.AlertResponses.ContextOptions;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -43,13 +44,15 @@ public class OperationalAlertService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final StaffAccessPolicyService staffAccess;
+    private final MutationIdempotencyService idempotency;
 
     public OperationalAlertService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
-            StaffAccessPolicyService staffAccess) {
+            StaffAccessPolicyService staffAccess, MutationIdempotencyService idempotency) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.staffAccess = staffAccess;
+        this.idempotency = idempotency;
     }
 
     @Transactional
@@ -147,8 +150,15 @@ public class OperationalAlertService {
     }
 
     @Transactional
-    public AlertTransition defer(UUID alertId, DeferCommand command,
+    public AlertTransition defer(UUID alertId, DeferCommand command, String idempotencyKey,
                                  boolean respondAll, AuditActor auditActor) {
+        return idempotency.execute("ALERT_DEFER:" + alertId, idempotencyKey, command,
+                AlertTransition.class, AlertErrorCode.IDEMPOTENCY_CONFLICT,
+                () -> deferOnce(alertId, command, respondAll, auditActor));
+    }
+
+    private AlertTransition deferOnce(UUID alertId, DeferCommand command,
+            boolean respondAll, AuditActor auditActor) {
         AlertDetail detail = loadAlert(alertId, auditActor.customerId(), respondAll);
         staffAccess.require(auditActor, detail.alert().customerId(), "ALERT_MANAGEMENT", "ALERT_RESPOND",
                 "ALERT", alertId.toString());

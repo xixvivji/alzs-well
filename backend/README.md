@@ -122,7 +122,7 @@ GET /api/v1/customers/{customerId}/connections/{connectionId}
 - 이후 세션 API는 `X-Demo-Capability`, 적재 후 파생 API는 `X-Demo-Run-Id`를 요구한다.
 - 고객 token으로 `/staff/**`·`/cases/**`를 호출하면 `403`, 다른 세션 token·만료 token은 존재 여부를 감추기 위해 `404`다.
 - URI 인코딩·세미콜론·중복 slash처럼 역할 분류를 모호하게 만드는 세션 경로는 컨트롤러 도달 전에 `404`로 거절하며, 컨트롤러 메서드도 역할 권한을 다시 확인한다.
-- 세션 생성을 제외한 변경 API는 8~64자 `Idempotency-Key`가 필요하다. 동일 scope·동일 request는 재생하고, 같은 key에 다른 request는 `409 IDEMPOTENCY_CONFLICT`다.
+- 상태 변경 명령 중 API 명세에 `Idempotency-Key`가 표시된 엔드포인트는 8~100자의 키가 필요하다. 동일 scope·동일 request의 업무 결과는 재생하고, 같은 key에 다른 request는 도메인별 `409 *_IDEMPOTENCY_CONFLICT`다. 조회·검색·정책평가처럼 호출 자체가 기록인 API와 로그인·로그아웃은 별도 중복 호출 정책을 사용한다.
 - Reset은 이전 run을 덮어쓰지 않고 새 `demoRunId`를 만든다. 이전 run의 거래·판단·감사자료는 보존된다.
 
 ## 고정 시나리오
@@ -159,7 +159,7 @@ P1 첫 API는 `POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-dra
 
 사건 근거 API는 합성 신호·근거 거래·공식 보호수단 출처를 행원에게 한 묶음으로 제공하며 외부 문서나 금융기관 시스템을 호출하지 않는다.
 
-현재 단위·PostgreSQL Testcontainers 통합시험은 capability/IDOR와 인코딩 경로 우회, 고객·직원 capability 분리 발급, 역할별 메서드 권한, 환경별 CORS 분리, 명시적 실행 프로필과 운영 노출 fail-closed, refresh token 재사용 탐지·절대 만료·세션 상한·전체 로그아웃, 합성 금융기관·연결 조회와 고객 소유권, run 격리, 3·2·7 신호, A/B 정책, 개인정보형 자유입력 차단, 동시 멱등 요청, 낙관적 잠금, 고객 프로필·환경설정 영속화와 소유권 검증, 목적별 동의·신뢰연락인 철회 연쇄와 열람 감사, 외부실행 금지, 감사·내부 메모 append-only 제약, 만료 정리, 후속일정 상태 불변식, 사건 타임라인·근거·코파일럿 격리, 탐지 정책·기능 플래그 변경관리, 통합 감사·출처 조회와 development OpenAPI 117개 operation 계약을 검증한다. `BackendCoreFlowE2ETest`는 기준선 계산→합성 데이터 검증·적재→결정론적 탐지→운영 경보 승격→고객 맥락응답→행원 사건 배정·검토→안내계획 승인과 감사이력을 하나의 HTTP 폐루프로 검증한다. 같은 테스트에서 네트워크 재시도형 멱등 replay, 같은 키의 다른 요청 충돌, 오래된 버전, 타 고객 접근, 실패 전이의 원자적 롤백과 `X-Trace-Id` 응답 추적도 검증한다.
+현재 단위·PostgreSQL Testcontainers 통합시험은 capability/IDOR와 인코딩 경로 우회, 고객·직원 capability 분리 발급, 역할별 메서드 권한, 환경별 CORS 분리, 명시적 실행 프로필과 운영 노출 fail-closed, refresh token 재사용 탐지·절대 만료·세션 상한·전체 로그아웃, 합성 금융기관·연결 조회와 고객 소유권, run 격리, 3·2·7 신호, A/B 정책, 개인정보형 자유입력 차단, 동시 멱등 요청, 낙관적 잠금, 고객 프로필·환경설정 영속화와 소유권 검증, 목적별 동의·신뢰연락인 철회 연쇄와 열람 감사, 외부실행 금지, 감사·내부 메모 append-only 제약, 만료 정리, 후속일정 상태 불변식, 사건 타임라인·근거·코파일럿 격리, 탐지 정책·기능 플래그 변경관리, 통합 감사·출처 조회와 development OpenAPI 계약을 검증한다. `BackendCoreFlowE2ETest`는 기준선 계산→합성 데이터 검증·적재→결정론적 탐지→운영 경보 승격→고객 맥락응답→행원 사건 배정·검토→안내계획 승인과 감사이력을 하나의 HTTP 폐루프로 검증한다. 같은 테스트에서 네트워크 재시도형 멱등 replay, 같은 키의 다른 요청 충돌, 오래된 버전, 타 고객 접근, 실패 전이의 원자적 롤백과 `X-Trace-Id` 응답 추적도 검증한다.
 
 ## AWS 백엔드 데모 배포
 

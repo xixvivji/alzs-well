@@ -249,9 +249,15 @@ public class OpenApiConfiguration {
         }
         if (path.contains("/connections")) return List.of("FINANCIAL_CONNECTION_READ or FINANCIAL_CONNECTION_READ_ALL");
         if (path.startsWith("/api/v1/financial-institutions")) return List.of("AUTHENTICATED");
-        if (path.contains("/baselines") || path.startsWith("/api/v1/signals")) {
+        if (path.contains("/baseline-calculations")) {
+            return List.of("DETECTION_CALCULATE or DETECTION_CALCULATE_ALL");
+        }
+        if (path.contains("/baselines") || path.endsWith("/signals") || path.startsWith("/api/v1/signals")) {
             return List.of(method == PathItem.HttpMethod.POST ? "DETECTION_CALCULATE or DETECTION_CALCULATE_ALL"
                     : "DETECTION_READ or DETECTION_READ_ALL");
+        }
+        if (path.startsWith("/api/v1/customers/") && path.endsWith("/detection-runs")) {
+            return List.of("DETECTION_RUN_CREATE");
         }
         if (path.startsWith("/api/v1/synthetic-datasets")) return List.of("SYNTHETIC_DATASET_ADMIN");
         if (path.startsWith("/api/v1/detection-runs") && path.endsWith("/promotion")) {
@@ -334,20 +340,32 @@ public class OpenApiConfiguration {
                 || path.endsWith("/category")
                 || path.endsWith("/note")
                 || path.endsWith("/reminder-settings")
+                || path.endsWith("/display-profile")
+                || path.endsWith("/preferences")
+                || path.endsWith("/accessibility-settings")
+                || path.endsWith("/withdraw")
+                || path.endsWith("/defer")
+                || path.endsWith("/assignment")
+                || path.endsWith("/guidance-plans")
+                || path.contains("/trusted-contacts/")
                 || (path.endsWith("/staff-access-grants"));
     }
 
     private void addHeader(Operation operation, String name, boolean required, String description) {
-        boolean alreadyPresent = operation.getParameters() != null
-                && operation.getParameters().stream().anyMatch(parameter -> name.equals(parameter.getName()));
-        if (!alreadyPresent) {
-            Parameter parameter = new HeaderParameter()
-                    .name(name)
-                    .required(required)
-                    .description(description)
-                    .schema(new StringSchema());
-            operation.addParametersItem(parameter);
+        Parameter existing = operation.getParameters() == null ? null : operation.getParameters().stream()
+                .filter(parameter -> name.equals(parameter.getName()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            if (required) existing.setRequired(true);
+            existing.setDescription(description);
+            if (existing.getSchema() == null) existing.setSchema(new StringSchema());
+            return;
         }
+        operation.addParametersItem(new HeaderParameter()
+                .name(name)
+                .required(required)
+                .description(description)
+                .schema(new StringSchema()));
     }
 
     private ApiResponse response(Operation operation, String status, String description) {

@@ -2,6 +2,7 @@ package com.alzswell.consent.application;
 
 import static com.alzswell.consent.api.ConsentErrorCode.*;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.consent.api.ConsentRequests.*;
@@ -25,7 +26,9 @@ public class ConsentService {
         "TRUSTED_CONTACT_DISCLOSURE",Set.of("CONTACT_MINIMUM"));
     private final JdbcClient jdbc; private final Clock clock; private final StaffAccessPolicyService staffAccess;
     private final SensitiveTextPolicy sensitiveTextPolicy;
-    public ConsentService(JdbcClient jdbc,Clock clock,StaffAccessPolicyService staffAccess,SensitiveTextPolicy sensitiveTextPolicy){this.jdbc=jdbc;this.clock=clock;this.staffAccess=staffAccess;this.sensitiveTextPolicy=sensitiveTextPolicy;}
+    private final MutationIdempotencyService idempotency;
+    public ConsentService(JdbcClient jdbc,Clock clock,StaffAccessPolicyService staffAccess,
+            SensitiveTextPolicy sensitiveTextPolicy,MutationIdempotencyService idempotency){this.jdbc=jdbc;this.clock=clock;this.staffAccess=staffAccess;this.sensitiveTextPolicy=sensitiveTextPolicy;this.idempotency=idempotency;}
 
     @Transactional public ConsentList active(String customerId,AuditActor actor){
         ensureCustomer(customerId);staffAccess.require(actor,customerId,"CUSTOMER_CONSENT_MANAGEMENT","CONSENT_READ","CONSENT",null);OffsetDateTime now=OffsetDateTime.now(clock);
@@ -43,7 +46,12 @@ public class ConsentService {
         if(inserted==0)return replay(customerId,keyHash,requestHash);
         scopes.forEach(scope->jdbc.sql("insert into customer_consent_scope values(?,?)").params(id,scope).update());event(id,"GRANTED","GRANTED",scopes,null,actor,now,1);return find(customerId,id);
     }
-    @Transactional public Consent withdraw(String customerId,UUID consentId,WithdrawCommand command,AuditActor actor){
+    @Transactional public Consent withdraw(String customerId,UUID consentId,WithdrawCommand command,
+            String idempotencyKey,AuditActor actor){
+        return idempotency.execute("CONSENT_WITHDRAW:"+customerId+":"+consentId,idempotencyKey,command,
+                Consent.class,IDEMPOTENCY_CONFLICT,()->withdrawOnce(customerId,consentId,command,actor));
+    }
+    private Consent withdrawOnce(String customerId,UUID consentId,WithdrawCommand command,AuditActor actor){
         staffAccess.require(actor,customerId,"CUSTOMER_CONSENT_MANAGEMENT","CONSENT_WRITE","CONSENT",consentId.toString());Consent before=find(customerId,consentId);OffsetDateTime now=OffsetDateTime.now(clock);String safeReason=sensitiveTextPolicy.validate(command.reason(),"철회 사유");
         int changed=jdbc.sql("update customer_consent set status='WITHDRAWN',withdrawn_at=:now,withdrawal_reason=:reason,row_version=row_version+1,updated_at=:now where customer_id=:customer and consent_id=:consent and status='GRANTED' and row_version=:version and expires_at>:now").param("now",now).param("reason",safeReason).param("customer",customerId).param("consent",consentId).param("version",command.expectedVersion()).update();
         if(changed==0)throw new BusinessException(CONSENT_STATE_CONFLICT);event(consentId,"WITHDRAWN","WITHDRAWN",before.scopes(),safeReason,actor,now,before.version()+1);

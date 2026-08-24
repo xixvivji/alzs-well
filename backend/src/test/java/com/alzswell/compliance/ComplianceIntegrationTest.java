@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.MediaType;
 import org.springframework.dao.DataAccessException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -141,6 +142,34 @@ class ComplianceIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.syntheticData").value(true))
                 .andExpect(jsonPath("$.data.externalProviderCalled").value(false));
+    }
+
+    @Test
+    @Transactional
+    void caseAssignmentAuditKeepsTheEventTimeStatusSnapshot() throws Exception {
+        java.util.Map<String,Object> alert = jdbcTemplate.queryForMap("""
+                select alert_id,signal_id,customer_id,severity from operational_alert order by alert_id limit 1
+                """);
+        UUID caseId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into operational_protection_case(case_id,alert_id,signal_id,customer_id,review_priority,
+                    task_status,case_version,created_at,updated_at)
+                values(?,?,?,?,?,'PENDING',1,now(),now())
+                """, caseId, alert.get("alert_id"), alert.get("signal_id"), alert.get("customer_id"),
+                alert.get("severity"));
+        UUID activityId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into operational_case_activity(activity_id,case_id,activity_type,actor_subject,detail,
+                    occurred_at,previous_status,resulting_status,snapshot_accuracy)
+                values(?,?,'CASE_ASSIGNED','snapshot-auditor','{}'::jsonb,now(),'PENDING','PENDING','EXACT')
+                """, activityId, caseId);
+        jdbcTemplate.update("update operational_protection_case set task_status='IN_REVIEW' where case_id=?", caseId);
+
+        mockMvc.perform(get("/api/v1/audit/events/{eventId}", "CASE_ASSIGNMENT:" + activityId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.beforeState").value("PENDING"))
+                .andExpect(jsonPath("$.data.afterState").value("PENDING"))
+                .andExpect(jsonPath("$.data.detail.snapshotAccuracy").value("EXACT"));
     }
 
     @Test

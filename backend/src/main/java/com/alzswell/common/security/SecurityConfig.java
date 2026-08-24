@@ -262,6 +262,15 @@ public class SecurityConfig {
         if (requireHttps && !scheme.equals("https")) {
             throw new IllegalArgumentException("운영 CORS origin은 HTTPS여야 합니다: " + origin);
         }
-        return origin;
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        int port = uri.getPort();
+        if ((scheme.equals("https") && port == 443) || (scheme.equals("http") && port == 80)) {
+            port = -1;
+        }
+        try {
+            return new URI(scheme, null, host, port, null, null, null).toASCIIString();
+        } catch (java.net.URISyntaxException exception) {
+            throw new IllegalArgumentException("유효하지 않은 CORS origin입니다: " + origin, exception);
+        }
     }
 }

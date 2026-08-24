@@ -82,6 +82,7 @@ class ConsentIntegrationTest {
                 .andExpect(jsonPath("$.data.externalDisclosureRequested").value(false))
                 .andExpect(jsonPath("$.data.externalDisclosureCreated").value(false));
         mockMvc.perform(post("/api/v1/customers/{customerId}/consents/{consentId}/withdraw",CUSTOMER_ID,consentId)
+                        .header("Idempotency-Key","consent-withdraw-0001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedVersion\":"+version+",\"reason\":\"고객 요청\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("WITHDRAWN"))

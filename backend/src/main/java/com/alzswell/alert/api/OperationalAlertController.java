@@ -72,11 +72,14 @@ public class OperationalAlertController {
     @PostMapping("/{alertId}/defer")
     @PreAuthorize("hasAnyAuthority('ALERT_RESPOND', 'ALERT_RESPOND_ALL')")
     public ResponseEntity<ApiResponse<AlertTransition>> defer(
-            @PathVariable UUID alertId, @Valid @RequestBody DeferCommand command,
+            @PathVariable UUID alertId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody DeferCommand command,
             Authentication authentication) {
         AuditActor actor = AuditActor.from(authentication);
         return ApiResponses.ok("ALERT_DEFERRED", "경보 확인을 지정한 시각까지 연기했습니다.",
-                alertService.defer(alertId, command,
+                alertService.defer(alertId, command, idempotencyKey,
                         has(authentication, "ALERT_RESPOND_ALL"), actor));
     }
 

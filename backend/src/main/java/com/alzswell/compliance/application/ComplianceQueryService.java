@@ -88,7 +88,8 @@ public class ComplianceQueryService {
                 from operational_case_follow_up_event e join operational_protection_case c on c.case_id=e.case_id
               union all
               select 'CASE_ASSIGNMENT:'||e.activity_id,'CASE_ASSIGNMENT',e.activity_id::text,e.activity_type,
-                     e.actor_subject,c.customer_id,'CASE',e.case_id::text,null,c.task_status,e.detail,null,e.occurred_at
+                     e.actor_subject,c.customer_id,'CASE',e.case_id::text,e.previous_status,e.resulting_status,
+                     e.detail || jsonb_build_object('snapshotAccuracy',e.snapshot_accuracy),null,e.occurred_at
                 from operational_case_activity e join operational_protection_case c on c.case_id=e.case_id
               union all
               select 'GUIDANCE_PLAN:'||g.guidance_plan_id,'GUIDANCE_PLAN',g.guidance_plan_id::text,
@@ -117,10 +118,12 @@ public class ComplianceQueryService {
                 from customer_transaction_preference_event e
               union all
               select 'STAFF_ACCESS:'||e.event_id,'STAFF_ACCESS',e.event_id::text,e.event_type,
-                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),g.customer_id,
+                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),e.customer_id_snapshot,
                      'STAFF_ACCESS_GRANT',e.grant_id::text,null,e.status_snapshot,
-                     e.detail || jsonb_build_object('scopes',e.scopes_snapshot),null,e.occurred_at
-                from staff_access_grant_event e join staff_access_grant g on g.grant_id=e.grant_id
+                     e.detail || jsonb_build_object('scopes',e.scopes_snapshot,
+                         'purposeCode',e.purpose_code_snapshot,'staffPrincipalId',e.staff_principal_id_snapshot,
+                         'snapshotAccuracy',e.snapshot_accuracy),null,e.occurred_at
+                from staff_access_grant_event e
               union all
               select 'STAFF_ACCESS_DECISION:'||e.evaluation_id,'STAFF_ACCESS_DECISION',e.evaluation_id::text,
                      'STAFF_ACCESS_EVALUATED',coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),

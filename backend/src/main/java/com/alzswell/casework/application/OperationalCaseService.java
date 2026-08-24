@@ -21,6 +21,7 @@ import com.alzswell.casework.api.CaseworkResponses.FollowUp;
 import com.alzswell.casework.api.CaseworkResponses.FollowUps;
 import com.alzswell.casework.api.CaseworkResponses.TimelineEvent;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.staffaccess.api.StaffAccessErrorCode;
@@ -49,14 +50,17 @@ public class OperationalCaseService {
     private final Clock clock;
     private final StaffAccessPolicyService staffAccess;
     private final SensitiveTextPolicy sensitiveTextPolicy;
+    private final MutationIdempotencyService idempotency;
 
     public OperationalCaseService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
-            StaffAccessPolicyService staffAccess, SensitiveTextPolicy sensitiveTextPolicy) {
+            StaffAccessPolicyService staffAccess, SensitiveTextPolicy sensitiveTextPolicy,
+            MutationIdempotencyService idempotency) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.staffAccess = staffAccess;
         this.sensitiveTextPolicy = sensitiveTextPolicy;
+        this.idempotency = idempotency;
     }
 
     @Transactional
@@ -132,7 +136,14 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public CaseTransition assign(UUID caseId, AssignmentCommand command, AuditActor actor) {
+    public CaseTransition assign(UUID caseId, AssignmentCommand command, String idempotencyKey,
+            AuditActor actor) {
+        return idempotency.execute("CASE_ASSIGNMENT:" + caseId, idempotencyKey, command,
+                CaseTransition.class, CaseworkErrorCode.ASSIGNMENT_IDEMPOTENCY_CONFLICT,
+                () -> assignOnce(caseId, command, actor));
+    }
+
+    private CaseTransition assignOnce(UUID caseId, AssignmentCommand command, AuditActor actor) {
         CaseSummary current = detailRaw(caseId).caseSummary();
         staffAccess.require(actor, current.customerId(), "PROTECTION_CASE_MANAGEMENT", "CASE_ASSIGN", "CASE", caseId.toString());
         requireEligibleAssignee(command.assignedTo(), current.customerId());
@@ -148,11 +159,13 @@ public class OperationalCaseService {
         if (updated != 1) throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
         jdbcTemplate.update("""
                 insert into operational_case_activity (
-                    activity_id, case_id, activity_type, actor_subject, detail, occurred_at
-                ) values (?, ?, 'CASE_ASSIGNED', ?, ?::jsonb, ?)
+                    activity_id, case_id, activity_type, actor_subject, detail, occurred_at,
+                    previous_status, resulting_status, snapshot_accuracy
+                ) values (?, ?, 'CASE_ASSIGNED', ?, ?::jsonb, ?, ?, ?, 'EXACT')
                 """, UUID.randomUUID(), caseId, actor.legacyActorId(),
                 json(java.util.Map.of("assignedTeam", command.assignedTeam(),
-                        "assignedTo", command.assignedTo().toString())), now);
+                        "assignedTo", command.assignedTo().toString())), now,
+                current.taskStatus(), current.taskStatus());
         return transition(caseId, current.taskStatus(), current.taskStatus(), command.expectedVersion() + 1,
                 "ASSIGN", now, false);
     }
@@ -387,7 +400,14 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public GuidancePlan approveGuidance(UUID caseId, GuidancePlanCommand command, AuditActor approver) {
+    public GuidancePlan approveGuidance(UUID caseId, GuidancePlanCommand command, String idempotencyKey,
+            AuditActor approver) {
+        return idempotency.execute("CASE_GUIDANCE:" + caseId, idempotencyKey, command,
+                GuidancePlan.class, CaseworkErrorCode.GUIDANCE_IDEMPOTENCY_CONFLICT,
+                () -> approveGuidanceOnce(caseId, command, approver));
+    }
+
+    private GuidancePlan approveGuidanceOnce(UUID caseId, GuidancePlanCommand command, AuditActor approver) {
         CaseSummary current = detailRaw(caseId).caseSummary();
         requireAssigned(current, approver, "CASE_GUIDANCE");
         if (current.version() != command.expectedVersion() || !current.taskStatus().equals("IN_REVIEW")

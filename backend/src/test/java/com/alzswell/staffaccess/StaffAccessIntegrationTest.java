@@ -84,7 +84,7 @@ class StaffAccessIntegrationTest {
                         .with(admin()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalCount").value(2));
         mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants/{grantId}/revoke", CUSTOMER, grantId)
-                        .with(admin()).contentType(APPLICATION_JSON)
+                        .with(admin()).header("Idempotency-Key", "staff-grant-revoke-0001").contentType(APPLICATION_JSON)
                         .content("{\"expectedVersion\":1,\"reason\":\"업무 종료\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("REVOKED"));
         mockMvc.perform(post("/api/v1/staff-access-policy/evaluations").with(admin())
@@ -140,13 +140,55 @@ class StaffAccessIntegrationTest {
                  where purpose_code='FINANCIAL_INTENT_REVIEW' and status='ACTIVE'
                 """, UUID.class);
         mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants/{grantId}/revoke",
-                        CUSTOMER, renewalId).with(admin()).contentType(APPLICATION_JSON)
+                        CUSTOMER, renewalId).with(admin()).header("Idempotency-Key", "staff-grant-revoke-sensitive-001")
+                        .contentType(APPLICATION_JSON)
                         .content("{\"expectedVersion\":1,\"reason\":\"계좌번호 123456789\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
         assertThat(jdbcTemplate.queryForObject(
                 "select status from staff_access_grant where grant_id=?", String.class, renewalId))
                 .isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void alignsAlertPurposeWithDetectionRoleAndAuditsInvalidEvaluation() throws Exception {
+        String alertGrant = ("{\"staffPrincipalId\":\"%s\",\"purposeCode\":\"ALERT_MANAGEMENT\","
+                + "\"scopes\":[\"ALERT_READ\",\"ALERT_RESPOND\"],\"expiresAt\":\"%s\"}")
+                .formatted(ADMIN, OffsetDateTime.now().plusDays(1));
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER)
+                        .with(admin()).header("Idempotency-Key", "alert-role-grant-001")
+                        .contentType(APPLICATION_JSON).content(alertGrant))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.staffPrincipalId").value(ADMIN.toString()));
+
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER)
+                        .with(admin()).header("Idempotency-Key", "alert-role-invalid-001")
+                        .contentType(APPLICATION_JSON).content(alertGrant.replace(ADMIN.toString(), STAFF.toString())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("STAFF_ACCESS_PRINCIPAL_NOT_ELIGIBLE"));
+
+        mockMvc.perform(post("/api/v1/staff-access-policy/evaluations").with(admin())
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"staffPrincipalId\":\"" + STAFF + "\",\"customerId\":\"" + CUSTOMER
+                                + "\",\"purposeCode\":\"FINANCIAL_INTENT_REVIEW\",\"scope\":\"CASE_READ\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STAFF_ACCESS_GRANT_STATE_CONFLICT"));
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from staff_access_decision_audit_event
+                 where decision_code='DENY_INVALID_PURPOSE_SCOPE' and allowed=false
+                """, Integer.class)).isEqualTo(1);
+
+        String unknownCustomer = "UNKNOWN-CUSTOMER-AUDIT";
+        mockMvc.perform(post("/api/v1/staff-access-policy/evaluations").with(admin())
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"staffPrincipalId\":\"" + STAFF + "\",\"customerId\":\"" + unknownCustomer
+                                + "\",\"purposeCode\":\"FINANCIAL_INTENT_REVIEW\",\"scope\":\"CASE_READ\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STAFF_ACCESS_GRANT_STATE_CONFLICT"));
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from staff_access_decision_audit_event
+                 where customer_id=? and decision_code='DENY_INVALID_PURPOSE_SCOPE' and allowed=false
+                """, Integer.class, unknownCustomer)).isEqualTo(1);
     }
 
     private void principal(UUID id, String loginId, String role) {

@@ -103,6 +103,25 @@ class DetectionPolicyIntegrationTest {
     }
 
     @Test
+    void databaseRejectsDirectActiveInsertAndPublishedPolicyRewrite() {
+        UUID activeId = jdbcTemplate.queryForObject(
+                "select policy_id from detection_policy_version where status='ACTIVE'", UUID.class);
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                update detection_policy_version set description='직접 변조' where policy_id=?
+                """, activeId)).isInstanceOf(org.springframework.dao.DataAccessException.class)
+                .satisfies(exception -> assertThat(((org.springframework.dao.DataAccessException) exception)
+                        .getMostSpecificCause().getMessage()).contains("invalid or unaudited"));
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                insert into detection_policy_version(policy_id,version_code,status,description,rules,rules_hash,
+                    row_version,created_by,created_at,published_by,published_at)
+                values(?,'direct-active-test','ACTIVE','직접 활성','[]'::jsonb,?,0,'test',now(),'test',now())
+                """, UUID.randomUUID(), "sha256:" + "a".repeat(64)))
+                .isInstanceOf(org.springframework.dao.DataAccessException.class)
+                .satisfies(exception -> assertThat(((org.springframework.dao.DataAccessException) exception)
+                        .getMostSpecificCause().getMessage()).contains("must be inserted as draft"));
+    }
+
+    @Test
     @WithMockUser(username = "customer", authorities = "DETECTION_READ")
     void requiresPolicyAdministratorPermission() throws Exception {
         mockMvc.perform(get("/api/v1/admin/rules")).andExpect(status().isForbidden());
