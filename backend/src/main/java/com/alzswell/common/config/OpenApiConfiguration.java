@@ -189,6 +189,10 @@ public class OpenApiConfiguration {
                 || path.endsWith("/asset-calendar") || path.endsWith("/data-freshness")) {
             return List.of("FINANCIAL_OVERVIEW_READ");
         }
+        if (path.contains("/deposit-holdings") || path.contains("/loan-holdings")
+                || path.contains("/investment-accounts")) {
+            return List.of("FINANCIAL_OVERVIEW_READ");
+        }
         if (path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")) {
             return List.of("TRANSFER_PREVIEW_READ");
         }
