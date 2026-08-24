@@ -204,7 +204,8 @@ public class OpenApiConfiguration {
             return List.of("FINANCIAL_PRODUCT_READ");
         }
         if (path.contains("/deposit-holdings") || path.contains("/loan-holdings")
-                || path.contains("/investment-accounts")) {
+                || path.contains("/investment-accounts") || path.contains("/pension-holdings")
+                || path.contains("/trust-holdings")) {
             return List.of("FINANCIAL_OVERVIEW_READ");
         }
         if (path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")) {
@@ -311,6 +312,7 @@ public class OpenApiConfiguration {
                 || path.startsWith("/api/v1/deposit-products") || path.startsWith("/api/v1/loan-products")
                 || path.endsWith("/maturity-options")
                 || path.endsWith("/orders") || path.startsWith("/api/v1/market-instruments/")
+                || path.contains("/pension-holdings") || path.contains("/trust-holdings")
                 || path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")
                 || path.endsWith("/cards") || path.startsWith("/api/v1/cards/")
                 ? "SYNTHETIC_EXTERNAL_ADAPTER" : "INTERNAL_OWNED";
