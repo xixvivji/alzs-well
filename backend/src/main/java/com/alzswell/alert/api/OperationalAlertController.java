@@ -2,10 +2,12 @@ package com.alzswell.alert.api;
 
 import com.alzswell.alert.api.AlertRequests.ContextResponseCommand;
 import com.alzswell.alert.api.AlertRequests.DeferCommand;
+import com.alzswell.alert.api.AlertRequests.AppealCommand;
 import com.alzswell.alert.api.AlertResponses.AlertDetail;
 import com.alzswell.alert.api.AlertResponses.AlertTransition;
 import com.alzswell.alert.api.AlertResponses.AuditTrail;
 import com.alzswell.alert.api.AlertResponses.ContextOptions;
+import com.alzswell.alert.api.AlertResponses.Appeal;
 import com.alzswell.alert.application.OperationalAlertService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
@@ -81,6 +83,18 @@ public class OperationalAlertController {
         return ApiResponses.ok("ALERT_DEFERRED", "경보 확인을 지정한 시각까지 연기했습니다.",
                 alertService.defer(alertId, command, idempotencyKey,
                         has(authentication, "ALERT_RESPOND_ALL"), actor));
+    }
+
+    @PostMapping("/{alertId}/appeals")
+    @PreAuthorize("hasAuthority('ALERT_APPEAL')")
+    public ResponseEntity<ApiResponse<Appeal>> appeal(
+            @PathVariable UUID alertId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody AppealCommand command,
+            Authentication authentication) {
+        return ApiResponses.created("ALERT_APPEAL_SUBMITTED", "사람의 재검토 요청을 등록했습니다.",
+                alertService.appeal(alertId, command, idempotencyKey, AuditActor.from(authentication)));
     }
 
     @GetMapping("/{alertId}/audit")

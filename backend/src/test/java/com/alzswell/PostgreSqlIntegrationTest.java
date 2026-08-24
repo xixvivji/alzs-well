@@ -142,6 +142,8 @@ class PostgreSqlIntegrationTest {
                       ,'customer_pension_holding_snapshot'
                       ,'pension_projection_snapshot'
                       ,'customer_trust_holding_snapshot'
+                      ,'operational_alert_appeal'
+                      ,'operational_case_override_event'
                       ,'operational_feature_flag'
                       ,'feature_flag_change_event'
                       ,'compliance_retention_policy'
@@ -188,7 +190,7 @@ class PostgreSqlIntegrationTest {
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(126);
+        assertThat(tableCount).isEqualTo(128);
     }
 
     @Test
@@ -395,7 +397,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '53'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '54'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -468,7 +470,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("53"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("54"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -527,13 +529,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(190);
+        assertThat(specification.path("paths").size()).isEqualTo(192);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(204);
+        assertThat(operationCount).isEqualTo(206);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)

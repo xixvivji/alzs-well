@@ -40,10 +40,22 @@ public class ComplianceQueryService {
                      'ALERT',e.alert_id::text,e.previous_state,e.resulting_state,e.detail,e.integrity_hash,e.created_at
                 from operational_alert_audit_event e join operational_alert a on a.alert_id=e.alert_id
               union all
+              select 'ALERT_APPEAL:'||p.appeal_id,'ALERT_APPEAL',p.appeal_id::text,'APPEAL_SUBMITTED',
+                     p.actor_customer_id,p.customer_id,'ALERT',p.alert_id::text,p.previous_state,p.resulting_state,
+                     jsonb_build_object('reasonCode',p.reason_code,'caseId',p.case_id,'status',p.status),
+                     p.integrity_hash,p.created_at from operational_alert_appeal p
+              union all
               select 'CASE_REVIEW:'||e.review_event_id,'CASE_REVIEW',e.review_event_id::text,e.action_code,
                      e.reviewer_subject,c.customer_id,'CASE',e.case_id::text,e.previous_status,e.resulting_status,
                      jsonb_build_object('note',e.note,'requestHash',e.request_hash),e.request_hash,e.created_at
                 from operational_case_review_event e join operational_protection_case c on c.case_id=e.case_id
+              union all
+              select 'CASE_OVERRIDE:'||e.override_event_id,'CASE_OVERRIDE',e.override_event_id::text,
+                     'POLICY_OVERRIDE_REVIEW',e.reviewer_principal_id::text,c.customer_id,'CASE',e.case_id::text,
+                     e.previous_status,e.resulting_status,
+                     jsonb_build_object('reasonCode',e.reason_code,'policyVersion',e.policy_version),
+                     e.integrity_hash,e.created_at
+                from operational_case_override_event e join operational_protection_case c on c.case_id=e.case_id
               union all
               select 'CONSENT:'||e.event_id,'CONSENT',e.event_id::text,e.event_type,e.actor_id,c.customer_id,
                      'CONSENT',e.consent_id::text,null,e.status_snapshot,

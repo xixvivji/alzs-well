@@ -7,6 +7,7 @@ import com.alzswell.casework.api.CaseworkRequests.FollowUpCommand;
 import com.alzswell.casework.api.CaseworkRequests.FollowUpUpdateCommand;
 import com.alzswell.casework.api.CaseworkRequests.NoteCommand;
 import com.alzswell.casework.api.CaseworkRequests.ReviewCommand;
+import com.alzswell.casework.api.CaseworkRequests.OverrideCommand;
 import com.alzswell.casework.api.CaseworkResponses.CaseDetail;
 import com.alzswell.casework.api.CaseworkResponses.CaseEvidence;
 import com.alzswell.casework.api.CaseworkResponses.CaseNote;
@@ -15,6 +16,7 @@ import com.alzswell.casework.api.CaseworkResponses.CaseQueue;
 import com.alzswell.casework.api.CaseworkResponses.CaseSummary;
 import com.alzswell.casework.api.CaseworkResponses.CaseTimeline;
 import com.alzswell.casework.api.CaseworkResponses.CaseTransition;
+import com.alzswell.casework.api.CaseworkResponses.CaseOverride;
 import com.alzswell.casework.api.CaseworkResponses.EvidenceItem;
 import com.alzswell.casework.api.CaseworkResponses.GuidancePlan;
 import com.alzswell.casework.api.CaseworkResponses.FollowUp;
@@ -221,6 +223,10 @@ public class OperationalCaseService {
                            '행원 검토 상태 변경'::varchar, created_at
                       from operational_case_review_event where case_id = ?
                     union all
+                    select 'POLICY_OVERRIDE_REVIEW'::varchar, reviewer_principal_id::varchar,
+                           previous_status, resulting_status, '정책 결과 재검토 요청'::varchar, created_at
+                      from operational_case_override_event where case_id = ?
+                    union all
                     select 'GUIDANCE_APPROVED'::varchar, approved_by, 'IN_REVIEW'::varchar,
                            'GUIDANCE_APPROVED'::varchar, '고객 안내계획 승인'::varchar, approved_at
                       from operational_guidance_plan where case_id = ?
@@ -237,7 +243,7 @@ public class OperationalCaseService {
                         rs.getString("actor_subject"), rs.getString("previous_state"),
                         rs.getString("resulting_state"), rs.getString("summary"),
                         rs.getObject("occurred_at", OffsetDateTime.class)),
-                caseId, alertId, caseId, caseId, caseId, caseId, caseId);
+                caseId, alertId, caseId, caseId, caseId, caseId, caseId, caseId);
         return new CaseTimeline(caseId, items, items.size());
     }
 
@@ -397,6 +403,71 @@ public class OperationalCaseService {
                 reviewer.legacyActorId(), safeNote, requestHash, keyHash, now);
         return transition(caseId, current.taskStatus(), next, command.expectedVersion() + 1,
                 command.actionCode(), now, false);
+    }
+
+    @Transactional
+    public CaseOverride override(UUID caseId, OverrideCommand command, String idempotencyKey, AuditActor reviewer) {
+        CaseSummary visible = detailRaw(caseId).caseSummary();
+        requireAssigned(visible, reviewer, "CASE_OVERRIDE");
+        String rationale = sensitiveTextPolicy.validate(command.rationale(), "rationale");
+        String keyHash = sha256(idempotencyKey);
+        String requestHash = sha256(caseId + "|" + command.reasonCode() + "|" + rationale
+                + "|" + command.expectedVersion());
+        CaseOverride replay = findOverrideReplay(caseId, keyHash, requestHash, visible.version(), true);
+        if (replay != null) return replay;
+        CaseSummary current = lockCaseSummary(caseId);
+        requireAssigned(current, reviewer, "CASE_OVERRIDE");
+        replay = findOverrideReplay(caseId, keyHash, requestHash, current.version(), true);
+        if (replay != null) return replay;
+        if (current.version() != command.expectedVersion()
+                || !List.of("GUIDANCE_APPROVED", "COMPLETED").contains(current.taskStatus())) {
+            throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
+        }
+        String policyVersion = jdbcTemplate.queryForObject("""
+                select s.algorithm_version from operational_protection_case c
+                join customer_detection_signal s on s.signal_id=c.signal_id where c.case_id=?
+                """, String.class, caseId);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        int updated = jdbcTemplate.update("""
+                update operational_protection_case set task_status='IN_REVIEW',
+                       case_version=case_version+1,updated_at=?
+                 where case_id=? and case_version=? and task_status in ('GUIDANCE_APPROVED','COMPLETED')
+                """, now, caseId, command.expectedVersion());
+        if (updated != 1) throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
+        UUID eventId = UUID.randomUUID();
+        String integrityHash = sha256(eventId + "|" + caseId + "|" + command.reasonCode() + "|"
+                + rationale + "|" + policyVersion + "|" + current.taskStatus() + "|" + reviewer.principalId()
+                + "|" + now);
+        jdbcTemplate.update("""
+                insert into operational_case_override_event(
+                    override_event_id,case_id,reason_code,rationale,policy_version,previous_status,
+                    resulting_status,reviewer_principal_id,request_hash,idempotency_key_hash,created_at,integrity_hash
+                ) values(?,?,?,?,?,?,'IN_REVIEW',?,?,?,?,?)
+                """, eventId, caseId, command.reasonCode(), rationale, policyVersion, current.taskStatus(),
+                reviewer.principalId(), requestHash, keyHash, now, integrityHash);
+        return new CaseOverride(eventId, caseId, command.reasonCode(), policyVersion,
+                current.taskStatus(), "IN_REVIEW", command.expectedVersion() + 1,
+                reviewer.principalId().toString(), now, false, false, false);
+    }
+
+    private CaseOverride findOverrideReplay(UUID caseId, String keyHash, String requestHash,
+                                            long currentVersion, boolean replayed) {
+        List<CaseOverride> rows = jdbcTemplate.query("""
+                select override_event_id,case_id,reason_code,policy_version,previous_status,
+                       resulting_status,reviewer_principal_id,request_hash,created_at
+                  from operational_case_override_event where case_id=? and idempotency_key_hash=?
+                """, (rs,n) -> {
+                    if (!secureHashEquals(rs.getString("request_hash"), requestHash)) {
+                        throw new BusinessException(CaseworkErrorCode.OVERRIDE_IDEMPOTENCY_CONFLICT);
+                    }
+                    return new CaseOverride(rs.getObject("override_event_id",UUID.class),
+                            rs.getObject("case_id",UUID.class),rs.getString("reason_code"),
+                            rs.getString("policy_version"),rs.getString("previous_status"),
+                            rs.getString("resulting_status"),currentVersion,
+                            rs.getObject("reviewer_principal_id",UUID.class).toString(),
+                            rs.getObject("created_at",OffsetDateTime.class),replayed,false,false);
+                }, caseId, keyHash);
+        return rows.isEmpty() ? null : rows.getFirst();
     }
 
     @Transactional

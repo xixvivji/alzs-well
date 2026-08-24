@@ -48,4 +48,10 @@ public final class CaseworkRequests {
             @Size(max = 500) String outcome,
             @Positive long expectedVersion
     ) {}
+
+    public record OverrideCommand(
+            @NotBlank @Pattern(regexp = "FALSE_POSITIVE_REVIEW|MISSING_CONTEXT_REVIEW|POLICY_EXCEPTION_REVIEW") String reasonCode,
+            @NotBlank @Size(max = 500) String rationale,
+            @Positive long expectedVersion
+    ) {}
 }

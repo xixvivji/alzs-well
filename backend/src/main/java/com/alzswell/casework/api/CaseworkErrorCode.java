@@ -21,7 +21,9 @@ public enum CaseworkErrorCode implements ErrorCode {
     GUIDANCE_ALREADY_APPROVED(HttpStatus.CONFLICT, "STAFF_GUIDANCE_ALREADY_APPROVED",
             "안내계획이 이미 승인되었습니다."),
     GUIDANCE_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "STAFF_GUIDANCE_IDEMPOTENCY_CONFLICT",
-            "같은 멱등키가 다른 안내계획 승인 요청에 사용되었습니다.");
+            "같은 멱등키가 다른 안내계획 승인 요청에 사용되었습니다."),
+    OVERRIDE_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "STAFF_CASE_OVERRIDE_IDEMPOTENCY_CONFLICT",
+            "같은 멱등키가 다른 사건 재검토 요청에 사용되었습니다.");
 
     private final HttpStatus status;
     private final String code;

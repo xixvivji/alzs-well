@@ -65,4 +65,11 @@ public final class CaseworkResponses {
     ) {}
 
     public record FollowUps(UUID caseId, List<FollowUp> items, int count) {}
+
+    public record CaseOverride(
+            UUID overrideEventId, UUID caseId, String reasonCode, String policyVersion,
+            String previousStatus, String currentStatus, long version, String reviewedBy,
+            OffsetDateTime reviewedAt, boolean idempotencyReplayed,
+            boolean financialActionExecuted, boolean externalNotificationSent
+    ) {}
 }

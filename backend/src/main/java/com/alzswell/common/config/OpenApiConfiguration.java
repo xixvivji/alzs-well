@@ -260,6 +260,7 @@ public class OpenApiConfiguration {
                     ? "TRUSTED_CONTACT_READ or TRUSTED_CONTACT_READ_ALL"
                     : "TRUSTED_CONTACT_WRITE or TRUSTED_CONTACT_WRITE_ALL");
         }
+        if (path.endsWith("/appeals")) return List.of("ALERT_APPEAL");
         if (path.startsWith("/api/v1/staff/follow-ups/")) return List.of("STAFF_FOLLOW_UP");
         if (path.startsWith("/api/v1/staff/cases")) return staffCaseAuthorities(path, method);
         if (path.contains("/alerts")) {
@@ -298,6 +299,7 @@ public class OpenApiConfiguration {
         if (path.endsWith("/assignment")) return List.of("STAFF_CASE_ASSIGN");
         if (path.endsWith("/reviews")) return List.of("STAFF_CASE_REVIEW");
         if (path.endsWith("/guidance-plans")) return List.of("STAFF_GUIDANCE_APPROVE");
+        if (path.endsWith("/overrides")) return List.of("STAFF_CASE_OVERRIDE");
         if (path.endsWith("/notes") && method == PathItem.HttpMethod.POST) return List.of("STAFF_CASE_NOTE");
         if (path.endsWith("/follow-ups") && method == PathItem.HttpMethod.POST) return List.of("STAFF_FOLLOW_UP");
         return List.of("STAFF_CASE_READ");
@@ -374,6 +376,8 @@ public class OpenApiConfiguration {
                 || path.endsWith("/defer")
                 || path.endsWith("/assignment")
                 || path.endsWith("/guidance-plans")
+                || path.endsWith("/appeals")
+                || path.endsWith("/overrides")
                 || path.contains("/trusted-contacts/")
                 || (path.endsWith("/staff-access-grants"))
                 || path.endsWith("/watchlist");
