@@ -1,0 +1,165 @@
+{
+  "contractVersion": "1.0.0",
+  "profile": "pdf-source-v1",
+  "limits": {
+    "maxBytes": 104857600,
+    "maxPages": 500,
+    "eofSearchWindowBytes": 2048
+  },
+  "vectors": [
+    {
+      "name": "valid-minimum",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": null
+    },
+    {
+      "name": "valid-upper-bound",
+      "input": {
+        "extension": ".PDF",
+        "sizeBytes": 104857600,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 500,
+        "activeContent": false
+      },
+      "expectedErrorCode": null
+    },
+    {
+      "name": "extension-mismatch",
+      "input": {
+        "extension": ".bin",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_TYPE_UNSUPPORTED"
+    },
+    {
+      "name": "header-not-at-byte-zero",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": " %PDF",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_TYPE_UNSUPPORTED"
+    },
+    {
+      "name": "one-byte-over-size-limit",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 104857601,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_TOO_LARGE"
+    },
+    {
+      "name": "missing-eof-marker",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": false,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_STRUCTURE_INVALID"
+    },
+    {
+      "name": "invalid-cross-reference",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": false,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_STRUCTURE_INVALID"
+    },
+    {
+      "name": "encrypted-document",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": true,
+        "pageCount": 1,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_ENCRYPTED_UNSUPPORTED"
+    },
+    {
+      "name": "zero-pages",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 0,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_PAGE_LIMIT_EXCEEDED"
+    },
+    {
+      "name": "one-page-over-limit",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 501,
+        "activeContent": false
+      },
+      "expectedErrorCode": "SOURCE_PAGE_LIMIT_EXCEEDED"
+    },
+    {
+      "name": "active-content",
+      "input": {
+        "extension": ".pdf",
+        "sizeBytes": 1024,
+        "headerAscii": "%PDF-",
+        "eofWithinWindow": true,
+        "parserValid": true,
+        "encrypted": false,
+        "pageCount": 1,
+        "activeContent": true
+      },
+      "expectedErrorCode": "SOURCE_ACTIVE_CONTENT_FORBIDDEN"
+    }
+  ]
+}
