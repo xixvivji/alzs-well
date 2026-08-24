@@ -131,16 +131,21 @@ public class DetectionPolicyService {
         OffsetDateTime now = OffsetDateTime.now(clock);
         UUID id = UUID.randomUUID();
         String versionCode = nextVersionCode(now);
+        String draftVersionCode = "detection-policy-draft-" + id.toString().substring(0, 8);
         String rulesJson = json(source.rules());
         jdbcTemplate.update("update detection_policy_version set status='RETIRED' where status='ACTIVE'");
         jdbcTemplate.update("""
                 insert into detection_policy_version (
                     policy_id, version_code, status, description, rules, rules_hash, based_on_policy_id,
-                    row_version, created_by, created_at, published_by, published_at
-                ) values (?, ?, 'ACTIVE', ?, ?::jsonb, ?, ?, 0, ?, ?, ?, ?)
-                """, id, versionCode, "복귀: " + source.policy().versionCode(), rulesJson,
-                source.policy().rulesHash(), sourcePolicyId, actor.legacyActorId(), now,
-                actor.legacyActorId(), now);
+                    row_version, created_by, created_at
+                ) values (?, ?, 'DRAFT', ?, ?::jsonb, ?, ?, 0, ?, ?)
+                """, id, draftVersionCode, "복귀: " + source.policy().versionCode(), rulesJson,
+                source.policy().rulesHash(), sourcePolicyId, actor.legacyActorId(), now);
+        jdbcTemplate.update("""
+                update detection_policy_version
+                   set status='ACTIVE',version_code=?,published_by=?,published_at=?,row_version=row_version+1
+                 where policy_id=? and status='DRAFT'
+                """, versionCode, actor.legacyActorId(), now, id);
         event(id, "POLICY_ROLLED_BACK", actor, null, "ACTIVE", source.policy().rulesHash(), now);
         return policy(id);
     }

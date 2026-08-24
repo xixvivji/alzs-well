@@ -92,7 +92,8 @@ public class OpenApiConfiguration {
             operation.addSecurityItem(new SecurityRequirement().addList("DemoStaffBootstrap"));
         }
 
-        if ((method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PATCH)
+        if ((method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PUT
+                || method == PathItem.HttpMethod.PATCH)
                 && requiresIdempotencyKey(path)) {
             addHeader(operation, IDEMPOTENCY_HEADER, true, "동일 요청의 중복 처리를 방지하는 키");
         }
@@ -130,7 +131,7 @@ public class OpenApiConfiguration {
         if (access.bearer()) {
             operation.addSecurityItem(new SecurityRequirement().addList("BearerAuth"));
         }
-        addStandardError(operation, "400", "COMMON_VALIDATION_FAILED", "요청 형식 또는 입력값이 올바르지 않습니다.");
+        addStandardError(operation, "400", "COMMON_INVALID_INPUT", "요청 형식 또는 입력값이 올바르지 않습니다.");
         if (!"PUBLIC".equals(access.mode())) {
             addStandardError(operation, "401", "COMMON_UNAUTHORIZED", "인증 정보가 없거나 유효하지 않습니다.");
             addStandardError(operation, "403", "COMMON_FORBIDDEN", "요청한 자원에 접근할 권한이 없습니다.");
@@ -175,6 +176,9 @@ public class OpenApiConfiguration {
             return List.of(method == PathItem.HttpMethod.GET
                     ? "RECURRING_PAYMENT_READ" : "RECURRING_PAYMENT_WRITE");
         }
+        if (path.endsWith("/cards") || path.startsWith("/api/v1/cards/")) {
+            return List.of("CARD_READ");
+        }
         if (path.contains("/transactions") || path.startsWith("/api/v1/counterparties/")
                 || path.endsWith("/counterparties")) {
             return List.of(method == PathItem.HttpMethod.GET ? "TRANSACTION_READ" : "TRANSACTION_WRITE");
@@ -190,9 +194,6 @@ public class OpenApiConfiguration {
         }
         if (path.equals("/api/v1/transfer-simulations") || path.equals("/api/v1/transfer-validations")) {
             return List.of("TRANSFER_PREVIEW_EVALUATE");
-        }
-        if (path.endsWith("/cards") || path.startsWith("/api/v1/cards/")) {
-            return List.of("CARD_READ");
         }
         if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")
                 || path.endsWith("/account-groups")) {
@@ -248,12 +249,20 @@ public class OpenApiConfiguration {
         }
         if (path.contains("/connections")) return List.of("FINANCIAL_CONNECTION_READ or FINANCIAL_CONNECTION_READ_ALL");
         if (path.startsWith("/api/v1/financial-institutions")) return List.of("AUTHENTICATED");
-        if (path.contains("/baselines") || path.startsWith("/api/v1/signals")) {
+        if (path.contains("/baseline-calculations")) {
+            return List.of("DETECTION_CALCULATE or DETECTION_CALCULATE_ALL");
+        }
+        if (path.contains("/baselines") || path.endsWith("/signals") || path.startsWith("/api/v1/signals")) {
             return List.of(method == PathItem.HttpMethod.POST ? "DETECTION_CALCULATE or DETECTION_CALCULATE_ALL"
                     : "DETECTION_READ or DETECTION_READ_ALL");
         }
+        if (path.startsWith("/api/v1/customers/") && path.endsWith("/detection-runs")) {
+            return List.of("DETECTION_RUN_CREATE");
+        }
         if (path.startsWith("/api/v1/synthetic-datasets")) return List.of("SYNTHETIC_DATASET_ADMIN");
-        if (path.startsWith("/api/v1/detection-runs") && path.endsWith("/promote")) return List.of("DETECTION_PROMOTE");
+        if (path.startsWith("/api/v1/detection-runs") && path.endsWith("/promotion")) {
+            return List.of(method == PathItem.HttpMethod.POST ? "DETECTION_PROMOTE" : "DETECTION_PROMOTION_READ");
+        }
         if (path.startsWith("/api/v1/detection-runs")) {
             return List.of(method == PathItem.HttpMethod.POST ? "DETECTION_RUN_CREATE" : "DETECTION_RUN_READ");
         }
@@ -297,16 +306,17 @@ public class OpenApiConfiguration {
         ApiResponse response = operation.getResponses().computeIfAbsent(status,
                 ignored -> new ApiResponse().description(message));
         if (response.getContent() == null) {
+            java.util.Map<String,Object> example = new java.util.LinkedHashMap<>();
+            example.put("success", false);
+            example.put("status", Integer.parseInt(status));
+            example.put("code", code);
+            example.put("message", message);
+            example.put("data", null);
+            example.put("errors", List.of());
+            example.put("timestamp", "2026-08-24T00:00:00Z");
+            example.put("traceId", "trace-example-0001");
             response.setContent(new Content().addMediaType("application/json", new MediaType()
-                    .schema(new ObjectSchema())
-                    .example(Map.of(
-                            "success", false,
-                            "code", code,
-                            "message", message,
-                            "data", Map.of(),
-                            "errors", List.of(),
-                            "traceId", "trace-example-0001"
-                    ))));
+                    .schema(new ObjectSchema()).example(example)));
         }
     }
 
@@ -326,20 +336,36 @@ public class OpenApiConfiguration {
                 || path.endsWith("/approve")
                 || path.endsWith("/revoke")
                 || path.contains("/privacy/")
+                || path.endsWith("/display-settings")
+                || path.endsWith("/category")
+                || path.endsWith("/note")
+                || path.endsWith("/reminder-settings")
+                || path.endsWith("/display-profile")
+                || path.endsWith("/preferences")
+                || path.endsWith("/accessibility-settings")
+                || path.endsWith("/withdraw")
+                || path.endsWith("/defer")
+                || path.endsWith("/assignment")
+                || path.endsWith("/guidance-plans")
+                || path.contains("/trusted-contacts/")
                 || (path.endsWith("/staff-access-grants"));
     }
 
     private void addHeader(Operation operation, String name, boolean required, String description) {
-        boolean alreadyPresent = operation.getParameters() != null
-                && operation.getParameters().stream().anyMatch(parameter -> name.equals(parameter.getName()));
-        if (!alreadyPresent) {
-            Parameter parameter = new HeaderParameter()
-                    .name(name)
-                    .required(required)
-                    .description(description)
-                    .schema(new StringSchema());
-            operation.addParametersItem(parameter);
+        Parameter existing = operation.getParameters() == null ? null : operation.getParameters().stream()
+                .filter(parameter -> name.equals(parameter.getName()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            if (required) existing.setRequired(true);
+            existing.setDescription(description);
+            if (existing.getSchema() == null) existing.setSchema(new StringSchema());
+            return;
         }
+        operation.addParametersItem(new HeaderParameter()
+                .name(name)
+                .required(required)
+                .description(description)
+                .schema(new StringSchema()));
     }
 
     private ApiResponse response(Operation operation, String status, String description) {

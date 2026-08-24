@@ -42,7 +42,7 @@ public class OperationalAlertController {
             @PathVariable UUID alertId, Authentication authentication) {
         AuditActor actor = AuditActor.from(authentication);
         return ApiResponses.ok("ALERT_RETRIEVED", "운영형 경보 상세를 조회했습니다.",
-                alertService.alert(alertId, actor.customerId(), has(authentication, "ALERT_READ_ALL")));
+                alertService.alert(alertId, actor, has(authentication, "ALERT_READ_ALL")));
     }
 
     @GetMapping("/{alertId}/context-options")
@@ -51,7 +51,7 @@ public class OperationalAlertController {
             @PathVariable UUID alertId, Authentication authentication) {
         AuditActor actor = AuditActor.from(authentication);
         return ApiResponses.ok("ALERT_CONTEXT_OPTIONS_RETRIEVED", "허용된 생활맥락 응답을 조회했습니다.",
-                alertService.contextOptions(alertId, actor.customerId(),
+                alertService.contextOptions(alertId, actor,
                         has(authentication, "ALERT_READ_ALL")));
     }
 
@@ -65,18 +65,21 @@ public class OperationalAlertController {
             Authentication authentication) {
         AuditActor actor = AuditActor.from(authentication);
         return ApiResponses.ok("ALERT_CONTEXT_APPLIED", "생활맥락을 반영해 경보를 재평가했습니다.",
-                alertService.respond(alertId, command, idempotencyKey, actor.customerId(),
+                alertService.respond(alertId, command, idempotencyKey,
                         has(authentication, "ALERT_RESPOND_ALL"), actor));
     }
 
     @PostMapping("/{alertId}/defer")
     @PreAuthorize("hasAnyAuthority('ALERT_RESPOND', 'ALERT_RESPOND_ALL')")
     public ResponseEntity<ApiResponse<AlertTransition>> defer(
-            @PathVariable UUID alertId, @Valid @RequestBody DeferCommand command,
+            @PathVariable UUID alertId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody DeferCommand command,
             Authentication authentication) {
         AuditActor actor = AuditActor.from(authentication);
         return ApiResponses.ok("ALERT_DEFERRED", "경보 확인을 지정한 시각까지 연기했습니다.",
-                alertService.defer(alertId, command, actor.customerId(),
+                alertService.defer(alertId, command, idempotencyKey,
                         has(authentication, "ALERT_RESPOND_ALL"), actor));
     }
 
@@ -86,7 +89,7 @@ public class OperationalAlertController {
             @PathVariable UUID alertId, Authentication authentication) {
         AuditActor actor = AuditActor.from(authentication);
         return ApiResponses.ok("ALERT_AUDIT_RETRIEVED", "운영형 경보 감사이력을 조회했습니다.",
-                alertService.audit(alertId, actor.customerId(), has(authentication, "ALERT_READ_ALL")));
+                alertService.audit(alertId, actor, has(authentication, "ALERT_READ_ALL")));
     }
 
     private boolean has(Authentication authentication, String authority) {

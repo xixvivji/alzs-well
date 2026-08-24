@@ -9,6 +9,11 @@ public enum CustomerErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "CUSTOMER_VERSION_CONFLICT",
             "고객 설정이 다른 요청으로 변경되었습니다. 최신 상태를 다시 조회해 주세요."
+    ),
+    CUSTOMER_IDEMPOTENCY_CONFLICT(
+            HttpStatus.CONFLICT,
+            "CUSTOMER_IDEMPOTENCY_CONFLICT",
+            "같은 멱등키가 다른 고객 설정 요청에 사용되었습니다."
     );
 
     private final HttpStatus status;

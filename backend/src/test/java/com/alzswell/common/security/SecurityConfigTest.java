@@ -42,5 +42,13 @@ class SecurityConfigTest {
                         true
                 ))
                 .withMessageContaining("서로 달라야");
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> securityConfig.corsConfigurationSource(
+                        "https://APP.example.com:443",
+                        "https://app.example.com",
+                        true
+                ))
+                .withMessageContaining("서로 달라야");
     }
 }

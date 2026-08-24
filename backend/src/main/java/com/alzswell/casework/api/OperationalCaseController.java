@@ -72,10 +72,13 @@ public class OperationalCaseController {
     @PutMapping("/{caseId}/assignment")
     @PreAuthorize("hasAuthority('STAFF_CASE_ASSIGN')")
     public ResponseEntity<ApiResponse<CaseTransition>> assign(
-            @PathVariable UUID caseId, @Valid @RequestBody AssignmentCommand command,
+            @PathVariable UUID caseId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody AssignmentCommand command,
             Authentication authentication) {
         return ApiResponses.ok("STAFF_CASE_ASSIGNED", "사건 담당 팀과 행원을 배정했습니다.",
-                caseService.assign(caseId, command, AuditActor.from(authentication)));
+                caseService.assign(caseId, command, idempotencyKey, AuditActor.from(authentication)));
     }
 
     @PostMapping("/{caseId}/reviews")
@@ -94,11 +97,15 @@ public class OperationalCaseController {
     @PostMapping("/{caseId}/guidance-plans")
     @PreAuthorize("hasAuthority('STAFF_GUIDANCE_APPROVE')")
     public ResponseEntity<ApiResponse<GuidancePlan>> guidance(
-            @PathVariable UUID caseId, @Valid @RequestBody GuidancePlanCommand command,
+            @PathVariable UUID caseId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody GuidancePlanCommand command,
             Authentication authentication) {
         return ApiResponses.created("STAFF_GUIDANCE_PLAN_APPROVED",
                 "외부 실행 없이 고객 안내계획을 승인했습니다.",
-                caseService.approveGuidance(caseId, command, AuditActor.from(authentication)));
+                caseService.approveGuidance(caseId, command, idempotencyKey,
+                        AuditActor.from(authentication)));
     }
 
     @GetMapping("/{caseId}/evidence")

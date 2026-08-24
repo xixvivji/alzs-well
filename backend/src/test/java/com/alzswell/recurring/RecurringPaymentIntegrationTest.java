@@ -83,6 +83,7 @@ class RecurringPaymentIntegrationTest {
     void reminderUpdateUsesOptimisticLockAndWritesImmutableAudit() throws Exception {
         String body = "{\"enabled\":false,\"leadDays\":2,\"expectedVersion\":0}";
         mockMvc.perform(put("/api/v1/recurring-payments/{id}/reminder-settings", MISSED_PAYMENT)
+                        .header("Idempotency-Key", "reminder-update-001")
                         .with(writeUser()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.payment.reminderSettings.enabled").value(false))
@@ -90,6 +91,13 @@ class RecurringPaymentIntegrationTest {
                 .andExpect(jsonPath("$.data.payment.version").value(1));
 
         mockMvc.perform(put("/api/v1/recurring-payments/{id}/reminder-settings", MISSED_PAYMENT)
+                        .header("Idempotency-Key", "reminder-update-001")
+                        .with(writeUser()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.payment.version").value(1));
+
+        mockMvc.perform(put("/api/v1/recurring-payments/{id}/reminder-settings", MISSED_PAYMENT)
+                        .header("Idempotency-Key", "reminder-update-002")
                         .with(writeUser()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("RECURRING_PAYMENT_VERSION_CONFLICT"));
@@ -106,6 +114,7 @@ class RecurringPaymentIntegrationTest {
                         .with(user("OTHER_CUSTOMER").authorities(() -> "RECURRING_PAYMENT_READ")))
                 .andExpect(status().isNotFound());
         mockMvc.perform(put("/api/v1/recurring-payments/{id}/reminder-settings", MISSED_PAYMENT)
+                        .header("Idempotency-Key", "reminder-auth-001")
                         .with(readUser()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\":true,\"leadDays\":1,\"expectedVersion\":0}"))
                 .andExpect(status().isForbidden());

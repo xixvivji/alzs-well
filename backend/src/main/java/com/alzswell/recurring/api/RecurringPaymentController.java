@@ -8,6 +8,7 @@ import com.alzswell.recurring.api.RecurringPaymentResponses.*;
 import com.alzswell.recurring.application.RecurringPaymentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -80,10 +81,12 @@ public class RecurringPaymentController {
     @PreAuthorize("hasAuthority('RECURRING_PAYMENT_WRITE')")
     public ResponseEntity<ApiResponse<PaymentDetail>> reminderSettings(
             @PathVariable UUID recurringPaymentId,
+            @RequestHeader("Idempotency-Key") @Size(min=8,max=100)
+            @Pattern(regexp="[A-Za-z0-9._:-]+") String idempotencyKey,
             @Valid @RequestBody ReminderSettingsCommand command,
             Authentication authentication) {
         return ApiResponses.ok("RECURRING_PAYMENT_REMINDER_UPDATED", "인앱 납부 확인 알림 설정을 변경했습니다.",
-                service.updateReminder(authentication.getName(), recurringPaymentId, command,
+                service.updateReminder(authentication.getName(), recurringPaymentId, command, idempotencyKey,
                         AuditActor.from(authentication)));
     }
 }

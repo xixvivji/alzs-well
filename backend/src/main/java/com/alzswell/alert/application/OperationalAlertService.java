@@ -12,7 +12,9 @@ import com.alzswell.alert.api.AlertResponses.AuditTrail;
 import com.alzswell.alert.api.AlertResponses.ContextOption;
 import com.alzswell.alert.api.AlertResponses.ContextOptions;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
+import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,30 +43,43 @@ public class OperationalAlertService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final StaffAccessPolicyService staffAccess;
+    private final MutationIdempotencyService idempotency;
 
-    public OperationalAlertService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
+    public OperationalAlertService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
+            StaffAccessPolicyService staffAccess, MutationIdempotencyService idempotency) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.staffAccess = staffAccess;
+        this.idempotency = idempotency;
     }
 
-    @Transactional(readOnly = true)
-    public AlertList alerts(String customerId, String state, String severity) {
+    @Transactional
+    public AlertList alerts(String customerId, String state, String severity, AuditActor actor) {
         requireCustomer(customerId);
+        staffAccess.require(actor, customerId, "ALERT_MANAGEMENT", "ALERT_READ", "ALERT", null);
         List<AlertSummary> items = jdbcTemplate.query("""
                 select alert_id, signal_id, customer_id, state, severity, reason_code,
                        alert_version, deferred_until, created_at, updated_at
                   from operational_alert
                  where customer_id = ?
-                   and (? is null or state = ?)
-                   and (? is null or severity = ?)
+                   and (cast(? as varchar) is null or state = ?)
+                   and (cast(? as varchar) is null or severity = ?)
                  order by created_at desc, alert_id desc
                 """, this::mapSummary, customerId, state, state, severity, severity);
         return new AlertList(items, items.size());
     }
 
-    @Transactional(readOnly = true)
-    public AlertDetail alert(UUID alertId, String actorCustomerId, boolean readAll) {
+    @Transactional
+    public AlertDetail alert(UUID alertId, AuditActor actor, boolean readAll) {
+        AlertDetail detail = loadAlert(alertId, actor.customerId(), readAll);
+        staffAccess.require(actor, detail.alert().customerId(), "ALERT_MANAGEMENT", "ALERT_READ",
+                "ALERT", alertId.toString());
+        return detail;
+    }
+
+    private AlertDetail loadAlert(UUID alertId, String actorCustomerId, boolean readAll) {
         List<AlertDetail> rows = jdbcTemplate.query("""
                 select a.alert_id, a.signal_id, a.customer_id, a.state, a.severity, a.reason_code,
                        a.alert_version, a.deferred_until, a.created_at, a.updated_at,
@@ -81,16 +96,18 @@ public class OperationalAlertService {
         return rows.getFirst();
     }
 
-    @Transactional(readOnly = true)
-    public ContextOptions contextOptions(UUID alertId, String actorCustomerId, boolean readAll) {
-        alert(alertId, actorCustomerId, readAll);
+    @Transactional
+    public ContextOptions contextOptions(UUID alertId, AuditActor actor, boolean readAll) {
+        alert(alertId, actor, readAll);
         return new ContextOptions(alertId, "이 변화가 본인이 알고 있는 생활 변화인가요?", OPTIONS);
     }
 
     @Transactional
     public AlertTransition respond(UUID alertId, ContextResponseCommand command, String idempotencyKey,
-                                   String actorCustomerId, boolean respondAll, AuditActor auditActor) {
-        AlertDetail detail = alert(alertId, actorCustomerId, respondAll);
+                                   boolean respondAll, AuditActor auditActor) {
+        AlertDetail detail = loadAlert(alertId, auditActor.customerId(), respondAll);
+        staffAccess.require(auditActor, detail.alert().customerId(), "ALERT_MANAGEMENT", "ALERT_RESPOND",
+                "ALERT", alertId.toString());
         String keyHash = sha256(idempotencyKey);
         String requestHash = sha256(alertId + "|" + command.responseCode() + "|" + command.expectedVersion());
         AlertTransition replay = findContextReplay(alertId, keyHash, requestHash, detail.alert());
@@ -107,7 +124,7 @@ public class OperationalAlertService {
                  where alert_id = ? and alert_version = ? and state in ('AWAITING_CONTEXT', 'DEFERRED')
                 """, nextState, now, alertId, command.expectedVersion());
         if (updated != 1) {
-            AlertSummary current = alert(alertId, actorCustomerId, respondAll).alert();
+            AlertSummary current = loadAlert(alertId, auditActor.customerId(), respondAll).alert();
             AlertTransition concurrentReplay = findContextReplay(alertId, keyHash, requestHash, current);
             if (concurrentReplay != null) return concurrentReplay;
             throw new BusinessException(AlertErrorCode.STATE_CONFLICT);
@@ -133,9 +150,18 @@ public class OperationalAlertService {
     }
 
     @Transactional
-    public AlertTransition defer(UUID alertId, DeferCommand command, String actorCustomerId,
+    public AlertTransition defer(UUID alertId, DeferCommand command, String idempotencyKey,
                                  boolean respondAll, AuditActor auditActor) {
-        AlertDetail detail = alert(alertId, actorCustomerId, respondAll);
+        return idempotency.execute("ALERT_DEFER:" + alertId, idempotencyKey, command,
+                AlertTransition.class, AlertErrorCode.IDEMPOTENCY_CONFLICT,
+                () -> deferOnce(alertId, command, respondAll, auditActor));
+    }
+
+    private AlertTransition deferOnce(UUID alertId, DeferCommand command,
+            boolean respondAll, AuditActor auditActor) {
+        AlertDetail detail = loadAlert(alertId, auditActor.customerId(), respondAll);
+        staffAccess.require(auditActor, detail.alert().customerId(), "ALERT_MANAGEMENT", "ALERT_RESPOND",
+                "ALERT", alertId.toString());
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (command.deferredUntil().isAfter(now.plusDays(7))
                 || !List.of("AWAITING_CONTEXT", "DEFERRED").contains(detail.alert().state())
@@ -154,9 +180,9 @@ public class OperationalAlertService {
                 null, command.deferredUntil(), now, false);
     }
 
-    @Transactional(readOnly = true)
-    public AuditTrail audit(UUID alertId, String actorCustomerId, boolean readAll) {
-        alert(alertId, actorCustomerId, readAll);
+    @Transactional
+    public AuditTrail audit(UUID alertId, AuditActor actor, boolean readAll) {
+        alert(alertId, actor, readAll);
         List<AuditEvent> items = jdbcTemplate.query("""
                 select audit_event_id, event_type, previous_state, resulting_state,
                        detail::text, integrity_hash, created_at

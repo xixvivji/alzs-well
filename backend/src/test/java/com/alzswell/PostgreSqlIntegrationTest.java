@@ -37,7 +37,8 @@ class PostgreSqlIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine")
+            .withInitScript("create-runtime-role.sql");
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -135,6 +136,10 @@ class PostgreSqlIntegrationTest {
                       ,'financial_intent_command'
                       ,'staff_access_grant'
                       ,'staff_access_grant_event'
+                      ,'staff_access_purpose_scope'
+                      ,'staff_access_purpose_role'
+                      ,'staff_access_decision_audit_event'
+                      ,'customer_mutation_command'
                       ,'recurring_payment'
                       ,'recurring_payment_occurrence'
                       ,'recurring_payment_reminder_event'
@@ -164,7 +169,7 @@ class PostgreSqlIntegrationTest {
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(103);
+        assertThat(tableCount).isEqualTo(107);
     }
 
     @Test
@@ -189,6 +194,27 @@ class PostgreSqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','staff_access_grant_event','UPDATE')",
                 Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','staff_access_grant','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','staff_access_grant','status','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','staff_access_grant','customer_id','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','staff_access_purpose_scope','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','staff_access_purpose_role','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','customer_mutation_command','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','customer_mutation_command','result_payload','UPDATE')",
+                Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','financial_intent_revision','DELETE')",
                 Boolean.class)).isFalse();
@@ -288,6 +314,51 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void protectsGrantIdentityAndCompletedIdempotencyResponseAtDatabaseLevel() {
+        UUID principalId = UUID.fromString("97000000-0000-0000-0000-000000000001");
+        jdbcTemplate.update("""
+                insert into auth_principal(principal_id,login_id,customer_id,display_name,password_hash,status,
+                    created_at,updated_at)
+                select ?,'db-guard-staff',customer_id,'DB 보호 직원',password_hash,'ACTIVE',now(),now()
+                  from auth_principal where login_id='synthetic-customer'
+                """, principalId);
+        jdbcTemplate.update("insert into auth_principal_role(principal_id,role_code) values(?,'DETECTION_ADMIN')",
+                principalId);
+        UUID grantId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
+                    granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
+                values(?,?,?,'ALERT_MANAGEMENT',array['ALERT_READ'],'ACTIVE',?,now(),now()+interval '1 day',
+                    repeat('a',64),repeat('b',64),1)
+                """, grantId, principalId, "SYN_CUSTOMER_FIN_MGMT_001", principalId);
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "update staff_access_grant set expires_at=expires_at+interval '1 day' where grant_id=?", grantId))
+                .isInstanceOf(DataAccessException.class)
+                .satisfies(exception -> assertThat(((DataAccessException) exception).getMostSpecificCause().getMessage())
+                        .contains("identity is immutable"));
+
+        jdbcTemplate.update("""
+                insert into customer_mutation_command(command_scope,idempotency_key_hash,request_hash,created_at)
+                values('DB_GUARD_TEST',repeat('c',64),repeat('d',64),now())
+                """);
+        jdbcTemplate.update("""
+                update customer_mutation_command set result_payload='{"result":"first"}'::jsonb,completed_at=now()
+                 where command_scope='DB_GUARD_TEST'
+                """);
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                update customer_mutation_command set result_payload='{"result":"rewritten"}'::jsonb
+                 where command_scope='DB_GUARD_TEST'
+                """))
+                .isInstanceOf(DataAccessException.class)
+                .satisfies(exception -> assertThat(((DataAccessException) exception).getMostSpecificCause().getMessage())
+                        .contains("immutable after completion"));
+        jdbcTemplate.update("delete from customer_mutation_command where command_scope='DB_GUARD_TEST'");
+        jdbcTemplate.update("delete from staff_access_grant where grant_id=?", grantId);
+        jdbcTemplate.update("delete from auth_principal_role where principal_id=?", principalId);
+        jdbcTemplate.update("delete from auth_principal where principal_id=?", principalId);
+    }
+
+    @Test
     void readinessApiChecksDatabaseFlywayFixturesAndPolicyCatalog() throws Exception {
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isOk())
@@ -305,7 +376,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '47'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '49'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -378,7 +449,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("47"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("49"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -418,6 +489,15 @@ class PostgreSqlIntegrationTest {
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4173"));
+    }
+
+    @Test
+    void corsAllowsCustomerOriginsToReadCustomerSignals() throws Exception {
+        mockMvc.perform(options("/api/v1/signals/{signalId}", UUID.randomUUID())
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
     }
 
     @Test
@@ -527,6 +607,21 @@ class PostgreSqlIntegrationTest {
         assertThat(specification.path("paths")
                 .path("/api/v1/staff/customers/{customerId}/financial-intent-summary").path("get")
                 .path("x-alzs-required-authorities").toString()).contains("FINANCIAL_INTENT_SHARED_READ");
+
+        assertThat(specification.path("paths")
+                .path("/api/v1/customers/{customerId}/baseline-calculations").path("post")
+                .path("x-alzs-required-authorities").toString()).contains("DETECTION_CALCULATE");
+        assertThat(specification.path("paths")
+                .path("/api/v1/customers/{customerId}/signals").path("get")
+                .path("x-alzs-required-authorities").toString()).contains("DETECTION_READ");
+        assertThat(specification.path("paths")
+                .path("/api/v1/customers/{customerId}/detection-runs").path("post")
+                .path("x-alzs-required-authorities").toString()).contains("DETECTION_RUN_CREATE");
+
+        JsonNode demoRunHeader = StreamSupport.stream(alertParameters.spliterator(), false)
+                .filter(parameter -> "X-Demo-Run-Id".equals(parameter.path("name").asText()))
+                .findFirst().orElseThrow();
+        assertThat(demoRunHeader.path("required").asBoolean()).isTrue();
 
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());

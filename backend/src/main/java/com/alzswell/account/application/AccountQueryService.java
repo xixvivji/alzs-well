@@ -4,6 +4,7 @@ import com.alzswell.account.api.AccountErrorCode;
 import com.alzswell.account.api.AccountRequests.UpdateDisplaySetting;
 import com.alzswell.account.api.AccountResponses.*;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -32,11 +33,14 @@ public class AccountQueryService {
     private final JdbcTemplate jdbc;
     private final Clock clock;
     private final SensitiveTextPolicy sensitiveTextPolicy;
+    private final MutationIdempotencyService idempotency;
 
-    public AccountQueryService(JdbcTemplate jdbc, Clock clock, SensitiveTextPolicy sensitiveTextPolicy) {
+    public AccountQueryService(JdbcTemplate jdbc, Clock clock, SensitiveTextPolicy sensitiveTextPolicy,
+            MutationIdempotencyService idempotency) {
         this.jdbc = jdbc;
         this.clock = clock;
         this.sensitiveTextPolicy = sensitiveTextPolicy;
+        this.idempotency = idempotency;
     }
 
     public AccountList accounts(String customerId) {
@@ -146,7 +150,14 @@ public class AccountQueryService {
     }
 
     @Transactional
-    public DisplaySetting updateDisplaySetting(String customerId, UUID accountId, UpdateDisplaySetting command) {
+    public DisplaySetting updateDisplaySetting(String customerId, UUID accountId, UpdateDisplaySetting command,
+            String idempotencyKey) {
+        return idempotency.execute("ACCOUNT_DISPLAY:" + customerId + ":" + accountId, idempotencyKey,
+                command, DisplaySetting.class, AccountErrorCode.IDEMPOTENCY_CONFLICT,
+                () -> updateDisplaySettingOnce(customerId, accountId, command));
+    }
+
+    private DisplaySetting updateDisplaySettingOnce(String customerId, UUID accountId, UpdateDisplaySetting command) {
         ownedAccount(customerId, accountId);
         if (command.alias() == null && command.displayOrder() == null && command.hidden() == null) {
             throw new BusinessException(AccountErrorCode.INVALID_DISPLAY_SETTING);

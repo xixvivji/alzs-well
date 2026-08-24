@@ -109,13 +109,22 @@ class TransactionIntegrationTest {
     @Transactional
     void categoryAndSafeNoteUseOptimisticLockAndAppendOnlyAudit() throws Exception {
         mockMvc.perform(put("/api/v1/transactions/{transactionId}/category", TRANSACTION)
+                        .header("Idempotency-Key", "transaction-category-001")
                         .with(writeUser()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SHOPPING\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.category").value("SHOPPING"))
                 .andExpect(jsonPath("$.data.rowVersion").value(2));
 
+        mockMvc.perform(put("/api/v1/transactions/{transactionId}/category", TRANSACTION)
+                        .header("Idempotency-Key", "transaction-category-001")
+                        .with(writeUser()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\":\"SHOPPING\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rowVersion").value(2));
+
         mockMvc.perform(put("/api/v1/transactions/{transactionId}/note", TRANSACTION)
+                        .header("Idempotency-Key", "transaction-note-001")
                         .with(writeUser()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"note\":\"주말 장보기\",\"expectedVersion\":2}"))
                 .andExpect(status().isOk())
@@ -124,11 +133,13 @@ class TransactionIntegrationTest {
                 .andExpect(jsonPath("$.data.externalActionExecuted").value(false));
 
         mockMvc.perform(put("/api/v1/transactions/{transactionId}/note", TRANSACTION)
+                        .header("Idempotency-Key", "transaction-note-sensitive-001")
                         .with(writeUser()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"note\":\"계좌번호 123456789\",\"expectedVersion\":3}"))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(put("/api/v1/transactions/{transactionId}/category", TRANSACTION)
+                        .header("Idempotency-Key", "transaction-category-002")
                         .with(writeUser()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"FOOD\",\"expectedVersion\":1}"))
                 .andExpect(status().isConflict())

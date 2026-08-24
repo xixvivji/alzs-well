@@ -21,6 +21,7 @@ import com.alzswell.casework.api.CaseworkResponses.FollowUp;
 import com.alzswell.casework.api.CaseworkResponses.FollowUps;
 import com.alzswell.casework.api.CaseworkResponses.TimelineEvent;
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.staffaccess.api.StaffAccessErrorCode;
@@ -49,14 +50,17 @@ public class OperationalCaseService {
     private final Clock clock;
     private final StaffAccessPolicyService staffAccess;
     private final SensitiveTextPolicy sensitiveTextPolicy;
+    private final MutationIdempotencyService idempotency;
 
     public OperationalCaseService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
-            StaffAccessPolicyService staffAccess, SensitiveTextPolicy sensitiveTextPolicy) {
+            StaffAccessPolicyService staffAccess, SensitiveTextPolicy sensitiveTextPolicy,
+            MutationIdempotencyService idempotency) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.staffAccess = staffAccess;
         this.sensitiveTextPolicy = sensitiveTextPolicy;
+        this.idempotency = idempotency;
     }
 
     @Transactional
@@ -97,7 +101,7 @@ public class OperationalCaseService {
                     point.priorityRank(), point.createdAt(), point.createdAt(), point.caseId(), limit);
         }
         items.stream().map(CaseSummary::customerId).distinct().forEach(customerId ->
-                staffAccess.require(actor, customerId, "CASE_READ", "CASE_QUEUE", null));
+                staffAccess.require(actor, customerId, "PROTECTION_CASE_MANAGEMENT", "CASE_READ", "CASE_QUEUE", null));
         UUID nextCursor = items.size() == limit ? items.getLast().caseId() : null;
         return new CaseQueue(items, items.size(), nextCursor);
     }
@@ -105,7 +109,7 @@ public class OperationalCaseService {
     @Transactional
     public CaseDetail detail(UUID caseId, AuditActor actor) {
         CaseDetail value = detailRaw(caseId);
-        staffAccess.require(actor, value.caseSummary().customerId(), "CASE_READ", "CASE", caseId.toString());
+        staffAccess.require(actor, value.caseSummary().customerId(), "PROTECTION_CASE_MANAGEMENT", "CASE_READ", "CASE", caseId.toString());
         return value;
     }
 
@@ -132,9 +136,16 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public CaseTransition assign(UUID caseId, AssignmentCommand command, AuditActor actor) {
+    public CaseTransition assign(UUID caseId, AssignmentCommand command, String idempotencyKey,
+            AuditActor actor) {
+        return idempotency.execute("CASE_ASSIGNMENT:" + caseId, idempotencyKey, command,
+                CaseTransition.class, CaseworkErrorCode.ASSIGNMENT_IDEMPOTENCY_CONFLICT,
+                () -> assignOnce(caseId, command, actor));
+    }
+
+    private CaseTransition assignOnce(UUID caseId, AssignmentCommand command, AuditActor actor) {
         CaseSummary current = detailRaw(caseId).caseSummary();
-        staffAccess.require(actor, current.customerId(), "CASE_ASSIGN", "CASE", caseId.toString());
+        staffAccess.require(actor, current.customerId(), "PROTECTION_CASE_MANAGEMENT", "CASE_ASSIGN", "CASE", caseId.toString());
         requireEligibleAssignee(command.assignedTo(), current.customerId());
         if (current.taskStatus().equals("COMPLETED") || current.version() != command.expectedVersion()) {
             throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
@@ -148,11 +159,13 @@ public class OperationalCaseService {
         if (updated != 1) throw new BusinessException(CaseworkErrorCode.CASE_STATE_CONFLICT);
         jdbcTemplate.update("""
                 insert into operational_case_activity (
-                    activity_id, case_id, activity_type, actor_subject, detail, occurred_at
-                ) values (?, ?, 'CASE_ASSIGNED', ?, ?::jsonb, ?)
+                    activity_id, case_id, activity_type, actor_subject, detail, occurred_at,
+                    previous_status, resulting_status, snapshot_accuracy
+                ) values (?, ?, 'CASE_ASSIGNED', ?, ?::jsonb, ?, ?, ?, 'EXACT')
                 """, UUID.randomUUID(), caseId, actor.legacyActorId(),
                 json(java.util.Map.of("assignedTeam", command.assignedTeam(),
-                        "assignedTo", command.assignedTo().toString())), now);
+                        "assignedTo", command.assignedTo().toString())), now,
+                current.taskStatus(), current.taskStatus());
         return transition(caseId, current.taskStatus(), current.taskStatus(), command.expectedVersion() + 1,
                 "ASSIGN", now, false);
     }
@@ -262,7 +275,7 @@ public class OperationalCaseService {
     @Transactional
     public FollowUps followUps(UUID caseId, String status, AuditActor actor) {
         CaseDetail caseDetail = detailRaw(caseId);
-        staffAccess.require(actor, caseDetail.caseSummary().customerId(), "CASE_READ", "CASE_FOLLOW_UP", caseId.toString());
+        staffAccess.require(actor, caseDetail.caseSummary().customerId(), "PROTECTION_CASE_MANAGEMENT", "CASE_READ", "CASE_FOLLOW_UP", caseId.toString());
         List<FollowUp> items = jdbcTemplate.query("""
                 select follow_up_id, case_id, follow_up_type, status, scheduled_at, purpose,
                        outcome, follow_up_version, created_by, created_at, updated_at
@@ -387,7 +400,14 @@ public class OperationalCaseService {
     }
 
     @Transactional
-    public GuidancePlan approveGuidance(UUID caseId, GuidancePlanCommand command, AuditActor approver) {
+    public GuidancePlan approveGuidance(UUID caseId, GuidancePlanCommand command, String idempotencyKey,
+            AuditActor approver) {
+        return idempotency.execute("CASE_GUIDANCE:" + caseId, idempotencyKey, command,
+                GuidancePlan.class, CaseworkErrorCode.GUIDANCE_IDEMPOTENCY_CONFLICT,
+                () -> approveGuidanceOnce(caseId, command, approver));
+    }
+
+    private GuidancePlan approveGuidanceOnce(UUID caseId, GuidancePlanCommand command, AuditActor approver) {
         CaseSummary current = detailRaw(caseId).caseSummary();
         requireAssigned(current, approver, "CASE_GUIDANCE");
         if (current.version() != command.expectedVersion() || !current.taskStatus().equals("IN_REVIEW")
@@ -542,14 +562,14 @@ public class OperationalCaseService {
                 )
                 """, Boolean.class, principalId);
         if (!Boolean.TRUE.equals(eligible)
-                || !staffAccess.hasActiveGrant(principalId, customerId, "CASE_READ")) {
+                || !staffAccess.hasActiveGrant(principalId, customerId, "PROTECTION_CASE_MANAGEMENT", "CASE_READ")) {
             throw new BusinessException(StaffAccessErrorCode.PRINCIPAL_NOT_ELIGIBLE);
         }
     }
 
     private void requireAssigned(CaseSummary current, AuditActor actor, String scope) {
         requireStaffPrincipal(actor);
-        staffAccess.require(actor, current.customerId(), scope, "CASE", current.caseId().toString());
+        staffAccess.require(actor, current.customerId(), "PROTECTION_CASE_MANAGEMENT", scope, "CASE", current.caseId().toString());
         if (current.assignedTo() == null || !current.assignedTo().equals(actor.principalId().toString())) {
             throw new BusinessException(StaffAccessErrorCode.ACCESS_DENIED);
         }

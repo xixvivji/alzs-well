@@ -4,6 +4,8 @@ import static com.alzswell.protection.api.ProtectionErrorCode.ACTION_NOT_FOUND;
 import static com.alzswell.protection.api.ProtectionErrorCode.CUSTOMER_NOT_FOUND;
 
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.AuditActor;
+import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import com.alzswell.protection.api.ProtectionRequests.EligibilityEvaluationCommand;
 import com.alzswell.protection.api.ProtectionResponses.*;
 import java.nio.charset.StandardCharsets;
@@ -18,7 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProtectionCatalogService {
     private static final String POLICY_VERSION = "protection-guidance-policy-v1.0.0";
     private final JdbcClient jdbc;
-    public ProtectionCatalogService(JdbcClient jdbc) { this.jdbc = jdbc; }
+    private final StaffAccessPolicyService staffAccess;
+    public ProtectionCatalogService(JdbcClient jdbc, StaffAccessPolicyService staffAccess) {
+        this.jdbc = jdbc; this.staffAccess = staffAccess;
+    }
 
     @Transactional(readOnly = true)
     public ActionList actions() {
@@ -48,10 +53,12 @@ public class ProtectionCatalogService {
         return new ActionDetail(action, sourceUrl, reasons, citations, false);
     }
 
-    @Transactional(readOnly = true)
-    public EligibilityEvaluation evaluate(String actionCode, EligibilityEvaluationCommand command) {
+    @Transactional
+    public EligibilityEvaluation evaluate(String actionCode, EligibilityEvaluationCommand command, AuditActor actor) {
         ActionDetail detail = action(actionCode);
         ensureCustomer(command.customerId());
+        staffAccess.require(actor, command.customerId(), "PROTECTION_ENROLLMENT_REVIEW",
+                "PROTECTION_ENROLLMENT_READ", "PROTECTION_ELIGIBILITY", actionCode);
         boolean supported = detail.supportedReasonCodes().contains(command.reasonCode());
         List<String> reasons = supported ? List.of("POLICY_REASON_MATCHED", "HUMAN_CONFIRMATION_REQUIRED")
                 : List.of("POLICY_REASON_NOT_MATCHED");
@@ -63,9 +70,11 @@ public class ProtectionCatalogService {
                 supported, false, false);
     }
 
-    @Transactional(readOnly = true)
-    public EnrollmentList enrollments(String customerId) {
+    @Transactional
+    public EnrollmentList enrollments(String customerId, AuditActor actor) {
         ensureCustomer(customerId);
+        staffAccess.require(actor, customerId, "PROTECTION_ENROLLMENT_REVIEW",
+                "PROTECTION_ENROLLMENT_READ", "PROTECTION_ENROLLMENT", null);
         List<Enrollment> items = jdbc.sql("""
                 select e.*, a.title, i.display_name
                   from customer_protection_enrollment e

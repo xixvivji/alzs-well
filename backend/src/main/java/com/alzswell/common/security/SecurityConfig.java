@@ -123,7 +123,6 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/actuator/health",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -197,7 +196,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/api/v1/detection-runs/**", staffApi);
         source.registerCorsConfiguration("/api/v1/detection-promotions/**", staffApi);
         source.registerCorsConfiguration("/api/v1/synthetic-datasets/**", staffApi);
-        source.registerCorsConfiguration("/api/v1/signals/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/signals/**", general);
         source.registerCorsConfiguration("/api/v1/staff-access-policy/**", staffApi);
         source.registerCorsConfiguration("/api/v1/customers/*/staff-access-grants/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/staff/sessions/*/capability", staffIssuance);
@@ -263,6 +262,15 @@ public class SecurityConfig {
         if (requireHttps && !scheme.equals("https")) {
             throw new IllegalArgumentException("운영 CORS origin은 HTTPS여야 합니다: " + origin);
         }
-        return origin;
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        int port = uri.getPort();
+        if ((scheme.equals("https") && port == 443) || (scheme.equals("http") && port == 80)) {
+            port = -1;
+        }
+        try {
+            return new URI(scheme, null, host, port, null, null, null).toASCIIString();
+        } catch (java.net.URISyntaxException exception) {
+            throw new IllegalArgumentException("유효하지 않은 CORS origin입니다: " + origin, exception);
+        }
     }
 }

@@ -2,12 +2,14 @@ package com.alzswell.protection.api;
 
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
+import com.alzswell.common.security.AuditActor;
 import com.alzswell.protection.api.ProtectionRequests.EligibilityEvaluationCommand;
 import com.alzswell.protection.api.ProtectionResponses.*;
 import com.alzswell.protection.application.ProtectionCatalogService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -37,17 +39,18 @@ public class ProtectionActionController {
             + "(#command.customerId == authentication.name or hasAuthority('PROTECTION_ENROLLMENT_READ_ALL'))")
     public ResponseEntity<ApiResponse<EligibilityEvaluation>> evaluate(
             @PathVariable @Pattern(regexp = ACTION_CODE_PATTERN) String actionCode,
-            @Valid @RequestBody EligibilityEvaluationCommand command) {
+            @Valid @RequestBody EligibilityEvaluationCommand command, Authentication authentication) {
         return ApiResponses.ok("PROTECTION_ELIGIBILITY_EVALUATED", "보호수단 안내 가능성을 평가했습니다.",
-                service.evaluate(actionCode, command));
+                service.evaluate(actionCode, command, AuditActor.from(authentication)));
     }
 
     @GetMapping("/customers/{customerId}/protection-enrollments")
     @PreAuthorize("(#customerId == authentication.name and hasAuthority('PROTECTION_ENROLLMENT_READ')) or "
             + "hasAuthority('PROTECTION_ENROLLMENT_READ_ALL')")
     public ResponseEntity<ApiResponse<EnrollmentList>> enrollments(
-            @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId) {
+            @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
+            Authentication authentication) {
         return ApiResponses.ok("PROTECTION_ENROLLMENTS_RETRIEVED", "합성 보호수단 가입상태를 조회했습니다.",
-                service.enrollments(customerId));
+                service.enrollments(customerId, AuditActor.from(authentication)));
     }
 }

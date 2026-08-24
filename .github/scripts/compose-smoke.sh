@@ -33,9 +33,9 @@ trap cleanup EXIT
 "${COMPOSE[@]}" config --quiet
 "${COMPOSE[@]}" up --build --detach --wait --wait-timeout 300
 
-curl --fail --silent --show-error "${BASE_URL}/actuator/health" \
-  | tee "${ARTIFACT_DIRECTORY}/health.json" \
-  | jq -e '.status == "UP"' > /dev/null
+ACTUATOR_STATUS="$(curl --silent --show-error --output "${ARTIFACT_DIRECTORY}/actuator-health.txt" \
+  --write-out '%{http_code}' "${BASE_URL}/actuator/health")"
+test "${ACTUATOR_STATUS}" = "404"
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/readiness" \
   | tee "${ARTIFACT_DIRECTORY}/readiness.json" \

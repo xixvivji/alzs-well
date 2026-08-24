@@ -4,8 +4,10 @@ import com.alzswell.alert.api.AlertResponses.AlertList;
 import com.alzswell.alert.application.OperationalAlertService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
+import com.alzswell.common.security.AuditActor;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,8 +34,9 @@ public class CustomerAlertController {
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
             @RequestParam(required = false)
             @Pattern(regexp = "AWAITING_CONTEXT|DEFERRED|CLOSED_NORMAL|BANK_REVIEW") String state,
-            @RequestParam(required = false) @Pattern(regexp = "LOW|MEDIUM|HIGH") String severity) {
+            @RequestParam(required = false) @Pattern(regexp = "LOW|MEDIUM|HIGH") String severity,
+            Authentication authentication) {
         return ApiResponses.ok("CUSTOMER_ALERTS_RETRIEVED", "고객 운영형 경보를 조회했습니다.",
-                alertService.alerts(customerId, state, severity));
+                alertService.alerts(customerId, state, severity, AuditActor.from(authentication)));
     }
 }

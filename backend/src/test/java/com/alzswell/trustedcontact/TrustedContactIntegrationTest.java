@@ -86,6 +86,7 @@ class TrustedContactIntegrationTest {
 
         MvcResult updated=mockMvc.perform(patch(
                         "/api/v1/customers/{customer}/trusted-contacts/{id}",CUSTOMER,id)
+                        .header("Idempotency-Key","trusted-contact-update-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedVersion\":"+version
                                 +",\"scopes\":[\"CONTACT_REQUEST_STATUS\"],"
@@ -96,6 +97,7 @@ class TrustedContactIntegrationTest {
         long next=mapper.readTree(updated.getResponse().getContentAsByteArray())
                 .at("/data/version").asLong();
         mockMvc.perform(post("/api/v1/customers/{customer}/trusted-contacts/{id}/revoke",CUSTOMER,id)
+                        .header("Idempotency-Key","trusted-contact-revoke-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedVersion\":"+next+",\"reason\":\"고객 철회\"}"))
                 .andExpect(status().isOk())
@@ -162,6 +164,7 @@ class TrustedContactIntegrationTest {
 
         mockMvc.perform(post("/api/v1/customers/{customer}/consents/{consentId}/withdraw",
                         CUSTOMER,consentId)
+                        .header("Idempotency-Key","trusted-consent-withdraw-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expectedVersion\":1,\"reason\":\"신뢰연락인 동의 철회\"}"))
                 .andExpect(status().isOk())

@@ -6,6 +6,7 @@ import com.alzswell.account.application.AccountQueryService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -101,10 +102,13 @@ public class AccountController {
     @PatchMapping("/accounts/{accountId}/display-settings")
     @PreAuthorize("hasAuthority('ACCOUNT_WRITE')")
     public ResponseEntity<ApiResponse<DisplaySetting>> updateDisplaySetting(
-            @PathVariable UUID accountId, @Valid @RequestBody UpdateDisplaySetting command,
+            @PathVariable UUID accountId,
+            @RequestHeader("Idempotency-Key") @Size(min=8,max=100)
+            @Pattern(regexp="[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody UpdateDisplaySetting command,
             Authentication auth) {
         return ApiResponses.ok("ACCOUNT_DISPLAY_SETTING_UPDATED", "계좌 표시 설정을 변경했습니다.",
-                service.updateDisplaySetting(auth.getName(), accountId, command));
+                service.updateDisplaySetting(auth.getName(), accountId, command, idempotencyKey));
     }
 
     @GetMapping("/customers/{customerId}/account-groups")

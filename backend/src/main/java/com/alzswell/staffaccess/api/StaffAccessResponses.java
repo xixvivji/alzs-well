@@ -18,7 +18,7 @@ public final class StaffAccessResponses {
     public record GrantList(String customerId, List<Grant> items, int totalCount) {}
 
     public record Evaluation(
-            UUID evaluationId, UUID staffPrincipalId, String customerId, String scope,
+            UUID evaluationId, UUID staffPrincipalId, String customerId, String purposeCode, String scope,
             boolean allowed, UUID grantId, String decisionCode, OffsetDateTime evaluatedAt,
             boolean externalIamCalled
     ) {}

@@ -13,6 +13,7 @@ import com.alzswell.customer.api.CustomerResponses.Preferences;
 import com.alzswell.customer.application.CustomerProfileService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,13 +55,14 @@ public class CustomerController {
             + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
     public ResponseEntity<ApiResponse<DisplayProfile>> updateDisplayProfile(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
             @Valid @RequestBody DisplayProfileCommand request
     ) {
-        customerProfileService.updateDisplayProfile(customerId, request);
         return ApiResponses.ok(
                 "CUSTOMER_DISPLAY_PROFILE_UPDATED",
                 "표시 프로필을 갱신했습니다.",
-                customerProfileService.getDisplayProfile(customerId)
+                customerProfileService.updateDisplayProfile(customerId, request, idempotencyKey)
         );
     }
 
@@ -80,13 +82,14 @@ public class CustomerController {
             + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
     public ResponseEntity<ApiResponse<Preferences>> patchPreferences(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
             @Valid @RequestBody PreferencesCommand request
     ) {
-        customerProfileService.patchPreferences(customerId, request);
         return ApiResponses.ok(
                 "CUSTOMER_PREFERENCES_UPDATED",
                 "서비스 환경설정을 반영했습니다.",
-                customerProfileService.getPreferences(customerId)
+                customerProfileService.patchPreferences(customerId, request, idempotencyKey)
         );
     }
 
@@ -106,13 +109,14 @@ public class CustomerController {
             + "hasAuthority('CUSTOMER_PROFILE_WRITE_ALL')")
     public ResponseEntity<ApiResponse<AccessibilitySettings>> putAccessibilitySettings(
             @PathVariable @Pattern(regexp = CUSTOMER_ID_PATTERN) String customerId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
             @Valid @RequestBody AccessibilitySettingsCommand request
     ) {
-        customerProfileService.putAccessibilitySettings(customerId, request);
         return ApiResponses.ok(
                 "CUSTOMER_ACCESSIBILITY_SETTINGS_UPDATED",
                 "접근성 설정을 반영했습니다.",
-                customerProfileService.getAccessibilitySettings(customerId)
+                customerProfileService.putAccessibilitySettings(customerId, request, idempotencyKey)
         );
     }
 

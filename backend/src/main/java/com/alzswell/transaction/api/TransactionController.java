@@ -115,18 +115,24 @@ public class TransactionController {
     @PutMapping("/transactions/{transactionId}/category")
     @PreAuthorize("hasAuthority('TRANSACTION_WRITE')")
     public ResponseEntity<ApiResponse<TransactionPreference>> updateCategory(
-            @PathVariable UUID transactionId, @Valid @RequestBody UpdateCategory command,
+            @PathVariable UUID transactionId,
+            @RequestHeader("Idempotency-Key") @Size(min=8,max=100)
+            @Pattern(regexp="[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody UpdateCategory command,
             Authentication auth) {
         return ApiResponses.ok("TRANSACTION_CATEGORY_UPDATED", "고객 지정 거래 범주를 변경했습니다.",
-                service.updateCategory(auth.getName(), transactionId, command));
+                service.updateCategory(auth.getName(), transactionId, command, idempotencyKey));
     }
 
     @PutMapping("/transactions/{transactionId}/note")
     @PreAuthorize("hasAuthority('TRANSACTION_WRITE')")
     public ResponseEntity<ApiResponse<TransactionPreference>> updateNote(
-            @PathVariable UUID transactionId, @Valid @RequestBody UpdateNote command,
+            @PathVariable UUID transactionId,
+            @RequestHeader("Idempotency-Key") @Size(min=8,max=100)
+            @Pattern(regexp="[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody UpdateNote command,
             Authentication auth) {
         return ApiResponses.ok("TRANSACTION_NOTE_UPDATED", "금융 기억노트를 변경했습니다.",
-                service.updateNote(auth.getName(), transactionId, command));
+                service.updateNote(auth.getName(), transactionId, command, idempotencyKey));
     }
 }

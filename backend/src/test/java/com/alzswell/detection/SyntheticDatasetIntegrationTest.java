@@ -154,6 +154,21 @@ class SyntheticDatasetIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "detection-admin", authorities = "SYNTHETIC_DATASET_ADMIN")
+    void rejectsSensitiveEvidenceBeforeItCanEnterTheImmutableDataset() throws Exception {
+        String sensitive = validDatasetJson().replace("예정 거래 누락", "계좌번호 123456789");
+        mockMvc.perform(post("/api/v1/admin/synthetic-datasets")
+                        .contentType(APPLICATION_JSON).content(sensitive))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+        Integer stored = jdbcTemplate.queryForObject("""
+                select count(*) from synthetic_detection_dataset
+                 where payload::text like '%123456789%'
+                """, Integer.class);
+        assertThat(stored).isZero();
+    }
+
+    @Test
     @WithMockUser(username = "ordinary-user", authorities = "DETECTION_READ")
     void blocksNonAdminDatasetAccess() throws Exception {
         mockMvc.perform(post("/api/v1/admin/synthetic-datasets")

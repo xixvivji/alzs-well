@@ -47,7 +47,7 @@ class OperationalCaseIntegrationTest {
     @BeforeEach
     void resetWorkflow() {
         jdbcTemplate.execute("""
-                truncate table staff_access_grant_event, staff_access_grant,
+                truncate table staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant,
                     operational_case_follow_up_event, operational_case_follow_up,
                     operational_case_note, operational_case_activity,
                     operational_case_review_event, operational_guidance_plan,
@@ -97,6 +97,15 @@ class OperationalCaseIntegrationTest {
 
         mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
                         .header("Authorization", "Bearer " + staffAccessToken).contentType(APPLICATION_JSON)
+                        .header("Idempotency-Key", "case-assignment-0001")
+                        .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\""
+                                + STAFF_PRINCIPAL_ID + "\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version").value(2));
+        mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-assignment-0001")
+                        .contentType(APPLICATION_JSON)
                         .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\""
                                 + STAFF_PRINCIPAL_ID + "\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
@@ -175,12 +184,19 @@ class OperationalCaseIntegrationTest {
                 .andExpect(jsonPath("$.data.count").value(1));
 
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/guidance-plans", caseId)
-                        .header("Authorization", "Bearer " + staffAccessToken).contentType(APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-guidance-0001").contentType(APPLICATION_JSON)
                         .content("{\"selectedActionCodes\":[\"FDS_REVIEW\",\"BRANCH_CONSULTATION\"],\"expectedVersion\":4}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.caseVersion").value(5))
                 .andExpect(jsonPath("$.data.delivered").value(false))
                 .andExpect(jsonPath("$.data.externalExecutionCreated").value(false));
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/guidance-plans", caseId)
+                        .header("Authorization", "Bearer " + staffAccessToken)
+                        .header("Idempotency-Key", "case-guidance-0001").contentType(APPLICATION_JSON)
+                        .content("{\"selectedActionCodes\":[\"FDS_REVIEW\",\"BRANCH_CONSULTATION\"],\"expectedVersion\":4}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.caseVersion").value(5));
 
         mockMvc.perform(post("/api/v1/staff/cases/{caseId}/reviews", caseId)
                         .header("Authorization", "Bearer " + staffAccessToken)
@@ -261,7 +277,7 @@ class OperationalCaseIntegrationTest {
         jdbcTemplate.update("""
                 insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,
                     status,granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
-                values(?,?,?,'CASE_PROTECTION',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
+                values(?,?,?,'PROTECTION_CASE_MANAGEMENT',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
                     'CASE_NOTE','CASE_FOLLOW_UP'],'ACTIVE',?,now(),now()+interval '1 day',repeat('a',64),repeat('b',64),1)
                 """, UUID.randomUUID(), STAFF_PRINCIPAL_ID, CUSTOMER_ID, STAFF_PRINCIPAL_ID);
         String response = mockMvc.perform(post("/api/v1/auth/login")

@@ -74,11 +74,13 @@ server {
 
     location = /actuator/health {
         access_log off;
-        proxy_pass http://backend:8080;
+        return 404;
     }
 
     location = /api/v1/system/readiness {
         access_log off;
+        limit_req zone=demo_read burst=5 nodelay;
+        limit_conn demo_conn 5;
         proxy_pass http://backend:8080;
     }
 

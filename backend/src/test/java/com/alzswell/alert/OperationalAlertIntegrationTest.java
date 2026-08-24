@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alzswell.identity.application.AuthSessionService.AuthenticatedPrincipal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -32,6 +36,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class OperationalAlertIntegrationTest {
     private static final String CUSTOMER_ID = "SYN_CUSTOMER_FIN_MGMT_001";
+    private static final UUID DETECTION_STAFF_ID =
+            UUID.fromString("95000000-0000-0000-0000-000000000001");
 
     @Container
     @ServiceConnection
@@ -43,12 +49,60 @@ class OperationalAlertIntegrationTest {
 
     @BeforeEach
     void resetAlerts() {
+        jdbcTemplate.update("truncate staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant");
         jdbcTemplate.update("truncate operational_alert_context_event, operational_alert_audit_event");
         jdbcTemplate.update("""
                 update operational_alert
                    set state = 'AWAITING_CONTEXT', alert_version = 1, deferred_until = null,
                        updated_at = created_at
                 """);
+        jdbcTemplate.update("""
+                insert into auth_principal(principal_id,login_id,customer_id,display_name,password_hash,status,
+                    created_at,updated_at)
+                select ?, 'alert-detection-staff', customer_id, '경보 탐지 직원', password_hash, 'ACTIVE', now(), now()
+                  from auth_principal where login_id='synthetic-customer'
+                on conflict(principal_id) do update set status='ACTIVE',updated_at=now()
+                """, DETECTION_STAFF_ID);
+        jdbcTemplate.update("""
+                insert into auth_principal_role(principal_id,role_code) values(?,'DETECTION_ADMIN')
+                on conflict do nothing
+                """, DETECTION_STAFF_ID);
+    }
+
+    @Test
+    void globalAlertAuthoritiesStillRequireACustomerPurposeGrant() throws Exception {
+        UUID alertId = alertId();
+        var staff = authentication(new UsernamePasswordAuthenticationToken(
+                new AuthenticatedPrincipal(DETECTION_STAFF_ID, CUSTOMER_ID), "n/a",
+                java.util.List.of(new SimpleGrantedAuthority("ALERT_READ_ALL"),
+                        new SimpleGrantedAuthority("ALERT_RESPOND_ALL"),
+                        new SimpleGrantedAuthority("STAFF_ACCESS_GRANT_WRITE"))));
+
+        mockMvc.perform(get("/api/v1/customers/{customerId}/alerts", CUSTOMER_ID).with(staff))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("STAFF_ACCESS_DENIED"));
+        mockMvc.perform(post("/api/v1/alerts/{alertId}/defer", alertId).with(staff)
+                        .header("Idempotency-Key", "alert-defer-denied-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"deferredUntil\":\"" + OffsetDateTime.now().plusHours(1)
+                                + "\",\"expectedVersion\":1}"))
+                .andExpect(status().isForbidden());
+        Integer denied = jdbcTemplate.queryForObject("""
+                select count(*) from staff_access_decision_audit_event
+                 where customer_id=? and allowed=false and purpose_code='ALERT_MANAGEMENT'
+                """, Integer.class, CUSTOMER_ID);
+        assertThat(denied).isEqualTo(2);
+
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER_ID).with(staff)
+                        .header("Idempotency-Key", "alert-purpose-grant-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"staffPrincipalId\":\"" + DETECTION_STAFF_ID
+                                + "\",\"purposeCode\":\"ALERT_MANAGEMENT\","
+                                + "\"scopes\":[\"ALERT_READ\",\"ALERT_RESPOND\"],\"expiresAt\":\""
+                                + OffsetDateTime.now().plusDays(1) + "\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(get("/api/v1/customers/{customerId}/alerts", CUSTOMER_ID).with(staff))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -77,6 +131,14 @@ class OperationalAlertIntegrationTest {
         UUID alertId = alertId();
         String deferredUntil = OffsetDateTime.now().plusHours(2).toString();
         mockMvc.perform(post("/api/v1/alerts/{alertId}/defer", alertId)
+                        .header("Idempotency-Key", "alert-defer-0001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"deferredUntil\":\"" + deferredUntil + "\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentState").value("DEFERRED"))
+                .andExpect(jsonPath("$.data.version").value(2));
+        mockMvc.perform(post("/api/v1/alerts/{alertId}/defer", alertId)
+                        .header("Idempotency-Key", "alert-defer-0001")
                         .contentType(APPLICATION_JSON)
                         .content("{\"deferredUntil\":\"" + deferredUntil + "\",\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
