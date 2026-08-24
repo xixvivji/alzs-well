@@ -11,6 +11,7 @@ version = '0.0.1-SNAPSHOT'
 description = "ALZ's well financial safety backend"
 
 ext['tomcat.version'] = '10.1.57'
+ext['postgresql.version'] = '42.7.12'
 
 java {
 	toolchain {
