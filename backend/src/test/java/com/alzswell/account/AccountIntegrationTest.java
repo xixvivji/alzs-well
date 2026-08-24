@@ -128,6 +128,7 @@ class AccountIntegrationTest {
     @Test
     void updatesDisplaySettingWithOwnershipAuthorityAndOptimisticLock() throws Exception {
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .header("Idempotency-Key", "account-display-001")
                         .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"alias\":\"생활 중심\",\"hidden\":true,\"expectedVersion\":1}"))
@@ -137,6 +138,15 @@ class AccountIntegrationTest {
                 .andExpect(jsonPath("$.data.rowVersion").value(2));
 
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .header("Idempotency-Key", "account-display-001")
+                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"alias\":\"생활 중심\",\"hidden\":true,\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rowVersion").value(2));
+
+        mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .header("Idempotency-Key", "account-display-002")
                         .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hidden\":false,\"expectedVersion\":1}"))
@@ -144,12 +154,14 @@ class AccountIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ACCOUNT_DISPLAY_VERSION_CONFLICT"));
 
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .header("Idempotency-Key", "account-display-003")
                         .with(user("OTHER_CUSTOMER").authorities(() -> "ACCOUNT_WRITE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hidden\":false,\"expectedVersion\":2}"))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
+                        .header("Idempotency-Key", "account-display-004")
                         .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hidden\":false,\"expectedVersion\":2}"))

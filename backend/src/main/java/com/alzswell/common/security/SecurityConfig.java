@@ -123,7 +123,6 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/actuator/health",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -197,7 +196,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/api/v1/detection-runs/**", staffApi);
         source.registerCorsConfiguration("/api/v1/detection-promotions/**", staffApi);
         source.registerCorsConfiguration("/api/v1/synthetic-datasets/**", staffApi);
-        source.registerCorsConfiguration("/api/v1/signals/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/signals/**", general);
         source.registerCorsConfiguration("/api/v1/staff-access-policy/**", staffApi);
         source.registerCorsConfiguration("/api/v1/customers/*/staff-access-grants/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/staff/sessions/*/capability", staffIssuance);

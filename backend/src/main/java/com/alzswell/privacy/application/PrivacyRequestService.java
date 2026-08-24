@@ -38,7 +38,7 @@ public class PrivacyRequestService {
         Boolean customerExists=jdbc.sql("select exists(select 1 from customer_profile where customer_id=?)")
                 .param(customerId).query(Boolean.class).single();
         if(!Boolean.TRUE.equals(customerExists)) throw new BusinessException(PrivacyErrorCode.CUSTOMER_NOT_FOUND);
-        staffAccess.require(actor,customerId,"PRIVACY_REQUEST_WRITE","PRIVACY_REQUEST",type);
+        staffAccess.require(actor,customerId,"PRIVACY_REQUEST_ASSISTANCE","PRIVACY_REQUEST_WRITE","PRIVACY_REQUEST",type);
         String requestHash=hash(String.join("|",type,targetType,String.valueOf(targetReference),reasonCode,String.valueOf(correctedValue)));
         OffsetDateTime now=OffsetDateTime.now(clock); UUID id=UUID.randomUUID();
         int inserted=jdbc.sql("""

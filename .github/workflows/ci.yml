@@ -136,3 +136,43 @@ jobs:
       - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
+
+  backend-sca:
+    name: Java and container vulnerability scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build the deployable Spring Boot artifact
+        working-directory: backend
+        run: ./gradlew clean bootJar --no-daemon
+      - name: Scan Java runtime dependencies in the deployable artifact
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend/build/libs
+          scanners: vuln
+          vuln-type: library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+      - name: Build the backend runtime image
+        run: docker build --tag alzs-well-backend:ci backend
+      - name: Scan OS and Java packages in the runtime image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: alzs-well-backend:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table

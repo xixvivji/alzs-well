@@ -52,7 +52,8 @@ public class ComplianceQueryService {
               union all
               select 'TRUSTED_CONTACT:'||e.event_id,'TRUSTED_CONTACT',e.event_id::text,e.event_type,e.actor_id,c.customer_id,
                      'TRUSTED_CONTACT',e.contact_id::text,null,e.status_snapshot,
-                     jsonb_build_object('reason',e.reason,'rowVersion',e.row_version,'scopes',e.scope_snapshot),null,e.occurred_at
+                     jsonb_build_object('reason',e.reason,'rowVersion',e.row_version,'scopes',e.scope_snapshot,
+                         'snapshotAccuracy',e.snapshot_accuracy),null,e.occurred_at
                 from trusted_contact_event e join trusted_contact c on c.contact_id=e.contact_id
               union all
               select 'CONSENT_ACCESS:'||evaluation_id,'CONSENT_ACCESS',evaluation_id::text,event_type,
@@ -86,11 +87,48 @@ public class ComplianceQueryService {
                      e.detail,e.integrity_hash,e.created_at
                 from operational_case_follow_up_event e join operational_protection_case c on c.case_id=e.case_id
               union all
+              select 'CASE_ASSIGNMENT:'||e.activity_id,'CASE_ASSIGNMENT',e.activity_id::text,e.activity_type,
+                     e.actor_subject,c.customer_id,'CASE',e.case_id::text,null,c.task_status,e.detail,null,e.occurred_at
+                from operational_case_activity e join operational_protection_case c on c.case_id=e.case_id
+              union all
+              select 'GUIDANCE_PLAN:'||g.guidance_plan_id,'GUIDANCE_PLAN',g.guidance_plan_id::text,
+                     'GUIDANCE_PLAN_APPROVED',g.approved_by,c.customer_id,'CASE',g.case_id::text,null,
+                     'GUIDANCE_APPROVED',jsonb_build_object('selectedActionCodes',g.selected_action_codes,
+                         'delivered',g.delivered,'externalExecutionCreated',g.external_execution_created),null,g.approved_at
+                from operational_guidance_plan g join operational_protection_case c on c.case_id=g.case_id
+              union all
+              select 'RECURRING_REMINDER:'||e.event_id,'RECURRING_REMINDER',e.event_id::text,
+                     'REMINDER_SETTING_UPDATED',coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),
+                     p.customer_id,'RECURRING_PAYMENT',e.recurring_payment_id::text,null,
+                     e.enabled_snapshot::text,jsonb_build_object('enabled',e.enabled_snapshot,
+                         'leadDays',e.lead_days_snapshot,'version',e.version_snapshot),null,e.occurred_at
+                from recurring_payment_reminder_event e join recurring_payment p using(recurring_payment_id)
+              union all
+              select 'ACCOUNT_DISPLAY:'||e.event_id,'ACCOUNT_DISPLAY',e.event_id::text,
+                     'ACCOUNT_DISPLAY_SETTING_UPDATED',e.actor_id,e.customer_id,'ACCOUNT',e.account_id::text,
+                     null,e.row_version::text,jsonb_build_object('alias',e.alias_snapshot,
+                         'displayOrder',e.display_order_snapshot,'hidden',e.hidden_snapshot),null,e.occurred_at
+                from account_display_setting_event e
+              union all
+              select 'TRANSACTION_PREFERENCE:'||e.event_id,'TRANSACTION_PREFERENCE',e.event_id::text,
+                     e.event_type,e.actor_id,e.customer_id,'TRANSACTION',e.transaction_id::text,null,
+                     e.row_version::text,jsonb_build_object('category',e.category_snapshot,
+                         'note',e.note_snapshot),null,e.occurred_at
+                from customer_transaction_preference_event e
+              union all
               select 'STAFF_ACCESS:'||e.event_id,'STAFF_ACCESS',e.event_id::text,e.event_type,
                      coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),g.customer_id,
                      'STAFF_ACCESS_GRANT',e.grant_id::text,null,e.status_snapshot,
                      e.detail || jsonb_build_object('scopes',e.scopes_snapshot),null,e.occurred_at
                 from staff_access_grant_event e join staff_access_grant g on g.grant_id=e.grant_id
+              union all
+              select 'STAFF_ACCESS_DECISION:'||e.evaluation_id,'STAFF_ACCESS_DECISION',e.evaluation_id::text,
+                     'STAFF_ACCESS_EVALUATED',coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),
+                     e.customer_id,coalesce(e.resource_type,'STAFF_ACCESS_POLICY'),
+                     coalesce(e.resource_id,e.evaluation_id::text),null,e.decision_code,
+                     jsonb_build_object('grantId',e.grant_id,'staffPrincipalId',e.staff_principal_id,
+                         'purposeCode',e.purpose_code,'scopeCode',e.scope_code,'allowed',e.allowed),null,e.occurred_at
+                from staff_access_decision_audit_event e
               union all
               select 'POLICY:'||event_id,'POLICY',event_id::text,event_type,actor_subject,null,
                      'DETECTION_POLICY',policy_id::text,from_status,to_status,'{}'::jsonb,rules_hash,occurred_at

@@ -135,6 +135,9 @@ class PostgreSqlIntegrationTest {
                       ,'financial_intent_command'
                       ,'staff_access_grant'
                       ,'staff_access_grant_event'
+                      ,'staff_access_purpose_scope'
+                      ,'staff_access_decision_audit_event'
+                      ,'customer_mutation_command'
                       ,'recurring_payment'
                       ,'recurring_payment_occurrence'
                       ,'recurring_payment_reminder_event'
@@ -164,7 +167,7 @@ class PostgreSqlIntegrationTest {
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(103);
+        assertThat(tableCount).isEqualTo(106);
     }
 
     @Test
@@ -305,7 +308,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '47'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '48'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -378,7 +381,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("47"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("48"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -418,6 +421,15 @@ class PostgreSqlIntegrationTest {
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4173"));
+    }
+
+    @Test
+    void corsAllowsCustomerOriginsToReadCustomerSignals() throws Exception {
+        mockMvc.perform(options("/api/v1/signals/{signalId}", UUID.randomUUID())
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
     }
 
     @Test

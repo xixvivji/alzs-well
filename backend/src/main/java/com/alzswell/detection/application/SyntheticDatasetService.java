@@ -1,6 +1,7 @@
 package com.alzswell.detection.application;
 
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.detection.api.DetectionErrorCode;
 import com.alzswell.detection.api.DetectionPolicyRequests.RuleInput;
 import com.alzswell.detection.api.SyntheticDatasetRequests.CreateDatasetCommand;
@@ -36,13 +37,16 @@ public class SyntheticDatasetService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final DetectionPolicyService detectionPolicyService;
+    private final SensitiveTextPolicy sensitiveTextPolicy;
 
     public SyntheticDatasetService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
-                                   DetectionPolicyService detectionPolicyService) {
+                                   DetectionPolicyService detectionPolicyService,
+                                   SensitiveTextPolicy sensitiveTextPolicy) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.detectionPolicyService = detectionPolicyService;
+        this.sensitiveTextPolicy = sensitiveTextPolicy;
     }
 
     @Transactional
@@ -50,16 +54,17 @@ public class SyntheticDatasetService {
         requireCustomer(command.customerId());
         UUID datasetId = UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now(clock);
-        String payload = toJson(command.observations());
+        List<FeatureObservation> observations = sanitize(command.observations());
+        String payload = toJson(observations);
         String payloadHash = sha256(payload);
-        int evidenceCount = command.observations().stream().mapToInt(item -> item.evidence().size()).sum();
+        int evidenceCount = observations.stream().mapToInt(item -> item.evidence().size()).sum();
         jdbcTemplate.update("""
                 insert into synthetic_detection_dataset (
                     dataset_id, customer_id, dataset_name, status, payload, payload_hash,
                     observation_count, evidence_count, created_at
                 ) values (?, ?, ?, 'DRAFT', ?::jsonb, ?, ?, ?, ?)
                 """, datasetId, command.customerId(), command.datasetName().trim(), payload, payloadHash,
-                command.observations().size(), evidenceCount, now);
+                observations.size(), evidenceCount, now);
         return dataset(datasetId);
     }
 
@@ -202,6 +207,16 @@ public class SyntheticDatasetService {
             }
         }
         return List.copyOf(errors);
+    }
+
+    private List<FeatureObservation> sanitize(List<FeatureObservation> observations) {
+        return observations.stream().map(observation -> new FeatureObservation(
+                observation.featureCode(), observation.baselineValue(), observation.currentValue(),
+                observation.unit(), observation.evidence().stream().map(evidence -> new EvidenceInput(
+                        evidence.evidenceType(), evidence.sourceReference(), evidence.occurredAt(),
+                        evidence.amount(), evidence.currency(),
+                        sensitiveTextPolicy.validate(evidence.description(), "evidence.description"))).toList()
+        )).toList();
     }
 
     private List<DetectedSignal> detect(List<FeatureObservation> observations, List<RuleInput> rules) {

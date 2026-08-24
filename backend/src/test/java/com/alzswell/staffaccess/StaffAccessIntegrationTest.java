@@ -1,5 +1,6 @@
 package com.alzswell.staffaccess;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -49,7 +50,7 @@ class StaffAccessIntegrationTest {
 
     @BeforeEach
     void seedPrincipals() {
-        jdbcTemplate.execute("truncate staff_access_grant_event, staff_access_grant");
+        jdbcTemplate.execute("truncate staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant");
         principal(ADMIN, "staff-access-admin", "DETECTION_ADMIN");
         principal(STAFF, "staff-access-protection", "PROTECTION_STAFF");
     }
@@ -57,7 +58,7 @@ class StaffAccessIntegrationTest {
     @Test
     void grantsEvaluatesAuditsAndRevokesCustomerScopedAccess() throws Exception {
         String request = """
-                {"staffPrincipalId":"__STAFF_ID__","purposeCode":"CUSTOMER_PROTECTION_REVIEW",
+                {"staffPrincipalId":"__STAFF_ID__","purposeCode":"PROTECTION_CASE_MANAGEMENT",
                  "scopes":["CASE_READ","CASE_REVIEW"],"expiresAt":"__EXPIRES_AT__"}
                 """.replace("__STAFF_ID__", STAFF.toString())
                 .replace("__EXPIRES_AT__", OffsetDateTime.now().plusDays(1).toString());
@@ -77,7 +78,7 @@ class StaffAccessIntegrationTest {
         mockMvc.perform(post("/api/v1/staff-access-policy/evaluations").with(admin())
                         .contentType(APPLICATION_JSON)
                         .content("{\"staffPrincipalId\":\"" + STAFF + "\",\"customerId\":\"" + CUSTOMER
-                                + "\",\"scope\":\"CASE_REVIEW\"}"))
+                                + "\",\"purposeCode\":\"PROTECTION_CASE_MANAGEMENT\",\"scope\":\"CASE_REVIEW\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.allowed").value(true));
         mockMvc.perform(get("/api/v1/customers/{customerId}/staff-access-grants/{grantId}/audit", CUSTOMER, grantId)
                         .with(admin()))
@@ -89,7 +90,7 @@ class StaffAccessIntegrationTest {
         mockMvc.perform(post("/api/v1/staff-access-policy/evaluations").with(admin())
                         .contentType(APPLICATION_JSON)
                         .content("{\"staffPrincipalId\":\"" + STAFF + "\",\"customerId\":\"" + CUSTOMER
-                                + "\",\"scope\":\"CASE_REVIEW\"}"))
+                                + "\",\"purposeCode\":\"PROTECTION_CASE_MANAGEMENT\",\"scope\":\"CASE_REVIEW\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.allowed").value(false));
 
         UUID eventId = jdbcTemplate.queryForObject(
@@ -97,6 +98,55 @@ class StaffAccessIntegrationTest {
         assertThatThrownBy(() -> jdbcTemplate.update(
                 "delete from staff_access_grant_event where event_id=?", eventId))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("append-only");
+    }
+
+    @Test
+    void rejectsPurposeScopeMixingAndTransitionsExpiredGrantBeforeRenewal() throws Exception {
+        String invalid = ("{\"staffPrincipalId\":\"%s\",\"purposeCode\":\"FINANCIAL_INTENT_REVIEW\","
+                + "\"scopes\":[\"CASE_READ\"],\"expiresAt\":\"%s\"}")
+                .formatted(STAFF, OffsetDateTime.now().plusDays(1));
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER)
+                        .with(admin()).header("Idempotency-Key", "staff-invalid-scope-001")
+                        .contentType(APPLICATION_JSON).content(invalid))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STAFF_ACCESS_GRANT_STATE_CONFLICT"));
+
+        UUID expiredId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
+                    granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
+                values(?,?,?,'FINANCIAL_INTENT_REVIEW',array['FINANCIAL_INTENT_READ'],'ACTIVE',?,
+                    now()-interval '2 days',now()-interval '1 day',repeat('1',64),repeat('2',64),1)
+                """, expiredId, STAFF, CUSTOMER, ADMIN);
+        mockMvc.perform(get("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER).with(admin()))
+                .andExpect(status().isOk());
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from staff_access_grant where grant_id=?", String.class, expiredId))
+                .isEqualTo("EXPIRED");
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from staff_access_grant_event where grant_id=? and event_type='EXPIRED'
+                """, Integer.class, expiredId)).isEqualTo(1);
+
+        String renewal = ("{\"staffPrincipalId\":\"%s\",\"purposeCode\":\"FINANCIAL_INTENT_REVIEW\","
+                + "\"scopes\":[\"FINANCIAL_INTENT_READ\"],\"expiresAt\":\"%s\"}")
+                .formatted(STAFF, OffsetDateTime.now().plusDays(1));
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants", CUSTOMER)
+                        .with(admin()).header("Idempotency-Key", "staff-renewal-001")
+                        .contentType(APPLICATION_JSON).content(renewal))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+        UUID renewalId = jdbcTemplate.queryForObject("""
+                select grant_id from staff_access_grant
+                 where purpose_code='FINANCIAL_INTENT_REVIEW' and status='ACTIVE'
+                """, UUID.class);
+        mockMvc.perform(post("/api/v1/customers/{customerId}/staff-access-grants/{grantId}/revoke",
+                        CUSTOMER, renewalId).with(admin()).contentType(APPLICATION_JSON)
+                        .content("{\"expectedVersion\":1,\"reason\":\"계좌번호 123456789\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from staff_access_grant where grant_id=?", String.class, renewalId))
+                .isEqualTo("ACTIVE");
     }
 
     private void principal(UUID id, String loginId, String role) {

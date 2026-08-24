@@ -49,7 +49,7 @@ class BackendCoreFlowE2ETest {
 
     @BeforeEach
     void prepareStaffAccess() {
-        jdbcTemplate.execute("truncate staff_access_grant_event, staff_access_grant");
+        jdbcTemplate.execute("truncate staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant");
         jdbcTemplate.update("""
                 insert into auth_principal(principal_id,login_id,customer_id,display_name,password_hash,status,created_at,updated_at)
                 select ?,'e2e-protection-staff',customer_id,'E2E 보호업무 담당자',password_hash,'ACTIVE',now(),now()
@@ -61,7 +61,7 @@ class BackendCoreFlowE2ETest {
         jdbcTemplate.update("""
                 insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
                     granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
-                values(?,?,?,'E2E_CASE',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE'],
+                values(?,?,?,'PROTECTION_CASE_MANAGEMENT',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE'],
                     'ACTIVE',?,now(),now()+interval '1 day',repeat('c',64),repeat('d',64),1)
                 """, UUID.randomUUID(), STAFF_PRINCIPAL_ID, CUSTOMER_ID, STAFF_PRINCIPAL_ID);
     }

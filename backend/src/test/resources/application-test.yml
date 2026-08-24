@@ -7,6 +7,8 @@ spring:
     password: test-only-password
 
 app:
+  staff-access:
+    expiration-scheduling-enabled: false
   deployment:
     public-exposure: false
   features:

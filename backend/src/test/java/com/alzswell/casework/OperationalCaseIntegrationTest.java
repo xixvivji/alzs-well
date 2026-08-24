@@ -47,7 +47,7 @@ class OperationalCaseIntegrationTest {
     @BeforeEach
     void resetWorkflow() {
         jdbcTemplate.execute("""
-                truncate table staff_access_grant_event, staff_access_grant,
+                truncate table staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant,
                     operational_case_follow_up_event, operational_case_follow_up,
                     operational_case_note, operational_case_activity,
                     operational_case_review_event, operational_guidance_plan,
@@ -261,7 +261,7 @@ class OperationalCaseIntegrationTest {
         jdbcTemplate.update("""
                 insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,
                     status,granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
-                values(?,?,?,'CASE_PROTECTION',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
+                values(?,?,?,'PROTECTION_CASE_MANAGEMENT',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
                     'CASE_NOTE','CASE_FOLLOW_UP'],'ACTIVE',?,now(),now()+interval '1 day',repeat('a',64),repeat('b',64),1)
                 """, UUID.randomUUID(), STAFF_PRINCIPAL_ID, CUSTOMER_ID, STAFF_PRINCIPAL_ID);
         String response = mockMvc.perform(post("/api/v1/auth/login")

@@ -29,6 +29,7 @@ public final class StaffAccessRequests {
     public record EvaluationCommand(
             @NotNull UUID staffPrincipalId,
             @NotBlank @Pattern(regexp = "[A-Za-z0-9][A-Za-z0-9_:-]{2,79}") String customerId,
+            @NotBlank @Pattern(regexp = "[A-Z][A-Z0-9_]{2,59}") String purposeCode,
             @NotBlank @Pattern(regexp = "[A-Z][A-Z0-9_]{2,59}") String scope
     ) {}
 }

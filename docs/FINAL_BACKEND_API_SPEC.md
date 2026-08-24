@@ -1022,7 +1022,7 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | GET | /api/v1/accounts/{accountId}/statements | 거래명세서 목록 | EXTERNAL_INTEGRATION |
 | P1 | GET | /api/v1/accounts/{accountId}/statements/{statementId} | 거래명세서 상세 | EXTERNAL_INTEGRATION |
 | P1 | GET | /api/v1/accounts/{accountId}/recurring-counterparties | 반복 거래 상대 분석 | OWNED |
-| P1 | PATCH | /api/v1/accounts/{accountId}/display-settings | 계좌 별칭·노출 순서 변경 | OWNED |
+| P1 | PATCH | /api/v1/accounts/{accountId}/display-settings | `Idempotency-Key` 기반 계좌 별칭·노출 순서 변경 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/account-groups | 고객 지정 계좌 그룹 | OWNED |
 
 P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_account_snapshot`, `customer_account_balance_snapshot`, `customer_account_restriction_snapshot`, `customer_account_statement_snapshot`으로 `IMPLEMENTED-SYNTHETIC-READ-ONLY`다. V43은 반복 상대·계좌 그룹을 불변 합성 snapshot으로 추가하고, 별칭·노출 순서·숨김 여부만 `account_display_setting`에서 변경하도록 원천 계좌 데이터와 분리했다. `ACCOUNT_READ|WRITE` 권한과 고객 소유권을 Controller·서비스 양쪽에서 확인하며 `{accountId}` 단독 경로와 `{statementId}` 상세도 다른 고객의 식별자를 사용하면 404를 반환한다. 계좌번호는 마스킹 형식만 DB 제약으로 허용하고 원문 번호·거래 원문은 저장하지 않는다.
@@ -1059,13 +1059,13 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 | P1 | GET | /api/v1/customers/{customerId}/counterparties | 거래 상대 목록·신규성 | OWNED |
 | P1 | GET | /api/v1/counterparties/{counterpartyId}/transaction-history | 상대별 거래 추세 | OWNED |
 | P1 | GET | /api/v1/transactions/{transactionId}/enrichment | 범주·정규화·분석 부가정보 | OWNED |
-| P1 | PUT | /api/v1/transactions/{transactionId}/category | 고객 지정 범주 보정 | OWNED |
-| P1 | PUT | /api/v1/transactions/{transactionId}/note | 금융 기억노트 작성 | OWNED |
+| P1 | PUT | /api/v1/transactions/{transactionId}/category | `Idempotency-Key` 기반 고객 지정 범주 보정 | OWNED |
+| P1 | PUT | /api/v1/transactions/{transactionId}/note | `Idempotency-Key` 기반 금융 기억노트 작성 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/transaction-export-requests | 거래내역 파일 생성 요청 | OWNED |
 
 앞의 P1 9개는 Flyway V44의 `financial_transaction_snapshot`, `transaction_enrichment_snapshot`, `customer_transaction_preference`, `customer_transaction_preference_event`로 구현됐다. 원천 거래와 enrichment는 추가 전용 불변 snapshot이며 `TRANSACTION_READ`와 고객 소유권을 서비스 계층에서도 확인한다. 목록·검색은 `occurredAt DESC, transactionId DESC` 복합 정렬과 UUID cursor를 사용하고 기간은 최대 366일, limit은 최대 100으로 제한한다. 검색어는 최대 80자이며 민감정보 정책을 통과한 마스킹 설명·상대방 이름만 검색한다. `q` 원문이 URI access log에 남지 않도록 거래 검색 경로의 Nginx access log는 비활성화한다.
 
-범주·노트 PUT은 `TRANSACTION_WRITE`와 `expectedVersion`을 요구한다. 고객 보정 범주는 고정 enum만 허용하고, 기억노트는 최대 120자이며 식별정보·계좌번호·연락처·질병 표현을 거부한다. 변경은 원천 거래를 수정하지 않고 별도 preference만 갱신하며 추가 전용 이벤트를 남긴다. 버전 충돌은 `409 TRANSACTION_PREFERENCE_VERSION_CONFLICT`, 잘못된 cursor는 `400 TRANSACTION_CURSOR_INVALID`, 기간·금액 범위 오류는 각각 `400 TRANSACTION_DATE_RANGE_INVALID`, `400 TRANSACTION_AMOUNT_RANGE_INVALID`다. 응답은 `syntheticData=true`, `externalActionAvailable=false`, `externalActionExecuted=false`를 유지하며 실제 취소·정정·이체·export를 실행하지 않는다.
+범주·노트 PUT은 `TRANSACTION_WRITE`, `Idempotency-Key`, `expectedVersion`을 요구한다. 고객 보정 범주는 고정 enum만 허용하고, 기억노트는 최대 120자이며 식별정보·계좌번호·연락처·질병 표현을 거부한다. 변경은 원천 거래를 수정하지 않고 별도 preference만 갱신하며 추가 전용 이벤트를 남긴다. 버전 충돌은 `409 TRANSACTION_PREFERENCE_VERSION_CONFLICT`, 잘못된 cursor는 `400 TRANSACTION_CURSOR_INVALID`, 기간·금액 범위 오류는 각각 `400 TRANSACTION_DATE_RANGE_INVALID`, `400 TRANSACTION_AMOUNT_RANGE_INVALID`다. 응답은 `syntheticData=true`, `externalActionAvailable=false`, `externalActionExecuted=false`를 유지하며 실제 취소·정정·이체·export를 실행하지 않는다.
 
 #### 3.3.8 정기납부·구독·청구 — 8개
 
@@ -1077,7 +1077,7 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 | P1 | GET | /api/v1/customers/{customerId}/recurring-payments/missed | 미발생 정기납부 후보 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/recurring-payments/duplicates | 중복 구독·납부 후보 | OWNED |
 | P1 | GET | /api/v1/recurring-payments/{recurringPaymentId}/occurrences | 과거·예상 발생 내역 | OWNED |
-| P1 | PUT | /api/v1/recurring-payments/{recurringPaymentId}/reminder-settings | 납부 확인 알림 설정 | OWNED |
+| P1 | PUT | /api/v1/recurring-payments/{recurringPaymentId}/reminder-settings | `Idempotency-Key` 기반 납부 확인 알림 설정 | OWNED |
 | P2 | POST | /api/v1/recurring-payments/{recurringPaymentId}/cancellation-guidance | 해지 방법 안내만 생성 | REFERENCE_ONLY |
 
 앞의 P1 7개는 Flyway V41의 `recurring_payment`, 추가 전용 `recurring_payment_occurrence`, `recurring_payment_reminder_event`와 함께 `IMPLEMENTED-SYNTHETIC-READ-MODEL`이다. 고객 본인의 Bearer 주체와 `RECURRING_PAYMENT_READ|WRITE` 권한을 함께 검사하며 `{recurringPaymentId}` 단독 경로도 서비스 계층에서 소유권을 다시 확인해 교차 고객 IDOR에는 404를 반환한다. 목록·상세·달력·미발생·중복 후보·발생 이력은 기준일 `2026-08-14`의 `SYNTHETIC_PROVIDER` snapshot만 읽는다. 달력 조회는 `from`, `to`를 `YYYY-MM-DD`로 받고 생략하면 기준일이 속한 달부터 두 달 범위를 사용하며 최대 93일로 제한한다.
@@ -1272,6 +1272,10 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P1 | POST | /api/v1/customers/{customerId}/staff-access-grants/{grantId}/revoke | 접근권한 철회 | OWNED |
 | P1 | POST | /api/v1/staff-access-policy/evaluations | 행원·고객·목적·범위별 접근 가능성 평가 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/staff-access-grants/{grantId}/audit | 생성·사용·만료·철회 감사이력 | OWNED |
+
+V48부터 직원 접근권 판정은 `staffPrincipalId + customerId + purposeCode + scope + expiresAt`을 모두 결합한다. 목적별 scope 매트릭스는 동의, 신뢰연락인, 금융의향, 사건, 개인정보 요청, 경보, 보호가입 조회를 서로 분리하며 `*_ALL` 권한도 고객별 grant를 우회하지 않는다. 만료된 grant는 `EXPIRED`로 원자 전환하고 재발급을 허용하며, 허용·거부 판정 모두 `staff_access_decision_audit_event`에 추가 전용으로 보존한다. 자유입력 철회 사유와 탐지 근거 설명은 저장 전에 공통 민감정보 정책을 통과해야 한다.
+
+V48의 `customer_mutation_command`는 계좌 표시, 거래 범주·노트, 정기납부 알림 변경의 원문 멱등키 대신 SHA-256만 저장한다. 동일 scope·동일 키·동일 요청은 최초 JSON 응답을 재생하고, 다른 요청에 같은 키를 사용하면 각 도메인의 `*_IDEMPOTENCY_CONFLICT`를 반환한다.
 
 모든 grant에는 grantId, customerId, staffSubjectId, purpose, scopes, grantedAt, expiresAt, revokedAt을 저장한다. purpose와 scopes가 요청 자원에 맞지 않거나 expiresAt이 지났거나 revokedAt이 존재하면 접근을 거절한다. 현재는 내부 `auth_principal`의 활성 `PROTECTION_STAFF`만 주체로 허용하고 외부 은행 IAM을 호출하지 않는다. 실제 도입 시 기업 IdP/IAM adapter가 주체를 검증하더라도 권한 목적·범위·만료·감사 상태는 ALZ's well이 보존한다.
 
@@ -2199,7 +2203,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "47",
+        "schemaVersion": "48",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2783,7 +2787,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "47",
+    "schemaVersion": "48",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

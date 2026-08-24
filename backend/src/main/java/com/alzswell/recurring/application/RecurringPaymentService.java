@@ -1,6 +1,7 @@
 package com.alzswell.recurring.application;
 
 import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.recurring.api.RecurringPaymentErrorCode;
 import com.alzswell.recurring.api.RecurringPaymentRequests.ReminderSettingsCommand;
@@ -39,10 +40,12 @@ public class RecurringPaymentService {
 
     private final JdbcTemplate jdbc;
     private final Clock clock;
+    private final MutationIdempotencyService idempotency;
 
-    public RecurringPaymentService(JdbcTemplate jdbc, Clock clock) {
+    public RecurringPaymentService(JdbcTemplate jdbc, Clock clock, MutationIdempotencyService idempotency) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.idempotency = idempotency;
     }
 
     @Transactional(readOnly = true)
@@ -127,6 +130,13 @@ public class RecurringPaymentService {
 
     @Transactional
     public PaymentDetail updateReminder(String customerId, UUID recurringPaymentId,
+                                        ReminderSettingsCommand command, String idempotencyKey, AuditActor actor) {
+        return idempotency.execute("RECURRING_REMINDER:" + customerId + ":" + recurringPaymentId,
+                idempotencyKey, command, PaymentDetail.class, RecurringPaymentErrorCode.IDEMPOTENCY_CONFLICT,
+                () -> updateReminderOnce(customerId, recurringPaymentId, command, actor));
+    }
+
+    private PaymentDetail updateReminderOnce(String customerId, UUID recurringPaymentId,
                                         ReminderSettingsCommand command, AuditActor actor) {
         ownedPayment(customerId, recurringPaymentId);
         int changed = jdbc.update("""
