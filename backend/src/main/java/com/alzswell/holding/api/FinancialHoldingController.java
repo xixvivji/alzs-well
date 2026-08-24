@@ -33,4 +33,12 @@ public class FinancialHoldingController {
  public ResponseEntity<ApiResponse<FinancialHoldingResponses.Portfolio>> portfolio(@PathVariable UUID accountId,Authentication a){return ApiResponses.ok("INVESTMENT_PORTFOLIO_RETRIEVED","합성 투자 포트폴리오를 조회했습니다.",service.portfolio(a.getName(),accountId));}
  @GetMapping("/investment-accounts/{accountId}/positions") @Operation(summary="합성 투자 포지션 조회") @PreAuthorize("hasAuthority('FINANCIAL_OVERVIEW_READ')")
  public ResponseEntity<ApiResponse<FinancialHoldingResponses.PositionList>> positions(@PathVariable UUID accountId,Authentication a){return ApiResponses.ok("INVESTMENT_POSITIONS_RETRIEVED","합성 투자 포지션을 조회했습니다.",service.positions(a.getName(),accountId));}
+ @GetMapping("/customers/{customerId}/pension-holdings") @Operation(summary="합성 연금 보유 목록 조회") @PreAuthorize("#customerId == authentication.name and hasAuthority('FINANCIAL_OVERVIEW_READ')")
+ public ResponseEntity<ApiResponse<FinancialHoldingResponses.PensionHoldingList>> pensions(@PathVariable @Pattern(regexp=CUSTOMER) String customerId){return ApiResponses.ok("PENSION_HOLDINGS_RETRIEVED","합성 연금 보유 목록을 조회했습니다.",service.pensions(customerId));}
+ @GetMapping("/pension-holdings/{holdingId}/projection") @Operation(summary="합성 연금 전망 조회") @PreAuthorize("hasAuthority('FINANCIAL_OVERVIEW_READ')")
+ public ResponseEntity<ApiResponse<FinancialHoldingResponses.PensionProjection>> pensionProjection(@PathVariable UUID holdingId,Authentication a){return ApiResponses.ok("PENSION_PROJECTION_RETRIEVED","합성 연금 전망을 조회했습니다.",service.pensionProjection(a.getName(),holdingId));}
+ @GetMapping("/customers/{customerId}/trust-holdings") @Operation(summary="합성 신탁 보유 목록 조회") @PreAuthorize("#customerId == authentication.name and hasAuthority('FINANCIAL_OVERVIEW_READ')")
+ public ResponseEntity<ApiResponse<FinancialHoldingResponses.TrustHoldingList>> trusts(@PathVariable @Pattern(regexp=CUSTOMER) String customerId){return ApiResponses.ok("TRUST_HOLDINGS_RETRIEVED","합성 신탁 보유 목록을 조회했습니다.",service.trusts(customerId));}
+ @GetMapping("/trust-holdings/{trustId}") @Operation(summary="합성 신탁 계약 상세 조회") @PreAuthorize("hasAuthority('FINANCIAL_OVERVIEW_READ')")
+ public ResponseEntity<ApiResponse<FinancialHoldingResponses.TrustHoldingDetail>> trust(@PathVariable UUID trustId,Authentication a){return ApiResponses.ok("TRUST_HOLDING_RETRIEVED","합성 신탁 계약 상세를 조회했습니다.",service.trust(a.getName(),trustId));}
 }
