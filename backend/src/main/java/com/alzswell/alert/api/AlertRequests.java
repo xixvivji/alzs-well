@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
 public final class AlertRequests {
@@ -17,6 +18,12 @@ public final class AlertRequests {
 
     public record DeferCommand(
             @NotNull @Future OffsetDateTime deferredUntil,
+            @Positive long expectedVersion
+    ) {}
+
+    public record AppealCommand(
+            @NotBlank @Pattern(regexp = "DISAGREE_WITH_RESULT|MISSING_CONTEXT|REQUEST_HUMAN_REVIEW") String reasonCode,
+            @NotBlank @Size(max = 300) String statement,
             @Positive long expectedVersion
     ) {}
 }

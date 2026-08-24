@@ -3,6 +3,7 @@ package com.alzswell.alert.application;
 import com.alzswell.alert.api.AlertErrorCode;
 import com.alzswell.alert.api.AlertRequests.ContextResponseCommand;
 import com.alzswell.alert.api.AlertRequests.DeferCommand;
+import com.alzswell.alert.api.AlertRequests.AppealCommand;
 import com.alzswell.alert.api.AlertResponses.AlertDetail;
 import com.alzswell.alert.api.AlertResponses.AlertList;
 import com.alzswell.alert.api.AlertResponses.AlertSummary;
@@ -11,9 +12,11 @@ import com.alzswell.alert.api.AlertResponses.AuditEvent;
 import com.alzswell.alert.api.AlertResponses.AuditTrail;
 import com.alzswell.alert.api.AlertResponses.ContextOption;
 import com.alzswell.alert.api.AlertResponses.ContextOptions;
+import com.alzswell.alert.api.AlertResponses.Appeal;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
+import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.staffaccess.application.StaffAccessPolicyService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -45,14 +48,17 @@ public class OperationalAlertService {
     private final Clock clock;
     private final StaffAccessPolicyService staffAccess;
     private final MutationIdempotencyService idempotency;
+    private final SensitiveTextPolicy sensitiveTextPolicy;
 
     public OperationalAlertService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock,
-            StaffAccessPolicyService staffAccess, MutationIdempotencyService idempotency) {
+            StaffAccessPolicyService staffAccess, MutationIdempotencyService idempotency,
+            SensitiveTextPolicy sensitiveTextPolicy) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.staffAccess = staffAccess;
         this.idempotency = idempotency;
+        this.sensitiveTextPolicy = sensitiveTextPolicy;
     }
 
     @Transactional
@@ -155,6 +161,74 @@ public class OperationalAlertService {
         return idempotency.execute("ALERT_DEFER:" + alertId, idempotencyKey, command,
                 AlertTransition.class, AlertErrorCode.IDEMPOTENCY_CONFLICT,
                 () -> deferOnce(alertId, command, respondAll, auditActor));
+    }
+
+    @Transactional
+    public Appeal appeal(UUID alertId, AppealCommand command, String idempotencyKey, AuditActor actor) {
+        AlertDetail visible = loadAlert(alertId, actor.customerId(), false);
+        String statement = sensitiveTextPolicy.validate(command.statement(), "statement");
+        String keyHash = sha256(idempotencyKey);
+        String requestHash = sha256(alertId + "|" + command.reasonCode() + "|" + statement
+                + "|" + command.expectedVersion());
+        Appeal replay = findAppealReplay(alertId, keyHash, requestHash, true);
+        if (replay != null) return replay;
+        jdbcTemplate.queryForObject("select alert_id from operational_alert where alert_id=? for update",
+                UUID.class, alertId);
+        replay = findAppealReplay(alertId, keyHash, requestHash, true);
+        if (replay != null) return replay;
+        AlertSummary current = loadAlert(alertId, actor.customerId(), false).alert();
+        Integer existing = jdbcTemplate.queryForObject(
+                "select count(*) from operational_alert_appeal where alert_id=?", Integer.class, alertId);
+        if (existing != null && existing > 0) {
+            throw new BusinessException(AlertErrorCode.APPEAL_ALREADY_SUBMITTED);
+        }
+        if (current.version() != command.expectedVersion()
+                || !List.of("AWAITING_CONTEXT", "DEFERRED", "CLOSED_NORMAL").contains(current.state())) {
+            throw new BusinessException(AlertErrorCode.STATE_CONFLICT);
+        }
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        int updated = jdbcTemplate.update("""
+                update operational_alert set state='BANK_REVIEW',deferred_until=null,
+                       alert_version=alert_version+1,updated_at=?
+                 where alert_id=? and customer_id=? and alert_version=?
+                   and state in ('AWAITING_CONTEXT','DEFERRED','CLOSED_NORMAL')
+                """, now, alertId, visible.alert().customerId(), command.expectedVersion());
+        if (updated != 1) throw new BusinessException(AlertErrorCode.STATE_CONFLICT);
+        UUID caseId = createProtectionCase(current, now);
+        UUID appealId = UUID.randomUUID();
+        String integrityHash = sha256(appealId + "|" + alertId + "|" + caseId + "|"
+                + command.reasonCode() + "|" + statement + "|" + current.state() + "|" + now);
+        jdbcTemplate.update("""
+                insert into operational_alert_appeal(
+                    appeal_id,alert_id,customer_id,reason_code,statement,previous_state,resulting_state,
+                    case_id,status,request_hash,idempotency_key_hash,actor_customer_id,created_at,integrity_hash
+                ) values(?,?,?,?,?,?,'BANK_REVIEW',?,'SUBMITTED',?,?,?,?,?)
+                """, appealId, alertId, current.customerId(), command.reasonCode(), statement,
+                current.state(), caseId, requestHash, keyHash, actor.customerId(), now, integrityHash);
+        writeAudit(alertId, "APPEAL_SUBMITTED", current.state(), "BANK_REVIEW",
+                Map.of("appealId", appealId, "caseId", caseId, "reasonCode", command.reasonCode()), actor, now);
+        return new Appeal(appealId, alertId, caseId, command.reasonCode(), "SUBMITTED",
+                current.state(), "BANK_REVIEW", command.expectedVersion() + 1, now,
+                false, false, false);
+    }
+
+    private Appeal findAppealReplay(UUID alertId, String keyHash, String requestHash, boolean replayed) {
+        List<Appeal> rows = jdbcTemplate.query("""
+                select p.appeal_id,p.alert_id,p.case_id,p.reason_code,p.status,p.previous_state,
+                       p.resulting_state,a.alert_version,p.request_hash,p.created_at
+                  from operational_alert_appeal p join operational_alert a on a.alert_id=p.alert_id
+                 where p.alert_id=? and p.idempotency_key_hash=?
+                """, (rs,n) -> {
+                    if (!secureHashEquals(rs.getString("request_hash"), requestHash)) {
+                        throw new BusinessException(AlertErrorCode.APPEAL_IDEMPOTENCY_CONFLICT);
+                    }
+                    return new Appeal(rs.getObject("appeal_id",UUID.class),rs.getObject("alert_id",UUID.class),
+                            rs.getObject("case_id",UUID.class),rs.getString("reason_code"),rs.getString("status"),
+                            rs.getString("previous_state"),rs.getString("resulting_state"),
+                            rs.getLong("alert_version"),rs.getObject("created_at",OffsetDateTime.class),
+                            replayed,false,false);
+                }, alertId, keyHash);
+        return rows.isEmpty() ? null : rows.getFirst();
     }
 
     private AlertTransition deferOnce(UUID alertId, DeferCommand command,

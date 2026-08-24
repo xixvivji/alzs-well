@@ -47,7 +47,8 @@ class OperationalCaseIntegrationTest {
     @BeforeEach
     void resetWorkflow() {
         jdbcTemplate.execute("""
-                truncate table staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant,
+                truncate table operational_case_override_event, operational_alert_appeal,
+                    staff_access_decision_audit_event, staff_access_grant_event, staff_access_grant,
                     operational_case_follow_up_event, operational_case_follow_up,
                     operational_case_note, operational_case_activity,
                     operational_case_review_event, operational_guidance_plan,

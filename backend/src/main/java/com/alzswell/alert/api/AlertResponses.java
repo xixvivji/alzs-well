@@ -37,4 +37,11 @@ public final class AlertResponses {
     ) {}
 
     public record AuditTrail(UUID alertId, List<AuditEvent> items, int totalCount) {}
+
+    public record Appeal(
+            UUID appealId, UUID alertId, UUID caseId, String reasonCode, String status,
+            String previousState, String currentState, long alertVersion, OffsetDateTime submittedAt,
+            boolean idempotencyReplayed, boolean financialActionExecuted,
+            boolean externalNotificationSent
+    ) {}
 }

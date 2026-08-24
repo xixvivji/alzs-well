@@ -5,6 +5,7 @@ import com.alzswell.casework.api.CaseworkRequests.GuidancePlanCommand;
 import com.alzswell.casework.api.CaseworkRequests.FollowUpCommand;
 import com.alzswell.casework.api.CaseworkRequests.NoteCommand;
 import com.alzswell.casework.api.CaseworkRequests.ReviewCommand;
+import com.alzswell.casework.api.CaseworkRequests.OverrideCommand;
 import com.alzswell.casework.api.CaseworkResponses.CaseDetail;
 import com.alzswell.casework.api.CaseworkResponses.CaseEvidence;
 import com.alzswell.casework.api.CaseworkResponses.CaseNote;
@@ -15,6 +16,7 @@ import com.alzswell.casework.api.CaseworkResponses.CaseTransition;
 import com.alzswell.casework.api.CaseworkResponses.GuidancePlan;
 import com.alzswell.casework.api.CaseworkResponses.FollowUp;
 import com.alzswell.casework.api.CaseworkResponses.FollowUps;
+import com.alzswell.casework.api.CaseworkResponses.CaseOverride;
 import com.alzswell.casework.application.OperationalCaseService;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
@@ -92,6 +94,19 @@ public class OperationalCaseController {
         return ApiResponses.ok("STAFF_CASE_REVIEW_APPLIED", "사건 검토 상태를 변경했습니다.",
                 caseService.review(caseId, command, idempotencyKey,
                         AuditActor.from(authentication)));
+    }
+
+    @PostMapping("/{caseId}/overrides")
+    @PreAuthorize("hasAuthority('STAFF_CASE_OVERRIDE')")
+    public ResponseEntity<ApiResponse<CaseOverride>> override(
+            @PathVariable UUID caseId,
+            @RequestHeader("Idempotency-Key") @Size(min = 8, max = 100)
+            @Pattern(regexp = "[A-Za-z0-9._:-]+") String idempotencyKey,
+            @Valid @RequestBody OverrideCommand command,
+            Authentication authentication) {
+        return ApiResponses.created("STAFF_CASE_OVERRIDE_RECORDED",
+                "정책 결과를 직접 실행하지 않고 사건을 사람의 재검토 상태로 전환했습니다.",
+                caseService.override(caseId, command, idempotencyKey, AuditActor.from(authentication)));
     }
 
     @PostMapping("/{caseId}/guidance-plans")
