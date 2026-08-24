@@ -189,6 +189,13 @@ public class OpenApiConfiguration {
                 || path.endsWith("/asset-calendar") || path.endsWith("/data-freshness")) {
             return List.of("FINANCIAL_OVERVIEW_READ");
         }
+        if (path.endsWith("/orders") || path.startsWith("/api/v1/market-instruments/")) {
+            return List.of("INVESTMENT_MARKET_READ");
+        }
+        if (path.endsWith("/watchlist")) {
+            return List.of(method == PathItem.HttpMethod.GET
+                    ? "INVESTMENT_WATCHLIST_READ" : "INVESTMENT_WATCHLIST_WRITE");
+        }
         if (path.contains("/interest-simulations") || path.contains("/repayment-simulations")) {
             return List.of("FINANCIAL_PRODUCT_SIMULATE");
         }
@@ -299,9 +306,11 @@ public class OpenApiConfiguration {
         if (path.contains("/interest-simulations") || path.contains("/repayment-simulations")) {
             return "INTERNAL_OWNED";
         }
+        if (path.endsWith("/watchlist")) return "INTERNAL_OWNED";
         return path.startsWith("/api/v1/financial-institutions") || path.contains("/connections")
                 || path.startsWith("/api/v1/deposit-products") || path.startsWith("/api/v1/loan-products")
                 || path.endsWith("/maturity-options")
+                || path.endsWith("/orders") || path.startsWith("/api/v1/market-instruments/")
                 || path.endsWith("/beneficiaries") || path.endsWith("/transfer-limits")
                 || path.endsWith("/cards") || path.startsWith("/api/v1/cards/")
                 ? "SYNTHETIC_EXTERNAL_ADAPTER" : "INTERNAL_OWNED";
@@ -364,7 +373,8 @@ public class OpenApiConfiguration {
                 || path.endsWith("/assignment")
                 || path.endsWith("/guidance-plans")
                 || path.contains("/trusted-contacts/")
-                || (path.endsWith("/staff-access-grants"));
+                || (path.endsWith("/staff-access-grants"))
+                || path.endsWith("/watchlist");
     }
 
     private void addHeader(Operation operation, String name, boolean required, String description) {

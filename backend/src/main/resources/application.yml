@@ -112,7 +112,7 @@ app:
     cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "51"
+    schema: "52"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

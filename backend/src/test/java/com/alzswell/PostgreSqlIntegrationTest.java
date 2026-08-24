@@ -132,6 +132,13 @@ class PostgreSqlIntegrationTest {
                       ,'deposit_product_rate_snapshot'
                       ,'deposit_maturity_option_snapshot'
                       ,'loan_product_snapshot'
+                      ,'market_instrument_snapshot'
+                      ,'market_quote_snapshot'
+                      ,'market_price_point_snapshot'
+                      ,'investment_order_snapshot'
+                      ,'customer_watchlist_state'
+                      ,'customer_watchlist_item'
+                      ,'customer_watchlist_event'
                       ,'operational_feature_flag'
                       ,'feature_flag_change_event'
                       ,'compliance_retention_policy'
@@ -178,7 +185,7 @@ class PostgreSqlIntegrationTest {
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(116);
+        assertThat(tableCount).isEqualTo(123);
     }
 
     @Test
@@ -385,7 +392,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '51'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '52'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -458,7 +465,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("51"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("52"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -517,13 +524,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(182);
+        assertThat(specification.path("paths").size()).isEqualTo(186);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(195);
+        assertThat(operationCount).isEqualTo(200);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
