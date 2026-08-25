@@ -12,6 +12,7 @@ from app.ingestion.chunker import chunk_document
 from app.ingestion.html_extractor import extract_html_document
 from app.ingestion.manifest_loader import load_and_validate_manifest
 from app.ingestion.output_writer import write_chunks_jsonl
+from app.ingestion.pdf_extractor import extract_pdf_document
 from app.ingestion.pdf_validator import validate_pdf_source
 from app.ingestion.repository import resolve_repository_root
 from app.ingestion.source_validator import validate_source
@@ -39,6 +40,16 @@ def build_parser() -> argparse.ArgumentParser:
     validate_pdf.add_argument("--repo-root", help="명시적인 저장소 루트")
     validate_pdf.add_argument("--manifest", required=True, help="저장소 루트 기준 manifest 경로")
     validate_pdf.add_argument("--as-of", required=True, help="효력 기준일(YYYY-MM-DD)")
+
+    extract_pdf = subparsers.add_parser("extract-pdf", help="승인된 PDF의 페이지별 텍스트를 추출합니다")
+    extract_pdf.add_argument("--repo-root", help="명시적인 저장소 루트")
+    extract_pdf.add_argument("--manifest", required=True, help="저장소 루트 기준 manifest 경로")
+    extract_pdf.add_argument("--as-of", required=True, help="효력 기준일(YYYY-MM-DD)")
+
+    ingest_pdf = subparsers.add_parser("ingest-pdf", help="승인된 PDF를 페이지 추적 chunk JSONL로 적재합니다")
+    ingest_pdf.add_argument("--repo-root", help="명시적인 저장소 루트")
+    ingest_pdf.add_argument("--manifest", required=True, help="저장소 루트 기준 manifest 경로")
+    ingest_pdf.add_argument("--as-of", required=True, help="효력 기준일(YYYY-MM-DD)")
     return parser
 
 
@@ -48,10 +59,55 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         repository_root = resolve_repository_root(args.repo_root)
         manifest = load_and_validate_manifest(repository_root, args.manifest)
-        if args.command == "validate-pdf":
+        if args.command in {"validate-pdf", "extract-pdf", "ingest-pdf"}:
             as_of = _parse_as_of(args.as_of)
             ensure_ingestion_eligible(manifest, as_of=as_of)
             source = validate_pdf_source(repository_root, manifest)
+            if args.command in {"extract-pdf", "ingest-pdf"}:
+                document = extract_pdf_document(manifest, source)
+                if args.command == "ingest-pdf":
+                    chunks = chunk_document(document)
+                    output_path = write_chunks_jsonl(repository_root, chunks)
+                    _write_json(
+                        sys.stdout,
+                        {
+                            "ok": True,
+                            "code": "PDF_INGESTION_COMPLETED",
+                            "contractVersion": manifest.contract_version,
+                            "documentId": document.document_id,
+                            "versionLabel": document.version_label,
+                            "extractorVersion": document.extractor_version,
+                            "chunkerVersion": chunks[0].chunker_version,
+                            "pageCount": source.page_count,
+                            "chunkCount": len(chunks),
+                            "warnings": list(document.warnings),
+                            "outputPath": output_path.relative_to(repository_root).as_posix(),
+                            "source": {"hashVerified": True, "sizeBytes": source.size_bytes},
+                        },
+                    )
+                    return 0
+                text_pages = {
+                    block.page_start for block in document.blocks if block.page_start is not None
+                }
+                _write_json(
+                    sys.stdout,
+                    {
+                        "ok": True,
+                        "code": "PDF_EXTRACTION_COMPLETED",
+                        "contractVersion": manifest.contract_version,
+                        "documentId": document.document_id,
+                        "versionLabel": document.version_label,
+                        "title": document.title,
+                        "extractorVersion": document.extractor_version,
+                        "pageCount": source.page_count,
+                        "textPageCount": len(text_pages),
+                        "blockCount": len(document.blocks),
+                        "sectionCount": len(document.section_paths),
+                        "warnings": list(document.warnings),
+                        "source": {"hashVerified": True, "sizeBytes": source.size_bytes},
+                    },
+                )
+                return 0
             _write_json(
                 sys.stdout,
                 {

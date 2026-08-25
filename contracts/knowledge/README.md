@@ -145,6 +145,9 @@ PDF ingestion profile v1은 현재 코퍼스 37개 PDF의 최대 크기 `81,906,
 - parser는 embedded file, JavaScript, launch action, rich media를 실행하거나 추출하지 않는다. 외부 URI도 호출하지 않는다. 능동 콘텐츠가 발견되면 `SOURCE_ACTIVE_CONTENT_FORBIDDEN`으로 실패한다.
 - 원본 바이트, parser stack trace, 비밀번호 후보와 추출 본문은 오류 응답·로그·감사 이벤트에 기록하지 않는다.
 - 검증 순서는 안전한 경로와 symlink → 확장자와 크기 → header와 EOF → SHA-256 → parser 구조 → 암호화·페이지·능동 콘텐츠 검사 순으로 고정한다.
+- 입력 보안 검증을 통과했더라도 모든 페이지에서 정규화된 텍스트를 추출할 수 없으면 빈 chunk를 만들지 않고 `OCR_REQUIRED`로 실패한다. 5페이지 이상 PDF는 영숫자가 하나 이상 추출되는 페이지가 전체의 10% 미만이어도 이미지 기반 본문으로 판정하여 같은 코드로 실패한다. OCR은 이 profile에서 자동 실행하지 않는다.
+- PDF 파생 chunk는 기존 nullable `page`를 시작 페이지로 채우고, 여러 페이지를 합친 범위를 `pageStart`와 `pageEnd`에 함께 기록한다. HTML chunk의 세 필드는 모두 `null`이다.
+- HTML과 PDF의 구조·페이지 처리 알고리즘이 다르므로 PDF 파생 chunk는 `chunkerVersion=pdf-structure-ko-v1`, HTML은 기존 `structure-ko-v1`을 사용한다.
 
 `pdf-source-validation-vectors.json`의 경계값은 Python 구현이 독립적으로 검증해야 한다. 실제 추출 parser의 성공 여부는 테스트용 합성 PDF fixture로 추가 검증한다.
 

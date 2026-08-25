@@ -18,6 +18,8 @@ class KnowledgeChunk:
     source_hash: str
     extractor_version: str
     chunker_version: str
+    page_start: int | None = None
+    page_end: int | None = None
 
     def as_json_object(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -28,6 +30,8 @@ class KnowledgeChunk:
             "heading": payload["heading"],
             "sectionPath": list(payload["section_path"]),
             "page": payload["page"],
+            "pageStart": payload["page_start"],
+            "pageEnd": payload["page_end"],
             "chunkOrder": payload["chunk_order"],
             "text": payload["text"],
             "textHash": payload["text_hash"],

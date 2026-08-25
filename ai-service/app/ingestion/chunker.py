@@ -10,6 +10,7 @@ from app.errors import KnowledgeContractError
 
 
 CHUNKER_VERSION = "structure-ko-v1"
+PDF_CHUNKER_VERSION = "pdf-structure-ko-v1"
 DEFAULT_MAX_CHARS = 1_200
 
 
@@ -19,16 +20,22 @@ def chunk_document(
     if max_chars < 1:
         raise ValueError("max_chars must be positive")
 
-    candidates: list[tuple[tuple[str, ...], str]] = []
+    candidates: list[tuple[tuple[str, ...], str, int | None, int | None]] = []
     pending_path: tuple[str, ...] | None = None
     pending_parts: list[str] = []
+    pending_page_start: int | None = None
+    pending_page_end: int | None = None
 
     def flush() -> None:
-        nonlocal pending_path, pending_parts
+        nonlocal pending_path, pending_parts, pending_page_start, pending_page_end
         if pending_path is not None and pending_parts:
-            candidates.append((pending_path, "\n\n".join(pending_parts)))
+            candidates.append(
+                (pending_path, "\n\n".join(pending_parts), pending_page_start, pending_page_end)
+            )
         pending_path = None
         pending_parts = []
+        pending_page_start = None
+        pending_page_end = None
 
     for block in document.blocks:
         if block.block_type == "HEADING":
@@ -43,14 +50,16 @@ def chunk_document(
                 flush()
                 pending_path = block.section_path
             pending_parts.append(segment)
+            pending_page_start = _minimum_page(pending_page_start, block.page_start)
+            pending_page_end = _maximum_page(pending_page_end, block.page_end)
     flush()
 
     if not candidates:
         raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
 
     chunks = tuple(
-        _build_chunk(document, section_path, text, order)
-        for order, (section_path, text) in enumerate(candidates, start=1)
+        _build_chunk(document, section_path, text, page_start, page_end, order)
+        for order, (section_path, text, page_start, page_end) in enumerate(candidates, start=1)
     )
     _validate_chunks(chunks, max_chars)
     return chunks
@@ -81,17 +90,24 @@ def _build_chunk(
     document: ExtractedDocument,
     section_path: tuple[str, ...],
     text: str,
+    page_start: int | None,
+    page_end: int | None,
     chunk_order: int,
 ) -> KnowledgeChunk:
     normalized_text = _nfc(text)
     text_hash = "sha256:" + hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
+    chunker_version = (
+        PDF_CHUNKER_VERSION
+        if document.extractor_version.startswith("pypdf-")
+        else CHUNKER_VERSION
+    )
     chunk_id, _ = canonical_chunk_id(
         document.document_id,
         document.version_label,
         section_path,
         chunk_order,
         text_hash,
-        CHUNKER_VERSION,
+        chunker_version,
     )
     return KnowledgeChunk(
         chunk_id=chunk_id,
@@ -99,13 +115,15 @@ def _build_chunk(
         version_label=document.version_label,
         heading=section_path[-1] if section_path else document.title,
         section_path=section_path,
-        page=None,
+        page=page_start,
         chunk_order=chunk_order,
         text=normalized_text,
         text_hash=text_hash,
         source_hash=document.source_hash,
         extractor_version=document.extractor_version,
-        chunker_version=CHUNKER_VERSION,
+        chunker_version=chunker_version,
+        page_start=page_start,
+        page_end=page_end,
     )
 
 
@@ -130,8 +148,26 @@ def _validate_chunks(chunks: tuple[KnowledgeChunk, ...], max_chars: int) -> None
             or not chunk.text
             or len(chunk.text) > max_chars
             or not chunk.chunk_id.startswith("chk_")
+            or (chunk.page_start is None) != (chunk.page_end is None)
+            or (
+                chunk.page_start is not None
+                and chunk.page_end is not None
+                and (chunk.page_start < 1 or chunk.page_end < chunk.page_start)
+            )
         ):
             raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
+
+
+def _minimum_page(current: int | None, candidate: int | None) -> int | None:
+    if candidate is None:
+        return current
+    return candidate if current is None else min(current, candidate)
+
+
+def _maximum_page(current: int | None, candidate: int | None) -> int | None:
+    if candidate is None:
+        return current
+    return candidate if current is None else max(current, candidate)
 
 
 def _nfc(value: str) -> str:

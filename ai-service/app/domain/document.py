@@ -10,6 +10,8 @@ class ExtractedBlock:
     text: str
     heading_level: int | None
     section_path: tuple[str, ...]
+    page_start: int | None = None
+    page_end: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
