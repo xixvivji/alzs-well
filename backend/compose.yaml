@@ -106,6 +106,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set in .env}
       POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+      POSTGRES_AI_PASSWORD: ${POSTGRES_AI_PASSWORD:?POSTGRES_AI_PASSWORD must be set in .env}
     volumes:
       - ./docker/create-database-roles.sh:/bootstrap/create-database-roles.sh:ro
     depends_on:
@@ -143,6 +144,41 @@ services:
     mem_limit: 512m
     cpus: 1.00
     stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  ai-ingestion:
+    profiles: ["ai-tools"]
+    build:
+      context: ../ai-service
+    environment:
+      ALZS_AI_DB_HOST: postgres
+      ALZS_AI_DB_PORT: "5432"
+      ALZS_AI_DB_NAME: ${POSTGRES_DB:-alzs_well}
+      ALZS_AI_DB_USER: alzswell_ai_ingestor
+      ALZS_AI_DB_PASSWORD: ${POSTGRES_AI_PASSWORD:?POSTGRES_AI_PASSWORD must be set in .env}
+      ALZS_AI_DB_SSLMODE: disable
+      ALZS_AI_DB_CONNECT_TIMEOUT: "5"
+    volumes:
+      - ../knowledge:/workspace/knowledge:ro
+      - ../contracts:/workspace/contracts:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
     logging:
       driver: json-file
       options:
