@@ -2,6 +2,9 @@ package com.alzswell.identity.application;
 
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.identity.api.AuthErrorCode;
+import com.alzswell.identity.api.AuthResponses.AuthSessionList;
+import com.alzswell.identity.api.AuthResponses.AuthSessionRevocation;
+import com.alzswell.identity.api.AuthResponses.AuthSessionSummary;
 import com.alzswell.identity.api.AuthResponses.CurrentUser;
 import com.alzswell.identity.api.AuthResponses.PermissionList;
 import com.alzswell.identity.api.AuthResponses.TokenPair;
@@ -192,6 +195,66 @@ public class AuthSessionService {
         return new PermissionList(values);
     }
 
+    @Transactional(readOnly = true)
+    public AuthSessionList sessions(Authentication authentication) {
+        UUID principalId = requirePrincipalId(authentication);
+        UUID currentSessionId = requireSessionId(authentication);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        List<AuthSessionSummary> items = jdbcTemplate.query("""
+                select session_id, created_at, last_rotated_at, access_expires_at, refresh_expires_at,
+                       absolute_expires_at, revoked_at, revoke_reason
+                  from auth_session where principal_id = ?
+                 order by case when revoked_at is null and refresh_expires_at > ? and absolute_expires_at > ?
+                               then 0 else 1 end,
+                          created_at desc, session_id desc limit 50
+                """, (rs, rowNum) -> {
+                    UUID sessionId = rs.getObject("session_id", UUID.class);
+                    OffsetDateTime revokedAt = rs.getObject("revoked_at", OffsetDateTime.class);
+                    OffsetDateTime refreshExpiresAt = rs.getObject("refresh_expires_at", OffsetDateTime.class);
+                    OffsetDateTime absoluteExpiresAt = rs.getObject("absolute_expires_at", OffsetDateTime.class);
+                    String status = revokedAt != null ? "REVOKED"
+                            : (!refreshExpiresAt.isAfter(now) || !absoluteExpiresAt.isAfter(now)
+                                    ? "EXPIRED" : "ACTIVE");
+                    return new AuthSessionSummary(sessionId, status, sessionId.equals(currentSessionId),
+                            rs.getObject("created_at", OffsetDateTime.class),
+                            rs.getObject("last_rotated_at", OffsetDateTime.class),
+                            rs.getObject("access_expires_at", OffsetDateTime.class), refreshExpiresAt,
+                            absoluteExpiresAt, revokedAt, rs.getString("revoke_reason"));
+                }, principalId, now, now);
+        int activeCount = (int) items.stream().filter(item -> "ACTIVE".equals(item.status())).count();
+        return new AuthSessionList(items, items.size(), activeCount);
+    }
+
+    @Transactional
+    public AuthSessionRevocation revokeSession(UUID targetSessionId, Authentication authentication) {
+        UUID principalId = requirePrincipalId(authentication);
+        UUID actorSessionId = requireSessionId(authentication);
+        List<SessionOwnershipRow> rows = jdbcTemplate.query("""
+                select revoked_at from auth_session
+                 where session_id = ? and principal_id = ? for update
+                """, (rs, rowNum) -> new SessionOwnershipRow(
+                        rs.getObject("revoked_at", OffsetDateTime.class)), targetSessionId, principalId);
+        if (rows.size() != 1) throw new BusinessException(AuthErrorCode.SESSION_NOT_FOUND);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime revokedAt = rows.getFirst().revokedAt();
+        boolean alreadyEnded = revokedAt != null;
+        if (!alreadyEnded) {
+            jdbcTemplate.update("""
+                    update auth_session set revoked_at = ?, revoke_reason = 'USER_SESSION_REVOKE'
+                     where session_id = ? and principal_id = ? and revoked_at is null
+                    """, now, targetSessionId, principalId);
+            jdbcTemplate.update("""
+                    update auth_refresh_token set revoked_at = ?
+                     where session_id = ? and revoked_at is null
+                    """, now, targetSessionId);
+            revokedAt = now;
+        }
+        recordSessionEvent(principalId, actorSessionId, targetSessionId,
+                alreadyEnded ? "ALREADY_ENDED" : "REVOKED", now);
+        return new AuthSessionRevocation(targetSessionId, "REVOKED", targetSessionId.equals(actorSessionId),
+                alreadyEnded, revokedAt);
+    }
+
     private TokenPair createSession(UUID principalId, OffsetDateTime now) {
         jdbcTemplate.queryForObject("select principal_id from auth_principal where principal_id = ? for update",
                 UUID.class, principalId);
@@ -277,6 +340,19 @@ public class AuthSessionService {
     private record RefreshTokenRow(UUID sessionId, UUID tokenFamilyId, OffsetDateTime absoluteExpiresAt,
                                    OffsetDateTime sessionRevokedAt, OffsetDateTime expiresAt,
                                    OffsetDateTime usedAt, OffsetDateTime tokenRevokedAt) {}
+    private record SessionOwnershipRow(OffsetDateTime revokedAt) {}
+
+    private void recordSessionEvent(UUID principalId, UUID actorSessionId, UUID targetSessionId,
+            String outcome, OffsetDateTime now) {
+        UUID eventId = UUID.randomUUID();
+        String integrity = hash(eventId + "|" + principalId + "|" + actorSessionId + "|"
+                + targetSessionId + "|" + outcome + "|" + now);
+        jdbcTemplate.update("""
+                insert into auth_session_event(event_id, principal_id, actor_session_id, target_session_id,
+                    event_type, outcome, reason_code, occurred_at, integrity_hash)
+                values (?, ?, ?, ?, 'SESSION_REVOKE_REQUESTED', ?, 'USER_SESSION_REVOKE', ?, ?)
+                """, eventId, principalId, actorSessionId, targetSessionId, outcome, now, integrity);
+    }
 
     public static String hash(String value) {
         try {
