@@ -53,7 +53,7 @@ class AuthSessionIntegrationTest {
                 .flatMap(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has).map(path::path))
                 .toList();
-        assertThat(operations).hasSize(217).allSatisfy(operation -> {
+        assertThat(operations).hasSize(220).allSatisfy(operation -> {
             assertThat(operation.path("summary").asText()).isNotBlank();
             assertThat(operation.path("description").asText()).isNotBlank();
             assertThat(operation.path("x-alzs-authority-mode").asText()).isNotBlank();
