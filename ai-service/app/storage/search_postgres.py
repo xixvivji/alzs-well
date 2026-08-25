@@ -9,12 +9,13 @@ from uuid import UUID, uuid4
 import psycopg
 
 from app.domain.search import SearchRequest, StoredSearchResult
+from app.embedding.local_hash import EMBEDDING_MODEL_VERSION, embed_text, vector_literal
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 
 
 ConnectFunction = Callable[..., Any]
-INDEX_VERSION = "keyword-simple-v1"
+INDEX_VERSION = "hybrid-hash-ngram-v1"
 
 
 class PostgresSearchRepository:
@@ -58,38 +59,55 @@ class PostgresSearchRepository:
             raise KnowledgeContractError("STORAGE_UNAVAILABLE") from None
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
+        query_vector = vector_literal(embed_text(request.query))
         try:
             with self._connect() as connection, connection.cursor() as cursor:
                 cursor.execute(
                     """
                     with search_query as (
-                        select websearch_to_tsquery('simple', %s) as value
+                        select websearch_to_tsquery('simple', %s) as terms, %s::vector as embedding
+                    ), ranked as (
+                        select
+                            c.document_id, c.version_label, c.chunk_id, c.chunk_order,
+                            d.title, d.issuer, c.heading, c.section_path, c.page,
+                            d.source_url, c.source_hash, c.text_hash, c.content,
+                            ts_rank_cd(to_tsvector('simple', c.content), search_query.terms, 32)
+                                as keyword_score,
+                            case
+                                when c.embedding is null then 0.0
+                                else greatest(0.0, 1.0 - (c.embedding <=> search_query.embedding))
+                            end as vector_score
+                        from ai_knowledge.chunk c
+                        join ai_knowledge.document_snapshot d
+                          on d.document_id = c.document_id and d.version_label = c.version_label
+                        cross join search_query
+                        where d.allowed_roles && %s::text[]
+                          and (d.audience = 'BOTH' or d.audience = any(%s::text[]))
+                          and d.approval_status = 'APPROVED'
+                          and d.lifecycle_status = 'ACTIVE'
+                          and d.effective_from <= %s
+                          and (d.effective_to is null or d.effective_to >= %s)
+                          and (c.embedding_model_version is null
+                               or c.embedding_model_version = %s)
                     )
                     select
-                        c.document_id, c.version_label, c.chunk_id, c.chunk_order,
-                        d.title, d.issuer, c.heading, c.section_path, c.page,
-                        d.source_url, c.source_hash, c.text_hash, c.content,
-                        ts_rank_cd(to_tsvector('simple', c.content), search_query.value, 32)
-                    from ai_knowledge.chunk c
-                    join ai_knowledge.document_snapshot d
-                      on d.document_id = c.document_id and d.version_label = c.version_label
-                    cross join search_query
-                    where to_tsvector('simple', c.content) @@ search_query.value
-                      and d.allowed_roles && %s::text[]
-                      and (d.audience = 'BOTH' or d.audience = any(%s::text[]))
-                      and d.approval_status = 'APPROVED'
-                      and d.lifecycle_status = 'ACTIVE'
-                      and d.effective_from <= %s
-                      and (d.effective_to is null or d.effective_to >= %s)
-                    order by 14 desc, c.document_id, c.version_label, c.chunk_order
+                        document_id, version_label, chunk_id, chunk_order,
+                        title, issuer, heading, section_path, page,
+                        source_url, source_hash, text_hash, content,
+                        (least(1.0, keyword_score) * 0.35 + vector_score * 0.65) as score
+                    from ranked
+                    where keyword_score > 0 or vector_score >= 0.15
+                    order by score desc, document_id, version_label, chunk_order
                     limit %s
                     """,
                     (
                         request.query,
+                        query_vector,
                         list(request.principal_roles),
                         list(request.requester_audiences),
                         request.as_of,
                         request.as_of,
+                        EMBEDDING_MODEL_VERSION,
                         request.limit,
                     ),
                 )

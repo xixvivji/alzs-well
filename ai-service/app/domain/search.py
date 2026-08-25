@@ -92,8 +92,8 @@ class Citation(BaseModel):
     source_hash: str
     text_hash: str
     retrieved_as_of: date
-    retrieval_method: Literal["KEYWORD"] = "KEYWORD"
-    index_version: Literal["keyword-simple-v1"] = "keyword-simple-v1"
+    retrieval_method: Literal["HYBRID"] = "HYBRID"
+    index_version: Literal["hybrid-hash-ngram-v1"] = "hybrid-hash-ngram-v1"
 
 
 class SearchResult(BaseModel):

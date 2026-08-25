@@ -78,8 +78,8 @@ def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object
     assert body["requestId"] == _request()["requestId"]
     assert body["queryHash"].startswith("sha256:")
     assert body["results"][0]["score"] == 0.75
-    assert body["results"][0]["citation"]["retrievalMethod"] == "KEYWORD"
-    assert body["results"][0]["citation"]["indexVersion"] == "keyword-simple-v1"
+    assert body["results"][0]["citation"]["retrievalMethod"] == "HYBRID"
+    assert body["results"][0]["citation"]["indexVersion"] == "hybrid-hash-ngram-v1"
     assert repository.completed == (repository.run_id, 1)
     assert repository.started is not None
     assert "금융거래" not in str(repository.started[1])

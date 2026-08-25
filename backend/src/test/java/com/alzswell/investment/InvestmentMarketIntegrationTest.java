@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest @AutoConfigureMockMvc @Testcontainers(disabledWithoutDocker=true)
 class InvestmentMarketIntegrationTest {
  static final String CUSTOMER="SYN_CUSTOMER_FIN_MGMT_001";
- @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+ @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
  @Autowired MockMvc mockMvc;@Autowired JdbcTemplate jdbc;
  private org.springframework.test.web.servlet.request.RequestPostProcessor market(){return user(CUSTOMER).authorities(()->"INVESTMENT_MARKET_READ");}
  private org.springframework.test.web.servlet.request.RequestPostProcessor watchRead(){return user(CUSTOMER).authorities(()->"INVESTMENT_WATCHLIST_READ");}

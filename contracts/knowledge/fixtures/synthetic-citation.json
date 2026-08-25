@@ -14,6 +14,6 @@
   "sourceHash": "sha256:232e71a1e03d58e8afd24e291ea341e67b7b6c302263f88a9ec06504dec3d653",
   "textHash": "sha256:237c5ec148b7417f1c4d0fa8010ceae541aa2b26766bbf516e6bd72b67afdb2c",
   "retrievedAsOf": "2026-08-21",
-  "retrievalMethod": "KEYWORD",
-  "indexVersion": "synthetic-index-v1"
+  "retrievalMethod": "HYBRID",
+  "indexVersion": "hybrid-hash-ngram-v1"
 }

@@ -29,7 +29,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class AppealOverrideIntegrationTest {
  private static final String CUSTOMER="SYN_CUSTOMER_FIN_MGMT_001";
  private static final UUID STAFF=UUID.fromString("91000000-0000-0000-0000-000000000098");
- @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+ @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
  @Autowired MockMvc mockMvc; @Autowired ObjectMapper objectMapper; @Autowired JdbcTemplate jdbc;
 
  @BeforeEach void reset(){

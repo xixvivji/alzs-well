@@ -9,6 +9,7 @@ import psycopg
 
 from app.domain.chunk import KnowledgeChunk
 from app.domain.manifest import KnowledgeManifest
+from app.embedding.local_hash import EMBEDDING_MODEL_VERSION, embed_text, vector_literal
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 
@@ -146,10 +147,10 @@ class PostgresIngestionStore:
                         chunk_id, run_id, document_id, version_label, heading,
                         section_path, page, page_start, page_end, chunk_order,
                         content, text_hash, source_hash, extractor_version,
-                        chunker_version, created_at
+                        chunker_version, embedding, embedding_model_version, created_at
                     ) values (
                         %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s
                     )
                     """,
                     [_chunk_parameters(run_id, chunk, created_at) for chunk in chunks],
@@ -247,6 +248,8 @@ def _chunk_parameters(
         chunk.source_hash,
         chunk.extractor_version,
         chunk.chunker_version,
+        vector_literal(embed_text(" ".join((*chunk.section_path, chunk.heading, chunk.text)))),
+        EMBEDDING_MODEL_VERSION,
         created_at,
     )
 

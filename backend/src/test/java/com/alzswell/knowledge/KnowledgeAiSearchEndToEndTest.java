@@ -38,7 +38,7 @@ class KnowledgeAiSearchEndToEndTest {
     private static final AtomicReference<Mode> MODE=new AtomicReference<>(Mode.VALID);
     private static final HttpServer AI_SERVER=startServer();
     @Container @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
 
@@ -63,7 +63,8 @@ class KnowledgeAiSearchEndToEndTest {
 
         MODE.set(Mode.VALID);
         mockMvc.perform(searchRequest()).andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(1))
-                .andExpect(jsonPath("$.data.items[0].retrievalMode").value("INTERNAL_RAG_KEYWORD"))
+                .andExpect(jsonPath("$.data.items[0].retrievalMode").value("INTERNAL_RAG_HYBRID"))
+                .andExpect(jsonPath("$.data.vectorSearchUsed").value(true))
                 .andExpect(jsonPath("$.data.items[0].passage.documentId").value(DOCUMENT_ID));
 
         MODE.set(Mode.TAMPERED);
@@ -76,7 +77,8 @@ class KnowledgeAiSearchEndToEndTest {
 
         MODE.set(Mode.UNAVAILABLE);
         mockMvc.perform(searchRequest()).andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(1))
-                .andExpect(jsonPath("$.data.items[0].retrievalMode").value("DETERMINISTIC_FALLBACK"));
+                .andExpect(jsonPath("$.data.items[0].retrievalMode").value("DETERMINISTIC_FALLBACK"))
+                .andExpect(jsonPath("$.data.vectorSearchUsed").value(false));
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder searchRequest() {
@@ -134,7 +136,7 @@ class KnowledgeAiSearchEndToEndTest {
                     citation.put("heading","신청 방법");citation.putArray("sectionPath").add("합성 안심 안내").add("신청 방법");
                     citation.putNull("page");citation.put("citationLabel","합성 지식 계약 검증 안내 > 신청 방법");citation.putNull("sourceUrl");
                     citation.put("sourceHash",SOURCE_HASH);citation.put("textHash",textHash);citation.put("retrievedAsOf",request.get("asOf").asText());
-                    citation.put("retrievalMethod","KEYWORD");citation.put("indexVersion","keyword-simple-v1");
+                    citation.put("retrievalMethod","HYBRID");citation.put("indexVersion","hybrid-hash-ngram-v1");
                     byte[] bytes=MAPPER.writeValueAsBytes(response);exchange.getResponseHeaders().set("Content-Type","application/json");
                     exchange.sendResponseHeaders(200,bytes.length);exchange.getResponseBody().write(bytes);
                 } catch(Exception exception) {exchange.sendResponseHeaders(500,-1);}

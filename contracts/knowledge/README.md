@@ -195,11 +195,12 @@ Spring import는 `APPROVED/ACTIVE` governance와 source hash를 먼저 확인하
 결과만 `chunkId`와 Spring `passageId`의 추가 전용 binding으로 저장한다. AI 계정은 Spring 권위
 카탈로그를 직접 수정하지 않으며, 같은 문서 버전의 재작성이나 부분 교체는 허용하지 않는다.
 
-## 내부 키워드 검색 v1
+## 내부 하이브리드 검색 v1
 
 `POST /internal/v1/search`는 Spring이 계산한 `permissions`, `principalRoles`,
 `requesterAudiences`, `asOf`를 모두 요구한다. FastAPI는 내부 서비스 토큰을 검증한 뒤
 AI 파생 `document_snapshot`과 `chunk`만 조회하여 역할 교집합, audience, 승인·활성 상태와
 효력기간을 중복 필터링한다. 원문 검색어는 감사 테이블에 남기지 않고 NFC 정규화된
-검색어의 SHA-256만 저장한다. 응답의 `retrievalMethod`는 `KEYWORD`, `indexVersion`은
-`keyword-simple-v1`이며 Spring이 citation을 최종 재검증한다.
+검색어의 SHA-256만 저장한다. 응답의 `retrievalMethod`는 `HYBRID`, `indexVersion`은
+`hybrid-hash-ngram-v1`이며 Spring이 citation을 최종 재검증한다. 전문검색 점수와
+`local-hash-ngram-ko-v1` 384차원 pgvector cosine 유사도를 결합하고 외부 모델을 다운로드하지 않는다.

@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.28.0**
+> 문서 버전: **1.29.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -1323,11 +1323,11 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 | P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/admin/knowledge/ingestion-imports | 검증된 AI chunk를 Spring 권위 passage로 반영 (`IMPLEMENTED`) | OWNED |
 
-앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하고 검색은 허용된 passage에 대한 결정론적 키워드 일치만 사용한다. 응답은 `externalModelCalled=false`, `vectorSearchUsed=false`를 명시한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 벡터DB, LLM 호출은 포함하지 않는다.
+앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하며, AI 기능 플래그가 꺼졌거나 내부 서비스가 실패하면 허용된 passage의 결정론적 키워드 일치만 사용한다. V65부터 내부 FastAPI가 활성화된 경우 외부 다운로드가 없는 384차원 로컬 임베딩과 PostgreSQL 전문검색 점수를 pgvector에서 결합한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 외부 모델과 LLM 호출은 포함하지 않는다.
 
 V55와 V64의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. import는 승인된 governance와 source hash를 확인한 뒤 NFC, 본문 hash, chunk ID, 순서·페이지·버전을 재계산하고 통과한 `chunkId ↔ passageId` binding만 추가 전용으로 저장한다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·import는 불변 감사이력에 보존된다.
 
-V56부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 문서 `allowedRoles`의 교집합, 역할에서 계산한 requester audience, 문서 audience, `APPROVED/ACTIVE`, 효력일을 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능한 문서를 `404`로 숨긴다. 모든 조회·검색은 추가 전용 `knowledge_access_audit_event`에 permission, 역할, audience, 필터, 반환 ID를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤의 결정론적 로컬 어댑터이며 FastAPI·벡터 검색·외부 모델은 아직 호출하지 않는다.
+V56부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 문서 `allowedRoles`의 교집합, 역할에서 계산한 requester audience, 문서 audience, `APPROVED/ACTIVE`, 효력일을 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능한 문서를 `404`로 숨긴다. 모든 조회·검색은 추가 전용 `knowledge_access_audit_event`에 permission, 역할, audience, 필터, 반환 ID를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤에서 V65 내부 FastAPI 하이브리드 어댑터와 결정론적 폴백을 선택하고, Spring이 반환 citation을 권위 DB와 다시 대조한다.
 
 #### 3.3.20 인앱 알림·고객지원 — 10개
 
@@ -2238,7 +2238,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "64",
+        "schemaVersion": "65",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2822,7 +2822,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "64",
+    "schemaVersion": "65",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

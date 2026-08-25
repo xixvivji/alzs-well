@@ -22,7 +22,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest @AutoConfigureMockMvc @Testcontainers(disabledWithoutDocker=true)
 class PensionTrustIntegrationTest {
  static final String CUSTOMER="SYN_CUSTOMER_FIN_MGMT_001";
- @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+ @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
  @Autowired MockMvc mockMvc; @Autowired JdbcTemplate jdbc;
  private org.springframework.test.web.servlet.request.RequestPostProcessor reader(){return user(CUSTOMER).authorities(()->"FINANCIAL_OVERVIEW_READ");}
 

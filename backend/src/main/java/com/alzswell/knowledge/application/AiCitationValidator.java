@@ -67,7 +67,7 @@ public class AiCitationValidator {
                             rs.getString("citation_label"),rs.getString("source_url"),
                             rs.getObject("effective_from",java.time.LocalDate.class),
                             rs.getObject("effective_to",java.time.LocalDate.class));
-                    return new SearchHit(passage,score(passage,query.query()),"INTERNAL_RAG_KEYWORD");
+                    return new SearchHit(passage,score(passage,query.query()),"INTERNAL_RAG_HYBRID");
                 }).optional().filter(Objects::nonNull);
     }
 
@@ -75,8 +75,8 @@ public class AiCitationValidator {
         if(hit==null||hit.content()==null||hit.content().isBlank()||hit.content().length()>1200
                 ||hit.score()<0||!Double.isFinite(hit.score())||hit.citation()==null) return false;
         AiCitation c=hit.citation();
-        return "1.0.0".equals(c.contractVersion())&&"KEYWORD".equals(c.retrievalMethod())
-                &&"keyword-simple-v1".equals(c.indexVersion())&&query.asOf().equals(c.retrievedAsOf())
+        return "1.0.0".equals(c.contractVersion())&&"HYBRID".equals(c.retrievalMethod())
+                &&"hybrid-hash-ngram-v1".equals(c.indexVersion())&&query.asOf().equals(c.retrievedAsOf())
                 &&c.documentId()!=null&&c.versionLabel()!=null&&c.title()!=null&&c.issuer()!=null
                 &&c.heading()!=null&&c.sectionPath()!=null&&c.chunkOrder()>0&&c.citationLabel()!=null
                 &&c.sectionPath().stream().allMatch(Objects::nonNull)&&(c.page()==null||c.page()>0)
