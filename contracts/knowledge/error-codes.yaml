@@ -90,6 +90,26 @@ errors:
     httpStatus: 422
     cliExitCode: 4
     retryable: false
+  - code: SOURCE_STRUCTURE_INVALID
+    category: SOURCE
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_ENCRYPTED_UNSUPPORTED
+    category: SOURCE_SECURITY
+    httpStatus: 415
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_PAGE_LIMIT_EXCEEDED
+    category: SOURCE_SECURITY
+    httpStatus: 413
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_ACTIVE_CONTENT_FORBIDDEN
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
   - code: EXTRACTION_FAILED
     category: INGESTION
     httpStatus: 422

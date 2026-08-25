@@ -8,6 +8,7 @@
 - `citation.schema.json`: Spring이 재검증할 검색 인용 구조
 - `error-codes.yaml`: CLI와 향후 내부 HTTP API의 안정적인 오류코드
 - `chunk-id-test-vectors.json`: Python과 Java가 공통으로 검증할 고정 digest
+- `pdf-source-validation-vectors.json`: PDF 입력 가드의 경계값과 고정 오류코드
 - `fixtures/`: 유효한 합성 manifest와 의도적으로 잘못된 manifest
 
 JSON Schema는 Draft 2020-12를 사용한다. 모든 객체는 선언하지 않은 필드를 거부한다.
@@ -124,16 +125,30 @@ CLI는 다음 우선순위로 저장소 루트를 받는다.
 
 ### 원문 크기·형식·인코딩 가드
 
-첫 HTML ingestion 계약은 다음을 강제한다.
+모든 형식은 파일 크기를 경로 검증 후 본문 전체를 메모리에 읽기 전에 확인한다.
 
-- 파일 크기는 경로 검증 후 본문을 메모리에 읽기 전에 확인한다.
+HTML ingestion profile v1은 다음을 강제한다.
+
 - HTML 원문 최대 크기는 `5,242,880` bytes(5 MiB)다. 초과하면 `SOURCE_TOO_LARGE`로 실패한다.
 - 지원 형식은 구현이 명시적으로 허용한 확장자와 파일 signature가 일치해야 한다. 지원하지 않거나 불일치하면 `SOURCE_TYPE_UNSUPPORTED`로 실패한다.
 - 텍스트는 UTF-8 또는 UTF-8 BOM만 허용하고 strict 모드로 디코딩한다. 휴리스틱 인코딩 감지나 자동 재인코딩은 하지 않는다.
 - HTML charset 선언이 있으면 UTF-8이어야 한다. 서로 충돌하거나 UTF-8 이외의 선언이면 `SOURCE_ENCODING_INVALID`로 실패한다.
 - 디코딩 오류의 원본 바이트, 문서 본문과 credential 값은 오류 응답·로그·감사 이벤트에 기록하지 않는다.
 
-향후 PDF, HWP/HWPX 등 형식을 추가할 때는 형식별 최대 바이트 수와 signature 검증 규칙을 구현 전에 이 계약에 추가한다.
+PDF ingestion profile v1은 현재 코퍼스 37개 PDF의 최대 크기 `81,906,956` bytes와 최대 `334` pages를 기준으로 다음을 강제한다.
+
+- 확장자는 대소문자와 관계없이 `.pdf`여야 하고 파일의 첫 5 bytes는 ASCII `%PDF-`여야 한다. 둘 중 하나라도 다르면 `SOURCE_TYPE_UNSUPPORTED`로 실패한다. 파일 앞의 BOM, 공백, polyglot prefix는 허용하지 않는다.
+- PDF 원문 최대 크기는 `104,857,600` bytes(100 MiB)다. 정확히 100 MiB는 허용하고 이를 초과하면 `SOURCE_TOO_LARGE`로 실패한다.
+- 마지막 `2,048` bytes 안에 ASCII `%%EOF`가 있어야 한다. 이후 PDF parser가 trailer, cross-reference와 page tree를 정상적으로 해석하지 못하면 `SOURCE_STRUCTURE_INVALID`로 실패한다.
+- 암호화 여부와 관계없이 비밀번호 입력이나 해제 시도를 하지 않는다. 암호화된 PDF는 `SOURCE_ENCRYPTED_UNSUPPORTED`로 실패한다.
+- 페이지 수는 `1..500`만 허용한다. 0 pages 또는 500 pages 초과 문서는 `SOURCE_PAGE_LIMIT_EXCEEDED`로 실패한다.
+- parser는 embedded file, JavaScript, launch action, rich media를 실행하거나 추출하지 않는다. 외부 URI도 호출하지 않는다. 능동 콘텐츠가 발견되면 `SOURCE_ACTIVE_CONTENT_FORBIDDEN`으로 실패한다.
+- 원본 바이트, parser stack trace, 비밀번호 후보와 추출 본문은 오류 응답·로그·감사 이벤트에 기록하지 않는다.
+- 검증 순서는 안전한 경로와 symlink → 확장자와 크기 → header와 EOF → SHA-256 → parser 구조 → 암호화·페이지·능동 콘텐츠 검사 순으로 고정한다.
+
+`pdf-source-validation-vectors.json`의 경계값은 Python 구현이 독립적으로 검증해야 한다. 실제 추출 parser의 성공 여부는 테스트용 합성 PDF fixture로 추가 검증한다.
+
+향후 HWP/HWPX 등 형식을 추가할 때도 형식별 최대 바이트 수와 signature 검증 규칙을 구현 전에 이 계약에 추가한다.
 
 ## 결정론적 chunk ID
 
