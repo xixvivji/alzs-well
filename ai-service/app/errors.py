@@ -29,6 +29,7 @@ ERROR_EXIT_CODES: dict[str, int] = {
     "SOURCE_ACTIVE_CONTENT_FORBIDDEN": 4,
     "EXTRACTION_FAILED": 5,
     "NO_EXTRACTABLE_CONTENT": 5,
+    "OCR_REQUIRED": 5,
     "CHUNK_VALIDATION_FAILED": 5,
     "OUTPUT_WRITE_FAILED": 6,
 }
@@ -55,6 +56,7 @@ SAFE_MESSAGES: dict[str, str] = {
     "SOURCE_ENCRYPTED_UNSUPPORTED": "암호화된 PDF는 ingestion할 수 없습니다.",
     "SOURCE_PAGE_LIMIT_EXCEEDED": "PDF 페이지 수가 허용 범위를 벗어났습니다.",
     "SOURCE_ACTIVE_CONTENT_FORBIDDEN": "실행 가능하거나 첨부된 PDF 콘텐츠는 허용되지 않습니다.",
+    "OCR_REQUIRED": "텍스트 계층이 없는 PDF는 별도 OCR 처리가 필요합니다.",
 }
 
 

@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 
 from app.cli import main
+from app.domain.document import ExtractedBlock, ExtractedDocument
+from app.errors import KnowledgeContractError
 from app.ingestion.pdf_validator import ValidatedPdfSource
 
 
@@ -246,3 +248,116 @@ def test_cli_validates_pdf_without_printing_document_content(
     assert payload["encrypted"] is False
     assert payload["activeContent"] is False
     assert "text" not in captured.out
+
+
+def test_cli_extracts_pdf_without_printing_document_content(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    _mock_pdf_pipeline(repo_root, monkeypatch)
+
+    exit_code = main(
+        [
+            "extract-pdf",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["code"] == "PDF_EXTRACTION_COMPLETED"
+    assert payload["pageCount"] == 2
+    assert payload["textPageCount"] == 2
+    assert payload["blockCount"] == 2
+    assert "first body" not in captured.out
+
+
+def test_cli_ingests_pdf_to_page_aware_jsonl(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    _mock_pdf_pipeline(repo_root, monkeypatch)
+    target = repo_root / "ai-service/data/derived/chunks/pdf-result.jsonl"
+
+    def fake_writer(repository_root: Path, chunks: object) -> Path:
+        assert repository_root == repo_root
+        assert len(chunks) == 1  # type: ignore[arg-type]
+        assert chunks[0].page_start == 1  # type: ignore[index]
+        assert chunks[0].page_end == 2  # type: ignore[index]
+        return target
+
+    monkeypatch.setattr("app.cli.write_chunks_jsonl", fake_writer)  # type: ignore[attr-defined]
+    exit_code = main(
+        [
+            "ingest-pdf",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["code"] == "PDF_INGESTION_COMPLETED"
+    assert payload["chunkCount"] == 1
+    assert payload["outputPath"] == "ai-service/data/derived/chunks/pdf-result.jsonl"
+    assert "first body" not in captured.out
+
+
+def test_cli_reports_ocr_required_without_document_content(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    _mock_pdf_pipeline(repo_root, monkeypatch)
+
+    def fail_extraction(manifest: object, source: object) -> object:
+        raise KnowledgeContractError("OCR_REQUIRED")
+
+    monkeypatch.setattr("app.cli.extract_pdf_document", fail_extraction)  # type: ignore[attr-defined]
+    exit_code = main(
+        [
+            "extract-pdf",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+
+    assert exit_code == 5
+    assert json.loads(captured.err)["code"] == "OCR_REQUIRED"
+
+
+def _mock_pdf_pipeline(repo_root: Path, monkeypatch: object) -> None:
+    source = ValidatedPdfSource(
+        path=repo_root / "synthetic.pdf",
+        size_bytes=2048,
+        source_hash="sha256:" + "0" * 64,
+        page_count=2,
+        encrypted=False,
+        active_content=False,
+    )
+    document = ExtractedDocument(
+        document_id="DOC-SYN-CONTRACT-001",
+        version_label="1.0.0",
+        title="Synthetic PDF",
+        source_hash=source.source_hash,
+        extractor_version="pypdf-text-v1",
+        blocks=(
+            ExtractedBlock(1, "PARAGRAPH", "first body", None, ("Synthetic PDF",), 1, 1),
+            ExtractedBlock(2, "PARAGRAPH", "second body", None, ("Synthetic PDF",), 2, 2),
+        ),
+        warnings=(),
+    )
+    monkeypatch.setattr("app.cli.validate_pdf_source", lambda root, manifest: source)  # type: ignore[attr-defined]
+    monkeypatch.setattr("app.cli.extract_pdf_document", lambda manifest, value: document)  # type: ignore[attr-defined]
