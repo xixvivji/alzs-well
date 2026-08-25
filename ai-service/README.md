@@ -144,6 +144,11 @@ Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 �
 무응답 오탐률 및 정책 위반 게이트로 회귀 검증한다. 실행법과 지표 해석은
 [`evaluation/README.md`](evaluation/README.md)를 따른다.
 
+사람 검수용 50개 질문·정답 후보는 `evaluation/reviews/retrieval-review-v1.csv`에 있다.
+검수자는 `reviewDecision`과 `reviewComment`만 작성하며, `ACCEPTED`로 확인된 행만 별도
+평가 데이터셋으로 승격할 수 있다. 현재 후보는 합성 corpus 전용이며 공식문서 승인이나
+운영 품질을 의미하지 않는다.
+
 ## 테스트
 
 ```bash

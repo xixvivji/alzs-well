@@ -37,6 +37,7 @@ htmlcov/
 # Generated reports, renders, caches, bundled fonts, and local models
 /tmp/
 /output/
+/outputs/
 /analysis/
 /archive/
 /artifacts/
