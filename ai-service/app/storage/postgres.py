@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 import psycopg
 
 from app.domain.chunk import KnowledgeChunk
+from app.domain.manifest import KnowledgeManifest
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 
@@ -61,8 +62,15 @@ class PostgresIngestionStore:
         run_id: UUID,
         chunks: tuple[KnowledgeChunk, ...],
         warnings: tuple[str, ...],
+        manifest: KnowledgeManifest,
     ) -> None:
         document_id, version_label = _validate_chunks(chunks)
+        if (
+            manifest.document_id != document_id
+            or manifest.version_label != version_label
+            or manifest.source_hash != chunks[0].source_hash
+        ):
+            raise KnowledgeContractError("STORAGE_CONFLICT")
         try:
             with self._connect() as connection, connection.cursor() as cursor:
                 cursor.execute(
@@ -81,6 +89,51 @@ class PostgresIngestionStore:
                 run = cursor.fetchone()
                 if run != (document_id, version_label, chunks[0].source_hash, "RUNNING"):
                     raise KnowledgeContractError("STORAGE_CONFLICT")
+
+                cursor.execute(
+                    """
+                    insert into ai_knowledge.document_snapshot(
+                        document_id, version_label, contract_version, title, issuer,
+                        source_url, source_hash, classification, audience, allowed_roles,
+                        approval_status, lifecycle_status, effective_from, effective_to,
+                        indexed_at
+                    ) values (
+                        %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s
+                    )
+                    on conflict(document_id, version_label) do update set
+                        contract_version = excluded.contract_version,
+                        title = excluded.title,
+                        issuer = excluded.issuer,
+                        source_url = excluded.source_url,
+                        source_hash = excluded.source_hash,
+                        classification = excluded.classification,
+                        audience = excluded.audience,
+                        allowed_roles = excluded.allowed_roles,
+                        approval_status = excluded.approval_status,
+                        lifecycle_status = excluded.lifecycle_status,
+                        effective_from = excluded.effective_from,
+                        effective_to = excluded.effective_to,
+                        indexed_at = excluded.indexed_at
+                    """,
+                    (
+                        manifest.document_id,
+                        manifest.version_label,
+                        manifest.contract_version,
+                        manifest.title,
+                        manifest.issuer,
+                        manifest.source_url,
+                        manifest.source_hash,
+                        manifest.classification,
+                        manifest.audience,
+                        list(manifest.allowed_roles),
+                        manifest.approval_status,
+                        manifest.lifecycle_status,
+                        manifest.effective_from,
+                        manifest.effective_to,
+                        _now(),
+                    ),
+                )
 
                 cursor.execute(
                     "delete from ai_knowledge.chunk where document_id = %s and version_label = %s",

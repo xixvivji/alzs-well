@@ -6,6 +6,8 @@
 
 - `manifest.schema.json`: 문서 승인·생명주기·출처·ACL 메타데이터
 - `citation.schema.json`: Spring이 재검증할 검색 인용 구조
+- `search-request.schema.json`: Spring이 내부 AI 검색에 전달하는 권한·역할·기준일 계약
+- `search-response.schema.json`: 키워드 검색 점수·본문·citation 응답 계약
 - `error-codes.yaml`: CLI와 향후 내부 HTTP API의 안정적인 오류코드
 - `chunk-id-test-vectors.json`: Python과 Java가 공통으로 검증할 고정 digest
 - `pdf-source-validation-vectors.json`: PDF 입력 가드의 경계값과 고정 오류코드
@@ -186,3 +188,12 @@ Python과 Java는 서로의 결과만 비교하지 않고 `chunk-id-test-vectors
 ## Citation 재검증
 
 FastAPI가 반환한 citation은 권한 부여 결과가 아니다. Spring은 `documentId`, `versionLabel`, `chunkId`, `sourceHash`, `textHash`, 명시적 `retrievedAsOf`를 사용해 최종 ACL·효력·활성 상태와 인용 일치를 다시 검증한다. 검증에 실패한 passage는 응답과 생성 문맥에서 제외하고 감사 이벤트에 실패 사유코드만 기록한다.
+
+## 내부 키워드 검색 v1
+
+`POST /internal/v1/search`는 Spring이 계산한 `permissions`, `principalRoles`,
+`requesterAudiences`, `asOf`를 모두 요구한다. FastAPI는 내부 서비스 토큰을 검증한 뒤
+AI 파생 `document_snapshot`과 `chunk`만 조회하여 역할 교집합, audience, 승인·활성 상태와
+효력기간을 중복 필터링한다. 원문 검색어는 감사 테이블에 남기지 않고 NFC 정규화된
+검색어의 SHA-256만 저장한다. 응답의 `retrievalMethod`는 `KEYWORD`, `indexVersion`은
+`keyword-simple-v1`이며 Spring이 citation을 최종 재검증한다.

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alzs-well.local/contracts/knowledge/search-response.schema.json",
+  "title": "ALZ's well internal knowledge search response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "requestId", "queryHash", "results"],
+  "properties": {
+    "contractVersion": {"const": "1.0.0"},
+    "requestId": {"type": "string", "format": "uuid"},
+    "queryHash": {"$ref": "#/$defs/sha256"},
+    "results": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["score", "content", "citation"],
+        "properties": {
+          "score": {"type": "number", "minimum": 0},
+          "content": {"type": "string", "minLength": 1, "maxLength": 1200},
+          "citation": {"$ref": "citation.schema.json"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

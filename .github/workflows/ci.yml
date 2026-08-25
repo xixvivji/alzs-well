@@ -127,6 +127,8 @@ jobs:
       POSTGRES_MIGRATION_PASSWORD: ci-only-migration-password-never-use-in-production
       POSTGRES_APP_PASSWORD: ci-only-runtime-password-never-use-in-production
       POSTGRES_AI_PASSWORD: ci-only-ai-ingestion-password-never-use-in-production
+      POSTGRES_AI_RUNTIME_PASSWORD: ci-only-ai-runtime-password-never-use-in-production
+      AI_INTERNAL_TOKEN: ci-only-internal-ai-token-never-use-in-production
       CORS_CUSTOMER_ALLOWED_ORIGINS: https://customer-ci.example.invalid
       CORS_STAFF_ALLOWED_ORIGINS: https://staff-ci.example.invalid
       DEMO_STAFF_USERNAME: ci-demo-staff

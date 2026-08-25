@@ -89,7 +89,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     output_path = None
                     completed_run_id = active_run_id
                     if active_store is not None and active_run_id is not None:
-                        active_store.complete_run(active_run_id, chunks, document.warnings)
+                        active_store.complete_run(active_run_id, chunks, document.warnings, manifest)
                         active_run_id = None
                     else:
                         output_path = write_chunks_jsonl(repository_root, chunks)
@@ -172,7 +172,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 output_path = None
                 completed_run_id = active_run_id
                 if active_store is not None and active_run_id is not None:
-                    active_store.complete_run(active_run_id, chunks, document.warnings)
+                    active_store.complete_run(active_run_id, chunks, document.warnings, manifest)
                     active_run_id = None
                 else:
                     output_path = write_chunks_jsonl(repository_root, chunks)

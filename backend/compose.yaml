@@ -107,6 +107,7 @@ services:
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set in .env}
       POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
       POSTGRES_AI_PASSWORD: ${POSTGRES_AI_PASSWORD:?POSTGRES_AI_PASSWORD must be set in .env}
+      POSTGRES_AI_RUNTIME_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:?POSTGRES_AI_RUNTIME_PASSWORD must be set in .env}
     volumes:
       - ./docker/create-database-roles.sh:/bootstrap/create-database-roles.sh:ro
     depends_on:
@@ -169,6 +170,48 @@ services:
       backend:
         condition: service_healthy
     networks:
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  ai-service:
+    profiles: ["ai"]
+    build:
+      context: ../ai-service
+    entrypoint: ["uvicorn", "app.main:app"]
+    command: ["--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    environment:
+      ALZS_AI_DB_HOST: postgres
+      ALZS_AI_DB_PORT: "5432"
+      ALZS_AI_DB_NAME: ${POSTGRES_DB:-alzs_well}
+      ALZS_AI_DB_USER: alzswell_ai_runtime
+      ALZS_AI_DB_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:?POSTGRES_AI_RUNTIME_PASSWORD must be set in .env}
+      ALZS_AI_DB_SSLMODE: disable
+      ALZS_AI_DB_CONNECT_TIMEOUT: "5"
+      ALZS_AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN must be set in .env}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - alzs-well-app
       - alzs-well-data
     cap_drop:
       - ALL
