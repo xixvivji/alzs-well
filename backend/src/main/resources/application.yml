@@ -99,6 +99,12 @@ app:
     customer-profile-api-enabled: ${CUSTOMER_PROFILE_API_ENABLED:false}
     # 합성 계정 인증은 로컬·사설 검증 전용이며 공개 운영에서 활성화하지 않는다.
     local-auth-api-enabled: ${LOCAL_AUTH_API_ENABLED:false}
+  ai-retrieval:
+    enabled: ${AI_RETRIEVAL_ENABLED:false}
+    base-url: ${AI_RETRIEVAL_BASE_URL:http://127.0.0.1:8000}
+    internal-token: ${AI_INTERNAL_TOKEN:}
+    connect-timeout-ms: ${AI_RETRIEVAL_CONNECT_TIMEOUT_MS:500}
+    request-timeout-ms: ${AI_RETRIEVAL_REQUEST_TIMEOUT_MS:1500}
   auth:
     access-ttl-seconds: ${AUTH_ACCESS_TTL_SECONDS:900}
     refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
