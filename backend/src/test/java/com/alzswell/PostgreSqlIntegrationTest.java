@@ -333,6 +333,31 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void aiIngestorCanOnlyWriteDerivedKnowledgeSchema() {
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_schema_privilege('alzswell_ai_ingestor','ai_knowledge','USAGE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.ingestion_run','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_ai_ingestor','ai_knowledge.ingestion_run','status','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_ai_ingestor','ai_knowledge.ingestion_run','document_id','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk','DELETE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','knowledge_document','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','knowledge_passage','UPDATE')",
+                Boolean.class)).isFalse();
+    }
+
+    @Test
     @Transactional
     void futureTablesDoNotAutomaticallyGrantRuntimeUpdateOrDelete() {
         if (!runtimeRoleExists()) return;
@@ -413,7 +438,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '57'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '58'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -486,7 +511,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("57"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("58"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));

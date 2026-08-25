@@ -73,6 +73,37 @@ uv run python -m app.cli ingest-pdf \
   --as-of 2026-08-25
 ```
 
+기본 저장소는 기존과 동일한 `jsonl`이다. PostgreSQL을 선택하면 Spring의 업무
+`knowledge_*` 테이블이 아니라 AI 파생 데이터 전용 `ai_knowledge.chunk`와
+`ai_knowledge.ingestion_run`에 원자적으로 저장한다. 접속 비밀번호는 명령행 인자로
+받지 않고 `ALZS_AI_DB_*` 환경변수로만 주입한다.
+
+```bash
+set -a
+source .env
+set +a
+uv run python -m app.cli ingest-pdf \
+  --repo-root .. \
+  --manifest path/to/approved-pdf-manifest.yaml \
+  --as-of 2026-08-25 \
+  --storage postgres
+```
+
+같은 `documentId`와 `versionLabel`의 재실행은 advisory lock 안에서 기존 파생 chunk를
+새 결정론적 결과로 교체한다. 성공 시 실행 상태와 chunk 교체가 같은 트랜잭션으로
+커밋되며, 추출·청킹 실패 시 본문이나 원문 없이 안전한 오류코드만 `FAILED` 실행에 남긴다.
+
+운영 compose에서는 DB 포트를 외부에 공개하지 않고 일회성 도구 프로필로 실행한다.
+
+```bash
+docker compose --project-directory backend --profile ai-tools run --rm ai-ingestion \
+  ingest-pdf \
+  --repo-root /workspace \
+  --manifest knowledge/manifests/approved-document.yaml \
+  --as-of 2026-08-25 \
+  --storage postgres
+```
+
 ## 테스트
 
 ```bash

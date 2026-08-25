@@ -15,6 +15,7 @@ ERROR_EXIT_CODES: dict[str, int] = {
     "KNOWLEDGE_ROLE_DENIED": 3,
     "KNOWLEDGE_AUDIENCE_DENIED": 3,
     "REPOSITORY_ROOT_REQUIRED": 2,
+    "DATABASE_CONFIGURATION_INVALID": 2,
     "SOURCE_PATH_OUTSIDE_CORPUS": 4,
     "SOURCE_SYMLINK_FORBIDDEN": 4,
     "SOURCE_NOT_FOUND": 4,
@@ -32,6 +33,8 @@ ERROR_EXIT_CODES: dict[str, int] = {
     "OCR_REQUIRED": 5,
     "CHUNK_VALIDATION_FAILED": 5,
     "OUTPUT_WRITE_FAILED": 6,
+    "STORAGE_UNAVAILABLE": 6,
+    "STORAGE_CONFLICT": 6,
 }
 
 
@@ -44,6 +47,7 @@ SAFE_MESSAGES: dict[str, str] = {
     "DOCUMENT_NOT_ACTIVE": "활성 상태가 아닌 문서는 ingestion할 수 없습니다.",
     "DOCUMENT_NOT_EFFECTIVE": "기준일에 유효하지 않은 문서입니다.",
     "REPOSITORY_ROOT_REQUIRED": "저장소 루트를 명시해야 합니다.",
+    "DATABASE_CONFIGURATION_INVALID": "AI 저장소 연결 설정이 올바르지 않습니다.",
     "SOURCE_PATH_OUTSIDE_CORPUS": "허용된 저장소 경계를 벗어난 원문 경로입니다.",
     "SOURCE_SYMLINK_FORBIDDEN": "원문 경로에 심볼릭 링크를 사용할 수 없습니다.",
     "SOURCE_NOT_FOUND": "원문 파일을 찾을 수 없습니다.",
@@ -57,6 +61,8 @@ SAFE_MESSAGES: dict[str, str] = {
     "SOURCE_PAGE_LIMIT_EXCEEDED": "PDF 페이지 수가 허용 범위를 벗어났습니다.",
     "SOURCE_ACTIVE_CONTENT_FORBIDDEN": "실행 가능하거나 첨부된 PDF 콘텐츠는 허용되지 않습니다.",
     "OCR_REQUIRED": "텍스트 계층이 없는 PDF는 별도 OCR 처리가 필요합니다.",
+    "STORAGE_UNAVAILABLE": "AI 저장소를 사용할 수 없습니다.",
+    "STORAGE_CONFLICT": "기존 파생 데이터와 충돌하여 저장할 수 없습니다.",
 }
 
 

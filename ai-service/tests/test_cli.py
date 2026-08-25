@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import UUID
 
 from app.cli import main
 from app.domain.document import ExtractedBlock, ExtractedDocument
@@ -338,6 +339,100 @@ def test_cli_reports_ocr_required_without_document_content(
     assert json.loads(captured.err)["code"] == "OCR_REQUIRED"
 
 
+def test_cli_ingests_pdf_to_postgres_and_returns_run_id(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    _mock_pdf_pipeline(repo_root, monkeypatch)
+    store = FakeIngestionStore()
+    monkeypatch.setattr("app.cli.DatabaseConfig.from_environment", lambda: object())  # type: ignore[attr-defined]
+    monkeypatch.setattr("app.cli.PostgresIngestionStore", lambda config: store)  # type: ignore[attr-defined]
+
+    exit_code = main(
+        [
+            "ingest-pdf",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+            "--storage",
+            "postgres",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["storage"] == "POSTGRES"
+    assert payload["runId"] == str(store.run_id)
+    assert payload["outputPath"] is None
+    assert store.started["document_id"] == "DOC-SYN-CONTRACT-001"
+    assert len(store.completed_chunks) == 1
+    assert store.failures == []
+
+
+def test_cli_ingests_html_to_postgres_without_jsonl_write(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    store = FakeIngestionStore()
+    monkeypatch.setattr("app.cli.DatabaseConfig.from_environment", lambda: object())  # type: ignore[attr-defined]
+    monkeypatch.setattr("app.cli.PostgresIngestionStore", lambda config: store)  # type: ignore[attr-defined]
+
+    exit_code = main(
+        [
+            "ingest-html",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+            "--storage",
+            "postgres",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["storage"] == "POSTGRES"
+    assert payload["runId"] == str(store.run_id)
+    assert payload["outputPath"] is None
+    assert len(store.completed_chunks) == 1
+
+
+def test_cli_records_safe_failed_postgres_ingestion(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    store = FakeIngestionStore(fail_reporting=True)
+    monkeypatch.setattr("app.cli.DatabaseConfig.from_environment", lambda: object())  # type: ignore[attr-defined]
+    monkeypatch.setattr("app.cli.PostgresIngestionStore", lambda config: store)  # type: ignore[attr-defined]
+
+    def reject_source(root: object, manifest: object) -> object:
+        raise KnowledgeContractError("SOURCE_HASH_MISMATCH")
+
+    monkeypatch.setattr("app.cli.validate_source", reject_source)  # type: ignore[attr-defined]
+    exit_code = main(
+        [
+            "ingest-html",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+            "--storage",
+            "postgres",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+
+    assert exit_code == 4
+    assert json.loads(captured.err)["code"] == "SOURCE_HASH_MISMATCH"
+    assert store.failures == [(store.run_id, "SOURCE_HASH_MISMATCH")]
+
+
 def _mock_pdf_pipeline(repo_root: Path, monkeypatch: object) -> None:
     source = ValidatedPdfSource(
         path=repo_root / "synthetic.pdf",
@@ -361,3 +456,28 @@ def _mock_pdf_pipeline(repo_root: Path, monkeypatch: object) -> None:
     )
     monkeypatch.setattr("app.cli.validate_pdf_source", lambda root, manifest: source)  # type: ignore[attr-defined]
     monkeypatch.setattr("app.cli.extract_pdf_document", lambda manifest, value: document)  # type: ignore[attr-defined]
+
+
+class FakeIngestionStore:
+    def __init__(self, *, fail_reporting: bool = False) -> None:
+        self.run_id = UUID("97000000-0000-0000-0000-000000000001")
+        self.started: dict[str, object] = {}
+        self.completed_chunks: tuple[object, ...] = ()
+        self.failures: list[tuple[UUID, str]] = []
+        self.fail_reporting = fail_reporting
+
+    def start_run(self, **values: object) -> UUID:
+        self.started = values
+        return self.run_id
+
+    def complete_run(
+        self, run_id: UUID, chunks: tuple[object, ...], warnings: tuple[str, ...]
+    ) -> None:
+        assert run_id == self.run_id
+        assert warnings == ()
+        self.completed_chunks = chunks
+
+    def fail_run(self, run_id: UUID, failure_code: str) -> None:
+        self.failures.append((run_id, failure_code))
+        if self.fail_reporting:
+            raise KnowledgeContractError("STORAGE_UNAVAILABLE")
