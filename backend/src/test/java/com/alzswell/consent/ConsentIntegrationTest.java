@@ -43,7 +43,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class ConsentIntegrationTest {
     private static final String CUSTOMER_ID="SYN_CUSTOMER_FIN_MGMT_001";
     @Container @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
     @Autowired MockMvc mockMvc; @Autowired ObjectMapper objectMapper;
     @Autowired JdbcTemplate jdbcTemplate; @Autowired ConsentService consentService;
 

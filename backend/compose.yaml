@@ -150,7 +150,7 @@ services:
         max-file: "3"
 
   db-bootstrap:
-    image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg17}
     restart: "no"
     user: postgres
     entrypoint: ["/bin/bash", "/bootstrap/create-database-roles.sh"]
@@ -181,7 +181,7 @@ services:
     cpus: 0.25
 
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg17}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-alzs_well}

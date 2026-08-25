@@ -2,7 +2,7 @@
 
 폐쇄망에서 승인된 지식 원문을 검증·추출·청킹하고 이후 검색 인덱스를 만드는 내부 AI/RAG 프로젝트다.
 현재 단계는 공용 지식 계약 v1을 소비하는 manifest, HTML/PDF 원문 검증과 결정론적
-chunk 생성 CLI, PostgreSQL 키워드 검색용 내부 FastAPI를 제공한다.
+chunk 생성 CLI, PostgreSQL·pgvector 하이브리드 검색용 내부 FastAPI를 제공한다.
 
 ## 실행
 
@@ -132,10 +132,12 @@ Content-Type: application/json
 }
 ```
 
-검색은 PostgreSQL `simple` 전문검색을 기준선으로 사용하고 역할 교집합, audience,
+검색은 PostgreSQL `simple` 전문검색과 `local-hash-ngram-ko-v1` 384차원 로컬 임베딩의
+pgvector cosine 유사도를 결합하고 역할 교집합, audience,
 `APPROVED/ACTIVE`, 효력기간을 모두 만족하는 chunk만 반환한다. 감사 이력에는 원문
 검색어 대신 `sha256:<hex>`만 남긴다. 응답 citation은 권한 부여 결과가 아니므로
-Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다.
+Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다. 로컬 임베딩은 모델
+파일이나 네트워크를 요구하지 않으며 이후 승인된 내부 모델로 교체 가능한 경계다.
 
 ## 테스트
 

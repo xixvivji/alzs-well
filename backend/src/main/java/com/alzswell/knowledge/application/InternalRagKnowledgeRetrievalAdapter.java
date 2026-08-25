@@ -18,7 +18,7 @@ public class InternalRagKnowledgeRetrievalAdapter implements KnowledgeRetrievalP
     @Override
     public RetrievalResult retrieve(RetrievalQuery query) {
         if(query.requestedAudience()!=null&&!query.requesterAudiences().contains(query.requestedAudience()))
-            return new RetrievalResult(List.of(),"INTERNAL_RAG_KEYWORD",false,0);
+            return new RetrievalResult(List.of(),"INTERNAL_RAG_HYBRID",false,0);
         String normalized=AiCitationValidator.normalizeQuery(query.query());
         UUID requestId=UUID.randomUUID();
         AiSearchResponse response=client.search(new AiSearchRequest(CONTRACT_VERSION,requestId,normalized,
@@ -35,6 +35,6 @@ public class InternalRagKnowledgeRetrievalAdapter implements KnowledgeRetrievalP
             if(validated.isPresent()&&passageIds.add(validated.get().passage().passageId())) hits.add(validated.get());
             else rejected++;
         }
-        return new RetrievalResult(hits,"INTERNAL_RAG_KEYWORD",false,rejected);
+        return new RetrievalResult(hits,"INTERNAL_RAG_HYBRID",false,rejected);
     }
 }

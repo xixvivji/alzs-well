@@ -25,7 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest @AutoConfigureMockMvc @Testcontainers(disabledWithoutDocker=true)
 class KnowledgeGovernanceIntegrationTest {
     @Container @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper objectMapper;

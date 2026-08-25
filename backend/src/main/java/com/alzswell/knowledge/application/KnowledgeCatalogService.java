@@ -114,14 +114,15 @@ public class KnowledgeCatalogService {
         KnowledgeRetrievalPort.RetrievalResult retrieval=retrievalPort.retrieve(new RetrievalQuery(
                 command.query(),date,command.audience(),access.roles(),access.audiences(),command.resolvedLimit()));
         List<SearchHit> hits=retrieval.hits();
+        boolean vectorSearchUsed="INTERNAL_RAG_HYBRID".equals(retrieval.retrievalMode());
         List<String> ids=hits.stream().map(hit->hit.passage().passageId().toString()).toList();
         String outcome=command.audience()!=null&&!access.allowsAudience(command.audience())?"FILTERED":"ALLOWED";
         audit.record("SEARCH",access,null,command.query(),date,ids,outcome,
                 Map.of("requestedAudience",command.audience()==null?"ALL_ALLOWED":command.audience(),
                         "limit",command.resolvedLimit(),"retrievalMode",retrieval.retrievalMode(),
                         "fallbackUsed",retrieval.fallbackUsed(),"rejectedCitations",retrieval.rejectedCitations(),
-                        "total",hits.size()));
-        return new SearchResult(command.query(),date,command.audience(),hits,hits.size(),false,false);
+                        "vectorSearchUsed",vectorSearchUsed,"total",hits.size()));
+        return new SearchResult(command.query(),date,command.audience(),hits,hits.size(),false,vectorSearchUsed);
     }
 
     @Transactional(readOnly=true)

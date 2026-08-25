@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest @AutoConfigureMockMvc @Testcontainers(disabledWithoutDocker=true)
 class FinancialProductIntegrationTest {
  static final String CUSTOMER="SYN_CUSTOMER_FIN_MGMT_001";
- @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
+ @Container @ServiceConnection static final PostgreSQLContainer<?> POSTGRES=new com.alzswell.test.PgVectorPostgreSqlContainer();
  @Autowired MockMvc mockMvc;@Autowired JdbcTemplate jdbc;
  private org.springframework.test.web.servlet.request.RequestPostProcessor read(){return user(CUSTOMER).authorities(()->"FINANCIAL_PRODUCT_READ");}
  private org.springframework.test.web.servlet.request.RequestPostProcessor simulate(){return user(CUSTOMER).authorities(()->"FINANCIAL_PRODUCT_SIMULATE");}

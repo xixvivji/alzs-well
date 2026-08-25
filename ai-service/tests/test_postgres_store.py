@@ -114,6 +114,8 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
     assert cursor.batch[0][0] == chunks[0].chunk_id
     assert cursor.batch[0][1] == run_id
     assert cursor.batch[0][5] == ["문서", "절"]
+    assert str(cursor.batch[0][15]).startswith("[")
+    assert cursor.batch[0][16] == "local-hash-ngram-ko-v1"
 
 
 def test_records_failed_run_with_safe_code_only() -> None:

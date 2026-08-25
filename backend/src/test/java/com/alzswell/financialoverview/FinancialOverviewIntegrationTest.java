@@ -27,7 +27,7 @@ class FinancialOverviewIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new com.alzswell.test.PgVectorPostgreSqlContainer();
 
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;

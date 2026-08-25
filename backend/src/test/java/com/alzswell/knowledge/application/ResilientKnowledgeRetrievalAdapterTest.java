@@ -16,7 +16,7 @@ class ResilientKnowledgeRetrievalAdapterTest {
     void usesInternalRetrievalWhenEnabled() {
         InternalRagKnowledgeRetrievalAdapter internal=mock(InternalRagKnowledgeRetrievalAdapter.class);
         DeterministicKnowledgeRetrievalAdapter deterministic=mock(DeterministicKnowledgeRetrievalAdapter.class);
-        RetrievalResult expected=new RetrievalResult(List.of(),"INTERNAL_RAG_KEYWORD",false,1);
+        RetrievalResult expected=new RetrievalResult(List.of(),"INTERNAL_RAG_HYBRID",false,1);
         when(internal.retrieve(query)).thenReturn(expected);
         assertThat(new ResilientKnowledgeRetrievalAdapter(true,internal,deterministic).retrieve(query)).isSameAs(expected);
         verifyNoInteractions(deterministic);

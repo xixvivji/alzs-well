@@ -37,7 +37,7 @@ class PostgreSqlIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine")
+    static final PostgreSQLContainer<?> POSTGRES = new com.alzswell.test.PgVectorPostgreSqlContainer()
             .withInitScript("create-runtime-role.sql");
 
     @Autowired
@@ -206,6 +206,20 @@ class PostgreSqlIntegrationTest {
         );
 
         assertThat(tableCount).isEqualTo(143);
+    }
+
+    @Test
+    void flywayCreatesThePgVectorHybridSearchContract() {
+        assertThat(jdbcTemplate.queryForObject(
+                "select exists(select 1 from pg_extension where extname = 'vector')", Boolean.class))
+                .isTrue();
+        assertThat(jdbcTemplate.queryForObject("""
+                select format_type(a.atttypid, a.atttypmod)
+                from pg_attribute a
+                where a.attrelid = 'ai_knowledge.chunk'::regclass
+                  and a.attname = 'embedding'
+                  and not a.attisdropped
+                """, String.class)).isEqualTo("vector(384)");
     }
 
     @Test
@@ -489,7 +503,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '64'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '65'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -562,7 +576,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("64"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("65"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));

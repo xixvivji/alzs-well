@@ -61,6 +61,7 @@ select format('alter role alzswell_ai_runtime password %L', :'ai_runtime_passwor
 \gexec
 
 revoke create on schema public from public;
+create extension if not exists vector;
 grant usage, create on schema public to alzswell_migrator;
 
 select format('grant connect on database %I to alzswell_migrator, alzswell_app, alzswell_ai_ingestor, alzswell_ai_runtime', current_database())

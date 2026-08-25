@@ -10,7 +10,7 @@ import pytest
 from app.domain.search import SearchRequest
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
-from app.storage.search_postgres import PostgresSearchRepository, hash_query
+from app.storage.search_postgres import INDEX_VERSION, PostgresSearchRepository, hash_query
 
 
 class FakeCursor:
@@ -67,14 +67,14 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "d.approval_status = 'APPROVED'" in statement
     assert "d.lifecycle_status = 'ACTIVE'" in statement
     assert "d.effective_from <= %s" in statement
-    assert parameters == (
-        "금융거래 안심차단",
-        ["PROTECTION_STAFF"],
-        ["STAFF"],
-        date(2026, 8, 25),
-        date(2026, 8, 25),
-        10,
+    assert "c.embedding <=> search_query.embedding" in statement
+    assert parameters[0] == "금융거래 안심차단"  # type: ignore[index]
+    assert str(parameters[1]).startswith("[")  # type: ignore[index]
+    assert parameters[2:] == (  # type: ignore[index]
+        ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
+        date(2026, 8, 25), "local-hash-ngram-ko-v1", 10,
     )
+    assert INDEX_VERSION == "hybrid-hash-ngram-v1"
     assert results[0].chunk_id == "chk_" + "1" * 64
     assert results[0].score == 0.5
 
