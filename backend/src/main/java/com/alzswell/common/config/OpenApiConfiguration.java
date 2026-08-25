@@ -240,6 +240,7 @@ public class OpenApiConfiguration {
             return List.of(method == PathItem.HttpMethod.GET ? "INBOX_READ" : "INBOX_WRITE");
         }
         if (path.equals("/api/v1/notification-previews")) return List.of("NOTIFICATION_PREVIEW");
+        if (path.startsWith("/api/v1/admin/knowledge/")) return List.of("KNOWLEDGE_ADMIN_WRITE");
         if (path.equals("/api/v1/knowledge/search")) return List.of("KNOWLEDGE_SEARCH");
         if (path.startsWith("/api/v1/knowledge/")) return List.of("KNOWLEDGE_READ");
         if (path.equals("/api/v1/guidance-candidates")) return List.of("GUIDANCE_CANDIDATE_READ");
@@ -352,7 +353,8 @@ public class OpenApiConfiguration {
     private record AccessContract(String mode, List<String> authorities, boolean bearer) {}
 
     private boolean requiresIdempotencyKey(String path) {
-        return path.endsWith("/reset")
+        return path.startsWith("/api/v1/admin/knowledge/")
+                || path.endsWith("/reset")
                 || path.endsWith("/ingest")
                 || path.endsWith("/context")
                 || path.endsWith("/notes")

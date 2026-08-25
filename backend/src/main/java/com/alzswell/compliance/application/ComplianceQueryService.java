@@ -153,6 +153,12 @@ public class ComplianceQueryService {
                      'FEATURE_FLAG',flag_key,previous_desired_enabled::text,requested_enabled::text,
                      jsonb_build_object('approvalReference',approval_reference,'changeReason',change_reason),null,occurred_at
                 from feature_flag_change_event
+              union all
+              select 'KNOWLEDGE_GOVERNANCE:'||event_id,'KNOWLEDGE_GOVERNANCE',event_id::text,event_type,
+                     actor_subject,null,'KNOWLEDGE_DOCUMENT',document_id||':'||version_label,null,
+                     state_snapshot->>'lifecycleStatus',state_snapshot ||
+                       jsonb_build_object('approvalReference',approval_reference),integrity_hash,occurred_at
+                from knowledge_governance_event
             )
             """;
     private final JdbcTemplate jdbcTemplate;

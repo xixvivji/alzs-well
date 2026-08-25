@@ -12,7 +12,7 @@ public record AuditActor(UUID principalId, String customerId, UUID sessionId, St
             "COMPLIANCE_TRACE_READ", "STAFF_ACCESS_GRANT_READ",
             "STAFF_ACCESS_GRANT_WRITE", "STAFF_ACCESS_EVALUATE", "FEATURE_FLAG_READ",
             "FEATURE_FLAG_WRITE", "DETECTION_POLICY_READ", "DETECTION_POLICY_WRITE",
-            "DETECTION_PROMOTION_READ", "KNOWLEDGE_READ", "KNOWLEDGE_SEARCH");
+            "DETECTION_PROMOTION_READ", "KNOWLEDGE_READ", "KNOWLEDGE_SEARCH", "KNOWLEDGE_ADMIN_WRITE");
 
     public static AuditActor from(Authentication authentication) {
         UUID principalId = null;

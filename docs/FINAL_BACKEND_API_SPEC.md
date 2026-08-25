@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.20.0**
+> 문서 버전: **1.21.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-24 (Asia/Seoul)**
+> 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 212개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 214개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 59개 |
+| 카탈로그·백로그 | 57개 |
 
-업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개를 포함해 212개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 206개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 213개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개, 지식 문서 검토등록·게시 2개를 포함해 214개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 208개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 215개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -861,7 +861,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개를 포함해 총 212개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 213개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 206개가 노출된다. 나머지 59개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개, 지식 문서 검토등록·게시 2개를 포함해 총 214개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 215개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 208개가 노출된다. 나머지 57개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1311,10 +1311,12 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 | P1 | POST | /api/v1/knowledge/search | 권한·효력기간을 적용한 검색 | OWNED |
 | P1 | GET | /api/v1/knowledge/passages/{passageId} | 인용 가능한 조항·페이지 | OWNED |
 | P1 | GET | /api/v1/guidance-candidates | 정책이 고른 보호수단 후보 | OWNED |
-| P2 | POST | /api/v1/admin/knowledge/documents | 공식 자료 등록 | OWNED |
-| P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 | OWNED |
+| P2 | POST | /api/v1/admin/knowledge/documents | 공식 자료 검토등록 (`IMPLEMENTED`) | OWNED |
+| P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 (`IMPLEMENTED`) | OWNED |
 
 앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하고 검색은 허용된 passage에 대한 결정론적 키워드 일치만 사용한다. 응답은 `externalModelCalled=false`, `vectorSearchUsed=false`를 명시한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 벡터DB, LLM 호출은 포함하지 않는다.
+
+V55의 관리자 2개 API는 공용 manifest 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. 즉 AI ingestion·청킹·색인 완료 전에는 기존 검색 카탈로그에 자동 노출되지 않으며 원문 수정, 네트워크 호출, 모델 실행도 하지 않는다. 모든 등록·게시·대체는 V55 추가 전용 감사이력에 보존된다.
 
 #### 3.3.20 인앱 알림·고객지원 — 10개
 
@@ -1462,7 +1464,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “271개 API 카탈로그를 설계했고 P0 23개와 P1 170개를 포함한 213개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “271개 API 카탈로그를 설계했고 P0 23개와 P1 170개를 포함한 215개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2221,7 +2223,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "54",
+        "schemaVersion": "55",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2805,7 +2807,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "54",
+    "schemaVersion": "55",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3955,7 +3957,7 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 
 ## 6.10 미구현 API를 CONTRACT로 승격하는 규칙
 
-현재 미구현 카탈로그·백로그 59개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
+현재 미구현 카탈로그·백로그 57개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 
 | 필수 항목 | 기록 내용 |
 |---|---|
