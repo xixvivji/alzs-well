@@ -36,9 +36,12 @@ gateway만 `127.0.0.1`에 공개된다. gateway↔Spring은 `alzs-well-app`, Spr
 `http://ai-service:8000/internal/v1/search`를 호출한다. Spring은 응답의 문서·버전·chunk ID·원문
 및 본문 hash를 권위 지식 카탈로그와 다시 대조하고, ACL·audience·승인·활성·효력기간을 모두
 재검사한다. 검증 실패 citation은 제외하며 timeout, 인증 실패, 비정상 응답에는 기존 결정론적
-키워드 검색으로 폴백한다. 따라서 활성화 전 Spring의 승인 governance·passage와 AI ingestion
-결과가 같은 문서 버전과 본문을 가리키는지 먼저 확인해야 한다. Spring은 `ai_knowledge` 스키마를
-직접 조회하거나 수정하지 않는다.
+키워드 검색으로 폴백한다. 활성화 전 `KNOWLEDGE_ADMIN_WRITE` 권한으로
+`POST /api/v1/admin/knowledge/ingestion-imports`에 `ingestion-import.schema.json` bundle을 제출해야
+한다. Spring은 승인 governance와 source/text/chunk hash를 다시 계산한 뒤 `chunkId ↔ passageId`
+binding을 추가 전용으로 저장한다. Spring은 `ai_knowledge` 스키마를 직접 조회하거나 수정하지 않는다.
+일반 요청 본문은 gateway에서 32KiB로 제한하며, 최대 500개 chunk의 검증 bundle을 받는 이 관리자
+경로만 4MiB와 더 낮은 연결 제한을 적용한다.
 
 ```bash
 ./scripts/verify-air-gap.sh

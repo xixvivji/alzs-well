@@ -3,8 +3,6 @@ package com.alzswell.knowledge.application;
 import com.alzswell.knowledge.api.KnowledgeResponses.*;
 import com.alzswell.knowledge.application.InternalKnowledgeSearchClient.*;
 import com.alzswell.knowledge.application.KnowledgeRetrievalPort.RetrievalQuery;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Array;
@@ -19,23 +17,23 @@ public class AiCitationValidator {
     private static final Pattern HASH=Pattern.compile("sha256:[0-9a-f]{64}");
     private static final Pattern CHUNK_ID=Pattern.compile("chk_[0-9a-f]{64}");
     private final JdbcClient jdbc;
-    private final ObjectMapper objectMapper;
 
-    public AiCitationValidator(JdbcClient jdbc,ObjectMapper objectMapper){this.jdbc=jdbc;this.objectMapper=objectMapper;}
+    public AiCitationValidator(JdbcClient jdbc){this.jdbc=jdbc;}
 
     public Optional<SearchHit> validate(AiSearchHit hit,RetrievalQuery query) {
         if(!structurallyValid(hit,query)) return Optional.empty();
         AiCitation citation=hit.citation();
-        if(!hash(hit.content()).equals(citation.textHash())||!chunkId(citation).equals(citation.chunkId()))
+        if(!hash(hit.content()).equals(citation.textHash()))
             return Optional.empty();
         String requestedAudience=query.requestedAudience()==null?"":query.requestedAudience();
         return jdbc.sql("""
                 select p.*,d.document_id,d.title,d.issuer,d.source_url,d.effective_from,d.effective_to,
-                       v.version_label,g.source_hash
+                       v.version_label,g.source_hash,b.section_path,b.page
                 from knowledge_passage p
                 join knowledge_document_version v on v.document_version_id=p.document_version_id
                 join knowledge_document d on d.document_id=v.document_id
                 join knowledge_document_governance g on g.document_id=d.document_id and g.version_label=v.version_label
+                join knowledge_ai_passage_binding b on b.passage_id=p.passage_id
                 where d.document_id=:documentId and v.version_label=:versionLabel and p.passage_order=:chunkOrder
                   and d.approval_status='APPROVED' and d.lifecycle_status='ACTIVE' and v.version_label=d.current_version
                   and d.effective_from<=:asOf and (d.effective_to is null or d.effective_to>=:asOf)
@@ -46,16 +44,21 @@ public class AiCitationValidator {
                   and g.effective_from<=:asOf and (g.effective_to is null or g.effective_to>=:asOf)
                   and (g.audience='BOTH' or g.audience=any(string_to_array(:audiences,',')))
                   and g.allowed_roles && string_to_array(:roles,',')::varchar[] and g.source_hash=:sourceHash
+                  and b.chunk_id=:chunkId and b.source_hash=:sourceHash and b.text_hash=:textHash
                 """).param("documentId",citation.documentId()).param("versionLabel",citation.versionLabel())
                 .param("chunkOrder",citation.chunkOrder()).param("asOf",query.asOf())
                 .param("audience",requestedAudience).param("audiences",String.join(",",query.requesterAudiences()))
                 .param("roles",String.join(",",query.principalRoles())).param("sourceHash",citation.sourceHash())
+                .param("chunkId",citation.chunkId()).param("textHash",citation.textHash())
                 .query((rs,n)->{
                     String content=rs.getString("content");
+                    Array pathArray=rs.getArray("section_path");
+                    List<String> sectionPath=pathArray==null?List.of():List.of((String[])pathArray.getArray());
                     if(!hash(content).equals(citation.textHash())||!content.equals(hit.content())
                             ||!rs.getString("title").equals(citation.title())
                             ||!rs.getString("issuer").equals(citation.issuer())
-                            ||!rs.getString("heading").equals(citation.heading())
+                            ||!rs.getString("heading").equals(citation.heading())||!sectionPath.equals(citation.sectionPath())
+                            ||!Objects.equals(rs.getObject("page",Integer.class),citation.page())
                             ||!Objects.equals(rs.getString("source_url"),citation.sourceUrl())) return null;
                     Array array=rs.getArray("keywords");
                     List<String> keywords=array==null?List.of():List.of((String[])array.getArray());
@@ -81,15 +84,6 @@ public class AiCitationValidator {
                 &&HASH.matcher(nullToEmpty(c.textHash())).matches()
                 &&CHUNK_ID.matcher(nullToEmpty(c.chunkId())).matches()
                 &&c.citationLabel().equals(c.title()+" > "+c.heading());
-    }
-
-    private String chunkId(AiCitation citation) {
-        String chunkerVersion=citation.page()==null?"structure-ko-v1":"pdf-structure-ko-v1";
-        List<Object> values=List.of(nfc(citation.documentId()),nfc(citation.versionLabel()),
-                citation.sectionPath().stream().map(AiCitationValidator::nfc).toList(),citation.chunkOrder(),
-                nfc(citation.textHash()),chunkerVersion);
-        try {return "chk_"+hex(objectMapper.writeValueAsBytes(values));}
-        catch(JsonProcessingException exception){throw new IllegalStateException("Unable to canonicalize citation",exception);}
     }
 
     static String normalizeQuery(String value){return nfc(String.join(" ",value.trim().split("\\s+")));}

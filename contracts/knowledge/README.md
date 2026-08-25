@@ -8,6 +8,7 @@
 - `citation.schema.json`: Spring이 재검증할 검색 인용 구조
 - `search-request.schema.json`: Spring이 내부 AI 검색에 전달하는 권한·역할·기준일 계약
 - `search-response.schema.json`: 키워드 검색 점수·본문·citation 응답 계약
+- `ingestion-import.schema.json`: 검증된 ingestion 결과를 Spring 권위 passage로 반영하는 관리자 import bundle
 - `error-codes.yaml`: CLI와 향후 내부 HTTP API의 안정적인 오류코드
 - `chunk-id-test-vectors.json`: Python과 Java가 공통으로 검증할 고정 digest
 - `pdf-source-validation-vectors.json`: PDF 입력 가드의 경계값과 고정 오류코드
@@ -188,6 +189,11 @@ Python과 Java는 서로의 결과만 비교하지 않고 `chunk-id-test-vectors
 ## Citation 재검증
 
 FastAPI가 반환한 citation은 권한 부여 결과가 아니다. Spring은 `documentId`, `versionLabel`, `chunkId`, `sourceHash`, `textHash`, 명시적 `retrievedAsOf`를 사용해 최종 ACL·효력·활성 상태와 인용 일치를 다시 검증한다. 검증에 실패한 passage는 응답과 생성 문맥에서 제외하고 감사 이벤트에 실패 사유코드만 기록한다.
+
+Spring import는 `APPROVED/ACTIVE` governance와 source hash를 먼저 확인하고 모든 chunk의 NFC,
+본문 hash, 결정론적 chunk ID, 순서, extractor/chunker 버전과 페이지 범위를 재계산한다. 통과한
+결과만 `chunkId`와 Spring `passageId`의 추가 전용 binding으로 저장한다. AI 계정은 Spring 권위
+카탈로그를 직접 수정하지 않으며, 같은 문서 버전의 재작성이나 부분 교체는 허용하지 않는다.
 
 ## 내부 키워드 검색 v1
 

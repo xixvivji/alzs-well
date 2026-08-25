@@ -160,6 +160,13 @@ public class ComplianceQueryService {
                        jsonb_build_object('approvalReference',approval_reference),integrity_hash,occurred_at
                 from knowledge_governance_event
               union all
+              select 'KNOWLEDGE_IMPORT:'||import_id,'KNOWLEDGE_IMPORT',import_id::text,'INGESTION_IMPORTED',
+                     imported_by,null,'KNOWLEDGE_DOCUMENT',document_id||':'||version_label,null,'SEARCHABLE',
+                     jsonb_build_object('ingestionRunId',ingestion_run_id,'sourceHash',source_hash,'asOf',as_of,
+                         'extractorVersion',extractor_version,'chunkerVersion',chunker_version,
+                         'chunkCount',chunk_count,'payloadHash',payload_hash),integrity_hash,imported_at
+                from knowledge_ingestion_import
+              union all
               select 'KNOWLEDGE_ACCESS:'||access_event_id,'KNOWLEDGE_ACCESS',access_event_id::text,event_type,
                      actor_subject,null,
                      case when event_type='PASSAGE_DETAIL' then 'KNOWLEDGE_PASSAGE'
