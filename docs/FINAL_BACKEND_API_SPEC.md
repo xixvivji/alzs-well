@@ -1440,7 +1440,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | P2 | POST | /api/v1/overseas-remittances | 실제 해외송금 접수 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/overseas-remittances/{remittanceId}/confirm | 실제 해외송금 승인 참조 | REFERENCE_ONLY |
 
-V61의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환율·외화계좌·합성 해외송금 이력은 `FX_READ`, 실행 없는 환전 계산은 `FX_SIMULATE`를 요구하며 고객 경로는 본인 소유권을 검사한다. 계좌번호는 마스킹 값만, 해외 수취인은 합성 별칭만 저장하고 모든 snapshot은 추가 전용이다. 실제 환전·송금·승인·외부 호출은 생성하지 않으며 마지막 실행 3개 API는 계속 `REFERENCE_ONLY`다.
+V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환율·외화계좌·합성 해외송금 이력은 `FX_READ`, 실행 없는 환전 계산은 `FX_SIMULATE`를 요구하며 고객 경로는 본인 소유권을 검사한다. 계좌번호는 마스킹 값만, 해외 수취인은 합성 별칭만 저장하고 모든 snapshot은 추가 전용이다. 실제 환전·송금·승인·외부 호출은 생성하지 않으며 마지막 실행 3개 API는 계속 `REFERENCE_ONLY`다.
 
 #### 3.3.25 보험·방카슈랑스 — 8개
 
@@ -2235,7 +2235,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "61",
+        "schemaVersion": "62",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2819,7 +2819,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "61",
+    "schemaVersion": "62",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
