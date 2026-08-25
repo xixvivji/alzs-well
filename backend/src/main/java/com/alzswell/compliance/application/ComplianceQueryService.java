@@ -175,6 +175,13 @@ public class ComplianceQueryService {
                      jsonb_build_object('actorSessionId',actor_session_id,'reasonCode',reason_code),
                      integrity_hash,occurred_at
                 from auth_session_event
+              union all
+              select 'TRANSFER_TEMPLATE:'||event_id,'TRANSFER_TEMPLATE',event_id::text,event_type,
+                     actor_subject,customer_id,'TRANSFER_TEMPLATE',template_id::text,null,status_snapshot,
+                     jsonb_build_object('sourceAccountId',source_account_id,'beneficiaryId',beneficiary_id,
+                         'templateName',template_name,'amount',amount,'currency',currency,
+                         'purposeCode',purpose_code,'version',version_snapshot),integrity_hash,occurred_at
+                from customer_transfer_template_event
             )
             """;
     private final JdbcTemplate jdbcTemplate;

@@ -214,6 +214,10 @@ public class OpenApiConfiguration {
         if (path.equals("/api/v1/transfer-simulations") || path.equals("/api/v1/transfer-validations")) {
             return List.of("TRANSFER_PREVIEW_EVALUATE");
         }
+        if (path.contains("/transfer-templates")) {
+            return List.of(method == PathItem.HttpMethod.GET
+                    ? "TRANSFER_TEMPLATE_READ" : "TRANSFER_TEMPLATE_WRITE");
+        }
         if (path.startsWith("/api/v1/accounts") || path.endsWith("/accounts")
                 || path.endsWith("/account-groups")) {
             return List.of(method == PathItem.HttpMethod.GET ? "ACCOUNT_READ" : "ACCOUNT_WRITE");
@@ -382,7 +386,8 @@ public class OpenApiConfiguration {
                 || path.endsWith("/overrides")
                 || path.contains("/trusted-contacts/")
                 || (path.endsWith("/staff-access-grants"))
-                || path.endsWith("/watchlist");
+                || path.endsWith("/watchlist")
+                || path.contains("/transfer-templates");
     }
 
     private void addHeader(Operation operation, String name, boolean required, String description) {
