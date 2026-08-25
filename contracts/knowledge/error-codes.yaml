@@ -120,6 +120,11 @@ errors:
     httpStatus: 422
     cliExitCode: 5
     retryable: false
+  - code: OCR_REQUIRED
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
   - code: CHUNK_VALIDATION_FAILED
     category: INGESTION
     httpStatus: 422

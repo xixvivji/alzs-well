@@ -1,7 +1,8 @@
 # ALZ's well AI service
 
 폐쇄망에서 승인된 지식 원문을 검증·추출·청킹하고 이후 검색 인덱스를 만드는 내부 AI/RAG 프로젝트다.
-현재 단계는 공용 지식 계약 v1을 소비하는 manifest 및 HTML 원문 검증 CLI만 제공한다.
+현재 단계는 공용 지식 계약 v1을 소비하는 manifest, HTML/PDF 원문 검증과 결정론적
+chunk JSONL 생성 CLI를 제공한다.
 
 ## 실행
 
@@ -46,6 +47,27 @@ uv run python -m app.cli ingest-html \
 
 ```bash
 uv run python -m app.cli validate-pdf \
+  --repo-root .. \
+  --manifest path/to/approved-pdf-manifest.yaml \
+  --as-of 2026-08-25
+```
+
+검증된 PDF에서 텍스트를 페이지별로 추출한다. 반복 머리말·꼬리말과 페이지 번호를
+제거하고 제목 계층을 구성하지만, 추출 본문은 CLI 응답에 포함하지 않는다.
+
+```bash
+uv run python -m app.cli extract-pdf \
+  --repo-root .. \
+  --manifest path/to/approved-pdf-manifest.yaml \
+  --as-of 2026-08-25
+```
+
+PDF 검증부터 페이지 범위가 포함된 JSONL 원자 교체까지 전체 ingestion을 실행한다.
+텍스트 계층이 없거나 5페이지 이상 문서에서 검색 가능한 페이지 비율이 10% 미만이면
+빈 검색 결과를 만들지 않고 `OCR_REQUIRED`로 종료한다.
+
+```bash
+uv run python -m app.cli ingest-pdf \
   --repo-root .. \
   --manifest path/to/approved-pdf-manifest.yaml \
   --as-of 2026-08-25
