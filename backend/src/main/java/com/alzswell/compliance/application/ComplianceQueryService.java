@@ -159,6 +159,16 @@ public class ComplianceQueryService {
                      state_snapshot->>'lifecycleStatus',state_snapshot ||
                        jsonb_build_object('approvalReference',approval_reference),integrity_hash,occurred_at
                 from knowledge_governance_event
+              union all
+              select 'KNOWLEDGE_ACCESS:'||access_event_id,'KNOWLEDGE_ACCESS',access_event_id::text,event_type,
+                     actor_subject,null,
+                     case when event_type='PASSAGE_DETAIL' then 'KNOWLEDGE_PASSAGE'
+                          when event_type='SEARCH' then 'KNOWLEDGE_SEARCH' else 'KNOWLEDGE_DOCUMENT' end,
+                     coalesce(requested_resource_id,access_event_id::text),null,outcome,
+                     detail || jsonb_build_object('permissionCode',permission_code,'principalRoles',principal_roles,
+                         'requesterAudiences',requester_audiences,'queryHash',query_hash,'asOf',as_of,
+                         'returnedResourceIds',returned_resource_ids),integrity_hash,occurred_at
+                from knowledge_access_audit_event
             )
             """;
     private final JdbcTemplate jdbcTemplate;

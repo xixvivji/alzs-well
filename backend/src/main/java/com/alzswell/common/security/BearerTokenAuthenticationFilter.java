@@ -44,17 +44,22 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                        array(select distinct rp.permission_code
                                from auth_principal_role pr
                                join auth_role_permission rp on rp.role_code = pr.role_code
-                              where pr.principal_id = p.principal_id) permissions
+                              where pr.principal_id = p.principal_id) permissions,
+                       array(select distinct pr.role_code from auth_principal_role pr
+                              where pr.principal_id = p.principal_id) roles
                   from auth_session s join auth_principal p on p.principal_id = s.principal_id
                  where s.access_token_hash = ? and s.revoked_at is null
                    and s.access_expires_at > ? and p.status = 'ACTIVE'
                 """, (rs, rowNum) -> new SessionRow(rs.getObject("session_id", UUID.class),
                         rs.getObject("principal_id", UUID.class), rs.getString("customer_id"),
-                        (String[]) rs.getArray("permissions").getArray()), hash, OffsetDateTime.now(clock));
+                        (String[]) rs.getArray("permissions").getArray(),
+                        (String[]) rs.getArray("roles").getArray()), hash, OffsetDateTime.now(clock));
         if (rows.size() == 1) {
             SessionRow row = rows.getFirst();
-            var authorities = java.util.Arrays.stream(row.permissions())
-                    .map(SimpleGrantedAuthority::new).toList();
+            var authorities = java.util.stream.Stream.concat(
+                    java.util.Arrays.stream(row.permissions()),
+                    java.util.Arrays.stream(row.roles()).map(role -> "ROLE_" + role))
+                    .distinct().map(SimpleGrantedAuthority::new).toList();
             var authentication = UsernamePasswordAuthenticationToken.authenticated(
                     new AuthenticatedPrincipal(row.principalId(), row.customerId()), null, authorities);
             authentication.setDetails(new AuthenticatedSession(row.sessionId()));
@@ -63,5 +68,5 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    private record SessionRow(UUID sessionId, UUID principalId, String customerId, String[] permissions) {}
+    private record SessionRow(UUID sessionId, UUID principalId, String customerId, String[] permissions,String[] roles) {}
 }

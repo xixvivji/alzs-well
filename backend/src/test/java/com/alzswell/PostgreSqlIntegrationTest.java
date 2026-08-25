@@ -115,6 +115,7 @@ class PostgreSqlIntegrationTest {
                       ,'knowledge_passage'
                       ,'knowledge_document_governance'
                       ,'knowledge_governance_event'
+                      ,'knowledge_access_audit_event'
                       ,'customer_protection_enrollment'
                       ,'customer_consent'
                       ,'customer_consent_scope'
@@ -192,7 +193,7 @@ class PostgreSqlIntegrationTest {
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(130);
+        assertThat(tableCount).isEqualTo(131);
     }
 
     @Test
@@ -243,6 +244,12 @@ class PostgreSqlIntegrationTest {
                 Boolean.class)).isFalse();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','knowledge_passage','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','knowledge_access_audit_event','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','knowledge_access_audit_event','UPDATE')",
                 Boolean.class)).isFalse();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','recurring_payment','INSERT')",
@@ -399,7 +406,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '55'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '56'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -472,7 +479,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("55"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("56"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
