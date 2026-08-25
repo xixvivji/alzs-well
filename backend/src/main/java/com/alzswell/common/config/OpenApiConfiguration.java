@@ -245,6 +245,9 @@ public class OpenApiConfiguration {
         }
         if (path.equals("/api/v1/notification-previews")) return List.of("NOTIFICATION_PREVIEW");
         if (path.startsWith("/api/v1/support/")) return List.of("SUPPORT_CONTENT_READ");
+        if (path.equals("/api/v1/fx/exchange-simulations")) return List.of("FX_SIMULATE");
+        if (path.startsWith("/api/v1/fx/") || path.contains("/foreign-currency-accounts")
+                || path.contains("/overseas-remittance-history")) return List.of("FX_READ");
         if (path.startsWith("/api/v1/admin/knowledge/")) return List.of("KNOWLEDGE_ADMIN_WRITE");
         if (path.equals("/api/v1/knowledge/search")) return List.of("KNOWLEDGE_SEARCH");
         if (path.startsWith("/api/v1/knowledge/")) return List.of("KNOWLEDGE_READ");
@@ -317,6 +320,9 @@ public class OpenApiConfiguration {
         }
         if (path.endsWith("/watchlist")) return "INTERNAL_OWNED";
         if (path.equals("/api/v1/support/notices")) return "SYNTHETIC_EXTERNAL_ADAPTER";
+        if (path.startsWith("/api/v1/fx/") || path.contains("/foreign-currency-accounts")
+                || path.contains("/overseas-remittance-history")) return path.endsWith("exchange-simulations")
+                ? "INTERNAL_OWNED" : "SYNTHETIC_EXTERNAL_ADAPTER";
         return path.startsWith("/api/v1/financial-institutions") || path.contains("/connections")
                 || path.startsWith("/api/v1/deposit-products") || path.startsWith("/api/v1/loan-products")
                 || path.endsWith("/maturity-options")
