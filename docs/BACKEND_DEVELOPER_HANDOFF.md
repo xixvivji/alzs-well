@@ -27,6 +27,7 @@
 - V63은 `SMOKE/DEMO/DEV` 결정론적 합성 고객·계좌·거래 생성 Job과 실행 manifest를 추가한다. 공개 API는 늘리지 않으며 migrator 역할의 일회성 Compose Job으로만 적재한다.
 - V64는 검증된 AI ingestion import와 `chunkId ↔ passageId` 추가 전용 binding을 추가한다. Spring만 문서 권위·ACL·효력기간을 판정하며 AI 계정은 권위 테이블을 수정하지 않는다.
 - V65는 `local-hash-ngram-ko-v1` 384차원 임베딩과 pgvector HNSW 인덱스를 추가하고, 내부 FastAPI가 전문검색과 cosine 유사도를 결합한 하이브리드 검색을 제공한다. 외부 모델 다운로드와 LLM 호출은 없다.
+- 검색 평가는 `ai-service/evaluation/datasets/`의 합성 corpus·질의로 Recall@3/5, MRR, 무응답 오탐률과 ACL·audience·승인·효력 정책 위반을 측정한다. CI 기준을 통과하지 않은 가중치·임계값·임베딩 변경은 병합하지 않는다.
 - V40~V47 DB 업그레이드는 `docs/runbooks/V48_UPGRADE_PREFLIGHT.md`의 사전검사를 먼저 통과해야 한다.
 - 구현 순서는 `SSOT → API 상세 계약 → Flyway → Java 코드 → 통합 테스트 → OpenAPI·문서`다.
 

@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.29.0**
+> 문서 버전: **1.30.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -1323,7 +1323,7 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 | P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/admin/knowledge/ingestion-imports | 검증된 AI chunk를 Spring 권위 passage로 반영 (`IMPLEMENTED`) | OWNED |
 
-앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하며, AI 기능 플래그가 꺼졌거나 내부 서비스가 실패하면 허용된 passage의 결정론적 키워드 일치만 사용한다. V65부터 내부 FastAPI가 활성화된 경우 외부 다운로드가 없는 384차원 로컬 임베딩과 PostgreSQL 전문검색 점수를 pgvector에서 결합한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 외부 모델과 LLM 호출은 포함하지 않는다.
+앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하며, AI 기능 플래그가 꺼졌거나 내부 서비스가 실패하면 허용된 passage의 결정론적 키워드 일치만 사용한다. V65부터 내부 FastAPI가 활성화된 경우 외부 다운로드가 없는 384차원 로컬 임베딩과 PostgreSQL 전문검색 점수를 pgvector에서 결합한다. keyword/vector 가중치는 각각 `0.35/0.65`이며 vector 후보 임계값 `0.15`, 최종 결합 점수 임계값 `0.35` 미만은 무응답 처리한다. 이 설정은 합성 평가 데이터셋의 Recall@3·Recall@5·MRR·무응답 오탐률과 정책 위반 수를 CI 품질 게이트로 검증한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 외부 모델과 LLM 호출은 포함하지 않는다.
 
 V55와 V64의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. import는 승인된 governance와 source hash를 확인한 뒤 NFC, 본문 hash, chunk ID, 순서·페이지·버전을 재계산하고 통과한 `chunkId ↔ passageId` binding만 추가 전용으로 저장한다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·import는 불변 감사이력에 보존된다.
 

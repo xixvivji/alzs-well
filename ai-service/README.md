@@ -139,6 +139,11 @@ pgvector cosine 유사도를 결합하고 역할 교집합, audience,
 Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다. 로컬 임베딩은 모델
 파일이나 네트워크를 요구하지 않으며 이후 승인된 내부 모델로 교체 가능한 경계다.
 
+최종 결합 점수가 `0.35` 미만이면 관련 keyword가 일부 겹치더라도 결과를 반환하지 않는다.
+이 무응답 임계값과 keyword/vector 가중치는 합성 검색 평가 데이터셋의 Recall@K, MRR,
+무응답 오탐률 및 정책 위반 게이트로 회귀 검증한다. 실행법과 지표 해석은
+[`evaluation/README.md`](evaluation/README.md)를 따른다.
+
 ## 테스트
 
 ```bash

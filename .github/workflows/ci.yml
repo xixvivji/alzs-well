@@ -93,6 +93,26 @@ jobs:
         run: uv sync --locked
       - name: Test and enforce coverage
         run: uv run pytest --cov=app --cov-report=term-missing -p no:cacheprovider
+      - name: Enforce retrieval quality gate
+        run: |
+          uv run python -m app.evaluation.cli evaluate \
+            --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+            --dataset evaluation/datasets/retrieval-v1.jsonl \
+            --output-json data/derived/evaluation/retrieval-v1.json \
+            --output-markdown data/derived/evaluation/retrieval-v1.md \
+            --fail-on-gate
+          uv run python -m app.evaluation.cli tune \
+            --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+            --dataset evaluation/datasets/retrieval-v1.jsonl \
+            --output-json data/derived/evaluation/tuning-v1.json
+      - name: Upload retrieval evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: retrieval-evaluation-reports
+          path: ai-service/data/derived/evaluation
+          if-no-files-found: warn
+          retention-days: 14
 
   frontend:
     name: Frontend lint, build and test

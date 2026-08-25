@@ -15,7 +15,11 @@ from app.storage.database_config import DatabaseConfig
 
 
 ConnectFunction = Callable[..., Any]
-INDEX_VERSION = "hybrid-hash-ngram-v1"
+INDEX_VERSION = "hybrid-hash-ngram-v2"
+KEYWORD_WEIGHT = 0.35
+VECTOR_WEIGHT = 0.65
+VECTOR_THRESHOLD = 0.15
+RESULT_THRESHOLD = 0.35
 
 
 class PostgresSearchRepository:
@@ -89,14 +93,18 @@ class PostgresSearchRepository:
                           and (d.effective_to is null or d.effective_to >= %s)
                           and (c.embedding_model_version is null
                                or c.embedding_model_version = %s)
+                    ), scored as (
+                        select ranked.*,
+                            (least(1.0, keyword_score) * %s + vector_score * %s) as score
+                        from ranked
+                        where keyword_score > 0 or vector_score >= %s
                     )
                     select
                         document_id, version_label, chunk_id, chunk_order,
                         title, issuer, heading, section_path, page,
-                        source_url, source_hash, text_hash, content,
-                        (least(1.0, keyword_score) * 0.35 + vector_score * 0.65) as score
-                    from ranked
-                    where keyword_score > 0 or vector_score >= 0.15
+                        source_url, source_hash, text_hash, content, score
+                    from scored
+                    where score >= %s
                     order by score desc, document_id, version_label, chunk_order
                     limit %s
                     """,
@@ -108,6 +116,10 @@ class PostgresSearchRepository:
                         request.as_of,
                         request.as_of,
                         EMBEDDING_MODEL_VERSION,
+                        KEYWORD_WEIGHT,
+                        VECTOR_WEIGHT,
+                        VECTOR_THRESHOLD,
+                        RESULT_THRESHOLD,
                         request.limit,
                     ),
                 )
