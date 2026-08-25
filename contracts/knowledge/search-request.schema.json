@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alzs-well.local/contracts/knowledge/search-request.schema.json",
+  "title": "ALZ's well internal knowledge search request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion", "requestId", "query", "permissions", "principalRoles",
+    "requesterAudiences", "asOf", "limit"
+  ],
+  "properties": {
+    "contractVersion": {"const": "1.0.0"},
+    "requestId": {"type": "string", "format": "uuid"},
+    "query": {"type": "string", "minLength": 2, "maxLength": 200},
+    "permissions": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"enum": ["KNOWLEDGE_READ", "KNOWLEDGE_SEARCH"]}
+    },
+    "principalRoles": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/role"}
+    },
+    "requesterAudiences": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"enum": ["CUSTOMER", "STAFF"]}
+    },
+    "asOf": {"type": "string", "format": "date"},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 20}
+  },
+  "$defs": {
+    "role": {
+      "enum": [
+        "CUSTOMER", "PROTECTION_STAFF", "DETECTION_ADMIN", "COMPLIANCE_REVIEWER",
+        "KNOWLEDGE_ADMIN", "SECURITY_ADMIN"
+      ]
+    }
+  }
+}

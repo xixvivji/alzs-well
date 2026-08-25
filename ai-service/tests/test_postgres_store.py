@@ -8,6 +8,7 @@ import psycopg
 import pytest
 
 from app.domain.chunk import KnowledgeChunk
+from app.domain.manifest import KnowledgeManifest
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 from app.storage.postgres import PostgresIngestionStore
@@ -100,7 +101,9 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
     store = PostgresIngestionStore(_config(), connect=connector)
     chunks = (_chunk(1, "first"), _chunk(2, "second"))
 
-    store.complete_run(run_id, chunks, ("EMPTY_TEXT_PAGE", "EMPTY_TEXT_PAGE"))
+    store.complete_run(
+        run_id, chunks, ("EMPTY_TEXT_PAGE", "EMPTY_TEXT_PAGE"), _manifest()
+    )
 
     statements = [statement for statement, _ in cursor.executions]
     assert statements[0].startswith("select pg_advisory_xact_lock")
@@ -131,12 +134,12 @@ def test_rejects_mixed_or_empty_chunks_before_database_write() -> None:
     store = PostgresIngestionStore(_config(), connect=connector)
 
     with pytest.raises(KnowledgeContractError) as empty:
-        store.complete_run(uuid4(), (), ())
+        store.complete_run(uuid4(), (), (), _manifest())
     assert empty.value.code == "CHUNK_VALIDATION_FAILED"
 
     mixed = (_chunk(1, "first"), _chunk(3, "third"))
     with pytest.raises(KnowledgeContractError) as invalid:
-        store.complete_run(uuid4(), mixed, ())
+        store.complete_run(uuid4(), mixed, (), _manifest())
     assert invalid.value.code == "CHUNK_VALIDATION_FAILED"
     assert connector.calls == []
 
@@ -146,7 +149,7 @@ def test_rejects_run_identity_or_state_mismatch() -> None:
     store = PostgresIngestionStore(_config(), connect=Connector(cursor))
 
     with pytest.raises(KnowledgeContractError) as caught:
-        store.complete_run(uuid4(), (_chunk(1, "body"),), ())
+        store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
 
     assert caught.value.code == "STORAGE_CONFLICT"
 
@@ -173,7 +176,7 @@ def test_maps_database_errors_to_sanitized_storage_codes() -> None:
     )
     conflict_store = PostgresIngestionStore(_config(), connect=Connector(cursor))
     with pytest.raises(KnowledgeContractError) as conflict:
-        conflict_store.complete_run(uuid4(), (_chunk(1, "body"),), ())
+        conflict_store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
     assert conflict.value.code == "STORAGE_CONFLICT"
     assert "must-not-escape" not in conflict.value.safe_message
 
@@ -187,6 +190,29 @@ def _config() -> DatabaseConfig:
         password="secret-value",
         sslmode="prefer",
         connect_timeout=5,
+    )
+
+
+def _manifest() -> KnowledgeManifest:
+    return KnowledgeManifest(
+        payload={
+            "contractVersion": "1.0.0",
+            "documentId": "DOC-SYN-STORE-001",
+            "versionLabel": "1.0.0",
+            "title": "합성 문서",
+            "issuer": "ALZ's well",
+            "sourceUrl": None,
+            "sourcePath": "synthetic.pdf",
+            "sourceHash": "sha256:" + "1" * 64,
+            "sourceTransformations": [],
+            "classification": "INTERNAL",
+            "audience": "STAFF",
+            "allowedRoles": ["PROTECTION_STAFF"],
+            "approvalStatus": "APPROVED",
+            "lifecycleStatus": "ACTIVE",
+            "effectiveFrom": "2026-08-21",
+            "effectiveTo": None,
+        }
     )
 
 

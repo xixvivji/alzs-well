@@ -24,6 +24,19 @@ class KnowledgeManifest:
         return str(self.payload["versionLabel"])
 
     @property
+    def title(self) -> str:
+        return str(self.payload["title"])
+
+    @property
+    def issuer(self) -> str:
+        return str(self.payload["issuer"])
+
+    @property
+    def source_url(self) -> str | None:
+        value = self.payload["sourceUrl"]
+        return None if value is None else str(value)
+
+    @property
     def source_path(self) -> str:
         return str(self.payload["sourcePath"])
 
@@ -38,6 +51,18 @@ class KnowledgeManifest:
     @property
     def lifecycle_status(self) -> str:
         return str(self.payload["lifecycleStatus"])
+
+    @property
+    def classification(self) -> str:
+        return str(self.payload["classification"])
+
+    @property
+    def audience(self) -> str:
+        return str(self.payload["audience"])
+
+    @property
+    def allowed_roles(self) -> tuple[str, ...]:
+        return tuple(str(role) for role in self.payload["allowedRoles"])
 
     @property
     def effective_from(self) -> date:
