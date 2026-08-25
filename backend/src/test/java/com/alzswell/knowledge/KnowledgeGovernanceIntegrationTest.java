@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,6 +28,7 @@ class KnowledgeGovernanceIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:17-alpine");
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired ObjectMapper objectMapper;
 
     private static final String REGISTER="""
         {"documentId":"DOC-TEST-GOV-001","versionLabel":"2026-08","title":"합성 검토 문서",
@@ -58,14 +63,39 @@ class KnowledgeGovernanceIntegrationTest {
                 .andExpect(jsonPath("$.data.ingestionReady").value(true))
                 .andExpect(jsonPath("$.data.searchable").value(false));
 
+        String text="승인된 합성 문서의 검색 연결을 검증합니다.";
+        String textHash="sha256:"+sha256(text.getBytes(StandardCharsets.UTF_8));
+        List<String> sectionPath=List.of("합성 검토 문서","안내");
+        String chunkId="chk_"+sha256(objectMapper.writeValueAsBytes(List.of("DOC-TEST-GOV-001","2026-08",
+                sectionPath,1,textHash,"structure-ko-v1")));
+        String importBody=importBody(chunkId,text,textHash);
+        mockMvc.perform(post("/api/v1/admin/knowledge/ingestion-imports").contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key","idem-v63-invalid-01")
+                        .content(importBody.replace(chunkId,"chk_"+"0".repeat(64))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("KNOWLEDGE_IMPORT_PAYLOAD_INVALID"));
+        mockMvc.perform(post("/api/v1/admin/knowledge/ingestion-imports").contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key","idem-v63-00000001").content(importBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.code").value("KNOWLEDGE_INGESTION_IMPORTED"))
+                .andExpect(jsonPath("$.data.chunkCount").value(1)).andExpect(jsonPath("$.data.searchable").value(true));
+        mockMvc.perform(post("/api/v1/admin/knowledge/ingestion-imports").contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key","idem-v63-00000001").content(importBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.chunkCount").value(1));
+
         org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
                 "select count(*) from knowledge_governance_event where document_id='DOC-TEST-GOV-001'",Integer.class)).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select count(*) from knowledge_ai_passage_binding where document_id='DOC-TEST-GOV-001'",Integer.class)).isEqualTo(1);
         mockMvc.perform(get("/api/v1/audit/events").param("sourceType","KNOWLEDGE_GOVERNANCE"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.count").value(2))
                 .andExpect(jsonPath("$.data.items[0].targetType").value("KNOWLEDGE_DOCUMENT"));
+        mockMvc.perform(get("/api/v1/audit/events").param("sourceType","KNOWLEDGE_IMPORT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.count").value(1))
+                .andExpect(jsonPath("$.data.items[0].eventType").value("INGESTION_IMPORTED"));
         assertThatThrownBy(()->jdbc.update("update knowledge_governance_event set event_type='PUBLISHED' where document_id='DOC-TEST-GOV-001'"))
                 .isInstanceOf(org.springframework.dao.DataAccessException.class);
         assertThatThrownBy(()->jdbc.update("update knowledge_document_governance set title='변조' where document_id='DOC-TEST-GOV-001'"))
+                .isInstanceOf(org.springframework.dao.DataAccessException.class);
+        assertThatThrownBy(()->jdbc.update("delete from knowledge_ai_passage_binding where document_id='DOC-TEST-GOV-001'"))
                 .isInstanceOf(org.springframework.dao.DataAccessException.class);
     }
 
@@ -89,5 +119,22 @@ class KnowledgeGovernanceIntegrationTest {
         mockMvc.perform(post("/api/v1/admin/knowledge/documents").contentType(MediaType.APPLICATION_JSON)
                         .header("Idempotency-Key","idem-v55-00000005").content(REGISTER))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private static String sha256(byte[] value)throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value));
+    }
+
+    private String importBody(String chunkId,String text,String textHash)throws Exception {
+        var root=objectMapper.createObjectNode();root.put("contractVersion","1.0.0");
+        root.put("ingestionRunId","97000000-0000-0000-0000-000000000063");root.put("documentId","DOC-TEST-GOV-001");
+        root.put("versionLabel","2026-08");root.put("sourceHash","sha256:"+"a".repeat(64));root.put("asOf","2026-08-24");
+        root.put("extractorVersion","html-structure-v1");root.put("chunkerVersion","structure-ko-v1");
+        var chunk=root.putArray("chunks").addObject();chunk.put("chunkId",chunkId);chunk.put("chunkOrder",1);
+        chunk.put("heading","안내");chunk.putArray("sectionPath").add("합성 검토 문서").add("안내");
+        chunk.putNull("page");chunk.putNull("pageStart");chunk.putNull("pageEnd");chunk.put("text",text);
+        chunk.put("textHash",textHash);chunk.put("sourceHash","sha256:"+"a".repeat(64));
+        chunk.put("extractorVersion","html-structure-v1");chunk.put("chunkerVersion","structure-ko-v1");
+        return objectMapper.writeValueAsString(root);
     }
 }

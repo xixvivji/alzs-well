@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.26.0**
+> 문서 버전: **1.27.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **271개** |
+| 전체 API operation | **272개** |
 | API 도메인 | **26개** |
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **23개** |
 | P1 제품 핵심 백로그 | **170개** |
-| P2 은행·증권 확장 백로그 | **78개** |
-| ALZ's well 소유 `OWNED` | **182개** |
+| P2 은행·증권 확장 백로그 | **79개** |
+| ALZ's well 소유 `OWNED` | **183개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 271개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 272개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 226개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 227개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 45개 |
 
-업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개와 외환 읽기·모의계산 5개를 포함해 226개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 220개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 227개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개와 외환 읽기·모의계산 5개를 포함해 227개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 221개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 228개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
-여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 272개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -67,6 +67,7 @@ OpenAPI 확장 필드는 다음 의미로 고정한다.
     → 최소 Nginx gateway
         → Spring Boot REST API
         → PostgreSQL
+        → 선택적 내부 FastAPI AI/RAG
         → 결정론적 규칙·템플릿·공식 근거 카탈로그
 ```
 
@@ -74,7 +75,7 @@ OpenAPI 확장 필드는 다음 의미로 고정한다.
 |---|---|---|
 | 브라우저 | 로컬 정적 자산, 공개 gateway의 Spring API 경로 | Spring·PostgreSQL 직접 접근, 외부 API·CDN·분석/오류수집 SDK |
 | Nginx gateway | 내부 Spring API | PostgreSQL·외부 업무 API |
-| Spring Boot | PostgreSQL, 내장 규칙·템플릿·카탈로그 | 외부 LLM, 금융사, 마이데이터, 원격 텔레메트리 |
+| Spring Boot | PostgreSQL, 내부 FastAPI, 내장 규칙·템플릿·카탈로그 | 외부 LLM, 금융사, 마이데이터, 원격 텔레메트리 |
 | PostgreSQL | 응답 없음 | 인터넷·외부 DB |
 | 배치·관리 작업 | 승인된 오프라인 반입 디렉터리 | 런타임 웹 다운로드·스크래핑 |
 
@@ -82,13 +83,14 @@ OpenAPI 확장 필드는 다음 의미로 고정한다.
 
 1. 런타임 프로필은 `AIR_GAPPED_DEMO`이며 `externalEgressEnabled=false`, `remoteModelEnabled=false`, `syntheticProviderOnly=true`를 고정한다.
 2. Docker Compose는 gateway↔Spring용 `alzs-well-app`과 Spring↔PostgreSQL용 `alzs-well-data`를 각각 `internal: true`로 분리한다. gateway는 `alzs-well-app`만, Spring은 `alzs-well-app`과 `alzs-well-data`, PostgreSQL은 `alzs-well-data`에만 연결한다. gateway와 PostgreSQL은 어떤 네트워크도 공유하지 않는다.
-3. Host port는 최소 Nginx gateway만 게시한다. P0에서는 별도 FastAPI를 기동하지 않으며, P1 이후 도입할 경우에도 외부 port 없이 승인된 별도 내부망으로만 Spring과 연결한다.
+3. Host port는 최소 Nginx gateway만 게시한다. FastAPI는 `ai` 프로필에서만 기동하고 외부 port 없이 Docker 내부망으로만 Spring과 연결한다.
 4. Vue/React 번들·폰트·아이콘은 로컬에서 제공하고 Content Security Policy를 최소 `default-src 'self'; connect-src 'self'`로 제한한다. 외부 CDN, Google Fonts, 지도, 분석 SDK, 원격 오류수집 SDK, 제3자 스크립트를 런타임에 사용하지 않는다.
 5. Hugging Face 모델, 토크나이저, 임베딩, 공식문서는 빌드 전 통제된 절차로 내려받고 버전·라이선스·SHA-256을 고정한다. 실행 중 자동 다운로드를 금지한다.
 6. 공식문서 갱신은 관리자 업로드 → allowlist 확인 → 악성 콘텐츠 검사 → 체크섬 생성 → 승인·게시의 오프라인 절차를 사용한다.
 7. `EXTERNAL_INTEGRATION` 카탈로그는 설계 계약만 유지한다. P0에서는 `SYNTHETIC_PROVIDER` 외의 어댑터 bean을 기동하지 않는다.
 8. 원격 오류수집, 사용량 분석, prompt tracing, 자동 업데이트 등 outbound telemetry를 비활성화한다.
 9. 외부 목적지 연결 시도는 `EGRESS_ATTEMPT_BLOCKED` 감사이벤트를 남기되 URL query, prompt, 계좌·거래 원문은 기록하지 않는다.
+   일반 요청 본문은 32KiB이며 관리자 ingestion import 단일 경로만 최대 500개 chunk를 위해 4MiB와 연결 동시성 2를 적용한다.
 10. 로컬 AI가 실패하거나 기동되지 않아도 Spring 템플릿 폴백으로 P0 전체 흐름을 완주한다.
 11. 이 구조를 실제 금융권 보안성 심사·망분리 규정 준수 완료로 표현하지 않는다. 실도입 전 금융회사 정보보호·준법·신용정보 부서의 검토가 필요하다.
 
@@ -138,7 +140,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 26개 도메인·271개 API 마스터 카탈로그
+3. 26개 도메인·272개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 12개 상세 계약
 6. P0-B 11개 상세 계약
@@ -1307,7 +1309,7 @@ V49부터 경보 접근권은 `DETECTION_ADMIN`, 그 밖의 보호업무 접근�
 
 V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUID로 고정하고, 검토·안내승인·메모·후속처리 주체가 배정 principal과 일치하는지 확인한다. 사건 메모·검토사유·후속 목적·결과는 식별정보·계좌·연락처·질병 표현 검사를 통과해야 한다. 금융의향 command는 고객 ID가 포함된 scope와 SHA-256 멱등키만 저장하고, 기존 승인 의향과 새 승인이 충돌하면 명시적 `409`를 반환한다. 통합 감사와 인앱 알림 cursor는 PostgreSQL 마이크로초를 보존하는 v2 형식이며 기존 밀리초 cursor는 읽기 호환만 유지한다.
 
-#### 3.3.19 공식 근거·지식 카탈로그 — 8개
+#### 3.3.19 공식 근거·지식 카탈로그 — 9개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
@@ -1319,10 +1321,11 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 | P1 | GET | /api/v1/guidance-candidates | 정책이 고른 보호수단 후보 | OWNED |
 | P2 | POST | /api/v1/admin/knowledge/documents | 공식 자료 검토등록 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 (`IMPLEMENTED`) | OWNED |
+| P2 | POST | /api/v1/admin/knowledge/ingestion-imports | 검증된 AI chunk를 Spring 권위 passage로 반영 (`IMPLEMENTED`) | OWNED |
 
 앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하고 검색은 허용된 passage에 대한 결정론적 키워드 일치만 사용한다. 응답은 `externalModelCalled=false`, `vectorSearchUsed=false`를 명시한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 벡터DB, LLM 호출은 포함하지 않는다.
 
-V55의 관리자 2개 API는 공용 manifest 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. 즉 AI ingestion·청킹·색인 완료 전에는 기존 검색 카탈로그에 자동 노출되지 않으며 원문 수정, 네트워크 호출, 모델 실행도 하지 않는다. 모든 등록·게시·대체는 V55 추가 전용 감사이력에 보존된다.
+V55와 V63의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. import는 승인된 governance와 source hash를 확인한 뒤 NFC, 본문 hash, chunk ID, 순서·페이지·버전을 재계산하고 통과한 `chunkId ↔ passageId` binding만 추가 전용으로 저장한다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·import는 불변 감사이력에 보존된다.
 
 V56부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 문서 `allowedRoles`의 교집합, 역할에서 계산한 requester audience, 문서 audience, `APPROVED/ACTIVE`, 효력일을 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능한 문서를 `404`로 숨긴다. 모든 조회·검색은 추가 전용 `knowledge_access_audit_event`에 permission, 역할, audience, 필터, 반환 ID를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤의 결정론적 로컬 어댑터이며 FastAPI·벡터 검색·외부 모델은 아직 호출하지 않는다.
 
@@ -1476,7 +1479,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “271개 API 카탈로그를 설계했고 227개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “272개 API 카탈로그를 설계했고 228개 코드 operation을 구현했다”고 표현한다. 272개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2235,7 +2238,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "62",
+        "schemaVersion": "63",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2819,7 +2822,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "62",
+    "schemaVersion": "63",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

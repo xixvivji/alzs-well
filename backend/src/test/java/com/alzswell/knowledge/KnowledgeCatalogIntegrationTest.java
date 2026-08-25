@@ -113,6 +113,16 @@ class KnowledgeCatalogIntegrationTest {
         List<String> sectionPath=List.of("신청 전 확인");
         String chunkId="chk_"+digest(objectMapper.writeValueAsBytes(List.of("DOC-FSC-SAFE-BLOCK-001","2026-08",
                 sectionPath,1,textHash,"structure-ko-v1")));
+        UUID importId=UUID.randomUUID();
+        jdbc.update("insert into knowledge_ingestion_import values(?,?,?,?,?,?,?,?,?,?,?,?,?)",importId,UUID.randomUUID(),
+                "DOC-FSC-SAFE-BLOCK-001","2026-08",sourceHash,LocalDate.of(2026,8,14),"html-structure-v1",
+                "structure-ko-v1",1,"reviewer",java.time.OffsetDateTime.parse("2026-08-14T00:00:00Z"),
+                "b".repeat(64),"c".repeat(64));
+        jdbc.update("""
+                insert into knowledge_ai_passage_binding values(?,?,?,?,?,?,string_to_array(?,','),null,null,null,?,?,?,?)
+                """,chunkId,UUID.fromString("95000000-0000-0000-0000-000000000001"),importId,
+                "DOC-FSC-SAFE-BLOCK-001","2026-08",1,"신청 전 확인",sourceHash,textHash,
+                "html-structure-v1","structure-ko-v1");
         AiCitation citation=new AiCitation("1.0.0","DOC-FSC-SAFE-BLOCK-001","2026-08",chunkId,1,
                 "금융거래 안심차단 안내 근거","금융위원회","신청 전 확인",sectionPath,null,
                 "금융거래 안심차단 안내 근거 > 신청 전 확인","https://www.fsc.go.kr/no010101/85644",sourceHash,textHash,
