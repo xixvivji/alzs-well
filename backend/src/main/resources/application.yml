@@ -105,6 +105,13 @@ app:
     internal-token: ${AI_INTERNAL_TOKEN:}
     connect-timeout-ms: ${AI_RETRIEVAL_CONNECT_TIMEOUT_MS:500}
     request-timeout-ms: ${AI_RETRIEVAL_REQUEST_TIMEOUT_MS:1500}
+  synthetic-seed:
+    enabled: ${SYNTHETIC_SEED_ENABLED:false}
+    profile: ${SYNTHETIC_SEED_PROFILE:SMOKE}
+    fixture-version: ${SYNTHETIC_SEED_FIXTURE_VERSION:synthetic-v3.0.0}
+    seed: ${SYNTHETIC_SEED_VALUE:20260825}
+    batch-size: ${SYNTHETIC_SEED_BATCH_SIZE:10}
+    resume: ${SYNTHETIC_SEED_RESUME:false}
   auth:
     access-ttl-seconds: ${AUTH_ACCESS_TTL_SECONDS:900}
     refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
@@ -118,7 +125,7 @@ app:
     cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "62"
+    schema: "63"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0
