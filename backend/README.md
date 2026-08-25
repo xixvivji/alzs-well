@@ -173,6 +173,26 @@ P1 첫 API는 `POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/copilot-dra
 
 현재 단위·PostgreSQL Testcontainers 통합시험은 capability/IDOR와 인코딩 경로 우회, 고객·직원 capability 분리 발급, 역할별 메서드 권한, 환경별 CORS 분리, 명시적 실행 프로필과 운영 노출 fail-closed, refresh token 재사용 탐지·절대 만료·세션 상한·전체 로그아웃, 합성 금융기관·연결 조회와 고객 소유권, run 격리, 3·2·7 신호, A/B 정책, 개인정보형 자유입력 차단, 동시 멱등 요청, 낙관적 잠금, 고객 프로필·환경설정 영속화와 소유권 검증, 목적별 동의·신뢰연락인 철회 연쇄와 열람 감사, 외부실행 금지, 감사·내부 메모 append-only 제약, 만료 정리, 후속일정 상태 불변식, 사건 타임라인·근거·코파일럿 격리, 탐지 정책·기능 플래그 변경관리, 통합 감사·출처 조회와 development OpenAPI 계약을 검증한다. `BackendCoreFlowE2ETest`는 기준선 계산→합성 데이터 검증·적재→결정론적 탐지→운영 경보 승격→고객 맥락응답→행원 사건 배정·검토→안내계획 승인과 감사이력을 하나의 HTTP 폐루프로 검증한다. 같은 테스트에서 네트워크 재시도형 멱등 replay, 같은 키의 다른 요청 충돌, 오래된 버전, 타 고객 접근, 실패 전이의 원자적 롤백과 `X-Trace-Id` 응답 추적도 검증한다.
 
+## 합성 운영 데이터 생성
+
+스키마 migration과 백엔드 readiness가 완료된 뒤 `synthetic-tools` profile의 일회성 Job으로 실행한다. 대량 데이터는 Flyway에 포함하지 않는다.
+
+```bash
+docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
+```
+
+기본값은 `SMOKE`다. 배포 검증용 데이터 규모는 `.env`에서 선택한다.
+
+```dotenv
+SYNTHETIC_SEED_PROFILE=DEMO
+SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.0.0
+SYNTHETIC_SEED_VALUE=20260825
+SYNTHETIC_SEED_BATCH_SIZE=10
+SYNTHETIC_SEED_RESUME=false
+```
+
+동일 버전·profile·seed의 완료 실행은 중복 적재하지 않고 기존 manifest를 재생한다. 중단된 `RUNNING` 실행만 운영자가 원인을 확인한 후 `SYNTHETIC_SEED_RESUME=true`로 재개할 수 있다. 상세 절차는 [`../docs/runbooks/SYNTHETIC_DATASET_V3.md`](../docs/runbooks/SYNTHETIC_DATASET_V3.md)를 따른다.
+
 ## AWS 백엔드 데모 배포
 
 AI 모델이 아직 없어도 현재 P0는 결정론적 규칙·템플릿으로 완주하므로, 백엔드 staging을 먼저 배포해 CORS·HTTPS·프론트 계약·재시작·데이터 정리를 검증하는 편이 좋다. 구체적인 안전 설정과 순서는 [`../docs/AWS_BACKEND_DEPLOYMENT.md`](../docs/AWS_BACKEND_DEPLOYMENT.md)를 따른다. 공개 운영 또는 실제 고객데이터 사용 승인을 뜻하지 않으며, 현재는 완전 합성데이터 데모에만 사용한다.

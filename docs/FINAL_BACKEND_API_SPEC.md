@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.27.0**
+> 문서 버전: **1.28.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -863,7 +863,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객지원 콘텐츠 조회 2개와 외환 읽기·모의계산 5개를 포함해 총 226개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 227개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 220개가 노출된다. 나머지 45개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개를 포함해 총 227개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 228개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 221개가 노출된다. 나머지 45개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1325,7 +1325,7 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 
 앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하고 검색은 허용된 passage에 대한 결정론적 키워드 일치만 사용한다. 응답은 `externalModelCalled=false`, `vectorSearchUsed=false`를 명시한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 벡터DB, LLM 호출은 포함하지 않는다.
 
-V55와 V63의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. import는 승인된 governance와 source hash를 확인한 뒤 NFC, 본문 hash, chunk ID, 순서·페이지·버전을 재계산하고 통과한 `chunkId ↔ passageId` binding만 추가 전용으로 저장한다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·import는 불변 감사이력에 보존된다.
+V55와 V64의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. import는 승인된 governance와 source hash를 확인한 뒤 NFC, 본문 hash, chunk ID, 순서·페이지·버전을 재계산하고 통과한 `chunkId ↔ passageId` binding만 추가 전용으로 저장한다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·import는 불변 감사이력에 보존된다.
 
 V56부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 문서 `allowedRoles`의 교집합, 역할에서 계산한 requester audience, 문서 audience, `APPROVED/ACTIVE`, 효력일을 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능한 문서를 `404`로 숨긴다. 모든 조회·검색은 추가 전용 `knowledge_access_audit_event`에 permission, 역할, audience, 필터, 반환 ID를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤의 결정론적 로컬 어댑터이며 FastAPI·벡터 검색·외부 모델은 아직 호출하지 않는다.
 
@@ -2238,7 +2238,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "63",
+        "schemaVersion": "64",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2822,7 +2822,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "63",
+    "schemaVersion": "64",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3726,6 +3726,10 @@ GET /api/v1/signals/{signalId}/evidence
 ## 6.5 P1 합성 데이터셋·탐지 실행 상세 계약
 
 이 절의 6개 operation은 `IMPLEMENTED-PRIVATE-SYNTHETIC-ONLY`다. 실제 금융거래 원문이나 파일 업로드를 받지 않고 허용된 세 가지 특징과 최소 합성 근거만 JSON으로 등록한다. 모든 경로는 사설 검증 관리자 권한이 필요하다.
+
+Flyway V63은 위 공개 operation 수를 늘리지 않고 배포용 `synthetic-v3` 생성 Job을 추가한다. 생성 Job은 `SMOKE(고객 10명·거래 600건)`, `DEMO(고객 50명·거래 12,000건)`, `DEV(고객 1,000명·거래 1,000,000건)` 중 하나를 선택한다. `fixtureVersion + profile + seed`가 같으면 동일 ID와 manifest hash를 재생하며, 데이터는 1~100명 단위 DB batch로 적재한다. 실행이력은 `synthetic_fixture_generation_run`, 고객별 시나리오와 기대 신호 수는 `synthetic_fixture_customer`에 보존한다.
+
+이 Job은 HTTP Controller를 제공하지 않는다. `alzswell_migrator` 역할과 `synthetic-tools` Compose profile에서만 실행하며 `SYNTHETIC_DATA_ONLY=true`, `SYNTHETIC_PROVIDER_ONLY=true`, `EXTERNAL_ACTIONS_ENABLED=false`가 아니면 시작 전에 실패한다. 생성된 모든 계좌·거래는 `SYNTHETIC_PROVIDER`이고 실제 금융기관 호출·송금·알림·외부 AI 실행을 만들지 않는다.
 
 ### 6.5.1 권한과 상태전이
 

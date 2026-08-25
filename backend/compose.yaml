@@ -99,6 +99,56 @@ services:
         max-size: 10m
         max-file: "3"
 
+  synthetic-seed:
+    profiles: ["synthetic-tools"]
+    build:
+      context: .
+    restart: "no"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-production}
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PUBLIC_DEPLOYMENT: "true"
+      CORS_CUSTOMER_ALLOWED_ORIGINS: ${CORS_CUSTOMER_ALLOWED_ORIGINS:?CORS_CUSTOMER_ALLOWED_ORIGINS must be set}
+      CORS_STAFF_ALLOWED_ORIGINS: ${CORS_STAFF_ALLOWED_ORIGINS:?CORS_STAFF_ALLOWED_ORIGINS must be set}
+      DEMO_STAFF_USERNAME: ${DEMO_STAFF_USERNAME:?DEMO_STAFF_USERNAME must be set}
+      DEMO_STAFF_PASSWORD: ${DEMO_STAFF_PASSWORD:?DEMO_STAFF_PASSWORD must be set}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-alzs_well}
+      DB_USERNAME: alzswell_migrator
+      DB_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+      SPRING_FLYWAY_USER: alzswell_migrator
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+      SYNTHETIC_SEED_ENABLED: "true"
+      SYNTHETIC_SEED_PROFILE: ${SYNTHETIC_SEED_PROFILE:-SMOKE}
+      SYNTHETIC_SEED_FIXTURE_VERSION: ${SYNTHETIC_SEED_FIXTURE_VERSION:-synthetic-v3.0.0}
+      SYNTHETIC_SEED_VALUE: ${SYNTHETIC_SEED_VALUE:-20260825}
+      SYNTHETIC_SEED_BATCH_SIZE: ${SYNTHETIC_SEED_BATCH_SIZE:-10}
+      SYNTHETIC_SEED_RESUME: ${SYNTHETIC_SEED_RESUME:-false}
+      SYNTHETIC_DATA_ONLY: "true"
+      SYNTHETIC_PROVIDER_ONLY: "true"
+      EXTERNAL_ACTIONS_ENABLED: "false"
+      NETWORK_MODE: AIR_GAPPED_DEMO
+      EXTERNAL_EGRESS_ENABLED: "false"
+      REMOTE_MODEL_ENABLED: "false"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
   db-bootstrap:
     image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
     restart: "no"
