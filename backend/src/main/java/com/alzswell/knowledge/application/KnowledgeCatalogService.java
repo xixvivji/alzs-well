@@ -111,13 +111,16 @@ public class KnowledgeCatalogService {
     public SearchResult search(SearchCommand command,Authentication authentication) {
         AccessContext access=accessPolicy.resolve(authentication,"KNOWLEDGE_SEARCH");
         LocalDate date=resolveAsOf(command.asOf());
-        List<SearchHit> hits=retrievalPort.retrieve(new RetrievalQuery(command.query(),date,command.audience(),
-                access.roles(),access.audiences(),command.resolvedLimit()));
+        KnowledgeRetrievalPort.RetrievalResult retrieval=retrievalPort.retrieve(new RetrievalQuery(
+                command.query(),date,command.audience(),access.roles(),access.audiences(),command.resolvedLimit()));
+        List<SearchHit> hits=retrieval.hits();
         List<String> ids=hits.stream().map(hit->hit.passage().passageId().toString()).toList();
         String outcome=command.audience()!=null&&!access.allowsAudience(command.audience())?"FILTERED":"ALLOWED";
         audit.record("SEARCH",access,null,command.query(),date,ids,outcome,
                 Map.of("requestedAudience",command.audience()==null?"ALL_ALLOWED":command.audience(),
-                        "limit",command.resolvedLimit(),"retrievalMode","DETERMINISTIC_KEYWORD","total",hits.size()));
+                        "limit",command.resolvedLimit(),"retrievalMode",retrieval.retrievalMode(),
+                        "fallbackUsed",retrieval.fallbackUsed(),"rejectedCitations",retrieval.rejectedCitations(),
+                        "total",hits.size()));
         return new SearchResult(command.query(),date,command.audience(),hits,hits.size(),false,false);
     }
 

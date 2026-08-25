@@ -12,12 +12,13 @@ public class DeterministicKnowledgeRetrievalAdapter implements KnowledgeRetrieva
     public DeterministicKnowledgeRetrievalAdapter(JdbcClient jdbc){this.jdbc=jdbc;}
 
     @Override
-    public List<SearchHit> retrieve(RetrievalQuery query) {
-        if(query.requestedAudience()!=null&&!query.requesterAudiences().contains(query.requestedAudience())) return List.of();
+    public RetrievalResult retrieve(RetrievalQuery query) {
+        if(query.requestedAudience()!=null&&!query.requesterAudiences().contains(query.requestedAudience()))
+            return new RetrievalResult(List.of(),"DETERMINISTIC_KEYWORD",false,0);
         String requestedAudience=query.requestedAudience()==null?"":query.requestedAudience();
         List<String> terms=Arrays.stream(query.query().toLowerCase(Locale.ROOT).trim().split("\\s+"))
                 .filter(term->term.length()>=2).distinct().toList();
-        return jdbc.sql("""
+        List<SearchHit> hits=jdbc.sql("""
                 select p.*,d.document_id,d.source_url,d.effective_from,d.effective_to,v.version_label
                 from knowledge_passage p join knowledge_document_version v on v.document_version_id=p.document_version_id
                 join knowledge_document d on d.document_id=v.document_id
@@ -36,6 +37,7 @@ public class DeterministicKnowledgeRetrievalAdapter implements KnowledgeRetrieva
                 .sorted(Comparator.comparingInt(SearchHit::matchedKeywordCount).reversed()
                         .thenComparing(hit->hit.passage().passageId()))
                 .limit(query.limit()).toList();
+        return new RetrievalResult(hits,"DETERMINISTIC_KEYWORD",false,0);
     }
 
     private int score(Passage passage,List<String> terms) {

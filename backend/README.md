@@ -31,6 +31,15 @@ Swagger UI의 요청 실행 기능은 비활성화되어 있다. 프론트 타�
 
 gateway만 `127.0.0.1`에 공개된다. gateway↔Spring은 `alzs-well-app`, Spring↔PostgreSQL은 `alzs-well-data` 내부망을 사용하며 gateway와 DB는 네트워크를 공유하지 않는다.
 
+내부 AI 키워드 검색은 기본적으로 꺼져 있다. `AI_RETRIEVAL_ENABLED=true`와 32자 이상의
+`AI_INTERNAL_TOKEN`을 설정하고 `docker compose --profile ai up -d --build`로 실행하면 Spring이
+`http://ai-service:8000/internal/v1/search`를 호출한다. Spring은 응답의 문서·버전·chunk ID·원문
+및 본문 hash를 권위 지식 카탈로그와 다시 대조하고, ACL·audience·승인·활성·효력기간을 모두
+재검사한다. 검증 실패 citation은 제외하며 timeout, 인증 실패, 비정상 응답에는 기존 결정론적
+키워드 검색으로 폴백한다. 따라서 활성화 전 Spring의 승인 governance·passage와 AI ingestion
+결과가 같은 문서 버전과 본문을 가리키는지 먼저 확인해야 한다. Spring은 `ai_knowledge` 스키마를
+직접 조회하거나 수정하지 않는다.
+
 ```bash
 ./scripts/verify-air-gap.sh
 ```
