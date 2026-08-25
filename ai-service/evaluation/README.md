@@ -13,6 +13,43 @@
 품질 게이트를 재현하기 위한 합성 기준선이다. 운영 전에는 업무 담당자와 준법 검토자가
 비식별 질의의 정답 chunk 및 무응답 기대값을 이중 검수해야 한다.
 
+## 사람 검수
+
+`reviews/retrieval-review-v1.csv`에는 답변형 40개와 무응답·정책형 10개 후보가 있다.
+현재 공식 manifest가 `IN_REVIEW/PENDING_ACTIVATION` 상태이고 실제 승인 문서 corpus가
+충분하지 않으므로 모든 행은 `SYNTHETIC_REVIEW_ONLY`, `PENDING`이다. 이 파일의 점수를
+실제 업무 품질이나 출시 근거로 사용하지 않는다.
+
+검수자는 질문과 `evidenceExcerpt`를 비교한 뒤 다음 두 열만 수정한다.
+
+- `reviewDecision`: `ACCEPTED`, `REJECTED`, `AMBIGUOUS` 중 하나
+- `reviewComment`: 틀리거나 애매한 이유 및 수정 의견
+
+CSV를 다시 생성하려면 다음 명령을 실행한다. Excel에서 한글이 깨지지 않도록 UTF-8 BOM을
+사용한다.
+
+```bash
+uv run python -m app.evaluation.review_cli prepare \
+  --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+  --candidates evaluation/reviews/retrieval-review-candidates-v1.jsonl \
+  --output-csv evaluation/reviews/retrieval-review-v1.csv
+```
+
+검수 후 `ACCEPTED` 행만 별도 평가 데이터셋으로 승격한다. 원본 평가셋을 자동으로
+덮어쓰지 않는다.
+
+```bash
+uv run python -m app.evaluation.review_cli finalize \
+  --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+  --candidates evaluation/reviews/retrieval-review-candidates-v1.jsonl \
+  --input-csv evaluation/reviews/retrieval-review-v1.csv \
+  --output-jsonl data/derived/evaluation/retrieval-reviewed-v1.jsonl
+```
+
+실제 공식 문서가 `APPROVED/ACTIVE`가 되면 해당 ingestion chunk로 corpus를 새로 만들고,
+동일한 검수 흐름에서 최소 2명의 담당자가 정답 근거를 확인한 데이터셋을 별도 버전으로
+추가한다.
+
 ## 실행
 
 ```bash
