@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from app.cli import main
+from app.ingestion.pdf_validator import ValidatedPdfSource
 
 
 def test_cli_validates_approved_fixture(repo_root: Path, capsys: object) -> None:
@@ -208,3 +209,40 @@ def test_cli_ingests_html_to_derived_jsonl(
     assert payload["chunkCount"] == 1
     assert payload["outputPath"] == "ai-service/data/derived/chunks/result.jsonl"
     assert "이 문서는 계약 검증을 위한 합성 자료입니다." not in captured.out
+
+
+def test_cli_validates_pdf_without_printing_document_content(
+    repo_root: Path, monkeypatch: object, capsys: object
+) -> None:
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        "app.cli.validate_pdf_source",
+        lambda repository_root, manifest: ValidatedPdfSource(
+            path=repo_root / "synthetic.pdf",
+            size_bytes=1024,
+            source_hash="sha256:" + "0" * 64,
+            page_count=1,
+            encrypted=False,
+            active_content=False,
+        ),
+    )
+
+    exit_code = main(
+        [
+            "validate-pdf",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+            "--as-of",
+            "2026-08-25",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["code"] == "PDF_VALIDATION_COMPLETED"
+    assert payload["pageCount"] == 1
+    assert payload["encrypted"] is False
+    assert payload["activeContent"] is False
+    assert "text" not in captured.out

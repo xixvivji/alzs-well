@@ -41,6 +41,16 @@ uv run python -m app.cli ingest-html \
   --as-of 2026-08-21
 ```
 
+승인된 PDF는 텍스트 추출 전에 크기·signature·SHA-256·구조·암호화·페이지 수와
+능동 콘텐츠 여부를 검증한다. 본문이나 PDF 객체는 CLI에 출력하지 않는다.
+
+```bash
+uv run python -m app.cli validate-pdf \
+  --repo-root .. \
+  --manifest path/to/approved-pdf-manifest.yaml \
+  --as-of 2026-08-25
+```
+
 ## 테스트
 
 ```bash
