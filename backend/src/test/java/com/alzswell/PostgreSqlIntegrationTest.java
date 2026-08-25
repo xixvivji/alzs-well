@@ -350,6 +350,31 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void aiIngestorCanOnlyWriteDerivedKnowledgeSchema() {
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_schema_privilege('alzswell_ai_ingestor','ai_knowledge','USAGE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.ingestion_run','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_ai_ingestor','ai_knowledge.ingestion_run','status','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_ai_ingestor','ai_knowledge.ingestion_run','document_id','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk','DELETE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','knowledge_document','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','knowledge_passage','UPDATE')",
+                Boolean.class)).isFalse();
+    }
+
+    @Test
     @Transactional
     void futureTablesDoNotAutomaticallyGrantRuntimeUpdateOrDelete() {
         if (!runtimeRoleExists()) return;

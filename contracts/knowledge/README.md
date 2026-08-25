@@ -48,6 +48,11 @@ PENDING_ACTIVATION → ACTIVE → SUPERSEDED
 
 `ACTIVE`, `SUPERSEDED`, `EXPIRED`, `RETIRED`는 과거 또는 현재에 승인된 문서에만 허용한다. AI ingestion은 `approvalStatus=APPROVED`와 `lifecycleStatus=ACTIVE`를 모두 만족하는 문서만 처리한다. AI는 두 상태를 변경하지 않는다. ingestion 실행 상태 `PENDING/RUNNING/SUCCEEDED/FAILED`는 manifest가 아니라 파생 리포트와 향후 `ai_ingestion_run`에 기록한다.
 
+현재 PostgreSQL 구현은 Spring 권위 테이블과 분리된 `ai_knowledge.ingestion_run`에 실행
+상태를 기록하고 `ai_knowledge.chunk`에 파생 청크를 저장한다. AI 계정에는 이 스키마의
+필요한 DML만 허용하며 Spring의 `knowledge_document`, `knowledge_document_version`,
+`knowledge_passage` 쓰기 권한을 부여하지 않는다.
+
 실제 `knowledge/manifests/DOC-FSC-SAFE-BLOCK-001.yaml`은 최신성·이용조건·보안·승인 검토 전이므로 `IN_REVIEW/PENDING_ACTIVATION`이다. 성공 경로는 공식 문서를 허위 승인하지 않고 `fixtures/synthetic-approved-active.yaml`로 검증한다.
 
 현재 Flyway V28의 `knowledge_document.status`는 `APPROVED/EXPIRED`만 표현하고 같은 문서 ID의 데모 seed를 `APPROVED`로 둔다. 계약 manifest가 현재 런타임 DB를 즉시 변경하지 않으며, Spring V41 이후에서 승인·생명주기·ACL을 분리하고 레거시 seed의 호환·전환 정책을 구현해야 한다.

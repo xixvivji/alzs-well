@@ -5,6 +5,7 @@ import json
 import sys
 from collections.abc import Sequence
 from datetime import date
+from uuid import UUID
 
 from app.domain.manifest import ensure_ingestion_eligible, governance_blocking_codes
 from app.errors import KnowledgeContractError
@@ -16,6 +17,8 @@ from app.ingestion.pdf_extractor import extract_pdf_document
 from app.ingestion.pdf_validator import validate_pdf_source
 from app.ingestion.repository import resolve_repository_root
 from app.ingestion.source_validator import validate_source
+from app.storage.database_config import DatabaseConfig
+from app.storage.postgres import PostgresIngestionStore
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,6 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--repo-root", help="명시적인 저장소 루트")
     ingest.add_argument("--manifest", required=True, help="저장소 루트 기준 manifest 경로")
     ingest.add_argument("--as-of", required=True, help="효력 기준일(YYYY-MM-DD)")
+    ingest.add_argument(
+        "--storage", choices=("jsonl", "postgres"), default="jsonl", help="파생 chunk 저장소"
+    )
 
     validate_pdf = subparsers.add_parser("validate-pdf", help="승인된 PDF의 입력 보안 계약을 검증합니다")
     validate_pdf.add_argument("--repo-root", help="명시적인 저장소 루트")
@@ -50,24 +56,43 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_pdf.add_argument("--repo-root", help="명시적인 저장소 루트")
     ingest_pdf.add_argument("--manifest", required=True, help="저장소 루트 기준 manifest 경로")
     ingest_pdf.add_argument("--as-of", required=True, help="효력 기준일(YYYY-MM-DD)")
+    ingest_pdf.add_argument(
+        "--storage", choices=("jsonl", "postgres"), default="jsonl", help="파생 chunk 저장소"
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    active_store: PostgresIngestionStore | None = None
+    active_run_id: UUID | None = None
     try:
         repository_root = resolve_repository_root(args.repo_root)
         manifest = load_and_validate_manifest(repository_root, args.manifest)
         if args.command in {"validate-pdf", "extract-pdf", "ingest-pdf"}:
             as_of = _parse_as_of(args.as_of)
             ensure_ingestion_eligible(manifest, as_of=as_of)
+            if args.command == "ingest-pdf" and args.storage == "postgres":
+                active_store = PostgresIngestionStore(DatabaseConfig.from_environment())
+                active_run_id = active_store.start_run(
+                    document_id=manifest.document_id,
+                    version_label=manifest.version_label,
+                    source_hash=manifest.source_hash,
+                    as_of=as_of,
+                )
             source = validate_pdf_source(repository_root, manifest)
             if args.command in {"extract-pdf", "ingest-pdf"}:
                 document = extract_pdf_document(manifest, source)
                 if args.command == "ingest-pdf":
                     chunks = chunk_document(document)
-                    output_path = write_chunks_jsonl(repository_root, chunks)
+                    output_path = None
+                    completed_run_id = active_run_id
+                    if active_store is not None and active_run_id is not None:
+                        active_store.complete_run(active_run_id, chunks, document.warnings)
+                        active_run_id = None
+                    else:
+                        output_path = write_chunks_jsonl(repository_root, chunks)
                     _write_json(
                         sys.stdout,
                         {
@@ -81,7 +106,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                             "pageCount": source.page_count,
                             "chunkCount": len(chunks),
                             "warnings": list(document.warnings),
-                            "outputPath": output_path.relative_to(repository_root).as_posix(),
+                            "storage": args.storage.upper(),
+                            "runId": str(completed_run_id) if completed_run_id is not None else None,
+                            "outputPath": (
+                                output_path.relative_to(repository_root).as_posix()
+                                if output_path is not None
+                                else None
+                            ),
                             "source": {"hashVerified": True, "sizeBytes": source.size_bytes},
                         },
                     )
@@ -126,11 +157,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command in {"extract-html", "ingest-html"}:
             as_of = _parse_as_of(args.as_of)
             ensure_ingestion_eligible(manifest, as_of=as_of)
+            if args.command == "ingest-html" and args.storage == "postgres":
+                active_store = PostgresIngestionStore(DatabaseConfig.from_environment())
+                active_run_id = active_store.start_run(
+                    document_id=manifest.document_id,
+                    version_label=manifest.version_label,
+                    source_hash=manifest.source_hash,
+                    as_of=as_of,
+                )
             source = validate_source(repository_root, manifest)
             document = extract_html_document(manifest, source)
             if args.command == "ingest-html":
                 chunks = chunk_document(document)
-                output_path = write_chunks_jsonl(repository_root, chunks)
+                output_path = None
+                completed_run_id = active_run_id
+                if active_store is not None and active_run_id is not None:
+                    active_store.complete_run(active_run_id, chunks, document.warnings)
+                    active_run_id = None
+                else:
+                    output_path = write_chunks_jsonl(repository_root, chunks)
                 _write_json(
                     sys.stdout,
                     {
@@ -143,7 +188,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "chunkerVersion": chunks[0].chunker_version,
                         "chunkCount": len(chunks),
                         "warnings": list(document.warnings),
-                        "outputPath": output_path.relative_to(repository_root).as_posix(),
+                        "storage": args.storage.upper(),
+                        "runId": str(completed_run_id) if completed_run_id is not None else None,
+                        "outputPath": (
+                            output_path.relative_to(repository_root).as_posix()
+                            if output_path is not None
+                            else None
+                        ),
                         "source": {"hashVerified": True, "sizeBytes": source.size_bytes},
                     },
                 )
@@ -189,6 +240,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
     except KnowledgeContractError as error:
+        if active_store is not None and active_run_id is not None:
+            try:
+                active_store.fail_run(active_run_id, error.code)
+            except KnowledgeContractError:
+                pass
         payload = {"ok": False, "code": error.code, "message": error.safe_message}
         if error.safe_context:
             payload["context"] = error.safe_context
