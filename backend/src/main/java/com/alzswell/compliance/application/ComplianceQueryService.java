@@ -169,6 +169,12 @@ public class ComplianceQueryService {
                          'requesterAudiences',requester_audiences,'queryHash',query_hash,'asOf',as_of,
                          'returnedResourceIds',returned_resource_ids),integrity_hash,occurred_at
                 from knowledge_access_audit_event
+              union all
+              select 'AUTH_SESSION:'||event_id,'AUTH_SESSION',event_id::text,event_type,
+                     principal_id::text,null,'AUTH_SESSION',target_session_id::text,null,outcome,
+                     jsonb_build_object('actorSessionId',actor_session_id,'reasonCode',reason_code),
+                     integrity_hash,occurred_at
+                from auth_session_event
             )
             """;
     private final JdbcTemplate jdbcTemplate;

@@ -5,14 +5,19 @@ import com.alzswell.common.api.ApiResponses;
 import com.alzswell.identity.api.AuthRequests.LoginCommand;
 import com.alzswell.identity.api.AuthRequests.RefreshCommand;
 import com.alzswell.identity.api.AuthResponses.CurrentUser;
+import com.alzswell.identity.api.AuthResponses.AuthSessionList;
+import com.alzswell.identity.api.AuthResponses.AuthSessionRevocation;
 import com.alzswell.identity.api.AuthResponses.PermissionList;
 import com.alzswell.identity.api.AuthResponses.TokenPair;
 import com.alzswell.identity.application.AuthSessionService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,5 +67,18 @@ public class AuthController {
     public ResponseEntity<ApiResponse<PermissionList>> permissions(Authentication authentication) {
         return ApiResponses.ok("AUTH_PERMISSIONS_RETRIEVED", "현재 권한을 조회했습니다.",
                 authSessionService.permissions(authentication));
+    }
+
+    @GetMapping("/sessions")
+    public ResponseEntity<ApiResponse<AuthSessionList>> sessions(Authentication authentication) {
+        return ApiResponses.ok("AUTH_SESSIONS_RETRIEVED","본인의 인증 세션을 조회했습니다.",
+                authSessionService.sessions(authentication));
+    }
+
+    @DeleteMapping("/sessions/{authSessionId}")
+    public ResponseEntity<ApiResponse<AuthSessionRevocation>> revokeSession(
+            @PathVariable UUID authSessionId,Authentication authentication) {
+        return ApiResponses.ok("AUTH_SESSION_REVOKED","선택한 인증 세션을 종료했습니다.",
+                authSessionService.revokeSession(authSessionId,authentication));
     }
 }

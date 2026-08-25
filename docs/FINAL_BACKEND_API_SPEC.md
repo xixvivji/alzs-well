@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.22.0**
+> 문서 버전: **1.23.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -29,11 +29,11 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 214개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 216개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 57개 |
+| 카탈로그·백로그 | 55개 |
 
-업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개, 지식 문서 검토등록·게시 2개를 포함해 214개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 208개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 215개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개, 지식 문서 검토등록·게시 2개, 본인 인증 세션 관리 2개를 포함해 216개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 210개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 217개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
 여기서 API 271개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
@@ -861,7 +861,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개, 지식 문서 검토등록·게시 2개를 포함해 총 214개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 215개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 208개가 노출된다. 나머지 57개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객별 직원 접근권 6개, 금융생활 의향 관리 7개, 정기납부·구독 관리 7개, 계좌 관리 11개, 거래내역·검색 9개, 통합자산·현금흐름 8개, 이체 안전 미리보기 4개, 카드 읽기 6개, 예금·대출·투자·연금 보유 조회 9개, 예금·대출 상품 조회·모의계산 8개, 투자 주문이력·합성 시세·관심종목 5개, 연금 전망·신탁 조회 3개, 경보 이의신청·사건 정책 재검토 2개, 지식 문서 검토등록·게시 2개, 본인 인증 세션 관리 2개를 포함해 총 216개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 217개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 210개가 노출된다. 나머지 55개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -935,14 +935,16 @@ P0-B의 session 범위 읽기 API는 반드시 올바른 역할의 `X-Demo-Capab
 | P1 | POST | /api/v1/auth/logout-all | 현재 사용자의 모든 인증 세션 종료 | OWNED |
 | P1 | GET | /api/v1/auth/me | 현재 사용자·직원 정보 | OWNED |
 | P1 | GET | /api/v1/auth/me/permissions | 역할·세부 권한 조회 | OWNED |
-| P2 | GET | /api/v1/auth/sessions | 로그인 세션 목록 | OWNED |
-| P2 | DELETE | /api/v1/auth/sessions/{authSessionId} | 선택한 로그인 세션 폐기 | OWNED |
+| P2 | GET | /api/v1/auth/sessions | 로그인 세션 목록 (`IMPLEMENTED`) | OWNED |
+| P2 | DELETE | /api/v1/auth/sessions/{authSessionId} | 선택한 로그인 세션 폐기 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/auth/step-up/challenges | 중요화면 추가인증 시작 | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/auth/step-up/challenges/{challengeId}/verify | 추가인증 검증 | EXTERNAL_INTEGRATION |
 
 KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 기존 체계의 책임이다.
 
 앞의 P1 6개는 Flyway V15의 인증 주체·역할·권한·세션 테이블과 V17의 refresh token 계열 이력·절대 만료·로그인 감사 테이블로 구현했다. Access/Refresh token은 256-bit 불투명 난수이며 원문은 응답에서 한 번만 제공하고 DB에는 SHA-256 hash만 저장한다. Refresh는 두 token을 모두 회전하며 이전 token 재사용 시 계열 전체를 폐기한다. 세션은 절대 만료와 사용자별 활성 상한을 적용하고, logout과 logout-all로 현재 또는 전체 세션을 폐기한다. 존재하지 않는 계정도 BCrypt dummy hash를 검증하며 반복 실패는 DB 기반으로 제한한다. V40부터 로그인 제한은 짧은 트랜잭션에서 `PENDING` 시도 슬롯을 원자적으로 예약한 뒤 DB 연결을 놓고 자격증명을 검증하며, `RATE_LIMITED` 감사이벤트 자체는 다음 제한 계산에 포함하지 않는다. 로컬 합성 인증은 development 전용이고 공개 production에서는 기동 가드와 기능 플래그로 노출을 거부한다. 실제 기업 SSO/IdP 연동은 `IdentityProviderPort`의 후속 어댑터 작업이다.
+
+V57의 P2 세션 관리 2개는 현재 Bearer token의 principal과 session ID를 서버에서 복원한다. 목록은 본인의 세션을 활성 상태 우선, 그다음 `createdAt DESC, sessionId DESC`로 최대 50개 반환하고 `ACTIVE/EXPIRED/REVOKED`, 현재 세션 여부, token 만료시각만 제공한다. 최대 5개인 활성 세션은 종료 이력 수와 관계없이 목록에 모두 포함된다. token hash·family ID·IP·User-Agent는 반환하지 않는다. 선택 폐기는 URL의 session ID와 인증 principal 소유권을 함께 잠근 뒤 session과 미사용 refresh token을 원자적으로 폐기한다. 동일한 본인 세션의 재호출은 `alreadyEnded=true`로 성공하며 다른 principal 또는 존재하지 않는 ID는 모두 `404 AUTH_SESSION_NOT_FOUND`다. 결과는 `auth_session_event`에 추가 전용으로 감사한다.
 
 #### 3.3.3 고객 프로필·접근성 — 8개
 
@@ -1466,7 +1468,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “271개 API 카탈로그를 설계했고 P0 23개와 P1 170개를 포함한 215개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “271개 API 카탈로그를 설계했고 P0 23개와 P1 170개를 포함한 217개 코드 operation을 구현했다”고 표현한다. 271개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -2225,7 +2227,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "56",
+        "schemaVersion": "57",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2809,7 +2811,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "56",
+    "schemaVersion": "57",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3959,7 +3961,7 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 
 ## 6.10 미구현 API를 CONTRACT로 승격하는 규칙
 
-현재 미구현 카탈로그·백로그 57개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
+현재 미구현 카탈로그·백로그 55개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 
 | 필수 항목 | 기록 내용 |
 |---|---|

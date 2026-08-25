@@ -3,6 +3,7 @@ package com.alzswell.identity;
 import static org.hamcrest.Matchers.hasItems;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +53,7 @@ class AuthSessionIntegrationTest {
                 .flatMap(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has).map(path::path))
                 .toList();
-        assertThat(operations).hasSize(215).allSatisfy(operation -> {
+        assertThat(operations).hasSize(217).allSatisfy(operation -> {
             assertThat(operation.path("summary").asText()).isNotBlank();
             assertThat(operation.path("description").asText()).isNotBlank();
             assertThat(operation.path("x-alzs-authority-mode").asText()).isNotBlank();
@@ -130,6 +132,45 @@ class AuthSessionIntegrationTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + secondAccess))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listsAndIdempotentlyRevokesOnlyOwnedSessions() throws Exception {
+        JsonNode first = login();
+        JsonNode second = login();
+        String firstAccess = first.at("/data/accessToken").asText();
+        String secondAccess = second.at("/data/accessToken").asText();
+        UUID firstSessionId = jdbcTemplate.queryForObject(
+                "select session_id from auth_session where access_token_hash=?", UUID.class,
+                com.alzswell.identity.application.AuthSessionService.hash(firstAccess));
+
+        mockMvc.perform(get("/api/v1/auth/sessions").header("Authorization", "Bearer " + secondAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("AUTH_SESSIONS_RETRIEVED"))
+                .andExpect(jsonPath("$.data.activeCount").isNumber())
+                .andExpect(jsonPath("$.data.items[?(@.currentSession == true)]").exists());
+
+        mockMvc.perform(delete("/api/v1/auth/sessions/" + firstSessionId)
+                        .header("Authorization", "Bearer " + secondAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("AUTH_SESSION_REVOKED"))
+                .andExpect(jsonPath("$.data.currentSession").value(false))
+                .andExpect(jsonPath("$.data.alreadyEnded").value(false));
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + firstAccess))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete("/api/v1/auth/sessions/" + firstSessionId)
+                        .header("Authorization", "Bearer " + secondAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.alreadyEnded").value(true));
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from auth_session_event where target_session_id=?
+                """, Integer.class, firstSessionId)).isEqualTo(2);
+
+        mockMvc.perform(delete("/api/v1/auth/sessions/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + secondAccess))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("AUTH_SESSION_NOT_FOUND"));
     }
 
     @Test
