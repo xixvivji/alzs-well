@@ -2,7 +2,7 @@
 
 폐쇄망에서 승인된 지식 원문을 검증·추출·청킹하고 이후 검색 인덱스를 만드는 내부 AI/RAG 프로젝트다.
 현재 단계는 공용 지식 계약 v1을 소비하는 manifest, HTML/PDF 원문 검증과 결정론적
-chunk JSONL 생성 CLI를 제공한다.
+chunk 생성 CLI, PostgreSQL 키워드 검색용 내부 FastAPI를 제공한다.
 
 ## 실행
 
@@ -103,6 +103,39 @@ docker compose --project-directory backend --profile ai-tools run --rm ai-ingest
   --as-of 2026-08-25 \
   --storage postgres
 ```
+
+PostgreSQL ingestion은 chunk와 함께 승인 manifest의 ACL·audience·효력 스냅샷을
+`ai_knowledge.document_snapshot`에 저장한다. 검색 런타임은 별도 최소 권한 계정으로
+이 스냅샷과 chunk만 읽으며 Spring 업무 지식 테이블은 조회하거나 변경하지 않는다.
+
+내부 검색 API는 다음처럼 실행한다. 호스트 포트를 공개하지 않고 Spring과 같은 내부
+애플리케이션 네트워크에서만 접근한다.
+
+```bash
+docker compose --project-directory backend --profile ai up -d ai-service
+```
+
+```http
+POST /internal/v1/search
+X-Internal-Service-Token: <32자 이상의 내부 서비스 토큰>
+Content-Type: application/json
+
+{
+  "contractVersion": "1.0.0",
+  "requestId": "99000000-0000-0000-0000-000000000001",
+  "query": "금융거래 안심차단",
+  "permissions": ["KNOWLEDGE_SEARCH"],
+  "principalRoles": ["PROTECTION_STAFF"],
+  "requesterAudiences": ["STAFF"],
+  "asOf": "2026-08-25",
+  "limit": 10
+}
+```
+
+검색은 PostgreSQL `simple` 전문검색을 기준선으로 사용하고 역할 교집합, audience,
+`APPROVED/ACTIVE`, 효력기간을 모두 만족하는 chunk만 반환한다. 감사 이력에는 원문
+검색어 대신 `sha256:<hex>`만 남긴다. 응답 citation은 권한 부여 결과가 아니므로
+Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다.
 
 ## 테스트
 

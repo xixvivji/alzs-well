@@ -380,6 +380,31 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void aiSearchRuntimeCanReadDerivedIndexButCannotMutateChunksOrBusinessKnowledge() {
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_schema_privilege('alzswell_ai_runtime','ai_knowledge','USAGE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk','SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.document_snapshot','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.retrieval_run','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_ai_runtime','ai_knowledge.retrieval_run','status','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','knowledge_document','SELECT')",
+                Boolean.class)).isFalse();
+    }
+
+    @Test
     @Transactional
     void futureTablesDoNotAutomaticallyGrantRuntimeUpdateOrDelete() {
         if (!runtimeRoleExists()) return;

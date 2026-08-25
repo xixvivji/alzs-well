@@ -150,3 +150,28 @@ errors:
     httpStatus: 409
     cliExitCode: 6
     retryable: false
+  - code: API_CONFIGURATION_INVALID
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
+  - code: INTERNAL_AUTHENTICATION_FAILED
+    category: AUTHENTICATION
+    httpStatus: 401
+    cliExitCode: 3
+    retryable: false
+  - code: KNOWLEDGE_PERMISSION_DENIED
+    category: AUTHORIZATION
+    httpStatus: 403
+    cliExitCode: 3
+    retryable: false
+  - code: SEARCH_REQUEST_INVALID
+    category: RETRIEVAL
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: SEARCH_REQUEST_CONFLICT
+    category: RETRIEVAL
+    httpStatus: 409
+    cliExitCode: 6
+    retryable: false

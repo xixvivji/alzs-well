@@ -471,10 +471,15 @@ class FakeIngestionStore:
         return self.run_id
 
     def complete_run(
-        self, run_id: UUID, chunks: tuple[object, ...], warnings: tuple[str, ...]
+        self,
+        run_id: UUID,
+        chunks: tuple[object, ...],
+        warnings: tuple[str, ...],
+        manifest: object,
     ) -> None:
         assert run_id == self.run_id
         assert warnings == ()
+        assert manifest is not None
         self.completed_chunks = chunks
 
     def fail_run(self, run_id: UUID, failure_code: str) -> None:
