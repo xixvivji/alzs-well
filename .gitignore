@@ -29,6 +29,10 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
 
 # Generated reports, renders, caches, bundled fonts, and local models
 /tmp/

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "alzs-well-ai-service"
+version = "0.1.0"
+description = "Internal, air-gapped knowledge ingestion service for ALZ's well"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "beautifulsoup4>=4.12,<5",
+  "jsonschema>=4.23,<5",
+  "ruamel-yaml>=0.18.10,<0.19",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<10",
+  "pytest-cov>=6,<8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
