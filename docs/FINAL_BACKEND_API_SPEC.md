@@ -1,6 +1,6 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.21.0**
+> 문서 버전: **1.22.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
 > 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
@@ -1318,6 +1318,8 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 
 V55의 관리자 2개 API는 공용 manifest 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. 즉 AI ingestion·청킹·색인 완료 전에는 기존 검색 카탈로그에 자동 노출되지 않으며 원문 수정, 네트워크 호출, 모델 실행도 하지 않는다. 모든 등록·게시·대체는 V55 추가 전용 감사이력에 보존된다.
 
+V56부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 문서 `allowedRoles`의 교집합, 역할에서 계산한 requester audience, 문서 audience, `APPROVED/ACTIVE`, 효력일을 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능한 문서를 `404`로 숨긴다. 모든 조회·검색은 추가 전용 `knowledge_access_audit_event`에 permission, 역할, audience, 필터, 반환 ID를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤의 결정론적 로컬 어댑터이며 FastAPI·벡터 검색·외부 모델은 아직 호출하지 않는다.
+
 #### 3.3.20 인앱 알림·고객지원 — 10개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -2223,7 +2225,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "55",
+        "schemaVersion": "56",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2807,7 +2809,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "55",
+    "schemaVersion": "56",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
