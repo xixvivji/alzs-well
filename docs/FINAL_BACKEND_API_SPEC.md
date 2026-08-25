@@ -1107,7 +1107,7 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 
 모의계산과 사전검증은 상태를 쓰지 않는 읽기 전용 평가다. 응답은 `externalProviderCalled=false`, `transferCreated=false`, `authorizationCreated=false`를 고정하며 실제 이체 접수·OTP/MFA 승인·한도 변경·외부 금융사 호출을 생성하지 않는다. 실제 이체 관련 마지막 3개 API는 계속 `REFERENCE_ONLY`다.
 
-V58의 저장 이체 양식 3개는 `TRANSFER_TEMPLATE_READ|WRITE`와 고객 본인 소유권을 요구한다. 생성은 `Idempotency-Key`를 필수로 받고 활성 합성 출금계좌와 같은 고객의 활성 마스킹 수취인만 참조한다. 양식명은 50자 이하이며 민감정보 정책을 통과해야 하고, 금액은 생략하거나 1원 이상 1억원 이하 KRW로 제한한다. 목적은 고정 코드만 허용하고 고객당 활성 양식은 트랜잭션 advisory lock 아래 최대 20개로 제한한다.
+V59의 저장 이체 양식 3개는 `TRANSFER_TEMPLATE_READ|WRITE`와 고객 본인 소유권을 요구한다. 생성은 `Idempotency-Key`를 필수로 받고 활성 합성 출금계좌와 같은 고객의 활성 마스킹 수취인만 참조한다. 양식명은 50자 이하이며 민감정보 정책을 통과해야 하고, 금액은 생략하거나 1원 이상 1억원 이하 KRW로 제한한다. 목적은 고정 코드만 허용하고 고객당 활성 양식은 트랜잭션 advisory lock 아래 최대 20개로 제한한다.
 
 목록은 `templateName, createdAt, templateId` 순서로 활성 양식만 반환한다. 삭제는 물리 삭제가 아니라 `ACTIVE → DELETED` 단방향 전이이며 동일 멱등키는 최초 응답을 그대로 재생하고 이미 삭제된 본인 양식에 새 키로 재요청하면 `alreadyDeleted=true`를 반환한다. 다른 고객 또는 존재하지 않는 ID는 `404 TRANSFER_TEMPLATE_NOT_FOUND`로 숨긴다. 핵심 필드는 DB trigger로 불변이며 생성·삭제 snapshot은 `customer_transfer_template_event`에 추가 전용으로 보존하고 통합 감사 API에도 노출한다. 모든 응답은 `externalActionAvailable=false`, `externalActionExecuted=false`이며 실제 이체·승인·외부 금융사 호출을 생성하지 않는다.
 
@@ -2231,7 +2231,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "58",
+        "schemaVersion": "59",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2815,7 +2815,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "58",
+    "schemaVersion": "59",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
