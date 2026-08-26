@@ -729,11 +729,13 @@ Isolation Forest, LightGBM 등은 핵심 판정기가 아니라 오프라인 비
 
 - `SMOKE`: CI·로컬 회귀용 고객 10명, 계좌 20개, 거래 600건
 - `DEMO`: 프론트·발표 통합 시연용 고객 50명, 계좌 100개, 거래 12,000건
+- `LOAD`: 일상적인 통합·탐지 품질 검증용 고객 250명, 계좌 500개, 거래 75,000건
 - `DEV`: 페이지네이션·탐지·인덱스 검증용 고객 1,000명, 계좌 2,000개, 거래 1,000,000건
 - 같은 `fixtureVersion + profile + seed`는 고객·계좌·거래·탐지 데이터셋 ID와 manifest hash가 항상 같아야 함
 - 생성기는 합성 전용 migrator 일회성 Job이며 공개 API, 실제 금융기관 adapter, 실제 금융실행 또는 외부 전송을 만들지 않음
 - 대량 파생 데이터는 Git과 Flyway seed SQL에 넣지 않고, V63이 관리하는 결정론적 batch 생성기로 배포 DB에 적재
 - 고객별 `NORMAL`, `MISSED_PAYMENT`, `DUPLICATE_TRANSFER`, `REPEATED_CONFIRMATION` 시나리오와 기대 신호 수를 별도 manifest 테이블에 보존
+- 선택적 탐지 품질 검증은 활성 정책을 모든 fixture 고객에 실행하고 정책 버전·오탐·미탐·precision·recall을 추가 전용 리포트로 고정
 
 ### 반드시 포함할 정상 반례
 

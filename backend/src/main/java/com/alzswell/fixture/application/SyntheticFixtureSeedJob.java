@@ -16,28 +16,34 @@ public class SyntheticFixtureSeedJob {
 
     private final SyntheticFixtureGenerationService service;
     private final ConfigurableApplicationContext applicationContext;
+    private final SyntheticFixtureQualityService qualityService;
     private final SyntheticFixtureProfile profile;
     private final String fixtureVersion;
     private final long seed;
     private final int batchSize;
     private final boolean resume;
+    private final boolean verifyDetection;
 
     public SyntheticFixtureSeedJob(
             SyntheticFixtureGenerationService service,
             ConfigurableApplicationContext applicationContext,
+            SyntheticFixtureQualityService qualityService,
             @Value("${app.synthetic-seed.profile:SMOKE}") SyntheticFixtureProfile profile,
             @Value("${app.synthetic-seed.fixture-version:synthetic-v3.0.0}") String fixtureVersion,
             @Value("${app.synthetic-seed.seed:20260825}") long seed,
             @Value("${app.synthetic-seed.batch-size:10}") int batchSize,
-            @Value("${app.synthetic-seed.resume:false}") boolean resume
+            @Value("${app.synthetic-seed.resume:false}") boolean resume,
+            @Value("${app.synthetic-seed.verify-detection:false}") boolean verifyDetection
     ) {
         this.service = service;
         this.applicationContext = applicationContext;
+        this.qualityService = qualityService;
         this.profile = profile;
         this.fixtureVersion = fixtureVersion;
         this.seed = seed;
         this.batchSize = batchSize;
         this.resume = resume;
+        this.verifyDetection = verifyDetection;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -49,6 +55,19 @@ public class SyntheticFixtureSeedJob {
                 + ", accounts=" + result.actualAccountCount()
                 + ", transactions=" + result.actualTransactionCount()
                 + ", replayed=" + result.replayed());
+        if (verifyDetection) {
+            SyntheticFixtureQualityService.QualityReport quality = qualityService.evaluate(result.runId());
+            LOG.info("synthetic fixture detection quality completed: status=" + quality.status()
+                    + ", evaluatedCustomers=" + quality.evaluatedCustomerCount()
+                    + ", expectedSignals=" + quality.expectedSignalCount()
+                    + ", actualSignals=" + quality.actualSignalCount()
+                    + ", falsePositives=" + quality.falsePositiveCount()
+                    + ", falseNegatives=" + quality.falseNegativeCount()
+                    + ", replayed=" + quality.replayed());
+            if (!"PASSED".equals(quality.status())) {
+                throw new IllegalStateException("합성 fixture 탐지 품질 검증을 통과하지 못했습니다.");
+            }
+        }
         applicationContext.close();
     }
 }

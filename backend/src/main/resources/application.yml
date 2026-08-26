@@ -114,6 +114,7 @@ app:
     seed: ${SYNTHETIC_SEED_VALUE:20260825}
     batch-size: ${SYNTHETIC_SEED_BATCH_SIZE:10}
     resume: ${SYNTHETIC_SEED_RESUME:false}
+    verify-detection: ${SYNTHETIC_SEED_VERIFY_DETECTION:false}
   auth:
     access-ttl-seconds: ${AUTH_ACCESS_TTL_SECONDS:900}
     refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
@@ -127,7 +128,7 @@ app:
     cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "66"
+    schema: "67"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

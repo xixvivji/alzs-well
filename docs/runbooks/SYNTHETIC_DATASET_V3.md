@@ -8,6 +8,7 @@
 |---|---:|---:|---:|---|
 | `SMOKE` | 10 | 20 | 600 | 로컬·CI 빠른 회귀 |
 | `DEMO` | 50 | 100 | 12,000 | 프론트·발표·통합 시연 |
+| `LOAD` | 250 | 500 | 75,000 | 탐지 품질·페이지네이션·일상 부하 검증 |
 | `DEV` | 1,000 | 2,000 | 1,000,000 | 페이지네이션·탐지·인덱스·운영 검증 |
 
 고객마다 `NORMAL`, `MISSED_PAYMENT`, `DUPLICATE_TRANSFER`, `REPEATED_CONFIRMATION` 중 하나가 결정론적으로 배정된다. 고객별 적재된 탐지 데이터셋과 기대 신호 수는 `synthetic_fixture_customer`에서 확인한다.
@@ -30,7 +31,7 @@ SYNTHETIC_SEED_PROFILE=SMOKE \
 docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
 ```
 
-그다음 시연 환경은 `DEMO`, 성능 검증 환경은 `DEV`를 실행한다.
+그다음 시연 환경은 `DEMO`, 일상적인 통합 검증은 `LOAD`, 대용량 성능 검증 환경은 `DEV`를 실행한다.
 
 ```bash
 SYNTHETIC_SEED_PROFILE=DEMO \
@@ -40,7 +41,20 @@ SYNTHETIC_SEED_BATCH_SIZE=10 \
 docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
 ```
 
-`DEV`는 데이터베이스 용량과 실행시간을 확인한 별도 검증 환경에서만 실행한다. 공개 운영 데이터베이스에는 실행하지 않는다.
+탐지 품질까지 검증하는 권장 통합 실행은 다음과 같다. `LOAD`는 활성 탐지정책을 250명
+전체에 적용하고 정상 고객 오탐과 이상 고객 미탐이 하나라도 있으면 Job을 실패시킨다.
+
+```bash
+SYNTHETIC_SEED_PROFILE=LOAD \
+SYNTHETIC_SEED_VERIFY_DETECTION=true \
+SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.1.0 \
+SYNTHETIC_SEED_VALUE=20260826 \
+SYNTHETIC_SEED_BATCH_SIZE=25 \
+docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
+```
+
+`DEV`는 데이터베이스 용량과 실행시간을 확인한 별도 검증 환경에서만 실행한다. `LOAD`와
+`DEV` 모두 공개 운영 데이터베이스에는 실행하지 않는다.
 
 ## 완료 검증
 
@@ -62,6 +76,22 @@ select run_id, fixture_version, profile, seed, status,
 - 생성 거래의 `provider_mode=SYNTHETIC_PROVIDER`
 
 같은 버전·profile·seed를 다시 실행하면 새 행을 만들지 않고 동일 run과 manifest를 재생해야 한다.
+
+`SYNTHETIC_SEED_VERIFY_DETECTION=true`이면 아래 품질 증적도 확인한다.
+
+```sql
+select run_id, policy_version, algorithm_version, status, policy_stable,
+       evaluated_customer_count, expected_signal_count, actual_signal_count,
+       false_positive_count, false_negative_count, precision_score, recall_score,
+       report_hash, evaluated_at
+  from synthetic_fixture_quality_report
+ order by evaluated_at desc;
+```
+
+완료 조건은 `status=PASSED`, `policy_stable=true`, 오탐·미탐 0건, 기대·실제 신호 수
+일치다. 정책이 평가 도중 바뀌거나 외부 실행·advisory AI 사용이 감지돼도 실패한다.
+CI Compose smoke도 `SMOKE + SYNTHETIC_SEED_VERIFY_DETECTION=true`를 실행하고 동일 품질 조건을
+검증 증적으로 업로드한다. `LOAD`는 로컬·통합 환경에서 명시적으로 실행한다.
 
 실제 HTTP 조회·탐지 E2E에서 합성 로그인 API가 필요하면 외부에 노출되지 않는 로컬 환경에서만
 `compose.integration.yaml`을 기본 Compose 파일과 함께 적용한다.

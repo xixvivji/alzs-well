@@ -191,9 +191,12 @@ SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.0.0
 SYNTHETIC_SEED_VALUE=20260825
 SYNTHETIC_SEED_BATCH_SIZE=10
 SYNTHETIC_SEED_RESUME=false
+SYNTHETIC_SEED_VERIFY_DETECTION=false
 ```
 
 동일 버전·profile·seed의 완료 실행은 중복 적재하지 않고 기존 manifest를 재생한다. 중단된 `RUNNING` 실행만 운영자가 원인을 확인한 후 `SYNTHETIC_SEED_RESUME=true`로 재개할 수 있다. 상세 절차는 [`../docs/runbooks/SYNTHETIC_DATASET_V3.md`](../docs/runbooks/SYNTHETIC_DATASET_V3.md)를 따른다.
+`LOAD`는 고객 250명·거래 75,000건의 중간 규모이며 `SYNTHETIC_SEED_VERIFY_DETECTION=true`로
+활성 정책의 전체 고객 오탐·미탐 검증까지 실행할 수 있다.
 
 ## AWS 백엔드 데모 배포
 
