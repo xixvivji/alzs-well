@@ -5,7 +5,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from app.embedding.local_hash import embed_text
+from app.embedding.base import EmbeddingProvider
+from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.evaluation.models import EvaluationCase, EvaluationChunk
 
 
@@ -46,14 +47,18 @@ def rank(
     configuration: SearchConfiguration,
     *,
     limit: int = 5,
+    embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[RankedChunk, ...]:
-    query_embedding = embed_text(case.query)
+    provider = embedding_provider or LocalHashEmbeddingProvider()
+    query_embedding = provider.embed_query(case.query)
     ranked: list[RankedChunk] = []
     for chunk in corpus:
         if not is_eligible(chunk, case):
             continue
         keyword_score = _keyword_score(case.query, chunk.searchable_text())
-        vector_score = max(0.0, _cosine(query_embedding, embed_text(chunk.searchable_text())))
+        vector_score = max(
+            0.0, _cosine(query_embedding, provider.embed_passage(chunk.searchable_text()))
+        )
         if keyword_score == 0 and vector_score < configuration.vector_threshold:
             continue
         score = (

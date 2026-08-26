@@ -6,7 +6,12 @@ from fastapi.testclient import TestClient
 
 from app.domain.search import SearchRequest, StoredSearchResult
 from app.errors import KnowledgeContractError
-from app.main import _api_config, create_app, get_search_repository
+from app.main import (
+    _api_config,
+    create_app,
+    get_embedding_provider,
+    get_search_repository,
+)
 
 
 TOKEN = "test-internal-token-that-is-longer-than-32-characters"
@@ -60,7 +65,12 @@ def test_health_does_not_require_internal_token(monkeypatch: object) -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"service": "ai-rag", "status": "UP"}
+    assert response.json() == {
+        "service": "ai-rag",
+        "status": "UP",
+        "embeddingBackend": "hash",
+        "embeddingModelVersion": "local-hash-ngram-ko-v1",
+    }
 
 
 def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object) -> None:
@@ -150,6 +160,7 @@ def _client(
 ) -> tuple[TestClient, FakeSearchRepository]:
     monkeypatch.setenv("ALZS_AI_INTERNAL_TOKEN", TOKEN)  # type: ignore[attr-defined]
     _api_config.cache_clear()
+    get_embedding_provider.cache_clear()
     repository = FakeSearchRepository(failure=failure)
     application = create_app()
     application.dependency_overrides[get_search_repository] = lambda: repository

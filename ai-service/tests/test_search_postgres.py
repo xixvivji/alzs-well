@@ -8,9 +8,11 @@ import psycopg
 import pytest
 
 from app.domain.search import SearchRequest
+from app.embedding.base import EmbeddingDescriptor
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import (
+    E5_INDEX_VERSION,
     INDEX_VERSION,
     KEYWORD_WEIGHT,
     RESULT_THRESHOLD,
@@ -63,6 +65,26 @@ class Connector:
         return FakeConnection(self.cursors.pop(0))
 
 
+class FakeEmbeddingProvider:
+    descriptor = EmbeddingDescriptor(
+        backend="local-e5",
+        model_id="intfloat/multilingual-e5-small",
+        model_version="multilingual-e5-small@test",
+        dimensions=384,
+    )
+
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    def embed_query(self, value: str) -> tuple[float, ...]:
+        self.queries.append(value)
+        return (1.0,) + (0.0,) * 383
+
+    def embed_passage(self, value: str) -> tuple[float, ...]:
+        del value
+        return (1.0,) + (0.0,) * 383
+
+
 def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None:
     cursor = FakeCursor([_row()])
     repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
@@ -80,14 +102,45 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert parameters[0] == "금융거래 안심차단"  # type: ignore[index]
     assert str(parameters[1]).startswith("[")  # type: ignore[index]
     assert parameters[2:] == (  # type: ignore[index]
+        "local-hash-ngram-ko-v1",
         ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
-        date(2026, 8, 25), "local-hash-ngram-ko-v1",
+        date(2026, 8, 25),
         KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD, 10,
     )
+    assert "c.embedding_model_version is distinct from %s" in statement
+    assert "and (c.embedding_model_version is null" not in statement
     assert INDEX_VERSION == "hybrid-hash-ngram-v2"
     assert RESULT_THRESHOLD == 0.35
     assert results[0].chunk_id == "chk_" + "1" * 64
     assert results[0].score == 0.5
+
+
+def test_search_uses_injected_model_but_keeps_other_models_for_keyword_score() -> None:
+    cursor = FakeCursor([_row()])
+    provider = FakeEmbeddingProvider()
+    repository = PostgresSearchRepository(
+        _config(), connect=Connector(cursor), embedding_provider=provider
+    )
+
+    repository.search(_request())
+
+    statement, parameters = cursor.executions[0]
+    assert provider.queries == ["금융거래 안심차단"]
+    assert parameters[2] == "multilingual-e5-small@test"  # type: ignore[index]
+    assert "c.embedding_model_version is distinct from %s" in statement
+    assert "and (c.embedding_model_version is null" not in statement
+
+
+def test_search_run_records_e5_index_version() -> None:
+    cursor = FakeCursor()
+    repository = PostgresSearchRepository(
+        _config(), connect=Connector(cursor), embedding_provider=FakeEmbeddingProvider()
+    )
+
+    repository.start_run(_request(), "sha256:" + "0" * 64)
+
+    parameters = cursor.executions[0][1]
+    assert E5_INDEX_VERSION in parameters  # type: ignore[operator]
 
 
 def test_search_run_stores_only_query_hash_and_safe_metadata() -> None:

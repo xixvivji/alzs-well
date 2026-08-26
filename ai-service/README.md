@@ -132,12 +132,40 @@ Content-Type: application/json
 }
 ```
 
-검색은 PostgreSQL `simple` 전문검색과 `local-hash-ngram-ko-v1` 384차원 로컬 임베딩의
+검색은 PostgreSQL `simple` 전문검색과 기본 `local-hash-ngram-ko-v1` 384차원 임베딩의
 pgvector cosine 유사도를 결합하고 역할 교집합, audience,
 `APPROVED/ACTIVE`, 효력기간을 모두 만족하는 chunk만 반환한다. 감사 이력에는 원문
 검색어 대신 `sha256:<hex>`만 남긴다. 응답 citation은 권한 부여 결과가 아니므로
-Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다. 로컬 임베딩은 모델
-파일이나 네트워크를 요구하지 않으며 이후 승인된 내부 모델로 교체 가능한 경계다.
+Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다.
+
+### 로컬 한국어 임베딩 모델
+
+신경망 모델의 첫 운영 후보는 `intfloat/multilingual-e5-small`이다. 한국어를 포함하는
+다국어 검색 모델이며 출력이 384차원이어서 현재 pgvector 스키마를 변경하지 않는다.
+모델이 승인·반입되기 전에는 hash 어댑터가 기본값이고 외부 모델 다운로드는 허용하지
+않는다. E5 어댑터는 질의에 `query:`, 문단에 `passage:` 접두사를 적용한다.
+
+모델 포함 이미지는 승인된 `sentence-transformers` CPU wheel과 전이 의존성을 내부
+wheelhouse 및 SBOM으로 함께 반입해야 한다. 기본 이미지는 모델 런타임을 설치하지 않으며,
+실행 중 패키지나 모델을 다운로드하지 않는다.
+
+활성화할 때는 승인된 `model.safetensors`를 읽기 전용 경로에 반입하고 다음 값을 모두
+지정한다.
+
+```text
+ALZS_EMBEDDING_BACKEND=local-e5
+ALZS_EMBEDDING_MODEL_ROOT=/opt/alzs-well/models
+ALZS_EMBEDDING_MODEL_PATH=multilingual-e5-small
+ALZS_EMBEDDING_MODEL_REVISION=<승인된 revision>
+ALZS_EMBEDDING_MODEL_SHA256=sha256:<model.safetensors의 64자리 lowercase hex>
+ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true
+```
+
+모델 경로는 root 기준 상대경로만 허용하고 `../`, 심볼릭 링크, 해시 불일치를 거부한다.
+해시 불일치는 fallback하지 않으며, 검증된 모델이 런타임에서 로드되지 않을 때만 기본
+hash 어댑터로 시작할 수 있다. 검색 시 다른 모델 버전으로 생성된 벡터에는 cosine 점수를
+적용하지 않지만 keyword 검색 대상에서는 제외하지 않는다. 모델을 전환하면 승인 문서를
+새 모델 버전으로 재-ingestion한 뒤 동일 검수 평가셋으로 Recall@K와 MRR을 다시 측정한다.
 
 최종 결합 점수가 `0.35` 미만이면 관련 keyword가 일부 겹치더라도 결과를 반환하지 않는다.
 이 무응답 임계값과 keyword/vector 가중치는 합성 검색 평가 데이터셋의 Recall@K, MRR,

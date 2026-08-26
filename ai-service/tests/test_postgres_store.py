@@ -9,6 +9,7 @@ import pytest
 
 from app.domain.chunk import KnowledgeChunk
 from app.domain.manifest import KnowledgeManifest
+from app.embedding.base import EmbeddingDescriptor
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 from app.storage.postgres import PostgresIngestionStore
@@ -74,6 +75,26 @@ class Connector:
         return FakeConnection(self.cursors.pop(0))
 
 
+class FakeEmbeddingProvider:
+    descriptor = EmbeddingDescriptor(
+        backend="local-e5",
+        model_id="intfloat/multilingual-e5-small",
+        model_version="multilingual-e5-small@test",
+        dimensions=384,
+    )
+
+    def __init__(self) -> None:
+        self.passages: list[str] = []
+
+    def embed_query(self, value: str) -> tuple[float, ...]:
+        del value
+        return (1.0,) + (0.0,) * 383
+
+    def embed_passage(self, value: str) -> tuple[float, ...]:
+        self.passages.append(value)
+        return (1.0,) + (0.0,) * 383
+
+
 def test_starts_run_without_exposing_password() -> None:
     cursor = FakeCursor()
     connector = Connector(cursor)
@@ -116,6 +137,23 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
     assert cursor.batch[0][5] == ["문서", "절"]
     assert str(cursor.batch[0][15]).startswith("[")
     assert cursor.batch[0][16] == "local-hash-ngram-ko-v1"
+
+
+def test_ingestion_uses_injected_embedding_provider_and_records_version() -> None:
+    run_id = uuid4()
+    cursor = FakeCursor(
+        run=("DOC-SYN-STORE-001", "1.0.0", "sha256:" + "1" * 64, "RUNNING")
+    )
+    provider = FakeEmbeddingProvider()
+    store = PostgresIngestionStore(
+        _config(), connect=Connector(cursor), embedding_provider=provider
+    )
+
+    store.complete_run(run_id, (_chunk(1, "body"),), (), _manifest())
+
+    assert provider.passages == ["문서 절 절 body"]
+    assert cursor.batch[0][16] == "multilingual-e5-small@test"
+    assert str(cursor.batch[0][15]).startswith("[1,")
 
 
 def test_records_failed_run_with_safe_code_only() -> None:

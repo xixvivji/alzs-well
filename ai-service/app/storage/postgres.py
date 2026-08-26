@@ -9,7 +9,8 @@ import psycopg
 
 from app.domain.chunk import KnowledgeChunk
 from app.domain.manifest import KnowledgeManifest
-from app.embedding.local_hash import EMBEDDING_MODEL_VERSION, embed_text, vector_literal
+from app.embedding.base import EmbeddingProvider, vector_literal
+from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 
@@ -23,9 +24,11 @@ class PostgresIngestionStore:
         config: DatabaseConfig,
         *,
         connect: ConnectFunction = psycopg.connect,
+        embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self._config = config
         self._connect_function = connect
+        self._embedding_provider = embedding_provider or LocalHashEmbeddingProvider()
 
     def start_run(
         self,
@@ -153,7 +156,12 @@ class PostgresIngestionStore:
                         %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s
                     )
                     """,
-                    [_chunk_parameters(run_id, chunk, created_at) for chunk in chunks],
+                    [
+                        _chunk_parameters(
+                            run_id, chunk, created_at, self._embedding_provider
+                        )
+                        for chunk in chunks
+                    ],
                 )
                 cursor.execute(
                     """
@@ -230,8 +238,13 @@ def _validate_chunks(chunks: tuple[KnowledgeChunk, ...]) -> tuple[str, str]:
 
 
 def _chunk_parameters(
-    run_id: UUID, chunk: KnowledgeChunk, created_at: datetime
+    run_id: UUID,
+    chunk: KnowledgeChunk,
+    created_at: datetime,
+    embedding_provider: EmbeddingProvider,
 ) -> tuple[object, ...]:
+    searchable_text = " ".join((*chunk.section_path, chunk.heading, chunk.text))
+    vector = embedding_provider.embed_passage(searchable_text)
     return (
         chunk.chunk_id,
         run_id,
@@ -248,8 +261,8 @@ def _chunk_parameters(
         chunk.source_hash,
         chunk.extractor_version,
         chunk.chunker_version,
-        vector_literal(embed_text(" ".join((*chunk.section_path, chunk.heading, chunk.text)))),
-        EMBEDDING_MODEL_VERSION,
+        vector_literal(vector, dimensions=embedding_provider.descriptor.dimensions),
+        embedding_provider.descriptor.model_version,
         created_at,
     )
 

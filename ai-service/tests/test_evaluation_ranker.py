@@ -5,11 +5,30 @@ from pathlib import Path
 
 import pytest
 
+from app.embedding.base import EmbeddingDescriptor
 from app.evaluation.models import load_cases, load_corpus
 from app.evaluation.ranker import SearchConfiguration, is_eligible, rank
 
 
 DATASETS = Path(__file__).parents[1] / "evaluation" / "datasets"
+
+
+class RecordingEmbeddingProvider:
+    descriptor = EmbeddingDescriptor(
+        backend="test", model_id="test", model_version="test-v1", dimensions=2
+    )
+
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+        self.passages: list[str] = []
+
+    def embed_query(self, value: str) -> tuple[float, ...]:
+        self.queries.append(value)
+        return (1.0, 0.0)
+
+    def embed_passage(self, value: str) -> tuple[float, ...]:
+        self.passages.append(value)
+        return (1.0, 0.0)
 
 
 def test_ranker_returns_relevant_chunk_and_applies_final_abstention_threshold() -> None:
@@ -44,3 +63,20 @@ def test_search_configuration_rejects_invalid_weights_and_negative_threshold() -
         SearchConfiguration(result_threshold=-0.1)
     with pytest.raises(ValueError, match="cannot exceed one"):
         SearchConfiguration(result_threshold=1.1)
+
+
+def test_ranker_uses_injected_embedding_provider() -> None:
+    corpus = load_corpus(DATASETS / "retrieval-corpus-v1.jsonl")
+    case = load_cases(DATASETS / "retrieval-v1.jsonl")[0]
+    provider = RecordingEmbeddingProvider()
+
+    ranked = rank(
+        case,
+        corpus,
+        SearchConfiguration(),
+        embedding_provider=provider,
+    )
+
+    assert ranked
+    assert provider.queries == [case.query]
+    assert provider.passages

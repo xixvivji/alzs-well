@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.embedding.base import EmbeddingProvider
 from app.evaluation.models import EvaluationCase, EvaluationChunk
 from app.evaluation.ranker import SearchConfiguration, is_eligible, rank
 
@@ -31,8 +32,11 @@ def evaluate(
     corpus: tuple[EvaluationChunk, ...],
     cases: tuple[EvaluationCase, ...],
     configuration: SearchConfiguration,
+    embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[EvaluationMetrics, tuple[CaseResult, ...]]:
-    results = tuple(_evaluate_case(corpus, case, configuration) for case in cases)
+    results = tuple(
+        _evaluate_case(corpus, case, configuration, embedding_provider) for case in cases
+    )
     answerable = tuple(
         (case, result) for case, result in zip(cases, results, strict=True) if not case.expect_no_results
     )
@@ -63,8 +67,11 @@ def _evaluate_case(
     corpus: tuple[EvaluationChunk, ...],
     case: EvaluationCase,
     configuration: SearchConfiguration,
+    embedding_provider: EmbeddingProvider | None,
 ) -> CaseResult:
-    ranked = rank(case, corpus, configuration, limit=5)
+    ranked = rank(
+        case, corpus, configuration, limit=5, embedding_provider=embedding_provider
+    )
     returned = tuple(item.chunk.chunk_id for item in ranked)
     first_rank = next(
         (index for index, chunk_id in enumerate(returned, start=1)

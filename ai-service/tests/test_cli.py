@@ -345,7 +345,9 @@ def test_cli_ingests_pdf_to_postgres_and_returns_run_id(
     _mock_pdf_pipeline(repo_root, monkeypatch)
     store = FakeIngestionStore()
     monkeypatch.setattr("app.cli.DatabaseConfig.from_environment", lambda: object())  # type: ignore[attr-defined]
-    monkeypatch.setattr("app.cli.PostgresIngestionStore", lambda config: store)  # type: ignore[attr-defined]
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        "app.cli.PostgresIngestionStore", lambda config, **kwargs: store
+    )
 
     exit_code = main(
         [
@@ -377,7 +379,9 @@ def test_cli_ingests_html_to_postgres_without_jsonl_write(
 ) -> None:
     store = FakeIngestionStore()
     monkeypatch.setattr("app.cli.DatabaseConfig.from_environment", lambda: object())  # type: ignore[attr-defined]
-    monkeypatch.setattr("app.cli.PostgresIngestionStore", lambda config: store)  # type: ignore[attr-defined]
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        "app.cli.PostgresIngestionStore", lambda config, **kwargs: store
+    )
 
     exit_code = main(
         [
@@ -407,7 +411,9 @@ def test_cli_records_safe_failed_postgres_ingestion(
 ) -> None:
     store = FakeIngestionStore(fail_reporting=True)
     monkeypatch.setattr("app.cli.DatabaseConfig.from_environment", lambda: object())  # type: ignore[attr-defined]
-    monkeypatch.setattr("app.cli.PostgresIngestionStore", lambda config: store)  # type: ignore[attr-defined]
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        "app.cli.PostgresIngestionStore", lambda config, **kwargs: store
+    )
 
     def reject_source(root: object, manifest: object) -> object:
         raise KnowledgeContractError("SOURCE_HASH_MISMATCH")
