@@ -64,6 +64,7 @@ public class SyntheticFixtureGenerationService {
 
         StoredRun stored = requiredRun(runId);
         if ("SUCCEEDED".equals(stored.status())) {
+            ensureDetectionBaselines(runId);
             return stored.result(true);
         }
         if (inserted == 0) {
@@ -87,6 +88,7 @@ public class SyntheticFixtureGenerationService {
                         "select seed_synthetic_fixture_batch(?,?,?,?,?)",
                         Integer.class, runId, leaseId, batchFirst, last, profile.transactionsPerCustomer()));
             }
+            ensureDetectionBaselines(runId);
             Counts counts = counts(runId);
             if (counts.customers() != profile.customerCount()
                     || counts.accounts() != profile.accountCount()
@@ -149,6 +151,54 @@ public class SyntheticFixtureGenerationService {
                         rs.getInt("account_count"),
                         rs.getInt("transaction_count")
                 ), runId, runId, runId);
+    }
+
+    private void ensureDetectionBaselines(UUID runId) {
+        transactions.executeWithoutResult(ignored -> {
+            jdbc.update("""
+                    insert into customer_baseline_snapshot(
+                        baseline_id,customer_id,feature_code,baseline_value,current_value,unit,
+                        readiness,comparison_text,algorithm_version,baseline_from,baseline_to,
+                        observation_from,observation_to,calculated_at,snapshot_hash,row_version
+                    )
+                    select synthetic_fixture_uuid(r.dataset_key||':baseline:'||f.customer_index),
+                           f.customer_id,
+                           case when f.scenario_code='REPEATED_CONFIRMATION' then 'REPEATED_CONFIRMATION'
+                                when f.scenario_code='DUPLICATE_TRANSFER' then 'DUPLICATE_TRANSFER'
+                                else 'MISSED_RECURRING_PAYMENT' end,
+                           case when f.scenario_code='REPEATED_CONFIRMATION' then 1 else 0 end,
+                           case f.scenario_code when 'NORMAL' then 0 when 'MISSED_PAYMENT' then 1
+                                when 'DUPLICATE_TRANSFER' then 2 else 5 end,
+                           'COUNT','READY','결정론적 합성 기준선과 현재 관측값 비교',
+                           'baseline-rules-v2.0.0','2025-08-15','2026-08-13',
+                           '2026-08-14','2026-08-14',r.started_at,
+                           'sha256:'||encode(digest(convert_to(
+                               r.dataset_key||':baseline:'||f.customer_index,'UTF8'),'sha256'),'hex'),0
+                      from synthetic_fixture_customer f
+                      join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                     where f.run_id=?
+                    on conflict(customer_id,feature_code) do nothing
+                    """, runId);
+            jdbc.update("""
+                    insert into customer_baseline_feature_snapshot(
+                        feature_id,baseline_id,feature_code,feature_value,unit,
+                        observed_from,observed_to,sample_count,snapshot_hash
+                    )
+                    select synthetic_fixture_uuid(r.dataset_key||':baseline-feature:'||f.customer_index),
+                           synthetic_fixture_uuid(r.dataset_key||':baseline:'||f.customer_index),
+                           case when f.scenario_code='REPEATED_CONFIRMATION' then 'REPEATED_CONFIRMATION'
+                                when f.scenario_code='DUPLICATE_TRANSFER' then 'DUPLICATE_TRANSFER'
+                                else 'MISSED_RECURRING_PAYMENT' end,
+                           case when f.scenario_code='REPEATED_CONFIRMATION' then 1 else 0 end,
+                           'COUNT','2025-08-15','2026-08-13',1,
+                           'sha256:'||encode(digest(convert_to(
+                               r.dataset_key||':baseline-feature:'||f.customer_index,'UTF8'),'sha256'),'hex')
+                      from synthetic_fixture_customer f
+                      join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                     where f.run_id=?
+                    on conflict(baseline_id,feature_code) do nothing
+                    """, runId);
+        });
     }
 
     private void fail(UUID runId, UUID leaseId, String errorCode, Counts counts) {

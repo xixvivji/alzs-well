@@ -63,6 +63,28 @@ select run_id, fixture_version, profile, seed, status,
 
 같은 버전·profile·seed를 다시 실행하면 새 행을 만들지 않고 동일 run과 manifest를 재생해야 한다.
 
+실제 HTTP 조회·탐지 E2E에서 합성 로그인 API가 필요하면 외부에 노출되지 않는 로컬 환경에서만
+`compose.integration.yaml`을 기본 Compose 파일과 함께 적용한다.
+
+```bash
+docker compose --env-file .env \
+  -f compose.yaml -f compose.integration.yaml up --build --detach --wait
+```
+
+SMOKE 적재도 같은 두 Compose 파일을 사용한다.
+
+```bash
+SYNTHETIC_SEED_PROFILE=SMOKE \
+docker compose --env-file .env \
+  -f compose.yaml -f compose.integration.yaml \
+  --profile synthetic-tools run --build --rm synthetic-seed
+```
+
+통합 override는 `development`, `publicExposure=false`, `localAuth=true`를 한 묶음으로 강제하고
+서버를 컨테이너 내부의 모든 인터페이스에 바인딩한다. 게이트웨이의 host bind 기본값은 계속
+`127.0.0.1`이다. 기본 Compose와 production 프로필에서는 로컬 인증이 계속 비활성화되며,
+이 설정을 공개 staging·운영 환경의 인증 수단으로 사용하지 않는다.
+
 ## 실패와 재개
 
 실패 실행은 `FAILED`와 비민감 `error_code`만 저장한다. 원인을 수정한 뒤 같은 조합을 다시 실행하면 결정론적 ID와 `ON CONFLICT DO NOTHING`을 사용해 누락 batch를 보완한다. 프로세스 강제 종료로 `RUNNING`에 남은 경우에만 상태와 DB 연결을 확인한 후 아래 값을 사용한다.

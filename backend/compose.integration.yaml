@@ -1,0 +1,7 @@
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: development
+      PUBLIC_DEPLOYMENT: "false"
+      SERVER_ADDRESS: 0.0.0.0
+      LOCAL_AUTH_API_ENABLED: "true"

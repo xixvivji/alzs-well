@@ -130,8 +130,8 @@ services:
       EXTERNAL_EGRESS_ENABLED: "false"
       REMOTE_MODEL_ENABLED: "false"
     depends_on:
-      backend:
-        condition: service_healthy
+      db-bootstrap:
+        condition: service_completed_successfully
     networks:
       - alzs-well-data
     cap_drop:
