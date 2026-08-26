@@ -159,12 +159,16 @@ jobs:
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
       - name: Boot the isolated stack and smoke test core APIs
         run: bash .github/scripts/compose-smoke.sh
-      - name: Upload Compose smoke evidence
+      - name: Verify synthetic ingestion, grounded copilot citations and fallback
+        run: python3 scripts/copilot_rag_e2e.py
+      - name: Upload Compose integration evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: compose-smoke-evidence
-          path: artifacts/compose-smoke
+          name: compose-integration-evidence
+          path: |
+            artifacts/compose-smoke
+            artifacts/copilot-rag-e2e
           if-no-files-found: warn
           retention-days: 14
 
