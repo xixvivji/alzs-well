@@ -155,10 +155,15 @@ Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 �
 
 ### 로컬 한국어 임베딩 모델
 
-신경망 모델의 첫 운영 후보는 `intfloat/multilingual-e5-small`이다. 한국어를 포함하는
-다국어 검색 모델이며 출력이 384차원이어서 현재 pgvector 스키마를 변경하지 않는다.
-모델이 승인·반입되기 전에는 hash 어댑터가 기본값이고 외부 모델 다운로드는 허용하지
-않는다. E5 어댑터는 질의에 `query:`, 문단에 `passage:` 접두사를 적용한다.
+운영 설정에서 활성화할 수 있는 신경망 후보는 현재
+`intfloat/multilingual-e5-small`뿐이다. 한국어를 포함하는 다국어 검색 모델이며 출력이
+384차원이어서 현재 pgvector 스키마를 변경하지 않는다. 모델이 승인·반입되기 전에는 hash
+어댑터가 기본값이고 외부 모델 다운로드는 허용하지 않는다.
+
+E5와 Arctic-ko는 CPU 전용 공용 SentenceTransformer 어댑터를 사용한다. 모델별 ID·차원과
+질의·문단 prefix는 명시적인 사양으로 분리한다. E5는 질의에 `query:`, 문단에 `passage:`를
+붙이고 Arctic-ko는 질의에만 `query:`를 붙인다. 공용 로더는 항상
+`local_files_only=True`, `trust_remote_code=False`, `device=cpu`로 실행한다.
 
 모델 포함 이미지는 승인된 `sentence-transformers` CPU wheel과 전이 의존성을 내부
 wheelhouse 및 SBOM으로 함께 반입해야 한다. 기본 이미지는 모델 런타임을 설치하지 않으며,
@@ -181,6 +186,11 @@ ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true
 hash 어댑터로 시작할 수 있다. 검색 시 다른 모델 버전으로 생성된 벡터에는 cosine 점수를
 적용하지 않지만 keyword 검색 대상에서는 제외하지 않는다. 모델을 전환하면 승인 문서를
 새 모델 버전으로 재-ingestion한 뒤 동일 검수 평가셋으로 Recall@K와 MRR을 다시 측정한다.
+
+Arctic-ko는 `evaluation/model-artifacts-v1.json`의 `EVALUATION_ONLY` 모델로만 선택할 수
+있다. 현재 운영 DB의 `vector(384)`와 호환되지 않으므로 FastAPI 운영 환경변수로 활성화할
+수 없으며, 1024차원 pgvector 마이그레이션과 재-ingestion 전에는 검색·저장 경로에
+연결하지 않는다.
 
 최종 결합 점수가 `0.35` 미만이면 관련 keyword가 일부 겹치더라도 결과를 반환하지 않는다.
 이 무응답 임계값과 keyword/vector 가중치는 합성 검색 평가 데이터셋의 Recall@K, MRR,

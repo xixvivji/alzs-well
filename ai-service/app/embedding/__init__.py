@@ -1,1 +1,1 @@
-"""Air-gapped deterministic embedding implementations."""
+"""Air-gapped local embedding implementations."""

@@ -88,6 +88,27 @@ uv run python -m app.evaluation.cli evaluate \
   --fail-on-gate
 ```
 
+반입 완료된 평가 모델은 catalog·모델 이름·절대 model root를 세 옵션 모두 지정해야 한다.
+CLI는 catalog의 고정 revision, 파일 크기, `model.safetensors` SHA-256을 확인한 뒤 CPU에서
+오프라인으로만 로드한다. 일부 옵션만 지정하거나 `../`, 절대 local path, 심볼릭 링크,
+추가 catalog 필드, 해시 불일치가 있으면 평가를 시작하지 않는다.
+
+```bash
+uv run python -m app.evaluation.cli evaluate \
+  --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+  --dataset data/derived/evaluation/retrieval-reviewed-v1.jsonl \
+  --output-json data/derived/evaluation/arctic-ko-v1.json \
+  --output-markdown data/derived/evaluation/arctic-ko-v1.md \
+  --evaluation-model-catalog evaluation/model-artifacts-v1.json \
+  --evaluation-model-name snowflake-arctic-embed-l-v2.0-ko \
+  --evaluation-model-root /absolute/path/to/models
+```
+
+이 명령은 평가 전용이다. Arctic-ko 결과를 PostgreSQL에 저장하거나 FastAPI 운영 검색에
+사용하려면 별도의 1024차원 pgvector 마이그레이션이 선행되어야 한다. 기본 이미지에는
+모델 런타임이 없으므로 승인된 `sentence-transformers` wheel과 전이 의존성을 내부
+wheelhouse에서 별도로 설치해야 하며 실행 중 인터넷 다운로드를 허용하지 않는다.
+
 가중치와 임계값 후보 125개를 같은 데이터로 비교한다.
 
 ```bash
