@@ -19,6 +19,7 @@ from app.evaluation.review_cli import main
 EVALUATION = Path(__file__).parents[1] / "evaluation"
 CORPUS = EVALUATION / "datasets" / "retrieval-corpus-v1.jsonl"
 CANDIDATES = EVALUATION / "reviews" / "retrieval-review-candidates-v1.jsonl"
+REVIEW_CSV = EVALUATION / "reviews" / "retrieval-review-v1.csv"
 
 
 def test_committed_review_pack_contains_fifty_pending_candidates(tmp_path: Path) -> None:
@@ -55,6 +56,30 @@ def test_finalize_promotes_only_accepted_rows(tmp_path: Path) -> None:
     assert accepted_count == 1
     assert payload["queryId"] == "RC-001"
     assert payload["expectNoResults"] is False
+
+
+def test_committed_review_csv_finalizes_second_pass_decisions(tmp_path: Path) -> None:
+    corpus = load_corpus(CORPUS)
+    candidates = load_review_candidates(CANDIDATES)
+    output = tmp_path / "reviewed.jsonl"
+    rows = _rows(REVIEW_CSV)
+
+    decisions = [row["reviewDecision"] for row in rows]
+    assert decisions.count("ACCEPTED") == 46
+    assert decisions.count("AMBIGUOUS") == 4
+    assert decisions.count("REJECTED") == 0
+    assert decisions.count("PENDING") == 0
+
+    accepted_count = finalize_review_csv(REVIEW_CSV, output, candidates, corpus)
+    payloads = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+
+    assert accepted_count == 46
+    assert len(payloads) == 46
+    assert sum(not payload["expectNoResults"] for payload in payloads) == 39
+    assert sum(payload["expectNoResults"] for payload in payloads) == 7
+    assert {"RC-013", "RC-044", "RC-047", "RC-048"}.isdisjoint(
+        payload["queryId"] for payload in payloads
+    )
 
 
 def test_finalize_requires_an_accepted_candidate(tmp_path: Path) -> None:

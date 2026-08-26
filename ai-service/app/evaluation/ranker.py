@@ -5,11 +5,21 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from app.embedding.local_hash import embed_text
+from app.embedding.base import EmbeddingProvider
+from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.evaluation.models import EvaluationCase, EvaluationChunk
 
 
 TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]{2,}")
+DOCUMENT_AUTHORITY = {
+    "LAW": 600,
+    "REGULATION": 500,
+    "INTERNAL_POLICY": 400,
+    "PUBLIC_GUIDE": 300,
+    "PUBLIC_NOTICE": 200,
+    "FORM": 100,
+    "SYNTHETIC_FIXTURE": 0,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,14 +56,18 @@ def rank(
     configuration: SearchConfiguration,
     *,
     limit: int = 5,
+    embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[RankedChunk, ...]:
-    query_embedding = embed_text(case.query)
+    provider = embedding_provider or LocalHashEmbeddingProvider()
+    query_embedding = provider.embed_query(case.query)
     ranked: list[RankedChunk] = []
     for chunk in corpus:
         if not is_eligible(chunk, case):
             continue
         keyword_score = _keyword_score(case.query, chunk.searchable_text())
-        vector_score = max(0.0, _cosine(query_embedding, embed_text(chunk.searchable_text())))
+        vector_score = max(
+            0.0, _cosine(query_embedding, provider.embed_passage(chunk.searchable_text()))
+        )
         if keyword_score == 0 and vector_score < configuration.vector_threshold:
             continue
         score = (
@@ -70,7 +84,14 @@ def rank(
                 vector_score=vector_score,
             )
         )
-    ranked.sort(key=lambda item: (-item.score, item.chunk.document_id, item.chunk.chunk_id))
+    ranked.sort(
+        key=lambda item: (
+            -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
+            -item.score,
+            item.chunk.document_id,
+            item.chunk.chunk_id,
+        )
+    )
     return tuple(ranked[:limit])
 
 

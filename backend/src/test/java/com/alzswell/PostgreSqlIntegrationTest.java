@@ -223,6 +223,24 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void knowledgeDocumentAuthorityOrderIsStableInPostgreSql() {
+        List<String> orderedTypes = jdbcTemplate.queryForList("""
+                select document_type
+                from unnest(array[
+                    'PUBLIC_NOTICE','FORM','LAW','PUBLIC_GUIDE',
+                    'REGULATION','SYNTHETIC_FIXTURE','INTERNAL_POLICY'
+                ]) as document_type
+                order by ai_knowledge.document_authority_rank(document_type) desc
+                """, String.class);
+
+        assertThat(orderedTypes).containsExactly(
+                "LAW", "REGULATION", "INTERNAL_POLICY", "PUBLIC_GUIDE",
+                "PUBLIC_NOTICE", "FORM", "SYNTHETIC_FIXTURE");
+        assertThat(jdbcTemplate.queryForObject(
+                "select ai_knowledge.document_authority_rank(null)", Integer.class)).isZero();
+    }
+
+    @Test
     void healthApiReturnsTheSameTraceIdInTheHeaderAndBody() throws Exception {
         mockMvc.perform(get("/api/v1/system/health")
                         .header("X-Trace-Id", "integration-trace-0001"))
@@ -403,6 +421,10 @@ class PostgreSqlIntegrationTest {
                 "select has_schema_privilege('alzswell_ai_runtime','ai_knowledge','USAGE')",
                 Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
+                "select has_function_privilege('alzswell_ai_runtime',"
+                        + "'ai_knowledge.document_authority_rank(character varying)','EXECUTE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk','SELECT')",
                 Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
@@ -503,7 +525,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '65'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '66'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -576,7 +598,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("65"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("66"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));

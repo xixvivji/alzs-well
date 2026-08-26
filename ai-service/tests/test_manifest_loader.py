@@ -41,6 +41,44 @@ def test_real_manifest_is_valid_but_not_ingestion_eligible(repo_root: Path) -> N
     assert raised.value.code == "DOCUMENT_NOT_APPROVED"
 
 
+def test_all_official_manifests_conform_to_the_shared_contract(repo_root: Path) -> None:
+    manifest_paths = sorted((repo_root / "knowledge" / "manifests").glob("*.yaml"))
+
+    assert manifest_paths
+    for path in manifest_paths:
+        manifest = load_and_validate_manifest(repo_root, path.relative_to(repo_root))
+        assert manifest.source_path.startswith("knowledge/official-source/")
+        assert (repo_root / manifest.source_path).is_file()
+
+
+def test_current_telecom_fraud_law_manifests_are_versioned_and_still_blocked(
+    repo_root: Path,
+) -> None:
+    act = load_and_validate_manifest(
+        repo_root,
+        "knowledge/manifests/DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001.yaml",
+    )
+    decree = load_and_validate_manifest(
+        repo_root,
+        "knowledge/manifests/DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001.yaml",
+    )
+
+    assert act.document_type == "LAW"
+    assert act.effective_from == date(2026, 8, 4)
+    assert act.effective_to == date(2026, 9, 30)
+    assert decree.document_type == "REGULATION"
+    assert decree.effective_from == date(2026, 8, 4)
+    assert decree.effective_to is None
+    assert governance_blocking_codes(act, date(2026, 8, 26)) == [
+        "DOCUMENT_NOT_APPROVED",
+        "DOCUMENT_NOT_ACTIVE",
+    ]
+    assert governance_blocking_codes(decree, date(2026, 8, 26)) == [
+        "DOCUMENT_NOT_APPROVED",
+        "DOCUMENT_NOT_ACTIVE",
+    ]
+
+
 @pytest.mark.parametrize(
     ("fixture", "expected_code"),
     [

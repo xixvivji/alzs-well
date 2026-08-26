@@ -4,6 +4,8 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from app.embedding.base import EmbeddingProvider
+from app.embedding.local_hash import EMBEDDING_MODEL_VERSION
 from app.evaluation.metrics import CaseResult, EvaluationMetrics, evaluate
 from app.evaluation.models import EvaluationCase, EvaluationChunk
 from app.evaluation.ranker import SearchConfiguration
@@ -14,6 +16,7 @@ class QualityGate:
     recall_at_3: float = 0.80
     recall_at_5: float = 0.90
     mrr: float = 0.70
+    ndcg_at_10: float = 0.75
     no_answer_false_positive_rate: float = 0.10
 
     def failures(self, metrics: EvaluationMetrics) -> tuple[str, ...]:
@@ -24,6 +27,8 @@ class QualityGate:
             failures.append("RECALL_AT_5_BELOW_GATE")
         if metrics.mrr < self.mrr:
             failures.append("MRR_BELOW_GATE")
+        if metrics.ndcg_at_10 < self.ndcg_at_10:
+            failures.append("NDCG_AT_10_BELOW_GATE")
         if metrics.no_answer_false_positive_rate > self.no_answer_false_positive_rate:
             failures.append("NO_ANSWER_FALSE_POSITIVE_RATE_ABOVE_GATE")
         if metrics.policy_violation_count:
@@ -32,7 +37,9 @@ class QualityGate:
 
 
 def tune(
-    corpus: tuple[EvaluationChunk, ...], cases: tuple[EvaluationCase, ...]
+    corpus: tuple[EvaluationChunk, ...],
+    cases: tuple[EvaluationCase, ...],
+    embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[tuple[SearchConfiguration, EvaluationMetrics], ...]:
     candidates: list[tuple[SearchConfiguration, EvaluationMetrics]] = []
     for keyword_percent in (20, 30, 35, 40, 50):
@@ -44,7 +51,9 @@ def tune(
                     vector_threshold=threshold_percent / 100,
                     result_threshold=result_threshold_percent / 100,
                 )
-                metrics, _ = evaluate(corpus, cases, configuration)
+                metrics, _ = evaluate(
+                    corpus, cases, configuration, embedding_provider=embedding_provider
+                )
                 candidates.append((configuration, metrics))
     candidates.sort(
         key=lambda item: (
@@ -54,6 +63,7 @@ def tune(
             -item[1].recall_at_3,
             -item[1].recall_at_5,
             -item[1].mrr,
+            -item[1].ndcg_at_10,
             abs(item[0].keyword_weight - 0.35),
             abs(item[0].vector_threshold - 0.15),
             abs(item[0].result_threshold - 0.35),
@@ -69,9 +79,11 @@ def write_evaluation_report(
     metrics: EvaluationMetrics,
     cases: tuple[CaseResult, ...],
     failures: tuple[str, ...],
+    embedding_model_version: str = EMBEDDING_MODEL_VERSION,
 ) -> None:
     payload = {
         "evaluationVersion": "retrieval-eval-v1",
+        "embeddingModelVersion": embedding_model_version,
         "configuration": asdict(configuration),
         "metrics": asdict(metrics),
         "qualityGatePassed": not failures,
@@ -83,10 +95,12 @@ def write_evaluation_report(
         "# Retrieval evaluation v1",
         "",
         f"- Quality gate: {'PASS' if not failures else 'FAIL'}",
+        f"- Embedding model: `{embedding_model_version}`",
         f"- Recall@1: {metrics.recall_at_1:.4f}",
         f"- Recall@3: {metrics.recall_at_3:.4f}",
         f"- Recall@5: {metrics.recall_at_5:.4f}",
         f"- MRR: {metrics.mrr:.4f}",
+        f"- nDCG@10: {metrics.ndcg_at_10:.4f}",
         f"- No-answer false-positive rate: {metrics.no_answer_false_positive_rate:.4f}",
         f"- Policy violations: {metrics.policy_violation_count}",
         "",
@@ -100,12 +114,14 @@ def write_evaluation_report(
 def write_tuning_report(
     output_json: Path,
     candidates: tuple[tuple[SearchConfiguration, EvaluationMetrics], ...],
+    embedding_model_version: str = EMBEDDING_MODEL_VERSION,
 ) -> None:
     gate = QualityGate()
     _write_json(
         output_json,
         {
             "evaluationVersion": "retrieval-eval-v1",
+            "embeddingModelVersion": embedding_model_version,
             "best": _candidate(candidates[0], gate),
             "candidates": [_candidate(candidate, gate) for candidate in candidates],
         },

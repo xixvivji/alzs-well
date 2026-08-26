@@ -21,10 +21,11 @@ def test_default_configuration_passes_retrieval_quality_gate() -> None:
     assert metrics.recall_at_3 == 1.0
     assert metrics.recall_at_5 == 1.0
     assert metrics.mrr == 1.0
+    assert metrics.ndcg_at_10 == 1.0
     assert metrics.no_answer_false_positive_rate == 0.0
     assert metrics.policy_violation_count == 0
     assert QualityGate().failures(metrics) == ()
-    assert len(results) == 15
+    assert len(results) == 17
 
 
 def test_quality_gate_reports_every_failed_dimension() -> None:
@@ -35,6 +36,7 @@ def test_quality_gate_reports_every_failed_dimension() -> None:
         recall_at_3=0.0,
         recall_at_5=0.0,
         mrr=0.0,
+        ndcg_at_10=0.0,
         no_answer_false_positive_rate=1.0,
         policy_violation_count=1,
     )
@@ -43,6 +45,7 @@ def test_quality_gate_reports_every_failed_dimension() -> None:
         "RECALL_AT_3_BELOW_GATE",
         "RECALL_AT_5_BELOW_GATE",
         "MRR_BELOW_GATE",
+        "NDCG_AT_10_BELOW_GATE",
         "NO_ANSWER_FALSE_POSITIVE_RATE_ABOVE_GATE",
         "POLICY_VIOLATION_DETECTED",
     )

@@ -93,7 +93,12 @@ class Citation(BaseModel):
     text_hash: str
     retrieved_as_of: date
     retrieval_method: Literal["HYBRID"] = "HYBRID"
-    index_version: Literal["hybrid-hash-ngram-v1"] = "hybrid-hash-ngram-v1"
+    index_version: str = Field(
+        ...,
+        min_length=1,
+        max_length=80,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+    )
 
 
 class SearchResult(BaseModel):

@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 public class AiCitationValidator {
     private static final Pattern HASH=Pattern.compile("sha256:[0-9a-f]{64}");
     private static final Pattern CHUNK_ID=Pattern.compile("chk_[0-9a-f]{64}");
+    private static final Set<String> SUPPORTED_INDEX_VERSIONS=Set.of(
+            "hybrid-hash-ngram-v3","hybrid-multilingual-e5-small-v2");
     private final JdbcClient jdbc;
 
     public AiCitationValidator(JdbcClient jdbc){this.jdbc=jdbc;}
@@ -76,7 +78,7 @@ public class AiCitationValidator {
                 ||hit.score()<0||!Double.isFinite(hit.score())||hit.citation()==null) return false;
         AiCitation c=hit.citation();
         return "1.0.0".equals(c.contractVersion())&&"HYBRID".equals(c.retrievalMethod())
-                &&"hybrid-hash-ngram-v1".equals(c.indexVersion())&&query.asOf().equals(c.retrievedAsOf())
+                &&SUPPORTED_INDEX_VERSIONS.contains(c.indexVersion())&&query.asOf().equals(c.retrievedAsOf())
                 &&c.documentId()!=null&&c.versionLabel()!=null&&c.title()!=null&&c.issuer()!=null
                 &&c.heading()!=null&&c.sectionPath()!=null&&c.chunkOrder()>0&&c.citationLabel()!=null
                 &&c.sectionPath().stream().allMatch(Objects::nonNull)&&(c.page()==null||c.page()>0)

@@ -1,0 +1,27 @@
+contractVersion: "1.0.0"
+documentId: DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001
+versionLabel: "36552-2026-08-04"
+title: 전기통신금융사기 피해 방지 및 피해금 환급에 관한 특별법 시행령
+issuer: 대한민국
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/13_common-legal-and-protection/TELECOMMUNICATION_FINANCIAL_FRAUD_REFUND_ACT_ENFORCEMENT_DECREE_current.pdf
+sourceUrl: https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=288447
+sourceHash: sha256:9dc5793db7df5f733d5b4af07dd5734cfb6f8fd1a8028e4953069b901065e8fa
+sourceTransformations: []
+documentType: REGULATION
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+  - COMPLIANCE_REVIEWER
+  - KNOWLEDGE_ADMIN
+effectiveFrom: "2026-08-04"
+effectiveTo: null
+checkedAt: "2026-08-26"
+usageRights: REVIEW_REQUIRED
+approvalStatus: IN_REVIEW
+lifecycleStatus: PENDING_ACTIVATION
+approvedBy: null
+approvedAt: null
+supersedes: null

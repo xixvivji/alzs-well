@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 
 from app.api_config import ApiConfig
 from app.domain.search import Citation, SearchRequest, SearchResponse, SearchResult
+from app.embedding.base import EmbeddingProvider
+from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import PostgresSearchRepository, hash_query
@@ -28,7 +30,13 @@ def create_app() -> FastAPI:
 
     @application.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "UP", "service": "ai-rag"}
+        descriptor = get_embedding_provider().descriptor
+        return {
+            "status": "UP",
+            "service": "ai-rag",
+            "embeddingBackend": descriptor.backend,
+            "embeddingModelVersion": descriptor.model_version,
+        }
 
     @application.post(
         "/internal/v1/search",
@@ -72,6 +80,7 @@ def create_app() -> FastAPI:
                     source_hash=result.source_hash,
                     text_hash=result.text_hash,
                     retrieved_as_of=payload.as_of,
+                    index_version=repository.index_version,
                 ),
             )
             for result in stored_results
@@ -87,7 +96,14 @@ def create_app() -> FastAPI:
 
 @lru_cache
 def get_search_repository() -> PostgresSearchRepository:
-    return PostgresSearchRepository(DatabaseConfig.from_environment())
+    return PostgresSearchRepository(
+        DatabaseConfig.from_environment(), embedding_provider=get_embedding_provider()
+    )
+
+
+@lru_cache
+def get_embedding_provider() -> EmbeddingProvider:
+    return create_embedding_provider(EmbeddingConfig.from_environment())
 
 
 @lru_cache
@@ -114,6 +130,9 @@ async def _knowledge_error_handler(
         "STORAGE_UNAVAILABLE": 503,
         "API_CONFIGURATION_INVALID": 500,
         "DATABASE_CONFIGURATION_INVALID": 500,
+        "EMBEDDING_CONFIGURATION_INVALID": 500,
+        "EMBEDDING_MODEL_UNAVAILABLE": 503,
+        "EMBEDDING_VECTOR_INVALID": 503,
     }.get(error.code, 500)
     return JSONResponse(
         status_code=status,

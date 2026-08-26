@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Sequence
 
+from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.evaluation.metrics import evaluate
 from app.evaluation.models import load_cases, load_corpus, validate_dataset
 from app.evaluation.ranker import SearchConfiguration
@@ -22,13 +23,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     corpus = load_corpus(Path(args.corpus))
     cases = load_cases(Path(args.dataset))
     validate_dataset(corpus, cases)
+    embedding_provider = create_embedding_provider(EmbeddingConfig.from_environment())
     if args.command == "tune":
-        candidates = tune(corpus, cases)
-        write_tuning_report(Path(args.output_json), candidates)
+        candidates = tune(corpus, cases, embedding_provider)
+        write_tuning_report(
+            Path(args.output_json),
+            candidates,
+            embedding_provider.descriptor.model_version,
+        )
         best_configuration, best_metrics = candidates[0]
         print(json.dumps({
             "ok": not QualityGate().failures(best_metrics),
             "code": "RETRIEVAL_TUNING_COMPLETED",
+            "embeddingModelVersion": embedding_provider.descriptor.model_version,
             "best": {
                 "configuration": {
                     "keywordWeight": best_configuration.keyword_weight,
@@ -45,17 +52,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         vector_threshold=args.vector_threshold,
         result_threshold=args.result_threshold,
     )
-    metrics, results = evaluate(corpus, cases, configuration)
+    metrics, results = evaluate(
+        corpus, cases, configuration, embedding_provider=embedding_provider
+    )
     failures = QualityGate().failures(metrics)
     write_evaluation_report(
-        Path(args.output_json), Path(args.output_markdown), configuration, metrics, results, failures
+        Path(args.output_json),
+        Path(args.output_markdown),
+        configuration,
+        metrics,
+        results,
+        failures,
+        embedding_provider.descriptor.model_version,
     )
     print(json.dumps({
         "ok": not failures,
         "code": "RETRIEVAL_QUALITY_GATE_PASSED" if not failures else "RETRIEVAL_QUALITY_GATE_FAILED",
+        "embeddingModelVersion": embedding_provider.descriptor.model_version,
         "recallAt3": metrics.recall_at_3,
         "recallAt5": metrics.recall_at_5,
         "mrr": metrics.mrr,
+        "ndcgAt10": metrics.ndcg_at_10,
         "noAnswerFalsePositiveRate": metrics.no_answer_false_positive_rate,
         "policyViolationCount": metrics.policy_violation_count,
         "failures": failures,

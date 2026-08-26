@@ -6,13 +6,20 @@ from fastapi.testclient import TestClient
 
 from app.domain.search import SearchRequest, StoredSearchResult
 from app.errors import KnowledgeContractError
-from app.main import _api_config, create_app, get_search_repository
+from app.main import (
+    _api_config,
+    create_app,
+    get_embedding_provider,
+    get_search_repository,
+)
 
 
 TOKEN = "test-internal-token-that-is-longer-than-32-characters"
 
 
 class FakeSearchRepository:
+    index_version = "hybrid-hash-ngram-v3"
+
     def __init__(self, *, failure: str | None = None) -> None:
         self.run_id = UUID("98000000-0000-0000-0000-000000000001")
         self.failure = failure
@@ -60,7 +67,12 @@ def test_health_does_not_require_internal_token(monkeypatch: object) -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"service": "ai-rag", "status": "UP"}
+    assert response.json() == {
+        "service": "ai-rag",
+        "status": "UP",
+        "embeddingBackend": "hash",
+        "embeddingModelVersion": "local-hash-ngram-ko-v1",
+    }
 
 
 def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object) -> None:
@@ -79,7 +91,7 @@ def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object
     assert body["queryHash"].startswith("sha256:")
     assert body["results"][0]["score"] == 0.75
     assert body["results"][0]["citation"]["retrievalMethod"] == "HYBRID"
-    assert body["results"][0]["citation"]["indexVersion"] == "hybrid-hash-ngram-v1"
+    assert body["results"][0]["citation"]["indexVersion"] == "hybrid-hash-ngram-v3"
     assert repository.completed == (repository.run_id, 1)
     assert repository.started is not None
     assert "금융거래" not in str(repository.started[1])
@@ -150,6 +162,7 @@ def _client(
 ) -> tuple[TestClient, FakeSearchRepository]:
     monkeypatch.setenv("ALZS_AI_INTERNAL_TOKEN", TOKEN)  # type: ignore[attr-defined]
     _api_config.cache_clear()
+    get_embedding_provider.cache_clear()
     repository = FakeSearchRepository(failure=failure)
     application = create_app()
     application.dependency_overrides[get_search_repository] = lambda: repository

@@ -11,6 +11,7 @@ from typing import Any
 class EvaluationChunk:
     chunk_id: str
     document_id: str
+    document_type: str
     heading: str
     section_path: tuple[str, ...]
     content: str
@@ -78,6 +79,7 @@ def _chunk(payload: dict[str, Any]) -> EvaluationChunk:
     return EvaluationChunk(
         chunk_id=str(payload["chunkId"]),
         document_id=str(payload["documentId"]),
+        document_type=str(payload["documentType"]),
         heading=str(payload["heading"]),
         section_path=tuple(str(value) for value in payload["sectionPath"]),
         content=str(payload["content"]),

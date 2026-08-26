@@ -5,9 +5,11 @@ import json
 import sys
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 from uuid import UUID
 
 from app.domain.manifest import ensure_ingestion_eligible, governance_blocking_codes
+from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.errors import KnowledgeContractError
 from app.ingestion.chunker import chunk_document
 from app.ingestion.html_extractor import extract_html_document
@@ -74,7 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             as_of = _parse_as_of(args.as_of)
             ensure_ingestion_eligible(manifest, as_of=as_of)
             if args.command == "ingest-pdf" and args.storage == "postgres":
-                active_store = PostgresIngestionStore(DatabaseConfig.from_environment())
+                active_store = _postgres_store()
                 active_run_id = active_store.start_run(
                     document_id=manifest.document_id,
                     version_label=manifest.version_label,
@@ -158,7 +160,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             as_of = _parse_as_of(args.as_of)
             ensure_ingestion_eligible(manifest, as_of=as_of)
             if args.command == "ingest-html" and args.storage == "postgres":
-                active_store = PostgresIngestionStore(DatabaseConfig.from_environment())
+                active_store = _postgres_store()
                 active_run_id = active_store.start_run(
                     document_id=manifest.document_id,
                     version_label=manifest.version_label,
@@ -217,7 +219,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 0
 
-        source = validate_source(repository_root, manifest)
+        if Path(manifest.source_path).suffix.lower() == ".pdf":
+            pdf_source = validate_pdf_source(repository_root, manifest)
+            source_summary: dict[str, object] = {
+                "hashVerified": True,
+                "sizeBytes": pdf_source.size_bytes,
+                "format": "PDF",
+                "pageCount": pdf_source.page_count,
+                "encrypted": pdf_source.encrypted,
+                "activeContent": pdf_source.active_content,
+            }
+        else:
+            source = validate_source(repository_root, manifest)
+            source_summary = {
+                "hashVerified": True,
+                "sizeBytes": source.size_bytes,
+                "format": "HTML",
+                "encoding": source.encoding,
+            }
         blockers = governance_blocking_codes(manifest)
         _write_json(
             sys.stdout,
@@ -231,11 +250,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "lifecycleStatus": manifest.lifecycle_status,
                 "approvalAndLifecycleEligible": not blockers,
                 "governanceBlockingCodes": blockers,
-                "source": {
-                    "hashVerified": True,
-                    "sizeBytes": source.size_bytes,
-                    "encoding": source.encoding,
-                },
+                "source": source_summary,
             },
         )
         return 0
@@ -257,6 +272,13 @@ def _parse_as_of(value: str) -> date:
         return date.fromisoformat(value)
     except ValueError:
         raise KnowledgeContractError("MANIFEST_SCHEMA_INVALID", {"schemaPath": "asOf"}) from None
+
+
+def _postgres_store() -> PostgresIngestionStore:
+    return PostgresIngestionStore(
+        DatabaseConfig.from_environment(),
+        embedding_provider=create_embedding_provider(EmbeddingConfig.from_environment()),
+    )
 
 
 def _write_json(stream: object, payload: dict[str, object]) -> None:

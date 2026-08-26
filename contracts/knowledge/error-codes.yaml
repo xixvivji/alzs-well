@@ -155,6 +155,21 @@ errors:
     httpStatus: 500
     cliExitCode: 2
     retryable: false
+  - code: EMBEDDING_CONFIGURATION_INVALID
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
+  - code: EMBEDDING_MODEL_UNAVAILABLE
+    category: AI_MODEL
+    httpStatus: 503
+    cliExitCode: 6
+    retryable: true
+  - code: EMBEDDING_VECTOR_INVALID
+    category: AI_MODEL
+    httpStatus: 503
+    cliExitCode: 5
+    retryable: false
   - code: INTERNAL_AUTHENTICATION_FAILED
     category: AUTHENTICATION
     httpStatus: 401

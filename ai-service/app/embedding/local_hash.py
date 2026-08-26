@@ -4,9 +4,27 @@ import math
 import unicodedata
 from hashlib import sha256
 
+from app.embedding.base import EmbeddingDescriptor, EmbeddingVector
+from app.embedding.base import vector_literal as _vector_literal
+
 
 EMBEDDING_DIMENSIONS = 384
 EMBEDDING_MODEL_VERSION = "local-hash-ngram-ko-v1"
+
+
+class LocalHashEmbeddingProvider:
+    descriptor = EmbeddingDescriptor(
+        backend="hash",
+        model_id="local-hash-ngram-ko",
+        model_version=EMBEDDING_MODEL_VERSION,
+        dimensions=EMBEDDING_DIMENSIONS,
+    )
+
+    def embed_query(self, value: str) -> EmbeddingVector:
+        return embed_text(value)
+
+    def embed_passage(self, value: str) -> EmbeddingVector:
+        return embed_text(value)
 
 
 def embed_text(value: str) -> tuple[float, ...]:
@@ -39,6 +57,4 @@ def embed_text(value: str) -> tuple[float, ...]:
 
 
 def vector_literal(vector: tuple[float, ...]) -> str:
-    if len(vector) != EMBEDDING_DIMENSIONS or not all(math.isfinite(value) for value in vector):
-        raise ValueError("embedding vector is invalid")
-    return "[" + ",".join(format(value, ".9g") for value in vector) + "]"
+    return _vector_literal(vector, dimensions=EMBEDDING_DIMENSIONS)

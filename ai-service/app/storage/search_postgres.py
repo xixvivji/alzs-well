@@ -9,13 +9,15 @@ from uuid import UUID, uuid4
 import psycopg
 
 from app.domain.search import SearchRequest, StoredSearchResult
-from app.embedding.local_hash import EMBEDDING_MODEL_VERSION, embed_text, vector_literal
+from app.embedding.base import EmbeddingProvider, vector_literal
+from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 
 
 ConnectFunction = Callable[..., Any]
-INDEX_VERSION = "hybrid-hash-ngram-v2"
+INDEX_VERSION = "hybrid-hash-ngram-v3"
+E5_INDEX_VERSION = "hybrid-multilingual-e5-small-v2"
 KEYWORD_WEIGHT = 0.35
 VECTOR_WEIGHT = 0.65
 VECTOR_THRESHOLD = 0.15
@@ -28,9 +30,20 @@ class PostgresSearchRepository:
         config: DatabaseConfig,
         *,
         connect: ConnectFunction = psycopg.connect,
+        embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self._config = config
         self._connect_function = connect
+        self._embedding_provider = embedding_provider or LocalHashEmbeddingProvider()
+        self._index_version = (
+            E5_INDEX_VERSION
+            if self._embedding_provider.descriptor.backend == "local-e5"
+            else INDEX_VERSION
+        )
+
+    @property
+    def index_version(self) -> str:
+        return self._index_version
 
     def start_run(self, request: SearchRequest, query_hash: str) -> UUID:
         run_id = uuid4()
@@ -52,7 +65,7 @@ class PostgresSearchRepository:
                         list(request.principal_roles),
                         list(request.requester_audiences),
                         request.limit,
-                        INDEX_VERSION,
+                        self._index_version,
                         _now(),
                     ),
                 )
@@ -63,7 +76,10 @@ class PostgresSearchRepository:
             raise KnowledgeContractError("STORAGE_UNAVAILABLE") from None
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
-        query_vector = vector_literal(embed_text(request.query))
+        query_vector = vector_literal(
+            self._embedding_provider.embed_query(request.query),
+            dimensions=self._embedding_provider.descriptor.dimensions,
+        )
         try:
             with self._connect() as connection, connection.cursor() as cursor:
                 cursor.execute(
@@ -75,10 +91,13 @@ class PostgresSearchRepository:
                             c.document_id, c.version_label, c.chunk_id, c.chunk_order,
                             d.title, d.issuer, c.heading, c.section_path, c.page,
                             d.source_url, c.source_hash, c.text_hash, c.content,
+                            d.document_type,
                             ts_rank_cd(to_tsvector('simple', c.content), search_query.terms, 32)
                                 as keyword_score,
                             case
-                                when c.embedding is null then 0.0
+                                when c.embedding is null
+                                  or c.embedding_model_version is distinct from %s
+                                    then 0.0
                                 else greatest(0.0, 1.0 - (c.embedding <=> search_query.embedding))
                             end as vector_score
                         from ai_knowledge.chunk c
@@ -91,11 +110,11 @@ class PostgresSearchRepository:
                           and d.lifecycle_status = 'ACTIVE'
                           and d.effective_from <= %s
                           and (d.effective_to is null or d.effective_to >= %s)
-                          and (c.embedding_model_version is null
-                               or c.embedding_model_version = %s)
                     ), scored as (
                         select ranked.*,
-                            (least(1.0, keyword_score) * %s + vector_score * %s) as score
+                            (least(1.0, keyword_score) * %s + vector_score * %s) as score,
+                            ai_knowledge.document_authority_rank(document_type)
+                                as authority_rank
                         from ranked
                         where keyword_score > 0 or vector_score >= %s
                     )
@@ -105,17 +124,18 @@ class PostgresSearchRepository:
                         source_url, source_hash, text_hash, content, score
                     from scored
                     where score >= %s
-                    order by score desc, document_id, version_label, chunk_order
+                    order by authority_rank desc, score desc,
+                        document_id, version_label, chunk_order
                     limit %s
                     """,
                     (
                         request.query,
                         query_vector,
+                        self._embedding_provider.descriptor.model_version,
                         list(request.principal_roles),
                         list(request.requester_audiences),
                         request.as_of,
                         request.as_of,
-                        EMBEDDING_MODEL_VERSION,
                         KEYWORD_WEIGHT,
                         VECTOR_WEIGHT,
                         VECTOR_THRESHOLD,

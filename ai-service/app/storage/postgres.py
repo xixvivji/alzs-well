@@ -9,7 +9,8 @@ import psycopg
 
 from app.domain.chunk import KnowledgeChunk
 from app.domain.manifest import KnowledgeManifest
-from app.embedding.local_hash import EMBEDDING_MODEL_VERSION, embed_text, vector_literal
+from app.embedding.base import EmbeddingProvider, vector_literal
+from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 
@@ -23,9 +24,11 @@ class PostgresIngestionStore:
         config: DatabaseConfig,
         *,
         connect: ConnectFunction = psycopg.connect,
+        embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self._config = config
         self._connect_function = connect
+        self._embedding_provider = embedding_provider or LocalHashEmbeddingProvider()
 
     def start_run(
         self,
@@ -95,12 +98,12 @@ class PostgresIngestionStore:
                     """
                     insert into ai_knowledge.document_snapshot(
                         document_id, version_label, contract_version, title, issuer,
-                        source_url, source_hash, classification, audience, allowed_roles,
-                        approval_status, lifecycle_status, effective_from, effective_to,
-                        indexed_at
+                        source_url, source_hash, document_type, classification, audience,
+                        allowed_roles, approval_status, lifecycle_status, effective_from,
+                        effective_to, indexed_at
                     ) values (
                         %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     on conflict(document_id, version_label) do update set
                         contract_version = excluded.contract_version,
@@ -108,6 +111,7 @@ class PostgresIngestionStore:
                         issuer = excluded.issuer,
                         source_url = excluded.source_url,
                         source_hash = excluded.source_hash,
+                        document_type = excluded.document_type,
                         classification = excluded.classification,
                         audience = excluded.audience,
                         allowed_roles = excluded.allowed_roles,
@@ -125,6 +129,7 @@ class PostgresIngestionStore:
                         manifest.issuer,
                         manifest.source_url,
                         manifest.source_hash,
+                        manifest.document_type,
                         manifest.classification,
                         manifest.audience,
                         list(manifest.allowed_roles),
@@ -153,7 +158,12 @@ class PostgresIngestionStore:
                         %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s
                     )
                     """,
-                    [_chunk_parameters(run_id, chunk, created_at) for chunk in chunks],
+                    [
+                        _chunk_parameters(
+                            run_id, chunk, created_at, self._embedding_provider
+                        )
+                        for chunk in chunks
+                    ],
                 )
                 cursor.execute(
                     """
@@ -230,8 +240,13 @@ def _validate_chunks(chunks: tuple[KnowledgeChunk, ...]) -> tuple[str, str]:
 
 
 def _chunk_parameters(
-    run_id: UUID, chunk: KnowledgeChunk, created_at: datetime
+    run_id: UUID,
+    chunk: KnowledgeChunk,
+    created_at: datetime,
+    embedding_provider: EmbeddingProvider,
 ) -> tuple[object, ...]:
+    searchable_text = " ".join((*chunk.section_path, chunk.heading, chunk.text))
+    vector = embedding_provider.embed_passage(searchable_text)
     return (
         chunk.chunk_id,
         run_id,
@@ -248,8 +263,8 @@ def _chunk_parameters(
         chunk.source_hash,
         chunk.extractor_version,
         chunk.chunker_version,
-        vector_literal(embed_text(" ".join((*chunk.section_path, chunk.heading, chunk.text)))),
-        EMBEDDING_MODEL_VERSION,
+        vector_literal(vector, dimensions=embedding_provider.descriptor.dimensions),
+        embedding_provider.descriptor.model_version,
         created_at,
     )
 

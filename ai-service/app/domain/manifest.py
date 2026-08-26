@@ -45,6 +45,10 @@ class KnowledgeManifest:
         return str(self.payload["sourceHash"])
 
     @property
+    def document_type(self) -> str:
+        return str(self.payload["documentType"])
+
+    @property
     def approval_status(self) -> str:
         return str(self.payload["approvalStatus"])
 

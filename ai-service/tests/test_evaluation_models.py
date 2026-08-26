@@ -16,9 +16,10 @@ def test_committed_dataset_has_valid_references_and_no_answer_contract() -> None
 
     validate_dataset(corpus, cases)
 
-    assert len(corpus) == 11
-    assert len(cases) == 15
+    assert len(corpus) == 14
+    assert len(cases) == 17
     assert sum(case.expect_no_results for case in cases) == 5
+    assert {chunk.document_type for chunk in corpus} >= {"LAW", "REGULATION", "PUBLIC_NOTICE"}
 
 
 def test_dataset_rejects_unknown_relevant_chunk(tmp_path: Path) -> None:
