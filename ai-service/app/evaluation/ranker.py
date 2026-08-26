@@ -11,6 +11,15 @@ from app.evaluation.models import EvaluationCase, EvaluationChunk
 
 
 TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]{2,}")
+DOCUMENT_AUTHORITY = {
+    "LAW": 600,
+    "REGULATION": 500,
+    "INTERNAL_POLICY": 400,
+    "PUBLIC_GUIDE": 300,
+    "PUBLIC_NOTICE": 200,
+    "FORM": 100,
+    "SYNTHETIC_FIXTURE": 0,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +84,14 @@ def rank(
                 vector_score=vector_score,
             )
         )
-    ranked.sort(key=lambda item: (-item.score, item.chunk.document_id, item.chunk.chunk_id))
+    ranked.sort(
+        key=lambda item: (
+            -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
+            -item.score,
+            item.chunk.document_id,
+            item.chunk.chunk_id,
+        )
+    )
     return tuple(ranked[:limit])
 
 

@@ -72,6 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "recallAt3": metrics.recall_at_3,
         "recallAt5": metrics.recall_at_5,
         "mrr": metrics.mrr,
+        "ndcgAt10": metrics.ndcg_at_10,
         "noAnswerFalsePositiveRate": metrics.no_answer_false_positive_rate,
         "policyViolationCount": metrics.policy_violation_count,
         "failures": failures,

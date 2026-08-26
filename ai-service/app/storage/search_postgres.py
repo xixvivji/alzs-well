@@ -113,15 +113,8 @@ class PostgresSearchRepository:
                     ), scored as (
                         select ranked.*,
                             (least(1.0, keyword_score) * %s + vector_score * %s) as score,
-                            case document_type
-                                when 'LAW' then 600
-                                when 'REGULATION' then 500
-                                when 'INTERNAL_POLICY' then 400
-                                when 'PUBLIC_GUIDE' then 300
-                                when 'PUBLIC_NOTICE' then 200
-                                when 'FORM' then 100
-                                else 0
-                            end as authority_rank
+                            ai_knowledge.document_authority_rank(document_type)
+                                as authority_rank
                         from ranked
                         where keyword_score > 0 or vector_score >= %s
                     )

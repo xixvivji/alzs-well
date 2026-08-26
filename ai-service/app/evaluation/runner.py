@@ -16,6 +16,7 @@ class QualityGate:
     recall_at_3: float = 0.80
     recall_at_5: float = 0.90
     mrr: float = 0.70
+    ndcg_at_10: float = 0.75
     no_answer_false_positive_rate: float = 0.10
 
     def failures(self, metrics: EvaluationMetrics) -> tuple[str, ...]:
@@ -26,6 +27,8 @@ class QualityGate:
             failures.append("RECALL_AT_5_BELOW_GATE")
         if metrics.mrr < self.mrr:
             failures.append("MRR_BELOW_GATE")
+        if metrics.ndcg_at_10 < self.ndcg_at_10:
+            failures.append("NDCG_AT_10_BELOW_GATE")
         if metrics.no_answer_false_positive_rate > self.no_answer_false_positive_rate:
             failures.append("NO_ANSWER_FALSE_POSITIVE_RATE_ABOVE_GATE")
         if metrics.policy_violation_count:
@@ -60,6 +63,7 @@ def tune(
             -item[1].recall_at_3,
             -item[1].recall_at_5,
             -item[1].mrr,
+            -item[1].ndcg_at_10,
             abs(item[0].keyword_weight - 0.35),
             abs(item[0].vector_threshold - 0.15),
             abs(item[0].result_threshold - 0.35),
@@ -96,6 +100,7 @@ def write_evaluation_report(
         f"- Recall@3: {metrics.recall_at_3:.4f}",
         f"- Recall@5: {metrics.recall_at_5:.4f}",
         f"- MRR: {metrics.mrr:.4f}",
+        f"- nDCG@10: {metrics.ndcg_at_10:.4f}",
         f"- No-answer false-positive rate: {metrics.no_answer_false_positive_rate:.4f}",
         f"- Policy violations: {metrics.policy_violation_count}",
         "",

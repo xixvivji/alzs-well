@@ -7,7 +7,7 @@ import pytest
 
 from app.embedding.base import EmbeddingDescriptor
 from app.evaluation.models import load_cases, load_corpus
-from app.evaluation.ranker import SearchConfiguration, is_eligible, rank
+from app.evaluation.ranker import DOCUMENT_AUTHORITY, SearchConfiguration, is_eligible, rank
 
 
 DATASETS = Path(__file__).parents[1] / "evaluation" / "datasets"
@@ -80,3 +80,26 @@ def test_ranker_uses_injected_embedding_provider() -> None:
     assert ranked
     assert provider.queries == [case.query]
     assert provider.passages
+
+
+def test_document_authority_order_matches_postgresql_contract() -> None:
+    assert sorted(DOCUMENT_AUTHORITY, key=DOCUMENT_AUTHORITY.get, reverse=True) == [
+        "LAW",
+        "REGULATION",
+        "INTERNAL_POLICY",
+        "PUBLIC_GUIDE",
+        "PUBLIC_NOTICE",
+        "FORM",
+        "SYNTHETIC_FIXTURE",
+    ]
+
+
+def test_law_and_regulation_golden_queries_return_the_expected_authority() -> None:
+    corpus = load_corpus(DATASETS / "retrieval-corpus-v1.jsonl")
+    cases = load_cases(DATASETS / "retrieval-v1.jsonl")
+
+    law_results = rank(cases[15], corpus, SearchConfiguration())
+    regulation_results = rank(cases[16], corpus, SearchConfiguration())
+
+    assert law_results[0].chunk.chunk_id in cases[15].relevant_chunk_ids
+    assert regulation_results[0].chunk.chunk_id in cases[16].relevant_chunk_ids

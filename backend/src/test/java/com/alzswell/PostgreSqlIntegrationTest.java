@@ -223,6 +223,24 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void knowledgeDocumentAuthorityOrderIsStableInPostgreSql() {
+        List<String> orderedTypes = jdbcTemplate.queryForList("""
+                select document_type
+                from unnest(array[
+                    'PUBLIC_NOTICE','FORM','LAW','PUBLIC_GUIDE',
+                    'REGULATION','SYNTHETIC_FIXTURE','INTERNAL_POLICY'
+                ]) as document_type
+                order by ai_knowledge.document_authority_rank(document_type) desc
+                """, String.class);
+
+        assertThat(orderedTypes).containsExactly(
+                "LAW", "REGULATION", "INTERNAL_POLICY", "PUBLIC_GUIDE",
+                "PUBLIC_NOTICE", "FORM", "SYNTHETIC_FIXTURE");
+        assertThat(jdbcTemplate.queryForObject(
+                "select ai_knowledge.document_authority_rank(null)", Integer.class)).isZero();
+    }
+
+    @Test
     void healthApiReturnsTheSameTraceIdInTheHeaderAndBody() throws Exception {
         mockMvc.perform(get("/api/v1/system/health")
                         .header("X-Trace-Id", "integration-trace-0001"))
@@ -401,6 +419,10 @@ class PostgreSqlIntegrationTest {
     void aiSearchRuntimeCanReadDerivedIndexButCannotMutateChunksOrBusinessKnowledge() {
         assertThat(jdbcTemplate.queryForObject(
                 "select has_schema_privilege('alzswell_ai_runtime','ai_knowledge','USAGE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_function_privilege('alzswell_ai_runtime',"
+                        + "'ai_knowledge.document_authority_rank(character varying)','EXECUTE')",
                 Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk','SELECT')",

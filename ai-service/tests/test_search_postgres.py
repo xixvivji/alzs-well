@@ -97,8 +97,7 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "d.approval_status = 'APPROVED'" in statement
     assert "d.lifecycle_status = 'ACTIVE'" in statement
     assert "d.effective_from <= %s" in statement
-    assert "when 'LAW' then 600" in statement
-    assert "when 'PUBLIC_NOTICE' then 200" in statement
+    assert "ai_knowledge.document_authority_rank(document_type)" in statement
     assert "order by authority_rank desc, score desc" in statement
     assert "c.embedding <=> search_query.embedding" in statement
     assert "where score >= %s" in statement
