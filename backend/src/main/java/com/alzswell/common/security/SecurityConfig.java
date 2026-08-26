@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -34,6 +35,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     FilterRegistrationBean<BearerTokenAuthenticationFilter> bearerFilterRegistration(
             BearerTokenAuthenticationFilter filter
     ) {
@@ -67,6 +69,7 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     SecurityFilterChain staffBootstrapSecurityFilterChain(
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
@@ -93,6 +96,7 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
@@ -134,6 +138,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     CorsConfigurationSource corsConfigurationSource(
             @Value("${app.cors.customer-allowed-origins}") String customerAllowedOrigins,
             @Value("${app.cors.staff-allowed-origins}") String staffAllowedOrigins,

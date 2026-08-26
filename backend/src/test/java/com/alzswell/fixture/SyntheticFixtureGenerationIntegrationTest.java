@@ -6,6 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.alzswell.fixture.application.SyntheticFixtureGenerationService;
 import com.alzswell.fixture.application.SyntheticFixtureGenerationService.GenerationResult;
 import com.alzswell.fixture.application.SyntheticFixtureProfile;
+import com.alzswell.common.security.AuditActor;
+import com.alzswell.detection.application.DetectionPromotionService;
+import com.alzswell.detection.application.SyntheticDatasetService;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +31,8 @@ class SyntheticFixtureGenerationIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES = new com.alzswell.test.PgVectorPostgreSqlContainer();
 
     @Autowired SyntheticFixtureGenerationService service;
+    @Autowired SyntheticDatasetService detectionRuns;
+    @Autowired DetectionPromotionService promotions;
     @Autowired JdbcTemplate jdbc;
 
     @Test
@@ -57,6 +64,24 @@ class SyntheticFixtureGenerationIntegrationTest {
         assertThat(scenarioCustomers).isEqualTo(10);
         assertThat(normalCustomers).isEqualTo(2);
         assertThat(unsafeProviders).isZero();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from customer_baseline_snapshot b
+                  join synthetic_fixture_customer f on f.customer_id=b.customer_id
+                 where f.run_id=?
+                """, Integer.class, created.runId())).isEqualTo(10);
+
+        Map<String, Object> fixture = jdbc.queryForMap("""
+                select customer_id,dataset_id from synthetic_fixture_customer
+                 where run_id=? and scenario_code='DUPLICATE_TRANSFER'
+                 order by customer_index limit 1
+                """, created.runId());
+        String customerId = (String) fixture.get("customer_id");
+        UUID datasetId = (UUID) fixture.get("dataset_id");
+        var detectionRun = detectionRuns.run(customerId, datasetId, "fixture-promotion-smoke-0001");
+        var promotion = promotions.promote(detectionRun.detectionRunId(),
+                new AuditActor(null, customerId, null, "STAFF"));
+        assertThat(promotion.promotedSignalCount()).isEqualTo(1);
+        assertThat(promotion.promotedAlertCount()).isEqualTo(1);
 
         GenerationResult replayed = service.generate(
                 SyntheticFixtureProfile.SMOKE, FIXTURE_VERSION, SEED, 4, false);

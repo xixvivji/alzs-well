@@ -5,6 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 class SecurityConfigTest {
 
@@ -50,5 +55,22 @@ class SecurityConfigTest {
                         true
                 ))
                 .withMessageContaining("서로 달라야");
+    }
+
+    @Test
+    void doesNotCreateServletSecurityBeansForNonWebBatchApplication() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(SecurityConfig.class)
+                .withPropertyValues(
+                        "app.demo.staff-bootstrap-username=demo-staff",
+                        "app.demo.staff-bootstrap-password=01234567890123456789012345678901"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(SecurityFilterChain.class);
+                    assertThat(context).doesNotHaveBean(CorsConfigurationSource.class);
+                    assertThat(context).doesNotHaveBean(FilterRegistrationBean.class);
+                    assertThat(context).hasSingleBean(PasswordEncoder.class);
+                });
     }
 }
