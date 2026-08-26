@@ -106,6 +106,17 @@ docker compose --project-directory backend --profile ai-tools run --rm ai-ingest
   --storage postgres
 ```
 
+합성 문서의 PostgreSQL ingestion부터 Spring 권위 카탈로그 import, FastAPI 하이브리드 검색,
+사건 코파일럿 인용 및 AI 중단 시 결정론적 폴백까지 한 번에 검증하려면 저장소 루트에서
+다음을 실행한다. 스크립트는 격리 Compose 프로젝트와 임시 볼륨만 사용하고 종료 시 폐기하며,
+공식 원문을 승인하거나 외부 모델·외부 API를 호출하지 않는다.
+합성 관리자 역할 부여와 Spring import payload 구성에 사용하는 DB 직접 접근도 이 폐기형
+통합 테스트 내부로 제한되며, 운영 경로는 인증된 관리 API와 승인 워크플로만 사용한다.
+
+```bash
+python3 scripts/copilot_rag_e2e.py
+```
+
 PostgreSQL ingestion은 chunk와 함께 승인 manifest의 문서유형·ACL·audience·효력 스냅샷을
 `ai_knowledge.document_snapshot`에 저장한다. 검색 런타임은 별도 최소 권한 계정으로
 이 스냅샷과 chunk만 읽으며 Spring 업무 지식 테이블은 조회하거나 변경하지 않는다.
