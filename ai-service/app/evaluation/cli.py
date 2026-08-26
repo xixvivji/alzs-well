@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Sequence
 
 from app.embedding.config import EmbeddingConfig, create_embedding_provider
+from app.evaluation.model_catalog import create_evaluation_embedding_provider
 from app.evaluation.metrics import evaluate
 from app.evaluation.models import load_cases, load_corpus, validate_dataset
 from app.evaluation.ranker import SearchConfiguration
@@ -23,7 +24,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     corpus = load_corpus(Path(args.corpus))
     cases = load_cases(Path(args.dataset))
     validate_dataset(corpus, cases)
-    embedding_provider = create_embedding_provider(EmbeddingConfig.from_environment())
+    model_options = (
+        args.evaluation_model_catalog,
+        args.evaluation_model_name,
+        args.evaluation_model_root,
+    )
+    if any(value is not None for value in model_options):
+        if not all(value is not None for value in model_options):
+            parser.error(
+                "evaluation model catalog, name and root must be provided together"
+            )
+        embedding_provider = create_evaluation_embedding_provider(
+            args.evaluation_model_catalog,
+            args.evaluation_model_name,
+            args.evaluation_model_root,
+        )
+    else:
+        embedding_provider = create_embedding_provider(
+            EmbeddingConfig.from_environment()
+        )
     if args.command == "tune":
         candidates = tune(corpus, cases, embedding_provider)
         write_tuning_report(
@@ -88,6 +107,9 @@ def _parser() -> argparse.ArgumentParser:
         subparser.add_argument("--corpus", required=True)
         subparser.add_argument("--dataset", required=True)
         subparser.add_argument("--output-json", required=True)
+        subparser.add_argument("--evaluation-model-catalog", type=Path)
+        subparser.add_argument("--evaluation-model-name")
+        subparser.add_argument("--evaluation-model-root", type=Path)
         if command == "evaluate":
             subparser.add_argument("--output-markdown", required=True)
             subparser.add_argument("--keyword-weight", type=float, default=0.35)
