@@ -1,0 +1,25 @@
+contractVersion: "1.0.0"
+documentId: DOC-SYN-COPILOT-GROUNDING-001
+versionLabel: "1.0.0"
+title: 합성 코파일럿 상담 근거
+issuer: ALZ's well 테스트
+sourceType: SYNTHETIC_FIXTURE
+sourcePath: contracts/knowledge/fixtures/synthetic-copilot-source.html
+sourceUrl: null
+sourceHash: sha256:193f6a2edbea804c17e2884b730108b524ab7bfd26618abe689330564ce0fe09
+sourceTransformations: []
+documentType: SYNTHETIC_FIXTURE
+classification: INTERNAL
+audience: STAFF
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2026-08-21"
+effectiveTo: null
+checkedAt: "2026-08-26"
+usageRights: SYNTHETIC_UNRESTRICTED
+approvalStatus: APPROVED
+lifecycleStatus: ACTIVE
+approvedBy: synthetic-copilot-reviewer
+approvedAt: "2026-08-26T00:00:00Z"
+supersedes: null
