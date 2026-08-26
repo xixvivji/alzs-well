@@ -16,7 +16,8 @@ public class DeterministicCopilotAdapter implements CopilotPort {
                 ),
                 List.of("정기납부 처리상태 확인", "중복송금 취소·환불 여부 확인", "거래 결과화면 지연 여부 확인"),
                 List.copyOf(facts.reasonCodes()),
-                "DETERMINISTIC_TEMPLATE", true, false, false
+                "DETERMINISTIC_TEMPLATE", true, false, false,
+                "NONE", List.of()
         );
     }
 }

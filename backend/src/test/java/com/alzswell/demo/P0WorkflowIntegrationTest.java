@@ -306,6 +306,8 @@ class P0WorkflowIntegrationTest {
                 .andExpect(jsonPath("$.data.draft.generatedBy").value("DETERMINISTIC_TEMPLATE"))
                 .andExpect(jsonPath("$.data.draft.modelInvoked").value(false))
                 .andExpect(jsonPath("$.data.draft.externalEgressAttempted").value(false))
+                .andExpect(jsonPath("$.data.draft.retrievalMode").value("NONE"))
+                .andExpect(jsonPath("$.data.draft.citations.length()").value(0))
                 .andExpect(jsonPath("$.data.safety.containsDirectIdentifiers").value(false))
                 .andExpect(jsonPath("$.data.safety.externalActionCreated").value(false))
                 .andExpect(jsonPath("$.data.safety.humanReviewRequired").value(true));
