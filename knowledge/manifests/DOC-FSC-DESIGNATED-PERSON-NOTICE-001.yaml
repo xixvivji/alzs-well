@@ -11,7 +11,7 @@ sourceTransformations:
   - type: CREDENTIAL_REDACTION
     ruleId: PUBLIC_WEB_CREDENTIAL_REDACTION_V1
     replacement: REDACTED_SOURCE_CREDENTIAL
-documentType: PUBLIC_GUIDE
+documentType: PUBLIC_NOTICE
 classification: PUBLIC_OFFICIAL
 audience: BOTH
 allowedRoles:
@@ -19,7 +19,7 @@ allowedRoles:
   - DETECTION_ADMIN
 effectiveFrom: "2019-10-01"
 effectiveTo: null
-checkedAt: "2026-08-21"
+checkedAt: "2026-08-26"
 usageRights: REVIEW_REQUIRED
 approvalStatus: IN_REVIEW
 lifecycleStatus: PENDING_ACTIVATION

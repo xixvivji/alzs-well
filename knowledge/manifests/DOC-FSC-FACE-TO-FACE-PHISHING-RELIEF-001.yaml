@@ -19,7 +19,7 @@ allowedRoles:
   - DETECTION_ADMIN
 effectiveFrom: "2023-11-17"
 effectiveTo: null
-checkedAt: "2026-08-21"
+checkedAt: "2026-08-26"
 usageRights: REVIEW_REQUIRED
 approvalStatus: IN_REVIEW
 lifecycleStatus: PENDING_ACTIVATION
