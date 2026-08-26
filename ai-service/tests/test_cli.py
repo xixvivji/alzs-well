@@ -49,6 +49,38 @@ def test_cli_reports_real_manifest_as_valid_but_blocked(repo_root: Path, capsys:
     assert payload["governanceBlockingCodes"] == ["DOCUMENT_NOT_APPROVED", "DOCUMENT_NOT_ACTIVE"]
 
 
+def test_cli_preflights_unapproved_pdf_for_governance_review(
+    repo_root: Path,
+    monkeypatch: object,
+    capsys: object,
+) -> None:
+    _mock_pdf_pipeline(repo_root, monkeypatch)
+
+    exit_code = main(
+        [
+            "validate-manifest",
+            "--repo-root",
+            str(repo_root),
+            "--manifest",
+            "knowledge/manifests/DOC-FSC-NONFACE-ACCOUNT-BLOCK-QA-001.yaml",
+        ]
+    )
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["approvalAndLifecycleEligible"] is False
+    assert payload["governanceBlockingCodes"] == ["DOCUMENT_NOT_APPROVED", "DOCUMENT_NOT_ACTIVE"]
+    assert payload["source"] == {
+        "activeContent": False,
+        "encrypted": False,
+        "format": "PDF",
+        "hashVerified": True,
+        "pageCount": 2,
+        "sizeBytes": 2048,
+    }
+
+
 def test_cli_requires_explicit_repository_root(monkeypatch: object, capsys: object) -> None:
     monkeypatch.delenv("ALZS_REPO_ROOT", raising=False)  # type: ignore[attr-defined]
     exit_code = main(

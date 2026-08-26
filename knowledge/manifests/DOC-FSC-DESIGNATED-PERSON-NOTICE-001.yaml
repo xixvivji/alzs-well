@@ -1,0 +1,28 @@
+contractVersion: "1.0.0"
+documentId: DOC-FSC-DESIGNATED-PERSON-NOTICE-001
+versionLabel: "2019-07-01"
+title: 고령층 금융상품 계약 시 지정인 알림서비스 안내
+issuer: 금융위원회
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/05_source-pages/FSC_designated_person_notification_service_source.html
+sourceUrl: https://www.fsc.go.kr/po010106/73764
+sourceHash: sha256:ee844499f71e7562a0a31f01925407a0f61d2f4e512f1fc222562fc4c059ed28
+sourceTransformations:
+  - type: CREDENTIAL_REDACTION
+    ruleId: PUBLIC_WEB_CREDENTIAL_REDACTION_V1
+    replacement: REDACTED_SOURCE_CREDENTIAL
+documentType: PUBLIC_GUIDE
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2019-10-01"
+effectiveTo: null
+checkedAt: "2026-08-21"
+usageRights: REVIEW_REQUIRED
+approvalStatus: IN_REVIEW
+lifecycleStatus: PENDING_ACTIVATION
+approvedBy: null
+approvedAt: null
+supersedes: null

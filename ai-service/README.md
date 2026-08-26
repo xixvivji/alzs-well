@@ -18,10 +18,12 @@ uv run python -m app.cli validate-manifest \
 저장소 루트는 현재 작업 디렉터리에서 추론하지 않는다. `--repo-root`를 생략하면
 `ALZS_REPO_ROOT` 환경변수를 사용하고, 둘 다 없으면 `REPOSITORY_ROOT_REQUIRED`로 실패한다.
 
-`validate-manifest`는 manifest 계약, 안전한 원문 경로, 크기·형식·인코딩과 SHA-256을
-검증한다. 승인 및 생명주기는 결과에 표시하되, `IN_REVIEW` manifest 자체를 잘못된
-manifest로 취급하지 않는다. 실제 ingestion 진입점은 `ensure_ingestion_eligible`을 호출해
-`APPROVED`, `ACTIVE`, 명시적인 `asOf` 효력 조건을 추가로 강제한다.
+`validate-manifest`는 manifest 계약, 안전한 원문 경로, 크기·형식과 SHA-256을 검증한다.
+HTML은 strict UTF-8 인코딩을, PDF는 구조·암호화·페이지 수와 능동 콘텐츠를 승인 전에
+사전검증한다. 승인 및 생명주기는 결과에 표시하되, `IN_REVIEW` manifest 자체를 잘못된
+manifest로 취급하지 않는다. 사전검증은 승인 행위가 아니며 본문 추출이나 chunk 생성도
+수행하지 않는다. 실제 ingestion 진입점은 `ensure_ingestion_eligible`을 호출해 `APPROVED`,
+`ACTIVE`, 명시적인 `asOf` 효력 조건을 추가로 강제한다.
 
 승인된 합성 HTML의 구조화 추출을 검증한다. CLI에는 원문 본문을 출력하지 않는다.
 

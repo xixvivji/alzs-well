@@ -5,6 +5,7 @@ import json
 import sys
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 from uuid import UUID
 
 from app.domain.manifest import ensure_ingestion_eligible, governance_blocking_codes
@@ -218,7 +219,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 0
 
-        source = validate_source(repository_root, manifest)
+        if Path(manifest.source_path).suffix.lower() == ".pdf":
+            pdf_source = validate_pdf_source(repository_root, manifest)
+            source_summary: dict[str, object] = {
+                "hashVerified": True,
+                "sizeBytes": pdf_source.size_bytes,
+                "format": "PDF",
+                "pageCount": pdf_source.page_count,
+                "encrypted": pdf_source.encrypted,
+                "activeContent": pdf_source.active_content,
+            }
+        else:
+            source = validate_source(repository_root, manifest)
+            source_summary = {
+                "hashVerified": True,
+                "sizeBytes": source.size_bytes,
+                "format": "HTML",
+                "encoding": source.encoding,
+            }
         blockers = governance_blocking_codes(manifest)
         _write_json(
             sys.stdout,
@@ -232,11 +250,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "lifecycleStatus": manifest.lifecycle_status,
                 "approvalAndLifecycleEligible": not blockers,
                 "governanceBlockingCodes": blockers,
-                "source": {
-                    "hashVerified": True,
-                    "sizeBytes": source.size_bytes,
-                    "encoding": source.encoding,
-                },
+                "source": source_summary,
             },
         )
         return 0

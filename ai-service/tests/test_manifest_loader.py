@@ -41,6 +41,16 @@ def test_real_manifest_is_valid_but_not_ingestion_eligible(repo_root: Path) -> N
     assert raised.value.code == "DOCUMENT_NOT_APPROVED"
 
 
+def test_all_official_manifests_conform_to_the_shared_contract(repo_root: Path) -> None:
+    manifest_paths = sorted((repo_root / "knowledge" / "manifests").glob("*.yaml"))
+
+    assert manifest_paths
+    for path in manifest_paths:
+        manifest = load_and_validate_manifest(repo_root, path.relative_to(repo_root))
+        assert manifest.source_path.startswith("knowledge/official-source/")
+        assert (repo_root / manifest.source_path).is_file()
+
+
 @pytest.mark.parametrize(
     ("fixture", "expected_code"),
     [

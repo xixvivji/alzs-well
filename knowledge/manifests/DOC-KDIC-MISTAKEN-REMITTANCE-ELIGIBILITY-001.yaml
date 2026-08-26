@@ -1,0 +1,25 @@
+contractVersion: "1.0.0"
+documentId: DOC-KDIC-MISTAKEN-REMITTANCE-ELIGIBILITY-001
+versionLabel: "snapshot-2026-08-21"
+title: 착오송금 반환지원 신청대상 확인
+issuer: 예금보험공사
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/11_fraud-and-recovery/KDIC_mistaken_remittance_eligibility_source.html
+sourceUrl: https://mkcs.kdic.or.kr/ir/msdrpr/selectAplyQlfcIdntyRslt.do
+sourceHash: sha256:7cdb74badee59007dc07e6b86cdb610ee30fadfb76fe968d50f5ba38b7538735
+sourceTransformations: []
+documentType: PUBLIC_GUIDE
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2026-08-21"
+effectiveTo: null
+checkedAt: "2026-08-21"
+usageRights: REVIEW_REQUIRED
+approvalStatus: IN_REVIEW
+lifecycleStatus: PENDING_ACTIVATION
+approvedBy: null
+approvedAt: null
+supersedes: null
