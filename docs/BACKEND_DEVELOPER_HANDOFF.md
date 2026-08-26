@@ -98,7 +98,7 @@ PostgreSQL은 먼저 실행되어 있어야 한다. development 기본 DB 접속
 | `customer` | 고객 표시 프로필·환경설정·접근성 | `CustomerController` |
 | `connection` | 합성 금융기관과 읽기 전용 연결 상태 | `FinancialInstitutionController`, `CustomerConnectionController` |
 | `detection` | 운영형 고객 기준선·변화신호·불변 근거 snapshot | `CustomerDetectionController`, `SignalController` |
-| `copilot` | 외부 모델과 분리된 결정론적 초안 포트 | `CopilotPort` |
+| `copilot` | 승인 근거 기반 템플릿과 결정론적 폴백을 분리한 초안 포트 | `CopilotPort`, `RetrievalGroundedCopilotAdapter` |
 
 의존방향은 `api/controller → application/service → domain/port → persistence adapter`다. Controller에서 SQL을 실행하거나 다른 도메인의 repository를 직접 호출하지 않는다.
 

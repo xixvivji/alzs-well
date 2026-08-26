@@ -19,10 +19,12 @@ class JdkInternalKnowledgeSearchClientTest {
     @Test
     void sendsAuthenticatedContractAndParsesResponse() throws Exception {
         AtomicReference<String> token=new AtomicReference<>();
+        AtomicReference<String> protocol=new AtomicReference<>();
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         UUID requestId=UUID.randomUUID();
         server.createContext("/internal/v1/search",exchange->{
             token.set(exchange.getRequestHeaders().getFirst("X-Internal-Service-Token"));
+            protocol.set(exchange.getProtocol());
             exchange.getRequestBody().readAllBytes();
             byte[] response=("{\"contractVersion\":\"1.0.0\",\"requestId\":\""+requestId
                     +"\",\"queryHash\":\"sha256:abc\",\"results\":[]}").getBytes(StandardCharsets.UTF_8);
@@ -37,6 +39,7 @@ class JdkInternalKnowledgeSearchClientTest {
                 LocalDate.of(2026,8,14),5));
         assertThat(response.requestId()).isEqualTo(requestId);
         assertThat(token).hasValue(secret);
+        assertThat(protocol).hasValue("HTTP/1.1");
     }
 
     @Test

@@ -27,7 +27,8 @@ public class JdkInternalKnowledgeSearchClient implements InternalKnowledgeSearch
         this.searchUri=searchUri(baseUrl);
         this.token=token;
         this.requestTimeout=positiveDuration(requestTimeoutMs,"request timeout");
-        this.httpClient=HttpClient.newBuilder().connectTimeout(positiveDuration(connectTimeoutMs,"connect timeout"))
+        this.httpClient=HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(positiveDuration(connectTimeoutMs,"connect timeout"))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
     }
 
@@ -43,7 +44,8 @@ public class JdkInternalKnowledgeSearchClient implements InternalKnowledgeSearch
                     .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
             HttpResponse<InputStream> response=httpClient.send(httpRequest,HttpResponse.BodyHandlers.ofInputStream());
             try(InputStream input=response.body()) {
-                if(response.statusCode()!=200) throw new AiRetrievalException("AI retrieval returned an unexpected status");
+                if(response.statusCode()!=200)
+                    throw new AiRetrievalException("AI retrieval returned HTTP "+response.statusCode());
                 byte[] responseBody=input.readNBytes(MAX_RESPONSE_BYTES+1);
                 if(responseBody.length>MAX_RESPONSE_BYTES) throw new AiRetrievalException("AI retrieval response is too large");
                 return objectMapper.readValue(responseBody,AiSearchResponse.class);

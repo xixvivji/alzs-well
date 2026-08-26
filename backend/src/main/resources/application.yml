@@ -105,6 +105,8 @@ app:
     internal-token: ${AI_INTERNAL_TOKEN:}
     connect-timeout-ms: ${AI_RETRIEVAL_CONNECT_TIMEOUT_MS:500}
     request-timeout-ms: ${AI_RETRIEVAL_REQUEST_TIMEOUT_MS:1500}
+  copilot:
+    rag-enabled: ${COPILOT_RAG_ENABLED:false}
   synthetic-seed:
     enabled: ${SYNTHETIC_SEED_ENABLED:false}
     profile: ${SYNTHETIC_SEED_PROFILE:SMOKE}
