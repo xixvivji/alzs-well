@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.alzswell.fixture.application.SyntheticFixtureGenerationService;
 import com.alzswell.fixture.application.SyntheticFixtureGenerationService.GenerationResult;
 import com.alzswell.fixture.application.SyntheticFixtureProfile;
+import com.alzswell.fixture.application.SyntheticFixtureQualityService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.detection.application.DetectionPromotionService;
 import com.alzswell.detection.application.SyntheticDatasetService;
@@ -33,6 +34,7 @@ class SyntheticFixtureGenerationIntegrationTest {
     @Autowired SyntheticFixtureGenerationService service;
     @Autowired SyntheticDatasetService detectionRuns;
     @Autowired DetectionPromotionService promotions;
+    @Autowired SyntheticFixtureQualityService qualityService;
     @Autowired JdbcTemplate jdbc;
 
     @Test
@@ -107,6 +109,45 @@ class SyntheticFixtureGenerationIntegrationTest {
                 select count(*) from synthetic_fixture_customer
                  where run_id=? and expected_signal_count=1
                 """, Integer.class, result.runId())).isEqualTo(38);
+    }
+
+    @Test
+    void evaluatesAllFixtureCustomersAgainstTheActiveDetectionPolicy() {
+        GenerationResult result = service.generate(
+                SyntheticFixtureProfile.SMOKE, FIXTURE_VERSION, SEED + 2, 4, false);
+
+        SyntheticFixtureQualityService.QualityReport quality = qualityService.evaluate(result.runId());
+
+        assertThat(quality.status()).isEqualTo("PASSED");
+        assertThat(quality.policyStable()).isTrue();
+        assertThat(quality.evaluatedCustomerCount()).isEqualTo(10);
+        assertThat(quality.expectedSignalCount()).isEqualTo(8);
+        assertThat(quality.actualSignalCount()).isEqualTo(8);
+        assertThat(quality.truePositiveCount()).isEqualTo(8);
+        assertThat(quality.trueNegativeCount()).isEqualTo(2);
+        assertThat(quality.falsePositiveCount()).isZero();
+        assertThat(quality.falseNegativeCount()).isZero();
+        assertThat(quality.precisionScore()).isEqualByComparingTo("1.000000");
+        assertThat(quality.recallScore()).isEqualByComparingTo("1.000000");
+        assertThat(quality.reportHash()).hasSize(64);
+        assertThat(quality.replayed()).isFalse();
+
+        SyntheticFixtureQualityService.QualityReport replay = qualityService.evaluate(result.runId());
+        assertThat(replay.reportHash()).isEqualTo(quality.reportHash());
+        assertThat(replay.replayed()).isTrue();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from synthetic_fixture_quality_report where run_id=?
+                """, Integer.class, result.runId())).isEqualTo(1);
+        assertThatThrownBy(() -> jdbc.update("""
+                delete from synthetic_fixture_quality_report where run_id=?
+                """, result.runId())).hasMessageContaining("append-only");
+    }
+
+    @Test
+    void loadProfileStaysWithinTheDailyIntegrationRange() {
+        assertThat(SyntheticFixtureProfile.LOAD.customerCount()).isEqualTo(250);
+        assertThat(SyntheticFixtureProfile.LOAD.accountCount()).isEqualTo(500);
+        assertThat(SyntheticFixtureProfile.LOAD.transactionCount()).isEqualTo(75_000);
     }
 
     @Test

@@ -51,6 +51,33 @@ curl --fail --silent --show-error "${BASE_URL}/api/v1/system/public-config" \
   | jq -e '.data.syntheticDataOnly == true and .data.externalActionsEnabled == false
       and .data.externalEgressEnabled == false and .data.remoteModelEnabled == false' > /dev/null
 
+SYNTHETIC_SEED_PROFILE=SMOKE \
+SYNTHETIC_SEED_VERIFY_DETECTION=true \
+"${COMPOSE[@]}" --profile synthetic-tools run --build --rm synthetic-seed
+
+"${COMPOSE[@]}" exec -T postgres psql -X -qAt \
+  -U "${POSTGRES_USER:-alzswell_admin}" -d "${POSTGRES_DB:-alzs_well}" \
+  -c "select json_build_object(
+      'status',q.status,
+      'evaluatedCustomerCount',q.evaluated_customer_count,
+      'expectedSignalCount',q.expected_signal_count,
+      'actualSignalCount',q.actual_signal_count,
+      'falsePositiveCount',q.false_positive_count,
+      'falseNegativeCount',q.false_negative_count,
+      'precision',q.precision_score,
+      'recall',q.recall_score,
+      'reportHashLength',length(q.report_hash))
+    from synthetic_fixture_quality_report q
+    join synthetic_fixture_generation_run r on r.run_id=q.run_id
+    where r.profile='SMOKE' and r.seed=20260825
+    order by q.evaluated_at desc limit 1" \
+  > "${ARTIFACT_DIRECTORY}/synthetic-quality.json"
+jq -e '.status == "PASSED" and .evaluatedCustomerCount == 10
+    and .expectedSignalCount == .actualSignalCount
+    and .falsePositiveCount == 0 and .falseNegativeCount == 0
+    and .precision == 1 and .recall == 1 and .reportHashLength == 64' \
+  "${ARTIFACT_DIRECTORY}/synthetic-quality.json" > /dev/null
+
 session_status="$(curl --silent --show-error --output "${ARTIFACT_DIRECTORY}/session.json" \
   --dump-header "${SESSION_HEADER_FILE}" --write-out '%{http_code}' \
   --request POST "${BASE_URL}/api/v1/demo/sessions")"
@@ -61,4 +88,4 @@ grep -qi '^X-Demo-Customer-Capability:' "${SESSION_HEADER_FILE}"
 printf '%s\n' 'HTTP 201; X-Demo-Customer-Capability header present; value intentionally not retained' \
   > "${ARTIFACT_DIRECTORY}/session-contract.txt"
 
-echo "Compose smoke test passed: PostgreSQL, Flyway V${EXPECTED_SCHEMA_VERSION}, backend, gateway, readiness, guardrails, demo session"
+echo "Compose smoke test passed: PostgreSQL, Flyway V${EXPECTED_SCHEMA_VERSION}, backend, gateway, readiness, guardrails, synthetic detection quality, demo session"
