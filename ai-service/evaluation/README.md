@@ -4,7 +4,9 @@
 외부 네트워크나 모델 다운로드 없이 선택된 임베딩 어댑터를 사용한다. 기본값은
 `local-hash-ngram-ko-v1`이며 승인된 로컬 E5 환경 변수를 지정하면 같은 평가 명령이
 `multilingual-e5-small@<revision>`을 사용하고 보고서에 모델 버전을 기록한다.
-현재 측정값과 E5 대기 조건은 `model-comparison-v1.md`에 기록한다.
+현재 측정값과 모델 선택 보류 조건은 `model-comparison-v1.md`에 기록한다.
+평가에 반입한 모델의 고정 revision·SHA-256·차원·prefix는
+`model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는 Git에 커밋하지 않는다.
 
 ## 데이터셋
 

@@ -1,0 +1,40 @@
+{
+  "catalogVersion": "1.0.0",
+  "automaticDownloadAllowed": false,
+  "models": [
+    {
+      "name": "multilingual-e5-small",
+      "status": "EVALUATION_ONLY",
+      "modelId": "intfloat/multilingual-e5-small",
+      "sourceUrl": "https://huggingface.co/intfloat/multilingual-e5-small",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "license": "MIT",
+      "localPath": "multilingual-e5-small",
+      "dimensions": 384,
+      "queryPrefix": "query: ",
+      "passagePrefix": "passage: ",
+      "artifact": {
+        "file": "model.safetensors",
+        "sizeBytes": 470641600,
+        "sha256": "sha256:1a55775f53449dac10a2bcbc312469fac40b96d53198c407081a831f81c98477"
+      }
+    },
+    {
+      "name": "snowflake-arctic-embed-l-v2.0-ko",
+      "status": "EVALUATION_ONLY",
+      "modelId": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+      "sourceUrl": "https://huggingface.co/dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+      "revision": "55ec6e9358a56d56af759bc8372e970caf8c305f",
+      "license": "Apache-2.0",
+      "localPath": "snowflake-arctic-embed-l-v2.0-ko",
+      "dimensions": 1024,
+      "queryPrefix": "query: ",
+      "passagePrefix": "",
+      "artifact": {
+        "file": "model.safetensors",
+        "sizeBytes": 2271064456,
+        "sha256": "sha256:0b874517f0fd02dd9510fa2733aacaad1def6086387c88d1a21f4041351e15b0"
+      }
+    }
+  ]
+}

@@ -1,35 +1,58 @@
 # 임베딩 모델 비교 v1
 
 > 측정일: 2026-08-26 KST  
-> 상태: Hash 기준선 측정 완료 · E5 실측 대기
+> 상태: 로컬 CPU 실측 완료 · 운영 모델 승인 대기
 
 ## 측정 결과
 
-| 평가셋 | 모델 | Recall@3 | Recall@5 | MRR | nDCG@10 | 무응답 오탐률 | 정책 위반 |
+| 설정 | 모델 | Recall@3 | Recall@5 | MRR | nDCG@10 | 무응답 오탐률 | 정책 위반 |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 고정 합성 회귀 17문항 | `local-hash-ngram-ko-v1` | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 0 |
-| 사람 검수 합성 46문항 | `local-hash-ngram-ko-v1` | 0.4872 | 0.4872 | 0.4744 | 0.4777 | 0.0000 | 0 |
-| 고정 합성 회귀 17문항 | `multilingual-e5-small` | 미측정 | 미측정 | 미측정 | 미측정 | 미측정 | 미측정 |
-| 사람 검수 합성 46문항 | `multilingual-e5-small` | 미측정 | 미측정 | 미측정 | 미측정 | 미측정 | 미측정 |
+| 기본 | `local-hash-ngram-ko-v1` | 0.4872 | 0.4872 | 0.4744 | 0.4777 | 0.0000 | 0 |
+| 기존 125개 후보 최선 | `local-hash-ngram-ko-v1` | 0.7692 | 0.7692 | 0.7564 | 0.7598 | 0.1429 | 0 |
+| 기본 | `multilingual-e5-small` | 0.6410 | 0.6923 | 0.3366 | 0.4944 | 1.0000 | 0 |
+| 모델별 보정 | `multilingual-e5-small` | 0.9231 | 0.9231 | 0.8974 | 0.9042 | 0.2857 | 0 |
+| 기본 | `snowflake-arctic-embed-l-v2.0-ko` | 0.8718 | 0.8718 | 0.8419 | 0.8495 | 0.0000 | 0 |
+| 모델별 보정 | `snowflake-arctic-embed-l-v2.0-ko` | 0.9487 | 0.9487 | 0.9103 | 0.9203 | 0.0000 | 0 |
 
-고정 합성 회귀 결과는 구현 오류를 찾기 위한 값이며 실제 검색 성능으로 해석하지 않는다.
-모델 선택에는 사람 검수 평가셋과 이후 승인 공식문서 골든셋을 사용한다.
+모든 행은 같은 사람 검수 합성 46문항(답변형 39개, 무응답형 7개)에서 측정했다.
+모델별 보정은 keyword 비중 0, vector 비중 1의 비교 실험이며 운영 설정 변경을 의미하지
+않는다. E5는 final threshold `0.85`, Arctic-ko는 `0.45`에서 각각 가장 좋은 게이트 결과를
+냈다. Dense cosine 분포가 모델마다 다르므로 Hash용 임계값을 그대로 재사용할 수 없다.
 
-## E5 실측 대기 사유
+## 로컬 artifact
 
-저장소와 지정된 로컬 경로에 승인된 `multilingual-e5-small` 모델 artifact가 없다. 폐쇄망
-원칙에 따라 평가 과정에서 외부 다운로드나 자동 fallback을 허용하지 않는다. 따라서 현재
-수치만으로 Hash와 E5의 우열을 확정하지 않는다.
+| 모델 | 고정 revision | `model.safetensors` SHA-256 | 크기 | 라이선스 |
+|---|---|---|---:|---|
+| E5-small | `614241f622f53c4eeff9890bdc4f31cfecc418b3` | `1a55775f...c98477` | 470,641,600 B | MIT |
+| Arctic-ko | `55ec6e9358a56d56af759bc8372e970caf8c305f` | `0b874517...e15b0` | 2,271,064,456 B | Apache-2.0 |
 
-E5 artifact 반입 후에는 모델 디렉터리, 고정 revision, `model.safetensors` SHA-256을 설정하고
-`ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=false`로 실행한다. 평가 보고서의
-`embeddingModelVersion`이 `multilingual-e5-small@<revision>`인지 확인해야 하며 Hash로
-fallback된 결과는 E5 결과로 인정하지 않는다.
+전체 값과 prefix·차원 계약은 `model-artifacts-v1.json`에 기록한다. 실제 모델 파일은
+저장소의 `/models/` 아래에만 두고 Git에서 제외한다. 두 artifact는 현재
+`EVALUATION_ONLY`이며 운영 승인 또는 배포 이미지 반입 승인을 뜻하지 않는다. 실행 중
+자동 다운로드는 계속 금지한다.
+
+## CPU 성능
+
+측정 환경은 macOS arm64, Python 3.12.13, `sentence-transformers` 5.7.0,
+`transformers` 5.15.1, PyTorch 2.13.0 CPU다. corpus 문단 임베딩은 실제 벡터 저장 구조처럼
+한 번만 계산해 캐시하고 46개 고유 질의를 측정했다.
+
+| 모델 | 질의 p50 | 질의 p95 | 문단 p50 | 문단 p95 | 프로세스 peak RSS |
+|---|---:|---:|---:|---:|---:|
+| E5-small | 5.08 ms | 5.77 ms | 8.14 ms | 8.90 ms | 950.5 MiB |
+| Arctic-ko | 41.67 ms | 44.02 ms | 59.13 ms | 63.86 ms | 1,729.8 MiB |
+
+Arctic-ko는 이 장비에서 질의 추론이 E5-small보다 약 8.2배 느리고 peak RSS가 약 1.8배다.
+모델 로드 시간은 OS 파일 캐시 영향을 크게 받으므로 선택 지표에서 제외했다.
 
 ## 현재 결정
 
 - 운영 검색 가중치와 임계값은 변경하지 않는다.
-- E5 실측 전에는 Hash를 폐쇄망 MVP의 결정론적 기준선으로 유지한다.
+- 합성 검수셋 기준 정확도 후보는 Arctic-ko가 우세하며 유일하게 모든 품질 게이트를 통과했다.
+- Arctic-ko를 즉시 운영 기본값으로 지정하지 않는다. 1024차원 pgvector 마이그레이션,
+  컨테이너 CPU·메모리 부하 시험, 승인 공식문서 골든셋 재평가가 먼저다.
+- E5-small은 현재 384차원 스키마와 지연시간을 유지할 수 있지만 무응답 오탐 게이트를
+  통과하지 못했으므로 기본 모델로 확정하지 않는다.
+- Hash는 폐쇄망 MVP와 모델 장애 시 결정론적 fallback으로 유지한다.
 - 실제 법률·시행령 manifest는 사람 검수 전까지 `IN_REVIEW/PENDING_ACTIVATION`을 유지한다.
-- E5와 Hash 비교는 동일한 corpus·질의·권한 문맥에서 Recall@5, MRR, nDCG@10 및 CPU
-  지연시간을 함께 측정한 뒤 확정한다.
+- 다음 평가는 승인 공식문서 corpus에서 근거 조항 적중률과 무응답 질의를 함께 검수한다.
