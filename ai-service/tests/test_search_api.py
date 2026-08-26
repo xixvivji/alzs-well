@@ -18,6 +18,8 @@ TOKEN = "test-internal-token-that-is-longer-than-32-characters"
 
 
 class FakeSearchRepository:
+    index_version = "hybrid-hash-ngram-v3"
+
     def __init__(self, *, failure: str | None = None) -> None:
         self.run_id = UUID("98000000-0000-0000-0000-000000000001")
         self.failure = failure
@@ -89,7 +91,7 @@ def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object
     assert body["queryHash"].startswith("sha256:")
     assert body["results"][0]["score"] == 0.75
     assert body["results"][0]["citation"]["retrievalMethod"] == "HYBRID"
-    assert body["results"][0]["citation"]["indexVersion"] == "hybrid-hash-ngram-v1"
+    assert body["results"][0]["citation"]["indexVersion"] == "hybrid-hash-ngram-v3"
     assert repository.completed == (repository.run_id, 1)
     assert repository.started is not None
     assert "금융거래" not in str(repository.started[1])

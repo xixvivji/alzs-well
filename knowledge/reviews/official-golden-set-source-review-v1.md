@@ -74,8 +74,10 @@
   개정 시행됐으므로 2023년 보도자료가 현행 절차의 최종 권위 문서가 되어서는 안 된다.
 - 2026-10-01 시행 예정 개정도 확인되므로 법령 manifest는 시행일 기준 버전 전환과 재검수를
   지원해야 한다.
-- 현행 법률과 시행령을 별도 manifest로 추가하고 `LAW > PUBLIC_NOTICE` 우선순위를 적용한 뒤,
-  이 문서는 2023년 대면편취형 피해구제 편입 배경을 설명하는 공지로만 사용한다.
+- 현행 법률과 시행령은 각각 별도 manifest로 등록했다. 둘 다 사람의 이용권한·내용 검토 전까지
+  `IN_REVIEW/PENDING_ACTIVATION`을 유지한다. 검색은 관련성 임계값을 통과한 문서에
+  `LAW > REGULATION > PUBLIC_NOTICE` 권위 순서를 적용하며, 이 문서는 2023년 대면편취형
+  피해구제 편입 배경을 설명하는 공지로만 사용한다.
 - 공지: https://www.fsc.go.kr/po010101/81090
 - 현행법: https://law.go.kr/LSW/lsInfoP.do?ancYnChk=0&lsId=011359
 
@@ -98,7 +100,7 @@
 1. 금융위원회 2개 승인 후보의 게시물·첨부파일 권리 귀속 또는 공공누리 표시를 확인한다.
 2. Q&A PDF의 현재 첨부파일 SHA-256을 저장본과 비교한다.
 3. 지정인 알림서비스의 현재 운영근거를 확보하고 `effectiveTo` 또는 대체 manifest를 결정한다.
-4. 현행 통신사기피해환급법·시행령 manifest를 추가하고 법령 우선 검색 규칙을 적용한다.
+4. 현행 통신사기피해환급법·시행령 manifest와 법령 우선 검색 규칙을 승인자가 검수한다.
 5. 예금보험공사에 내부 RAG 이용허락을 확인하거나 metadata-only 방식으로 전환한다.
 6. 조치가 끝난 문서만 별도 승인자가 `usageRights/approvalStatus/lifecycleStatus`를 변경하고
    `approvedBy/approvedAt`을 기록한다.

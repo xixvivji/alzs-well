@@ -106,7 +106,7 @@ docker compose --project-directory backend --profile ai-tools run --rm ai-ingest
   --storage postgres
 ```
 
-PostgreSQL ingestion은 chunk와 함께 승인 manifest의 ACL·audience·효력 스냅샷을
+PostgreSQL ingestion은 chunk와 함께 승인 manifest의 문서유형·ACL·audience·효력 스냅샷을
 `ai_knowledge.document_snapshot`에 저장한다. 검색 런타임은 별도 최소 권한 계정으로
 이 스냅샷과 chunk만 읽으며 Spring 업무 지식 테이블은 조회하거나 변경하지 않는다.
 
@@ -138,7 +138,9 @@ Content-Type: application/json
 pgvector cosine 유사도를 결합하고 역할 교집합, audience,
 `APPROVED/ACTIVE`, 효력기간을 모두 만족하는 chunk만 반환한다. 감사 이력에는 원문
 검색어 대신 `sha256:<hex>`만 남긴다. 응답 citation은 권한 부여 결과가 아니므로
-Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다.
+Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다. 임계값을 통과한 결과는
+`LAW > REGULATION > INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM` 순으로
+권위 문서를 먼저 배치하고, 같은 유형 안에서는 하이브리드 점수로 정렬한다.
 
 ### 로컬 한국어 임베딩 모델
 

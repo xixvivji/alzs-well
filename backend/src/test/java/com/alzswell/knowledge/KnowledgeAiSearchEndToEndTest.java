@@ -136,7 +136,7 @@ class KnowledgeAiSearchEndToEndTest {
                     citation.put("heading","신청 방법");citation.putArray("sectionPath").add("합성 안심 안내").add("신청 방법");
                     citation.putNull("page");citation.put("citationLabel","합성 지식 계약 검증 안내 > 신청 방법");citation.putNull("sourceUrl");
                     citation.put("sourceHash",SOURCE_HASH);citation.put("textHash",textHash);citation.put("retrievedAsOf",request.get("asOf").asText());
-                    citation.put("retrievalMethod","HYBRID");citation.put("indexVersion","hybrid-hash-ngram-v1");
+                    citation.put("retrievalMethod","HYBRID");citation.put("indexVersion","hybrid-hash-ngram-v3");
                     byte[] bytes=MAPPER.writeValueAsBytes(response);exchange.getResponseHeaders().set("Content-Type","application/json");
                     exchange.sendResponseHeaders(200,bytes.length);exchange.getResponseBody().write(bytes);
                 } catch(Exception exception) {exchange.sendResponseHeaders(500,-1);}

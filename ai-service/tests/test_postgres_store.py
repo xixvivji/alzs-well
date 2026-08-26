@@ -128,6 +128,12 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
 
     statements = [statement for statement, _ in cursor.executions]
     assert statements[0].startswith("select pg_advisory_xact_lock")
+    snapshot_parameters = next(
+        parameters
+        for statement, parameters in cursor.executions
+        if statement.startswith("insert into ai_knowledge.document_snapshot")
+    )
+    assert snapshot_parameters[7] == "SYNTHETIC_FIXTURE"  # type: ignore[index]
     assert any(statement.startswith("delete from ai_knowledge.chunk") for statement in statements)
     assert any(statement.startswith("insert into ai_knowledge.chunk") for statement in statements)
     assert statements[-1].startswith("update ai_knowledge.ingestion_run")
@@ -245,6 +251,7 @@ def _manifest() -> KnowledgeManifest:
             "sourcePath": "synthetic.pdf",
             "sourceHash": "sha256:" + "1" * 64,
             "sourceTransformations": [],
+            "documentType": "SYNTHETIC_FIXTURE",
             "classification": "INTERNAL",
             "audience": "STAFF",
             "allowedRoles": ["PROTECTION_STAFF"],

@@ -201,6 +201,13 @@ Spring import는 `APPROVED/ACTIVE` governance와 source hash를 먼저 확인하
 `requesterAudiences`, `asOf`를 모두 요구한다. FastAPI는 내부 서비스 토큰을 검증한 뒤
 AI 파생 `document_snapshot`과 `chunk`만 조회하여 역할 교집합, audience, 승인·활성 상태와
 효력기간을 중복 필터링한다. 원문 검색어는 감사 테이블에 남기지 않고 NFC 정규화된
-검색어의 SHA-256만 저장한다. 응답의 `retrievalMethod`는 `HYBRID`, `indexVersion`은
-`hybrid-hash-ngram-v1`이며 Spring이 citation을 최종 재검증한다. 전문검색 점수와
+검색어의 SHA-256만 저장한다. 응답의 `retrievalMethod`는 `HYBRID`이며 `indexVersion`은
+실제 검색 실행에 사용한 인덱스 버전이다. 현재 허용 버전은 `hybrid-hash-ngram-v3`과
+`hybrid-multilingual-e5-small-v2`이며 Spring이 citation을 최종 재검증한다. 전문검색 점수와
 `local-hash-ngram-ko-v1` 384차원 pgvector cosine 유사도를 결합하고 외부 모델을 다운로드하지 않는다.
+
+관련성이 최소 임계값을 통과한 결과끼리는 manifest `documentType`의 권위 순서를 먼저
+적용하고 그 안에서 하이브리드 점수로 정렬한다. 순서는 `LAW > REGULATION >
+INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM > SYNTHETIC_FIXTURE`다. 따라서 과거
+보도자료가 같은 주제의 현행 법령보다 먼저 제시되지 않는다. 문서유형 우선순위는 ACL·승인·활성·
+효력기간 필터를 우회하지 않으며, 임계값 미만 문서를 검색 결과에 추가하지도 않는다.

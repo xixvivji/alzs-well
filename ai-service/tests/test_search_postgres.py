@@ -97,6 +97,9 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "d.approval_status = 'APPROVED'" in statement
     assert "d.lifecycle_status = 'ACTIVE'" in statement
     assert "d.effective_from <= %s" in statement
+    assert "when 'LAW' then 600" in statement
+    assert "when 'PUBLIC_NOTICE' then 200" in statement
+    assert "order by authority_rank desc, score desc" in statement
     assert "c.embedding <=> search_query.embedding" in statement
     assert "where score >= %s" in statement
     assert parameters[0] == "금융거래 안심차단"  # type: ignore[index]
@@ -109,7 +112,7 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     )
     assert "c.embedding_model_version is distinct from %s" in statement
     assert "and (c.embedding_model_version is null" not in statement
-    assert INDEX_VERSION == "hybrid-hash-ngram-v2"
+    assert INDEX_VERSION == "hybrid-hash-ngram-v3"
     assert RESULT_THRESHOLD == 0.35
     assert results[0].chunk_id == "chk_" + "1" * 64
     assert results[0].score == 0.5
@@ -141,6 +144,7 @@ def test_search_run_records_e5_index_version() -> None:
 
     parameters = cursor.executions[0][1]
     assert E5_INDEX_VERSION in parameters  # type: ignore[operator]
+    assert repository.index_version == "hybrid-multilingual-e5-small-v2"
 
 
 def test_search_run_stores_only_query_hash_and_safe_metadata() -> None:

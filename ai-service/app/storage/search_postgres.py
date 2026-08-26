@@ -16,8 +16,8 @@ from app.storage.database_config import DatabaseConfig
 
 
 ConnectFunction = Callable[..., Any]
-INDEX_VERSION = "hybrid-hash-ngram-v2"
-E5_INDEX_VERSION = "hybrid-multilingual-e5-small-v1"
+INDEX_VERSION = "hybrid-hash-ngram-v3"
+E5_INDEX_VERSION = "hybrid-multilingual-e5-small-v2"
 KEYWORD_WEIGHT = 0.35
 VECTOR_WEIGHT = 0.65
 VECTOR_THRESHOLD = 0.15
@@ -40,6 +40,10 @@ class PostgresSearchRepository:
             if self._embedding_provider.descriptor.backend == "local-e5"
             else INDEX_VERSION
         )
+
+    @property
+    def index_version(self) -> str:
+        return self._index_version
 
     def start_run(self, request: SearchRequest, query_hash: str) -> UUID:
         run_id = uuid4()
@@ -87,6 +91,7 @@ class PostgresSearchRepository:
                             c.document_id, c.version_label, c.chunk_id, c.chunk_order,
                             d.title, d.issuer, c.heading, c.section_path, c.page,
                             d.source_url, c.source_hash, c.text_hash, c.content,
+                            d.document_type,
                             ts_rank_cd(to_tsvector('simple', c.content), search_query.terms, 32)
                                 as keyword_score,
                             case
@@ -107,7 +112,16 @@ class PostgresSearchRepository:
                           and (d.effective_to is null or d.effective_to >= %s)
                     ), scored as (
                         select ranked.*,
-                            (least(1.0, keyword_score) * %s + vector_score * %s) as score
+                            (least(1.0, keyword_score) * %s + vector_score * %s) as score,
+                            case document_type
+                                when 'LAW' then 600
+                                when 'REGULATION' then 500
+                                when 'INTERNAL_POLICY' then 400
+                                when 'PUBLIC_GUIDE' then 300
+                                when 'PUBLIC_NOTICE' then 200
+                                when 'FORM' then 100
+                                else 0
+                            end as authority_rank
                         from ranked
                         where keyword_score > 0 or vector_score >= %s
                     )
@@ -117,7 +131,8 @@ class PostgresSearchRepository:
                         source_url, source_hash, text_hash, content, score
                     from scored
                     where score >= %s
-                    order by score desc, document_id, version_label, chunk_order
+                    order by authority_rank desc, score desc,
+                        document_id, version_label, chunk_order
                     limit %s
                     """,
                     (

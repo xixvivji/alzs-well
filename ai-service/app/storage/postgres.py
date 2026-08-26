@@ -98,12 +98,12 @@ class PostgresIngestionStore:
                     """
                     insert into ai_knowledge.document_snapshot(
                         document_id, version_label, contract_version, title, issuer,
-                        source_url, source_hash, classification, audience, allowed_roles,
-                        approval_status, lifecycle_status, effective_from, effective_to,
-                        indexed_at
+                        source_url, source_hash, document_type, classification, audience,
+                        allowed_roles, approval_status, lifecycle_status, effective_from,
+                        effective_to, indexed_at
                     ) values (
                         %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     on conflict(document_id, version_label) do update set
                         contract_version = excluded.contract_version,
@@ -111,6 +111,7 @@ class PostgresIngestionStore:
                         issuer = excluded.issuer,
                         source_url = excluded.source_url,
                         source_hash = excluded.source_hash,
+                        document_type = excluded.document_type,
                         classification = excluded.classification,
                         audience = excluded.audience,
                         allowed_roles = excluded.allowed_roles,
@@ -128,6 +129,7 @@ class PostgresIngestionStore:
                         manifest.issuer,
                         manifest.source_url,
                         manifest.source_hash,
+                        manifest.document_type,
                         manifest.classification,
                         manifest.audience,
                         list(manifest.allowed_roles),

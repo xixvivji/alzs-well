@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
                     source_hash=result.source_hash,
                     text_hash=result.text_hash,
                     retrieved_as_of=payload.as_of,
+                    index_version=repository.index_version,
                 ),
             )
             for result in stored_results
