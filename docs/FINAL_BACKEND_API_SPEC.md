@@ -2508,6 +2508,8 @@ Content-Type: application/json
 
 응답은 `summary`, `suggestedQuestions`, `checklist`, `basisReasonCodes`, `retrievalMode`, `citations`와 안전 메타데이터를 반환한다. `COPILOT_RAG_ENABLED=true`이고 승인·활성·ACL·효력 검증을 통과한 내부 근거가 있을 때만 `RAG_GROUNDED_TEMPLATE`을 반환한다. 근거가 없거나 내부 검색이 실패하면 `DETERMINISTIC_TEMPLATE`로 폴백한다. 두 경로 모두 `modelInvoked=false`, `externalEgressAttempted=false`, `humanReviewRequired=true`를 강제한다. 직접식별자와 미확인 항목 원문은 검색 질의로 전달하지 않으며 실제 연락·거래조치·상태전이를 만들지 않는다. 공식 원문은 검토 완료 전 임의로 `APPROVED/ACTIVE` 처리하지 않는다.
 
+CI의 `scripts/copilot_rag_e2e.py`는 합성 승인 문서만 사용해 `PostgreSQL ingestion → Spring import → INTERNAL_RAG_HYBRID → RAG_GROUNDED_TEMPLATE + citations`를 검증하고, FastAPI 중단 후 같은 사건이 `DETERMINISTIC_TEMPLATE`로 폴백하는지 확인한다. 실행 증적에는 capability·access token·원문 검색 질의를 저장하지 않는다.
+
 #### 5.4.2.5 행원 내부 메모 등록
 
 `IMPLEMENTED-P1`

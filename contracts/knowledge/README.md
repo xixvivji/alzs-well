@@ -56,7 +56,7 @@ PENDING_ACTIVATION → ACTIVE → SUPERSEDED
 필요한 DML만 허용하며 Spring의 `knowledge_document`, `knowledge_document_version`,
 `knowledge_passage` 쓰기 권한을 부여하지 않는다.
 
-실제 `knowledge/manifests/DOC-FSC-SAFE-BLOCK-001.yaml`은 최신성·이용조건·보안·승인 검토 전이므로 `IN_REVIEW/PENDING_ACTIVATION`이다. 성공 경로는 공식 문서를 허위 승인하지 않고 `fixtures/synthetic-approved-active.yaml`로 검증한다.
+실제 `knowledge/manifests/DOC-FSC-SAFE-BLOCK-001.yaml`은 최신성·이용조건·보안·승인 검토 전이므로 `IN_REVIEW/PENDING_ACTIVATION`이다. 일반 ingestion 성공 경로는 공식 문서를 허위 승인하지 않고 `fixtures/synthetic-approved-active.yaml`로 검증한다. 사건 코파일럿 인용 통합 경로는 실제 금융 조치에 사용할 수 없는 `fixtures/synthetic-copilot-grounding.yaml`만 사용한다.
 
 현재 Flyway V28의 `knowledge_document.status`는 `APPROVED/EXPIRED`만 표현하고 같은 문서 ID의 데모 seed를 `APPROVED`로 둔다. 계약 manifest가 현재 런타임 DB를 즉시 변경하지 않으며, Spring V41 이후에서 승인·생명주기·ACL을 분리하고 레거시 seed의 호환·전환 정책을 구현해야 한다.
 
