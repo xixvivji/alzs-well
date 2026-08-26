@@ -17,8 +17,16 @@
 
 `reviews/retrieval-review-v1.csv`에는 답변형 40개와 무응답·정책형 10개 후보가 있다.
 현재 공식 manifest가 `IN_REVIEW/PENDING_ACTIVATION` 상태이고 실제 승인 문서 corpus가
-충분하지 않으므로 모든 행은 `SYNTHETIC_REVIEW_ONLY`, `PENDING`이다. 이 파일의 점수를
-실제 업무 품질이나 출시 근거로 사용하지 않는다.
+충분하지 않으므로 모든 행은 `SYNTHETIC_REVIEW_ONLY`다. 2026-08-26 2차 검수에서는
+46개를 `ACCEPTED`, 아래 4개를 `AMBIGUOUS`로 판정했다.
+
+- `RC-013`: 질문이 기록 위치를 요구하지만 근거에 위치 정보가 없음
+- `RC-044`: 폐기 문서 필터와 활성 안전 근거 반환 기준이 한 질의에 섞임
+- `RC-047`: 검색 무응답과 동의 없는 자동 연락 차단 평가의 경계가 불명확
+- `RC-048`: 검색 무응답과 금융 실행 차단 평가의 경계가 불명확
+
+이 검수 결과와 점수는 합성 검색 회귀 기준선일 뿐 실제 업무 품질이나 출시 근거로
+사용하지 않는다.
 
 검수자는 질문과 `evidenceExcerpt`를 비교한 뒤 다음 두 열만 수정한다.
 
@@ -45,6 +53,12 @@ uv run python -m app.evaluation.review_cli finalize \
   --input-csv evaluation/reviews/retrieval-review-v1.csv \
   --output-jsonl data/derived/evaluation/retrieval-reviewed-v1.jsonl
 ```
+
+현재 2차 검수 결과를 finalize하면 답변형 39개와 무응답형 7개, 총 46개가 생성된다.
+기본 설정의 합성 기준선은 Recall@3/5 `0.4872`, MRR `0.4744`, 무응답 오탐률 `0`,
+정책 위반 `0`으로 품질 게이트를 통과하지 못한다. 125개 조합 중 최선도
+keyword `0.2`, vector `0.8`, vector threshold `0.15`, result threshold `0.25`에서
+Recall@3/5 `0.6667`, MRR `0.6538`이므로 설정을 자동 변경하지 않는다.
 
 실제 공식 문서가 `APPROVED/ACTIVE`가 되면 해당 ingestion chunk로 corpus를 새로 만들고,
 동일한 검수 흐름에서 최소 2명의 담당자가 정답 근거를 확인한 데이터셋을 별도 버전으로
