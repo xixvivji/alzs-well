@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 public class RetrievalGroundedCopilotAdapter implements CopilotPort {
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
     private static final Map<String, String> REASON_TERMS = Map.of(
+            "MISSED_RECURRING", "정기납부 미처리 고객 상담 안내",
             "MISSED_RECURRING_PAYMENT", "정기납부 미처리 고객 상담 안내",
             "DUPLICATE_TRANSFER", "중복 송금 고객 상담 안내",
             "REPEATED_CONFIRMATION", "거래 반복 확인 고객 상담 안내"

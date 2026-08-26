@@ -96,4 +96,18 @@ class RetrievalGroundedCopilotAdapterTest {
         assertThat(result.generatedBy()).isEqualTo("DETERMINISTIC_TEMPLATE");
         assertThat(result.retrievalMode()).isEqualTo("NONE");
     }
+
+    @Test
+    void mapsTheDemoRecurringReasonCodeToTheApprovedSearchTerm() {
+        KnowledgeRetrievalPort retrieval = mock(KnowledgeRetrievalPort.class);
+        when(retrieval.retrieve(any())).thenReturn(new RetrievalResult(
+                List.of(), "INTERNAL_RAG_HYBRID", false, 0));
+        CopilotFacts demoFacts = new CopilotFacts("CONSULTATION_NOTE", "UNABLE_TO_CONFIRM",
+                List.of("MISSED_RECURRING"), List.of());
+
+        new RetrievalGroundedCopilotAdapter(true, retrieval, deterministic, CLOCK).generate(demoFacts);
+
+        verify(retrieval).retrieve(argThat(query ->
+                query.query().equals("정기납부 미처리 고객 상담 안내")));
+    }
 }
