@@ -12,6 +12,7 @@ from app.embedding.base import EmbeddingDescriptor
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import (
+    ARCTIC_INDEX_VERSION,
     E5_INDEX_VERSION,
     INDEX_VERSION,
     KEYWORD_WEIGHT,
@@ -166,6 +167,7 @@ def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:
         "snowflake-arctic-embed-l-v2.0-ko@test",
         1024,
     )
+    assert repository.index_version == ARCTIC_INDEX_VERSION
 
 
 def test_search_rejects_unsupported_embedding_dimension_before_database_call() -> None:

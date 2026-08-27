@@ -131,6 +131,11 @@ class KnowledgeCatalogIntegrationTest {
                 List.of("PROTECTION_STAFF"),List.of("STAFF"),5);
 
         assertThat(citationValidator.validate(new AiSearchHit(1.0,content,citation),query)).isPresent();
+        AiCitation arcticCitation=new AiCitation("1.0.0","DOC-FSC-SAFE-BLOCK-001","2026-08",chunkId,1,
+                "금융거래 안심차단 안내 근거","금융위원회","신청 전 확인",sectionPath,null,
+                "금융거래 안심차단 안내 근거 > 신청 전 확인","https://www.fsc.go.kr/no010101/85644",sourceHash,textHash,
+                LocalDate.of(2026,8,14),"HYBRID","hybrid-arctic-ko-v1");
+        assertThat(citationValidator.validate(new AiSearchHit(1.0,content,arcticCitation),query)).isPresent();
         assertThat(citationValidator.validate(new AiSearchHit(1.0,content+" 변조",citation),query)).isEmpty();
     }
 

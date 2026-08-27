@@ -24,6 +24,21 @@ dev = [
   "pytest>=8.3,<10",
   "pytest-cov>=6,<8",
 ]
+model-runtime = [
+  "sentence-transformers==5.7.0",
+  "torch==2.13.0",
+  "transformers==5.15.1",
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", marker = "platform_system == 'Linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

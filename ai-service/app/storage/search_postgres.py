@@ -19,6 +19,7 @@ from app.storage.embedding_index import vector_type
 ConnectFunction = Callable[..., Any]
 INDEX_VERSION = "hybrid-hash-ngram-v3"
 E5_INDEX_VERSION = "hybrid-multilingual-e5-small-v2"
+ARCTIC_INDEX_VERSION = "hybrid-arctic-ko-v1"
 KEYWORD_WEIGHT = 0.35
 VECTOR_WEIGHT = 0.65
 VECTOR_THRESHOLD = 0.15
@@ -36,11 +37,10 @@ class PostgresSearchRepository:
         self._config = config
         self._connect_function = connect
         self._embedding_provider = embedding_provider or LocalHashEmbeddingProvider()
-        self._index_version = (
-            E5_INDEX_VERSION
-            if self._embedding_provider.descriptor.backend == "local-e5"
-            else INDEX_VERSION
-        )
+        self._index_version = {
+            "local-e5": E5_INDEX_VERSION,
+            "local-arctic-ko": ARCTIC_INDEX_VERSION,
+        }.get(self._embedding_provider.descriptor.backend, INDEX_VERSION)
 
     @property
     def index_version(self) -> str:

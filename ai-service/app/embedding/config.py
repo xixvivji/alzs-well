@@ -8,6 +8,11 @@ from hashlib import sha256
 from pathlib import Path, PurePosixPath
 
 from app.embedding.base import EmbeddingProvider
+from app.embedding.local_arctic import (
+    ARCTIC_MODEL_REVISION,
+    ARCTIC_MODEL_SHA256,
+    LocalArcticKoEmbeddingProvider,
+)
 from app.embedding.local_e5 import LocalE5EmbeddingProvider
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
@@ -16,6 +21,7 @@ from app.errors import KnowledgeContractError
 HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 REVISION_PATTERN = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]{0,79}$")
 E5Factory = Callable[[Path, str], EmbeddingProvider]
+ArcticFactory = Callable[[Path, str], EmbeddingProvider]
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +39,7 @@ class EmbeddingConfig:
     ) -> EmbeddingConfig:
         values = os.environ if environment is None else environment
         backend = values.get("ALZS_EMBEDDING_BACKEND", "hash").strip().lower()
-        if backend not in {"hash", "local-e5"}:
+        if backend not in {"hash", "local-e5", "local-arctic-ko"}:
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         fallback = _boolean(values.get("ALZS_EMBEDDING_ALLOW_HASH_FALLBACK", "true"))
         if backend == "hash":
@@ -53,6 +59,10 @@ class EmbeddingConfig:
             or not HASH_PATTERN.fullmatch(digest)
         ):
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+        if backend == "local-arctic-ko" and (
+            revision != ARCTIC_MODEL_REVISION or digest != ARCTIC_MODEL_SHA256
+        ):
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         return cls(
             backend=backend,
             model_root=root,
@@ -63,7 +73,11 @@ class EmbeddingConfig:
         )
 
     def resolve_model_directory(self) -> Path:
-        if self.backend != "local-e5" or self.model_root is None or self.model_path is None:
+        if (
+            self.backend not in {"local-e5", "local-arctic-ko"}
+            or self.model_root is None
+            or self.model_path is None
+        ):
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         try:
             current = self.model_root
@@ -87,12 +101,16 @@ def create_embedding_provider(
     config: EmbeddingConfig,
     *,
     e5_factory: E5Factory | None = None,
+    arctic_factory: ArcticFactory | None = None,
 ) -> EmbeddingProvider:
     if config.backend == "hash":
         return LocalHashEmbeddingProvider()
     model_directory = config.resolve_model_directory()
     _verify_safetensors(model_directory, config.model_sha256)
-    factory = _e5_provider if e5_factory is None else e5_factory
+    if config.backend == "local-arctic-ko":
+        factory = _arctic_provider if arctic_factory is None else arctic_factory
+    else:
+        factory = _e5_provider if e5_factory is None else e5_factory
     try:
         return factory(model_directory, str(config.model_revision))
     except KnowledgeContractError as error:
@@ -103,6 +121,10 @@ def create_embedding_provider(
 
 def _e5_provider(model_path: Path, revision: str) -> EmbeddingProvider:
     return LocalE5EmbeddingProvider(model_path, revision=revision)
+
+
+def _arctic_provider(model_path: Path, revision: str) -> EmbeddingProvider:
+    return LocalArcticKoEmbeddingProvider(model_path, revision=revision)
 
 
 def _verify_safetensors(model_directory: Path, expected_hash: str | None) -> None:
