@@ -17,7 +17,8 @@ public class AiCitationValidator {
     private static final Pattern HASH=Pattern.compile("sha256:[0-9a-f]{64}");
     private static final Pattern CHUNK_ID=Pattern.compile("chk_[0-9a-f]{64}");
     private static final Set<String> SUPPORTED_INDEX_VERSIONS=Set.of(
-            "hybrid-hash-ngram-v3","hybrid-multilingual-e5-small-v2");
+            "hybrid-hash-ngram-v3","hybrid-multilingual-e5-small-v2",
+            "hybrid-arctic-ko-v1");
     private final JdbcClient jdbc;
 
     public AiCitationValidator(JdbcClient jdbc){this.jdbc=jdbc;}

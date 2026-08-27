@@ -45,6 +45,7 @@ def load_environment() -> dict[str, str]:
 
 
 ENVIRONMENT = load_environment()
+EMBEDDING_MODE = ENVIRONMENT.get("COPILOT_RAG_EMBEDDING_MODE", "hash")
 ARTIFACT_DIRECTORY = Path(
     ENVIRONMENT.get("COPILOT_RAG_E2E_ARTIFACT_DIR", ROOT / "artifacts/copilot-rag-e2e")
 )
@@ -62,6 +63,11 @@ COMPOSE = [
     "-f",
     str(BACKEND / "compose.integration.yaml"),
 ]
+if extra_compose_file := ENVIRONMENT.get("COPILOT_RAG_EXTRA_COMPOSE_FILE"):
+    extra_path = Path(extra_compose_file)
+    if not extra_path.is_absolute():
+        extra_path = ROOT / extra_path
+    COMPOSE.extend(["-f", str(extra_path)])
 BASE_URL = f"http://127.0.0.1:{ENVIRONMENT['BACKEND_PORT']}"
 
 
@@ -219,6 +225,23 @@ def ingest_synthetic_document() -> dict[str, Any]:
 
 
 def verify_multi_dimension_reingestion() -> None:
+    if EMBEDDING_MODE == "arctic-ko":
+        ingest_synthetic_document()
+        stored = psql(
+            f"""
+            select coalesce(bool_and(
+              e.embedding_model_id='dragonkue/snowflake-arctic-embed-l-v2.0-ko'
+              and e.embedding_model_version=
+                'snowflake-arctic-embed-l-v2.0-ko@55ec6e9358a56d56af759bc8372e970caf8c305f'
+              and e.embedding_dimensions=1024
+            ), false)
+            from ai_knowledge.chunk c
+            join ai_knowledge.chunk_embedding e on e.chunk_id=c.chunk_id
+            where c.document_id='{DOCUMENT_ID}' and c.version_label='{VERSION}';
+            """
+        )
+        require(stored == "t", "Arctic-ko 1024 embeddings were not preserved on re-ingestion")
+        return
     psql(
         f"""
         insert into ai_knowledge.chunk_embedding(
@@ -451,7 +474,15 @@ def main() -> int:
             searched["data"]["items"][0]["passage"]["documentId"] == DOCUMENT_ID,
             "Spring citation validation rejected the synthetic evidence",
         )
+        index_version = psql(
+            "select index_version from ai_knowledge.retrieval_run "
+            "where status='SUCCEEDED' order by started_at desc limit 1;"
+        )
+        if EMBEDDING_MODE == "arctic-ko":
+            require(index_version == "hybrid-arctic-ko-v1", "Arctic-ko index version missing")
         evidence = run_demo_copilot()
+        evidence["embeddingMode"] = EMBEDDING_MODE
+        evidence["indexVersion"] = index_version
         (ARTIFACT_DIRECTORY / "result.json").write_text(
             json.dumps(evidence, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",

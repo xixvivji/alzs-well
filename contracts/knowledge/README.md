@@ -202,8 +202,9 @@ Spring import는 `APPROVED/ACTIVE` governance와 source hash를 먼저 확인하
 AI 파생 `document_snapshot`과 `chunk`만 조회하여 역할 교집합, audience, 승인·활성 상태와
 효력기간을 중복 필터링한다. 원문 검색어는 감사 테이블에 남기지 않고 NFC 정규화된
 검색어의 SHA-256만 저장한다. 응답의 `retrievalMethod`는 `HYBRID`이며 `indexVersion`은
-실제 검색 실행에 사용한 인덱스 버전이다. 현재 허용 버전은 `hybrid-hash-ngram-v3`과
-`hybrid-multilingual-e5-small-v2`이며 Spring이 citation을 최종 재검증한다. 전문검색 점수와
+실제 검색 실행에 사용한 인덱스 버전이다. 현재 허용 버전은 `hybrid-hash-ngram-v3`,
+`hybrid-multilingual-e5-small-v2`, `hybrid-arctic-ko-v1`이며 Spring이 citation을 최종
+재검증한다. 전문검색 점수와
 `local-hash-ngram-ko-v1` 384차원 pgvector cosine 유사도를 결합하고 외부 모델을 다운로드하지 않는다.
 
 관련성이 최소 임계값을 통과한 결과끼리는 manifest `documentType`의 권위 순서를 먼저

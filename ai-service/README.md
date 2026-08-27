@@ -165,10 +165,11 @@ chunk만 삭제하며, 그때 해당 chunk의 모든 파생 벡터도 cascade로
 
 ### 로컬 한국어 임베딩 모델
 
-운영 설정에서 활성화할 수 있는 신경망 후보는 현재
-`intfloat/multilingual-e5-small`뿐이다. 한국어를 포함하는 다국어 검색 모델이며 출력이
-384차원이어서 현재 pgvector 스키마를 변경하지 않는다. 모델이 승인·반입되기 전에는 hash
-어댑터가 기본값이고 외부 모델 다운로드는 허용하지 않는다.
+운영 설정에서 명시적으로 활성화할 수 있는 신경망 후보는
+`intfloat/multilingual-e5-small`과
+`dragonkue/snowflake-arctic-embed-l-v2.0-ko`다. E5는 384차원이고 Arctic-ko는
+1024차원이다. 두 모델의 벡터는 모델 ID·revision·차원별로 분리되며, 모델이 승인·반입되기
+전에는 hash 어댑터가 기본값이다. 실행 중 외부 모델 다운로드는 허용하지 않는다.
 
 E5와 Arctic-ko는 CPU 전용 공용 SentenceTransformer 어댑터를 사용한다. 모델별 ID·차원과
 질의·문단 prefix는 명시적인 사양으로 분리한다. E5는 질의에 `query:`, 문단에 `passage:`를
@@ -191,16 +192,30 @@ ALZS_EMBEDDING_MODEL_SHA256=sha256:<model.safetensors의 64자리 lowercase hex>
 ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true
 ```
 
+Arctic-ko는 저장소에 고정된 revision과 SHA-256이 정확히 일치할 때만 선택된다. 로컬
+반입본으로 모델 런타임 오버레이를 사용할 때는 저장소 루트에서 다음처럼 실행한다.
+
+```bash
+AI_MODEL_HOST_ROOT="$PWD/models" docker compose \
+  -f backend/compose.yaml \
+  -f backend/compose.arctic-ko.yaml \
+  --profile ai up --build
+```
+
+`Dockerfile.model-runtime`은 `model-runtime` 의존성 그룹의 고정 버전을 설치하며 Linux에서는
+공식 PyTorch CPU wheel만 사용한다. 모델 파일은 이미지에 복사하지 않고 읽기 전용 volume으로
+마운트한다. Compose 오버레이는 각 AI 컨테이너에 3 GiB와 CPU 2개를 배정한다.
+
 모델 경로는 root 기준 상대경로만 허용하고 `../`, 심볼릭 링크, 해시 불일치를 거부한다.
 해시 불일치는 fallback하지 않으며, 검증된 모델이 런타임에서 로드되지 않을 때만 기본
 hash 어댑터로 시작할 수 있다. 검색 시 다른 모델 버전으로 생성된 벡터에는 cosine 점수를
 적용하지 않지만 keyword 검색 대상에서는 제외하지 않는다. 모델을 전환하면 승인 문서를
 새 모델 버전으로 재-ingestion한 뒤 동일 검수 평가셋으로 Recall@K와 MRR을 다시 측정한다.
 
-Arctic-ko는 `evaluation/model-artifacts-v1.json`의 `EVALUATION_ONLY` 모델로만 선택할 수
-있다. 현재 운영 DB의 `vector(384)`와 호환되지 않으므로 FastAPI 운영 환경변수로 활성화할
-수 없으며, 1024차원 pgvector 마이그레이션과 재-ingestion 전에는 검색·저장 경로에
-연결하지 않는다.
+Arctic-ko는 품질 검토 상태가 `EVALUATION_ONLY`이므로 기본 모델로 자동 승격하지 않는다.
+다만 제한된 합성 E2E와 부하 시험에서는 `local-arctic-ko` backend로 활성화할 수 있다.
+고정 artifact 검증, 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion 및 Spring citation
+재검증이 모두 통과한 뒤에만 운영 기본값 변경을 별도 승인한다.
 
 최종 결합 점수가 `0.35` 미만이면 관련 keyword가 일부 겹치더라도 결과를 반환하지 않는다.
 이 무응답 임계값과 keyword/vector 가중치는 합성 검색 평가 데이터셋의 Recall@K, MRR,
