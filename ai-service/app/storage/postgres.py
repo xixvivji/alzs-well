@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
@@ -10,9 +11,15 @@ import psycopg
 from app.domain.chunk import KnowledgeChunk
 from app.domain.manifest import KnowledgeManifest
 from app.embedding.base import EmbeddingProvider, vector_literal
-from app.embedding.local_hash import LocalHashEmbeddingProvider
+from app.embedding.local_hash import (
+    EMBEDDING_DIMENSIONS as HASH_DIMENSIONS,
+    EMBEDDING_MODEL_ID as HASH_MODEL_ID,
+    EMBEDDING_MODEL_VERSION as HASH_MODEL_VERSION,
+    LocalHashEmbeddingProvider,
+)
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
+from app.storage.embedding_index import vector_type
 
 
 ConnectFunction = Callable[..., Any]
@@ -69,6 +76,7 @@ class PostgresIngestionStore:
         manifest: KnowledgeManifest,
     ) -> None:
         document_id, version_label = _validate_chunks(chunks)
+        vector_type(self._embedding_provider.descriptor.dimensions)
         if (
             manifest.document_id != document_id
             or manifest.version_label != version_label
@@ -142,10 +150,18 @@ class PostgresIngestionStore:
                 )
 
                 cursor.execute(
-                    "delete from ai_knowledge.chunk where document_id = %s and version_label = %s",
-                    (document_id, version_label),
+                    """
+                    delete from ai_knowledge.chunk
+                    where document_id = %s and version_label = %s
+                      and not (chunk_id = any(%s::text[]))
+                    """,
+                    (document_id, version_label, [chunk.chunk_id for chunk in chunks]),
                 )
                 created_at = _now()
+                chunk_writes = [
+                    _chunk_write(run_id, chunk, created_at, self._embedding_provider)
+                    for chunk in chunks
+                ]
                 cursor.executemany(
                     """
                     insert into ai_knowledge.chunk(
@@ -157,13 +173,43 @@ class PostgresIngestionStore:
                         %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s
                     )
+                    on conflict(chunk_id) do update set
+                        run_id = excluded.run_id,
+                        heading = excluded.heading,
+                        section_path = excluded.section_path,
+                        page = excluded.page,
+                        page_start = excluded.page_start,
+                        page_end = excluded.page_end,
+                        chunk_order = excluded.chunk_order,
+                        content = excluded.content,
+                        text_hash = excluded.text_hash,
+                        source_hash = excluded.source_hash,
+                        extractor_version = excluded.extractor_version,
+                        chunker_version = excluded.chunker_version,
+                        embedding = coalesce(
+                            excluded.embedding, ai_knowledge.chunk.embedding
+                        ),
+                        embedding_model_version = coalesce(
+                            excluded.embedding_model_version,
+                            ai_knowledge.chunk.embedding_model_version
+                        ),
+                        created_at = excluded.created_at
                     """,
-                    [
-                        _chunk_parameters(
-                            run_id, chunk, created_at, self._embedding_provider
-                        )
-                        for chunk in chunks
-                    ],
+                    [write.chunk_parameters for write in chunk_writes],
+                )
+                cursor.executemany(
+                    """
+                    insert into ai_knowledge.chunk_embedding(
+                        chunk_id, embedding_model_id, embedding_model_version,
+                        embedding_dimensions, embedding, created_at
+                    ) values (%s, %s, %s, %s, %s::vector, %s)
+                    on conflict(chunk_id, embedding_model_id, embedding_model_version)
+                    do update set
+                        embedding_dimensions = excluded.embedding_dimensions,
+                        embedding = excluded.embedding,
+                        created_at = excluded.created_at
+                    """,
+                    [write.embedding_parameters for write in chunk_writes],
                 )
                 cursor.execute(
                     """
@@ -239,33 +285,56 @@ def _validate_chunks(chunks: tuple[KnowledgeChunk, ...]) -> tuple[str, str]:
     return first.document_id, first.version_label
 
 
-def _chunk_parameters(
+@dataclass(frozen=True, slots=True)
+class _ChunkWrite:
+    chunk_parameters: tuple[object, ...]
+    embedding_parameters: tuple[object, ...]
+
+
+def _chunk_write(
     run_id: UUID,
     chunk: KnowledgeChunk,
     created_at: datetime,
     embedding_provider: EmbeddingProvider,
-) -> tuple[object, ...]:
+) -> _ChunkWrite:
+    descriptor = embedding_provider.descriptor
     searchable_text = " ".join((*chunk.section_path, chunk.heading, chunk.text))
     vector = embedding_provider.embed_passage(searchable_text)
-    return (
-        chunk.chunk_id,
-        run_id,
-        chunk.document_id,
-        chunk.version_label,
-        chunk.heading,
-        list(chunk.section_path),
-        chunk.page,
-        chunk.page_start,
-        chunk.page_end,
-        chunk.chunk_order,
-        chunk.text,
-        chunk.text_hash,
-        chunk.source_hash,
-        chunk.extractor_version,
-        chunk.chunker_version,
-        vector_literal(vector, dimensions=embedding_provider.descriptor.dimensions),
-        embedding_provider.descriptor.model_version,
-        created_at,
+    literal = vector_literal(vector, dimensions=descriptor.dimensions)
+    legacy_compatible = (
+        descriptor.model_id == HASH_MODEL_ID
+        and descriptor.model_version == HASH_MODEL_VERSION
+        and descriptor.dimensions == HASH_DIMENSIONS
+    )
+    return _ChunkWrite(
+        chunk_parameters=(
+            chunk.chunk_id,
+            run_id,
+            chunk.document_id,
+            chunk.version_label,
+            chunk.heading,
+            list(chunk.section_path),
+            chunk.page,
+            chunk.page_start,
+            chunk.page_end,
+            chunk.chunk_order,
+            chunk.text,
+            chunk.text_hash,
+            chunk.source_hash,
+            chunk.extractor_version,
+            chunk.chunker_version,
+            literal if legacy_compatible else None,
+            descriptor.model_version if legacy_compatible else None,
+            created_at,
+        ),
+        embedding_parameters=(
+            chunk.chunk_id,
+            descriptor.model_id,
+            descriptor.model_version,
+            descriptor.dimensions,
+            literal,
+            created_at,
+        ),
     )
 
 

@@ -9,13 +9,14 @@ from app.embedding.base import vector_literal as _vector_literal
 
 
 EMBEDDING_DIMENSIONS = 384
+EMBEDDING_MODEL_ID = "local-hash-ngram-ko"
 EMBEDDING_MODEL_VERSION = "local-hash-ngram-ko-v1"
 
 
 class LocalHashEmbeddingProvider:
     descriptor = EmbeddingDescriptor(
         backend="hash",
-        model_id="local-hash-ngram-ko",
+        model_id=EMBEDDING_MODEL_ID,
         model_version=EMBEDDING_MODEL_VERSION,
         dimensions=EMBEDDING_DIMENSIONS,
     )

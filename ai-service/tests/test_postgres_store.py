@@ -28,6 +28,7 @@ class FakeCursor:
         self.many_error = many_error
         self.executions: list[tuple[str, object]] = []
         self.batch: list[tuple[object, ...]] = []
+        self.batches: list[list[tuple[object, ...]]] = []
         self.rowcount = 1
 
     def __enter__(self) -> FakeCursor:
@@ -46,6 +47,7 @@ class FakeCursor:
             raise self.many_error
         self.executions.append((" ".join(statement.split()), "executemany"))
         self.batch.extend(parameters)
+        self.batches.append(parameters)
 
     def fetchone(self) -> tuple[str, ...] | None:
         return self.run
@@ -134,15 +136,46 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
         if statement.startswith("insert into ai_knowledge.document_snapshot")
     )
     assert snapshot_parameters[7] == "SYNTHETIC_FIXTURE"  # type: ignore[index]
-    assert any(statement.startswith("delete from ai_knowledge.chunk") for statement in statements)
-    assert any(statement.startswith("insert into ai_knowledge.chunk") for statement in statements)
+    stale_delete = next(
+        (statement, parameters)
+        for statement, parameters in cursor.executions
+        if statement.startswith("delete from ai_knowledge.chunk")
+    )
+    assert "not (chunk_id = any(%s::text[]))" in stale_delete[0]
+    assert stale_delete[1][2] == [chunks[0].chunk_id, chunks[1].chunk_id]  # type: ignore[index]
+    chunk_insert = next(
+        statement
+        for statement, _ in cursor.executions
+        if statement.startswith("insert into ai_knowledge.chunk(")
+    )
+    embedding_insert = next(
+        statement
+        for statement, _ in cursor.executions
+        if statement.startswith("insert into ai_knowledge.chunk_embedding(")
+    )
+    assert "on conflict(chunk_id) do update" in chunk_insert
+    assert "embedding = coalesce(" in chunk_insert
+    assert (
+        "on conflict(chunk_id, embedding_model_id, embedding_model_version)"
+        in embedding_insert
+    )
     assert statements[-1].startswith("update ai_knowledge.ingestion_run")
-    assert len(cursor.batch) == 2
-    assert cursor.batch[0][0] == chunks[0].chunk_id
-    assert cursor.batch[0][1] == run_id
-    assert cursor.batch[0][5] == ["문서", "절"]
-    assert str(cursor.batch[0][15]).startswith("[")
-    assert cursor.batch[0][16] == "local-hash-ngram-ko-v1"
+    assert len(cursor.batches) == 2
+    chunk_batch, embedding_batch = cursor.batches
+    assert len(chunk_batch) == 2
+    assert len(embedding_batch) == 2
+    assert chunk_batch[0][0] == chunks[0].chunk_id
+    assert chunk_batch[0][1] == run_id
+    assert chunk_batch[0][5] == ["문서", "절"]
+    assert str(chunk_batch[0][15]).startswith("[")
+    assert chunk_batch[0][16] == "local-hash-ngram-ko-v1"
+    assert embedding_batch[0][0:4] == (
+        chunks[0].chunk_id,
+        "local-hash-ngram-ko",
+        "local-hash-ngram-ko-v1",
+        384,
+    )
+    assert str(embedding_batch[0][4]).startswith("[")
 
 
 def test_ingestion_uses_injected_embedding_provider_and_records_version() -> None:
@@ -158,8 +191,85 @@ def test_ingestion_uses_injected_embedding_provider_and_records_version() -> Non
     store.complete_run(run_id, (_chunk(1, "body"),), (), _manifest())
 
     assert provider.passages == ["문서 절 절 body"]
-    assert cursor.batch[0][16] == "multilingual-e5-small@test"
-    assert str(cursor.batch[0][15]).startswith("[1,")
+    chunk_batch, embedding_batch = cursor.batches
+    assert chunk_batch[0][15:17] == (None, None)
+    assert embedding_batch[0][1:4] == (
+        "intfloat/multilingual-e5-small",
+        "multilingual-e5-small@test",
+        384,
+    )
+    assert str(embedding_batch[0][4]).startswith("[1,")
+
+
+def test_ingestion_stores_1024_dimension_embedding_without_legacy_write() -> None:
+    class ArcticProvider(FakeEmbeddingProvider):
+        descriptor = EmbeddingDescriptor(
+            backend="local-arctic-ko",
+            model_id="dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+            model_version="snowflake-arctic-embed-l-v2.0-ko@test",
+            dimensions=1024,
+        )
+
+        def embed_passage(self, value: str) -> tuple[float, ...]:
+            self.passages.append(value)
+            return (1.0,) + (0.0,) * 1023
+
+    cursor = FakeCursor(
+        run=("DOC-SYN-STORE-001", "1.0.0", "sha256:" + "1" * 64, "RUNNING")
+    )
+    store = PostgresIngestionStore(
+        _config(), connect=Connector(cursor), embedding_provider=ArcticProvider()
+    )
+
+    store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
+
+    chunk_batch, embedding_batch = cursor.batches
+    assert chunk_batch[0][15:17] == (None, None)
+    assert embedding_batch[0][3] == 1024
+    assert len(str(embedding_batch[0][4])) > 1024
+
+
+def test_reingestion_preserves_other_model_embeddings_for_unchanged_chunks() -> None:
+    cursor = FakeCursor(
+        run=("DOC-SYN-STORE-001", "1.0.0", "sha256:" + "1" * 64, "RUNNING")
+    )
+    store = PostgresIngestionStore(_config(), connect=Connector(cursor))
+    chunks = (_chunk(1, "first"), _chunk(2, "second"))
+
+    store.complete_run(uuid4(), chunks, (), _manifest())
+
+    delete_statement, delete_parameters = next(
+        (statement, parameters)
+        for statement, parameters in cursor.executions
+        if statement.startswith("delete from ai_knowledge.chunk")
+    )
+    assert "not (chunk_id = any(%s::text[]))" in delete_statement
+    assert delete_parameters[2] == [chunk.chunk_id for chunk in chunks]  # type: ignore[index]
+    assert not any(
+        statement.startswith("delete from ai_knowledge.chunk_embedding")
+        for statement, _ in cursor.executions
+    )
+
+
+def test_rejects_unsupported_embedding_dimension_before_database_write() -> None:
+    class UnsupportedProvider(FakeEmbeddingProvider):
+        descriptor = EmbeddingDescriptor(
+            backend="unsupported",
+            model_id="unsupported/model",
+            model_version="unsupported@test",
+            dimensions=768,
+        )
+
+    connector = Connector()
+    store = PostgresIngestionStore(
+        _config(), connect=connector, embedding_provider=UnsupportedProvider()
+    )
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
+
+    assert caught.value.code == "EMBEDDING_VECTOR_INVALID"
+    assert connector.calls == []
 
 
 def test_records_failed_run_with_safe_code_only() -> None:

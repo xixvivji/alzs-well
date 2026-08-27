@@ -192,6 +192,69 @@ def register_and_publish(access_token: str) -> None:
     require(published["code"] == "KNOWLEDGE_DOCUMENT_PUBLISHED", "publication failed")
 
 
+def ingest_synthetic_document() -> dict[str, Any]:
+    ingestion = compose(
+        "--profile",
+        "ai-tools",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "ai-ingestion",
+        "ingest-html",
+        "--repo-root",
+        "/workspace",
+        "--manifest",
+        MANIFEST,
+        "--as-of",
+        AS_OF,
+        "--storage",
+        "postgres",
+        capture=True,
+    )
+    result = json.loads(ingestion.splitlines()[-1])
+    require(result["code"] == "HTML_INGESTION_COMPLETED", "AI ingestion failed")
+    require(result["storage"] == "POSTGRES", "AI PostgreSQL storage was not used")
+    return result
+
+
+def verify_multi_dimension_reingestion() -> None:
+    psql(
+        f"""
+        insert into ai_knowledge.chunk_embedding(
+          chunk_id, embedding_model_id, embedding_model_version,
+          embedding_dimensions, embedding, created_at
+        )
+        select chunk_id,
+          'dragonkue/snowflake-arctic-embed-l-v2.0-ko',
+          'snowflake-arctic-embed-l-v2.0-ko@55ec6e9358a56d56af759bc8372e970caf8c305f',
+          1024,
+          (array[1.0::real] || array_fill(0.0::real, array[1023]))::vector,
+          now()
+        from ai_knowledge.chunk
+        where document_id='{DOCUMENT_ID}' and version_label='{VERSION}';
+        """
+    )
+    ingest_synthetic_document()
+    coexistence = psql(
+        f"""
+        select coalesce(bool_and(
+          model_count = 2 and dimensions = array[384,1024]::bigint[]
+        ), false)
+        from (
+          select c.chunk_id, count(*) as model_count,
+            array_agg(e.embedding_dimensions::bigint order by e.embedding_dimensions)
+              as dimensions
+          from ai_knowledge.chunk c
+          join ai_knowledge.chunk_embedding e on e.chunk_id=c.chunk_id
+          where c.document_id='{DOCUMENT_ID}' and c.version_label='{VERSION}'
+          group by c.chunk_id
+        ) stored;
+        """
+    )
+    require(coexistence == "t", "384/1024 embeddings did not survive re-ingestion")
+
+
 def ingestion_import_payload() -> dict[str, Any]:
     statement = f"""
         with selected_run as (
@@ -365,28 +428,8 @@ def main() -> int:
         )
         access_token = login["data"]["accessToken"]
         register_and_publish(access_token)
-        ingestion = compose(
-            "--profile",
-            "ai-tools",
-            "run",
-            "--build",
-            "--rm",
-            "--no-deps",
-            "ai-ingestion",
-            "ingest-html",
-            "--repo-root",
-            "/workspace",
-            "--manifest",
-            MANIFEST,
-            "--as-of",
-            AS_OF,
-            "--storage",
-            "postgres",
-            capture=True,
-        )
-        ingestion_result = json.loads(ingestion.splitlines()[-1])
-        require(ingestion_result["code"] == "HTML_INGESTION_COMPLETED", "AI ingestion failed")
-        require(ingestion_result["storage"] == "POSTGRES", "AI PostgreSQL storage was not used")
+        ingest_synthetic_document()
+        verify_multi_dimension_reingestion()
         import_headers = bearer(access_token)
         import_headers["Idempotency-Key"] = "copilot-rag-e2e-import-v1"
         imported, _ = http(

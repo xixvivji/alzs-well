@@ -2238,7 +2238,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "67",
+        "schemaVersion": "68",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2824,7 +2824,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "67",
+    "schemaVersion": "68",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3732,6 +3732,12 @@ GET /api/v1/signals/{signalId}/evidence
 Flyway V63은 위 공개 operation 수를 늘리지 않고 배포용 `synthetic-v3` 생성 Job을 추가한다. 생성 Job은 `SMOKE(고객 10명·거래 600건)`, `DEMO(고객 50명·거래 12,000건)`, `LOAD(고객 250명·거래 75,000건)`, `DEV(고객 1,000명·거래 1,000,000건)` 중 하나를 선택한다. `fixtureVersion + profile + seed`가 같으면 동일 ID와 manifest hash를 재생하며, 데이터는 1~100명 단위 DB batch로 적재한다. 실행이력은 `synthetic_fixture_generation_run`, 고객별 시나리오와 기대 신호 수는 `synthetic_fixture_customer`에 보존한다.
 
 Flyway V67은 `LOAD` profile과 추가 전용 `synthetic_fixture_quality_report`를 추가한다. `SYNTHETIC_SEED_VERIFY_DETECTION=true`인 Job은 생성된 모든 고객을 현재 활성 정책과 고정 알고리즘으로 평가한다. 정책이 실행 도중 바뀌지 않고 기대·실제 신호 수가 일치하며 정상 고객 오탐과 이상 고객 미탐이 모두 0일 때만 `PASSED`다. 리포트에는 정책·알고리즘 버전, precision·recall, 64자리 report hash를 남기며 외부 실행과 advisory AI는 허용하지 않는다.
+
+Flyway V68은 AI 파생 `chunk_embedding` 테이블을 추가해 384차원과 1024차원 벡터를
+동시에 저장한다. 각 행은 chunk, 모델 ID, 고정 모델 버전, 차원을 함께 식별하며
+Hash v1, 고정 E5-small revision, 고정 Arctic-ko revision마다 별도 HNSW 부분 인덱스를
+사용한다. 기존 `chunk.embedding`은 배포 호환성을 위해 유지하고 Hash 벡터를 신규
+테이블로 이관한다.
 
 이 Job은 HTTP Controller를 제공하지 않는다. `alzswell_migrator` 역할과 `synthetic-tools` Compose profile에서만 실행하며 `SYNTHETIC_DATA_ONLY=true`, `SYNTHETIC_PROVIDER_ONLY=true`, `EXTERNAL_ACTIONS_ENABLED=false`가 아니면 시작 전에 실패한다. 생성된 모든 계좌·거래는 `SYNTHETIC_PROVIDER`이고 실제 금융기관 호출·송금·알림·외부 AI 실행을 만들지 않는다.
 
