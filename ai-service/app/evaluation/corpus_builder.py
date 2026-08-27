@@ -132,6 +132,7 @@ def _evaluation_row(row: dict[str, Any], manifest: KnowledgeManifest) -> dict[st
     return {
         "chunkId": row["chunkId"],
         "documentId": manifest.document_id,
+        "documentType": manifest.document_type,
         "heading": str(row["heading"]),
         "sectionPath": list(row["sectionPath"]),
         "content": row["text"],

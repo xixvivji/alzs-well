@@ -78,6 +78,46 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 동일한 검수 흐름에서 최소 2명의 담당자가 정답 근거를 확인한 데이터셋을 별도 버전으로
 추가한다.
 
+### 공식문서 사전 검수 팩
+
+`reviews/official-retrieval-review-candidates-v1.jsonl`과
+`reviews/official-retrieval-review-v1.csv`는 저장소에 반입된 공식문서 7개를 대상으로 만든
+사전 검수 팩이다. 답변형 24개와 무응답형 6개, 총 30개 후보가 있으며 모든 판정은
+`PENDING`이다. 1차 후보 선정 근거와 알려진 추출 한계는
+`official-golden-set-v1.md`에 기록한다.
+
+공식 manifest는 모두 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
+운영 ingestion 경로, PostgreSQL, pgvector에 기록하지 않고
+`data/derived/evaluation/retrieval-official-review-corpus-<date>.jsonl`에만 원자적으로 생성한다.
+따라서 이 흐름은 검색 정답 후보를 검토하기 위한 도구일 뿐 문서 승인이나 검색 노출을
+수행하지 않는다.
+
+```bash
+uv run python -m app.evaluation.official_review_cli \
+  --repo-root .. \
+  --as-of 2026-08-27 \
+  --manifest knowledge/manifests/DOC-FSC-DESIGNATED-PERSON-NOTICE-001.yaml \
+  --manifest knowledge/manifests/DOC-FSC-FACE-TO-FACE-PHISHING-RELIEF-001.yaml \
+  --manifest knowledge/manifests/DOC-FSC-NONFACE-ACCOUNT-BLOCK-QA-001.yaml \
+  --manifest knowledge/manifests/DOC-FSC-SAFE-BLOCK-001.yaml \
+  --manifest knowledge/manifests/DOC-KDIC-MISTAKEN-REMITTANCE-ELIGIBILITY-001.yaml \
+  --manifest knowledge/manifests/DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001.yaml \
+  --manifest knowledge/manifests/DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001.yaml
+```
+
+생성된 corpus로 검수 CSV를 재현할 수 있다.
+
+```bash
+uv run python -m app.evaluation.review_cli prepare \
+  --corpus data/derived/evaluation/retrieval-official-review-corpus-2026-08-27.jsonl \
+  --candidates evaluation/reviews/official-retrieval-review-candidates-v1.jsonl \
+  --output-csv evaluation/reviews/official-retrieval-review-v1.csv
+```
+
+검수자는 XLSX 또는 CSV에서 `reviewDecision`과 `reviewComment`만 수정한다. `ACCEPTED`는
+질문-근거 쌍을 평가셋으로 승격해도 된다는 뜻이며, 원문 manifest의 승인 상태는 별도
+지식 거버넌스 절차에서 변경해야 한다.
+
 ## 실행
 
 ```bash
