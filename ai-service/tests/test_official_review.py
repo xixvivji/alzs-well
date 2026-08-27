@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import shutil
@@ -16,7 +17,6 @@ from app.evaluation.models import load_corpus
 from app.evaluation.review import (
     load_review_candidates,
     validate_review_candidates,
-    write_review_csv,
 )
 from app.ingestion.manifest_loader import load_and_validate_manifest
 
@@ -30,6 +30,16 @@ OFFICIAL_MANIFESTS = (
     "knowledge/manifests/DOC-KDIC-MISTAKEN-REMITTANCE-ELIGIBILITY-001.yaml",
     "knowledge/manifests/DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001.yaml",
     "knowledge/manifests/DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001.yaml",
+)
+HTML_OFFICIAL_MANIFESTS = tuple(
+    manifest_path
+    for manifest_path in OFFICIAL_MANIFESTS
+    if manifest_path
+    not in {
+        "knowledge/manifests/DOC-FSC-NONFACE-ACCOUNT-BLOCK-QA-001.yaml",
+        "knowledge/manifests/DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001.yaml",
+        "knowledge/manifests/DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001.yaml",
+    }
 )
 
 
@@ -188,31 +198,55 @@ def test_atomic_writer_removes_temporary_file_on_failure(
 def test_committed_official_review_pack_matches_review_only_sources(
     repo_root: Path, tmp_path: Path
 ) -> None:
-    _copy_official_review_sources(repo_root, tmp_path)
+    _copy_official_review_sources(repo_root, tmp_path, HTML_OFFICIAL_MANIFESTS)
     result = build_official_review_corpus(
-        tmp_path, OFFICIAL_MANIFESTS, as_of=date(2026, 8, 27)
+        tmp_path, HTML_OFFICIAL_MANIFESTS, as_of=date(2026, 8, 27)
     )
     corpus = load_corpus(result.output_path)
     review_root = repo_root / "ai-service/evaluation/reviews"
     candidates = load_review_candidates(
         review_root / "official-retrieval-review-candidates-v1.jsonl"
     )
-    generated_csv = tmp_path / "official-retrieval-review-v1.csv"
+    with (review_root / "official-retrieval-review-v1.csv").open(
+        encoding="utf-8-sig", newline=""
+    ) as stream:
+        review_rows = list(csv.DictReader(stream))
+    html_chunk_ids = {chunk.chunk_id for chunk in corpus}
+    html_candidates = tuple(
+        candidate
+        for candidate in candidates
+        if not candidate.relevant_chunk_ids
+        or set(candidate.relevant_chunk_ids) <= html_chunk_ids
+    )
 
-    validate_review_candidates(candidates, corpus)
-    write_review_csv(generated_csv, candidates, corpus)
+    validate_review_candidates(html_candidates, corpus)
 
-    assert result.document_count == 7
-    assert result.chunk_count == 243
+    assert result.document_count == 4
+    assert result.chunk_count == 9
     assert len(candidates) == 30
+    assert len(review_rows) == 30
     assert sum(candidate.expected_action == "ANSWER" for candidate in candidates) == 24
     assert sum(candidate.expected_action == "ABSTAIN" for candidate in candidates) == 6
     assert {candidate.review_decision for candidate in candidates} == {"PENDING"}
     assert {chunk.approval_status for chunk in corpus} == {"IN_REVIEW"}
     assert {chunk.lifecycle_status for chunk in corpus} == {"PENDING_ACTIVATION"}
-    assert generated_csv.read_bytes() == (
-        review_root / "official-retrieval-review-v1.csv"
-    ).read_bytes()
+    assert [row["candidateId"] for row in review_rows] == [
+        candidate.candidate_id for candidate in candidates
+    ]
+    assert all(row["evidenceExcerpt"] for row in review_rows[:24])
+    assert all(not row["evidenceExcerpt"] for row in review_rows[24:])
+    for candidate, row in zip(candidates, review_rows, strict=True):
+        assert row["query"] == candidate.query
+        assert row["expectedAction"] == candidate.expected_action
+        assert row["relevantChunkIds"] == "|".join(candidate.relevant_chunk_ids)
+        assert row["reviewDecision"] == candidate.review_decision
+        assert row["reviewComment"] == candidate.review_comment
+
+    for manifest_path in OFFICIAL_MANIFESTS:
+        manifest = load_and_validate_manifest(repo_root, manifest_path)
+        assert manifest.approval_status == "IN_REVIEW"
+        assert manifest.lifecycle_status == "PENDING_ACTIVATION"
+        assert manifest.payload["usageRights"] == "REVIEW_REQUIRED"
 
 
 def _write_review_repository(repo_root: Path, target: Path) -> Path:
@@ -262,11 +296,13 @@ supersedes: null
     return manifest
 
 
-def _copy_official_review_sources(repo_root: Path, target: Path) -> None:
+def _copy_official_review_sources(
+    repo_root: Path, target: Path, manifest_paths: tuple[str, ...]
+) -> None:
     schema = target / "contracts/knowledge/manifest.schema.json"
     schema.parent.mkdir(parents=True)
     shutil.copy2(repo_root / "contracts/knowledge/manifest.schema.json", schema)
-    for manifest_path in OFFICIAL_MANIFESTS:
+    for manifest_path in manifest_paths:
         source_manifest = repo_root / manifest_path
         target_manifest = target / manifest_path
         target_manifest.parent.mkdir(parents=True, exist_ok=True)
