@@ -32,6 +32,7 @@ def test_builds_official_evaluation_corpus_from_verified_chunks(
     assert payload == {
         "chunkId": row["chunkId"],
         "documentId": "DOC-SYN-CONTRACT-001",
+        "documentType": "SYNTHETIC_FIXTURE",
         "heading": "검증 절",
         "sectionPath": ["합성 문서", "검증 절"],
         "content": "승인된 합성 문서의 검색 근거입니다.",

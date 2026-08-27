@@ -253,6 +253,12 @@ ai-service/.venv/bin/python scripts/copilot_rag_e2e.py
 평가 데이터셋으로 승격할 수 있다. 현재 후보는 합성 corpus 전용이며 공식문서 승인이나
 운영 품질을 의미하지 않는다.
 
+공식문서 사전 검수는 별도 안전 경로인 `app.evaluation.official_review_cli`를 사용한다.
+이 경로는 `IN_REVIEW/PENDING_ACTIVATION/REVIEW_REQUIRED` 공식 manifest만 허용하고,
+운영 chunk·DB·벡터 저장소 대신 `data/derived/evaluation`에 검수 전용 corpus만 생성한다.
+30개 공식문서 검색 후보와 검수 방법은
+[`evaluation/official-golden-set-v1.md`](evaluation/official-golden-set-v1.md)에 정리되어 있다.
+
 ## 테스트
 
 ```bash
