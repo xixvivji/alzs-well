@@ -8,6 +8,7 @@ import pytest
 
 from app.evaluation.models import load_corpus
 from app.evaluation.review import (
+    _evidence_excerpt,
     finalize_review_csv,
     load_review_candidates,
     validate_review_candidates,
@@ -20,6 +21,19 @@ EVALUATION = Path(__file__).parents[1] / "evaluation"
 CORPUS = EVALUATION / "datasets" / "retrieval-corpus-v1.jsonl"
 CANDIDATES = EVALUATION / "reviews" / "retrieval-review-candidates-v1.jsonl"
 REVIEW_CSV = EVALUATION / "reviews" / "retrieval-review-v1.csv"
+
+
+def test_evidence_excerpt_focuses_on_query_relevant_paragraph() -> None:
+    content = (
+        "메뉴와 상품 목록입니다. " * 30
+        + "\n\n서비스 절차는 본인 의사 확인, 지정인 동의, 안내 메시지 전송 순서입니다."
+    )
+
+    excerpt = _evidence_excerpt(content, "지정인 동의 후 메시지는 언제 전송하나요?")
+
+    assert "지정인 동의" in excerpt
+    assert "안내 메시지 전송" in excerpt
+    assert len(excerpt) <= 360
 
 
 def test_committed_review_pack_contains_fifty_pending_candidates(tmp_path: Path) -> None:
