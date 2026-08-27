@@ -5,6 +5,7 @@
 `local-hash-ngram-ko-v1`이며 승인된 로컬 E5 환경 변수를 지정하면 같은 평가 명령이
 `multilingual-e5-small@<revision>`을 사용하고 보고서에 모델 버전을 기록한다.
 현재 측정값과 모델 선택 보류 조건은 `model-comparison-v1.md`에 기록한다.
+Arctic-ko 합성 E2E 부하 게이트의 측정법과 결과는 `arctic-ko-load-test-v1.md`에 기록한다.
 평가에 반입한 모델의 고정 revision·SHA-256·차원·prefix는
 `model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는 Git에 커밋하지 않는다.
 
@@ -104,10 +105,11 @@ uv run python -m app.evaluation.cli evaluate \
   --evaluation-model-root /absolute/path/to/models
 ```
 
-이 명령은 평가 전용이다. Arctic-ko 결과를 PostgreSQL에 저장하거나 FastAPI 운영 검색에
-사용하려면 별도의 1024차원 pgvector 마이그레이션이 선행되어야 한다. 기본 이미지에는
-모델 런타임이 없으므로 승인된 `sentence-transformers` wheel과 전이 의존성을 내부
-wheelhouse에서 별도로 설치해야 하며 실행 중 인터넷 다운로드를 허용하지 않는다.
+이 명령은 평가 전용이다. 현재 PostgreSQL에는 384/1024차원 공존 스키마와 모델별
+pgvector 인덱스가 적용되어 있지만, FastAPI 검색에서 Arctic-ko를 사용하려면 승인 문서를
+해당 고정 모델 버전으로 재-ingestion해야 한다. 기본 이미지에는 모델 런타임이 없으므로
+승인된 `sentence-transformers` wheel과 전이 의존성을 내부 wheelhouse에서 별도로
+설치해야 하며 실행 중 인터넷 다운로드를 허용하지 않는다.
 
 가중치와 임계값 후보 125개를 같은 데이터로 비교한다.
 

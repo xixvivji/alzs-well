@@ -1,0 +1,16 @@
+services:
+  backend:
+    ports:
+      - "127.0.0.1:${BACKEND_LOAD_TEST_PORT:-18086}:8080"
+    networks:
+      - alzs-well-app
+      - alzs-well-data
+      - alzs-well-ingress
+
+  ai-service:
+    ports:
+      - "127.0.0.1:${AI_LOAD_TEST_PORT:-18085}:8000"
+    networks:
+      - alzs-well-app
+      - alzs-well-data
+      - alzs-well-ingress

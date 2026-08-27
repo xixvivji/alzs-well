@@ -11,8 +11,11 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
+from itertools import cycle
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +49,9 @@ def load_environment() -> dict[str, str]:
 
 ENVIRONMENT = load_environment()
 EMBEDDING_MODE = ENVIRONMENT.get("COPILOT_RAG_EMBEDDING_MODE", "hash")
+LOAD_TEST_ENABLED = ENVIRONMENT.get("COPILOT_RAG_LOAD_TEST_ENABLED", "false").lower() == "true"
+LOAD_TEST_PORT = int(ENVIRONMENT.get("AI_LOAD_TEST_PORT", "18085"))
+BACKEND_LOAD_TEST_PORT = int(ENVIRONMENT.get("BACKEND_LOAD_TEST_PORT", "18086"))
 ARTIFACT_DIRECTORY = Path(
     ENVIRONMENT.get("COPILOT_RAG_E2E_ARTIFACT_DIR", ROOT / "artifacts/copilot-rag-e2e")
 )
@@ -63,10 +69,22 @@ COMPOSE = [
     "-f",
     str(BACKEND / "compose.integration.yaml"),
 ]
+extra_compose_files = []
 if extra_compose_file := ENVIRONMENT.get("COPILOT_RAG_EXTRA_COMPOSE_FILE"):
+    extra_compose_files.append(extra_compose_file)
+if configured_files := ENVIRONMENT.get("COPILOT_RAG_EXTRA_COMPOSE_FILES"):
+    extra_compose_files.extend(value for value in configured_files.split(os.pathsep) if value)
+if LOAD_TEST_ENABLED:
+    extra_compose_files.append(str(BACKEND / "compose.load-test.yaml"))
+resolved_extra_paths: set[Path] = set()
+for extra_compose_file in extra_compose_files:
     extra_path = Path(extra_compose_file)
     if not extra_path.is_absolute():
         extra_path = ROOT / extra_path
+    extra_path = extra_path.resolve()
+    if extra_path in resolved_extra_paths:
+        continue
+    resolved_extra_paths.add(extra_path)
     COMPOSE.extend(["-f", str(extra_path)])
 BASE_URL = f"http://127.0.0.1:{ENVIRONMENT['BACKEND_PORT']}"
 
@@ -420,10 +438,165 @@ def run_demo_copilot() -> dict[str, Any]:
     }
 
 
+def ai_service_startup_seconds() -> float:
+    container_id = compose("ps", "-q", "ai-service", capture=True)
+    require(bool(container_id), "AI service container was not found")
+    inspection = json.loads(command(["docker", "inspect", container_id], capture=True))[0]
+    started_at = _timestamp(inspection["State"]["StartedAt"])
+    successful = [
+        _timestamp(item["End"])
+        for item in inspection["State"].get("Health", {}).get("Log", [])
+        if item.get("ExitCode") == 0
+    ]
+    require(bool(successful), "AI service successful health check was not found")
+    return max(0.0, (min(successful) - started_at).total_seconds())
+
+
+def ai_service_memory_measurements() -> tuple[int, int]:
+    peak_rss_raw = compose(
+        "exec",
+        "-T",
+        "ai-service",
+        "python",
+        "-c",
+        (
+            "from pathlib import Path; "
+            "lines=Path('/proc/1/status').read_text().splitlines(); "
+            "value=next(line for line in lines if line.startswith('VmHWM:')); "
+            "print(int(value.split()[1])*1024)"
+        ),
+        capture=True,
+    )
+    container_peak_raw = compose(
+        "exec",
+        "-T",
+        "ai-service",
+        "python",
+        "-c",
+        "from pathlib import Path; print(Path('/sys/fs/cgroup/memory.peak').read_text().strip())",
+        capture=True,
+    )
+    peak_rss = int(peak_rss_raw)
+    container_peak = int(container_peak_raw)
+    require(peak_rss > 0, "AI service peak RSS was not available")
+    require(container_peak >= peak_rss, "AI service container peak memory was invalid")
+    return peak_rss, container_peak
+
+
+def run_arctic_load_test(access_token: str, startup_seconds: float) -> dict[str, Any]:
+    require(EMBEDDING_MODE == "arctic-ko", "load test requires Arctic-ko mode")
+    sys.path.insert(0, str(ROOT / "ai-service"))
+    from app.evaluation.load_test import (  # pylint: disable=import-outside-toplevel
+        evaluate_load_test,
+        run_http_load,
+        write_load_test_report,
+    )
+
+    request_count = int(ENVIRONMENT.get("AI_LOAD_TEST_REQUEST_COUNT", "100"))
+    concurrency = int(ENVIRONMENT.get("AI_LOAD_TEST_CONCURRENCY", "4"))
+    queries = cycle(
+        (
+            "정기납부 미처리 고객 상담 안내",
+            "중복 송금 고객 상담 안내",
+            "거래 반복 확인 고객 상담 안내",
+        )
+    )
+
+    def direct_payload() -> dict[str, Any]:
+        return {
+            "contractVersion": "1.0.0",
+            "requestId": str(uuid4()),
+            "query": next(queries),
+            "permissions": ["KNOWLEDGE_SEARCH"],
+            "principalRoles": ["DETECTION_ADMIN"],
+            "requesterAudiences": ["STAFF"],
+            "asOf": AS_OF,
+            "limit": 5,
+        }
+
+    direct = run_http_load(
+        name="fastapi",
+        url=f"http://127.0.0.1:{LOAD_TEST_PORT}/internal/v1/search",
+        headers={"X-Internal-Service-Token": ENVIRONMENT["AI_INTERNAL_TOKEN"]},
+        payload_factory=direct_payload,
+        response_validator=lambda body: (
+            body.get("contractVersion") == "1.0.0"
+            and bool(body.get("results"))
+            and all(
+                item.get("citation", {}).get("indexVersion") == "hybrid-arctic-ko-v1"
+                for item in body["results"]
+            )
+        ),
+        request_count=request_count,
+        concurrency=concurrency,
+        warmup_requests=max(8, concurrency * 2),
+    )
+
+    def spring_payload() -> dict[str, Any]:
+        return {"query": next(queries), "asOf": AS_OF, "audience": "STAFF", "limit": 5}
+
+    spring = run_http_load(
+        name="spring",
+        url=f"http://127.0.0.1:{BACKEND_LOAD_TEST_PORT}/api/v1/knowledge/search",
+        headers=bearer(access_token),
+        payload_factory=spring_payload,
+        response_validator=lambda body: (
+            body.get("code") == "KNOWLEDGE_SEARCH_COMPLETED"
+            and body.get("data", {}).get("vectorSearchUsed") is True
+            and body.get("data", {}).get("total", 0) > 0
+        ),
+        request_count=request_count,
+        concurrency=concurrency,
+        warmup_requests=max(8, concurrency * 2),
+    )
+    peak_rss_bytes, container_peak_memory_bytes = ai_service_memory_measurements()
+    report = evaluate_load_test(
+        model_id="dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+        model_version=(
+            "snowflake-arctic-embed-l-v2.0-ko@"
+            "55ec6e9358a56d56af759bc8372e970caf8c305f"
+        ),
+        dimensions=1024,
+        startup_seconds=startup_seconds,
+        peak_rss_bytes=peak_rss_bytes,
+        container_peak_memory_bytes=container_peak_memory_bytes,
+        endpoints=(direct, spring),
+    )
+    write_load_test_report(
+        report,
+        ARTIFACT_DIRECTORY / "load-test.json",
+        ARTIFACT_DIRECTORY / "load-test.md",
+    )
+    require(report.passed, "Arctic-ko load gate failed: " + ",".join(report.failures))
+    return {
+        "passed": report.passed,
+        "startupSeconds": report.startup_seconds,
+        "peakRssBytes": report.peak_rss_bytes,
+        "containerPeakMemoryBytes": report.container_peak_memory_bytes,
+        "fastApiP95Ms": direct.p95_ms,
+        "springP95Ms": spring.p95_ms,
+        "concurrency": concurrency,
+        "requestCountPerEndpoint": request_count,
+    }
+
+
+def _timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
 def main() -> int:
     ARTIFACT_DIRECTORY.mkdir(parents=True, exist_ok=True)
     try:
         compose("config", "--quiet")
+        compose(
+            "--profile",
+            "ai",
+            "--profile",
+            "ai-tools",
+            "down",
+            "--volumes",
+            "--remove-orphans",
+        )
         compose(
             "--profile",
             "ai",
@@ -434,6 +607,20 @@ def main() -> int:
             "--wait-timeout",
             "300",
         )
+        if LOAD_TEST_ENABLED:
+            published_port = compose(
+                "--profile", "ai", "port", "ai-service", "8000", capture=True
+            )
+            require(
+                published_port.endswith(f":{LOAD_TEST_PORT}"),
+                "AI load test port was not published",
+            )
+            backend_port = compose("port", "backend", "8080", capture=True)
+            require(
+                backend_port.endswith(f":{BACKEND_LOAD_TEST_PORT}"),
+                "backend load test port was not published",
+            )
+        startup_seconds = ai_service_startup_seconds() if LOAD_TEST_ENABLED else 0.0
         readiness, _ = http("GET", "/api/v1/system/readiness")
         require(readiness["data"]["ready"], "backend readiness failed")
         psql(
@@ -480,9 +667,16 @@ def main() -> int:
         )
         if EMBEDDING_MODE == "arctic-ko":
             require(index_version == "hybrid-arctic-ko-v1", "Arctic-ko index version missing")
+        load_test = (
+            run_arctic_load_test(access_token, startup_seconds)
+            if LOAD_TEST_ENABLED
+            else None
+        )
         evidence = run_demo_copilot()
         evidence["embeddingMode"] = EMBEDDING_MODE
         evidence["indexVersion"] = index_version
+        if load_test is not None:
+            evidence["loadTest"] = load_test
         (ARTIFACT_DIRECTORY / "result.json").write_text(
             json.dumps(evidence, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -492,7 +686,17 @@ def main() -> int:
     finally:
         try:
             (ARTIFACT_DIRECTORY / "compose-ps.txt").write_text(
-                compose("ps", "--all", capture=True) + "\n", encoding="utf-8"
+                compose(
+                    "--profile",
+                    "ai",
+                    "--profile",
+                    "ai-tools",
+                    "ps",
+                    "--all",
+                    capture=True,
+                )
+                + "\n",
+                encoding="utf-8",
             )
             (ARTIFACT_DIRECTORY / "compose.log").write_text(
                 compose("logs", "--no-color", "--timestamps", capture=True) + "\n",
@@ -501,7 +705,16 @@ def main() -> int:
         except subprocess.CalledProcessError:
             pass
         subprocess.run(
-            [*COMPOSE, "down", "--volumes", "--remove-orphans"],
+            [
+                *COMPOSE,
+                "--profile",
+                "ai",
+                "--profile",
+                "ai-tools",
+                "down",
+                "--volumes",
+                "--remove-orphans",
+            ],
             cwd=ROOT,
             env=ENVIRONMENT,
             check=False,

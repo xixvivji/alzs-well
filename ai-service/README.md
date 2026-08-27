@@ -217,6 +217,32 @@ Arctic-ko는 품질 검토 상태가 `EVALUATION_ONLY`이므로 기본 모델로
 고정 artifact 검증, 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion 및 Spring citation
 재검증이 모두 통과한 뒤에만 운영 기본값 변경을 별도 승인한다.
 
+Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 FastAPI 내부 검색과 Spring
+검색 API를 각각 동시성 4, 100건으로 측정한다. p95 1초 이하, 오류율 0%, 처리량 2 RPS
+이상, AI 프로세스 peak RSS 2.5 GiB 이하, 기동 30초 이하를 모두 만족해야 한다. Linux
+`/proc/1/status`의 `VmHWM`을 peak RSS로 사용하며, 모델 파일 page cache가 포함된 cgroup
+`memory.peak`도 별도 증거로 남긴다.
+
+```bash
+AI_MODEL_HOST_ROOT="$PWD/models" \
+COPILOT_RAG_EXTRA_COMPOSE_FILE=backend/compose.arctic-ko.yaml \
+COPILOT_RAG_EMBEDDING_MODE=arctic-ko \
+COPILOT_RAG_LOAD_TEST_ENABLED=true \
+AI_LOAD_TEST_PORT=18085 \
+BACKEND_LOAD_TEST_PORT=18086 \
+COMPOSE_PROJECT_NAME=alzs-well-arctic-load-e2e \
+BACKEND_PORT=18084 \
+COPILOT_RAG_E2E_ARTIFACT_DIR=/tmp/alzs-well-arctic-load-e2e \
+ai-service/.venv/bin/python scripts/copilot_rag_e2e.py
+```
+
+`compose.load-test.yaml`은 이 명시적 시험에서만 FastAPI와 Spring을 `127.0.0.1`에
+노출한다. Spring 구간은 AI 처리시간을 측정하기 위해 Nginx의 쓰기 요청 rate limit을
+우회하지만 인증·권한·ACL·인용 재검증은 그대로 통과한다. 운영 Compose의 내부 네트워크
+격리는 변경하지 않는다. 실행 결과는 지정한 artifact 디렉터리의 `load-test.json`,
+`load-test.md`, `result.json`에 기록된다. 기준 실측은
+[`evaluation/arctic-ko-load-test-v1.md`](evaluation/arctic-ko-load-test-v1.md)에 남긴다.
+
 최종 결합 점수가 `0.35` 미만이면 관련 keyword가 일부 겹치더라도 결과를 반환하지 않는다.
 이 무응답 임계값과 keyword/vector 가중치는 합성 검색 평가 데이터셋의 Recall@K, MRR,
 무응답 오탐률 및 정책 위반 게이트로 회귀 검증한다. 실행법과 지표 해석은

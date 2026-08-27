@@ -10,6 +10,10 @@ services:
       ALZS_EMBEDDING_MODEL_REVISION: 55ec6e9358a56d56af759bc8372e970caf8c305f
       ALZS_EMBEDDING_MODEL_SHA256: sha256:0b874517f0fd02dd9510fa2733aacaad1def6086387c88d1a21f4041351e15b0
       ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "true"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      TOKENIZERS_PARALLELISM: "false"
     volumes:
       - ${AI_MODEL_HOST_ROOT:?AI_MODEL_HOST_ROOT must point to the local models directory}:/opt/alzs-well/models:ro
     mem_limit: 3g
