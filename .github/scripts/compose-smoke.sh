@@ -46,6 +46,26 @@ curl --fail --silent --show-error "${BASE_URL}/api/v1/system/versions" \
   | jq -e --arg schema_version "${EXPECTED_SCHEMA_VERSION}" \
       '.code == "SYSTEM_VERSIONS_RETRIEVED" and .data.schemaVersion == $schema_version' > /dev/null
 
+"${COMPOSE[@]}" exec -T postgres psql -X -qAt \
+  -U "${POSTGRES_USER:-alzswell_admin}" -d "${POSTGRES_DB:-alzs_well}" \
+  -c "select json_build_object(
+      'tableExists',to_regclass('ai_knowledge.chunk_embedding') is not null,
+      'dimensionConstraintExists',exists(
+        select 1 from pg_constraint
+        where conname='ck_ai_chunk_embedding_vector_dimensions'),
+      'hnsw384Count',count(*) filter (
+        where indexdef ilike '%using hnsw%'
+          and indexdef like '%vector(384)%'),
+      'hnsw1024Count',count(*) filter (
+        where indexdef ilike '%using hnsw%'
+          and indexdef like '%vector(1024)%'))
+    from pg_indexes
+    where schemaname='ai_knowledge' and tablename='chunk_embedding'" \
+  > "${ARTIFACT_DIRECTORY}/pgvector-multi-dimension.json"
+jq -e '.tableExists == true and .dimensionConstraintExists == true
+    and .hnsw384Count == 2 and .hnsw1024Count == 1' \
+  "${ARTIFACT_DIRECTORY}/pgvector-multi-dimension.json" > /dev/null
+
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/public-config" \
   | tee "${ARTIFACT_DIRECTORY}/public-config.json" \
   | jq -e '.data.syntheticDataOnly == true and .data.externalActionsEnabled == false

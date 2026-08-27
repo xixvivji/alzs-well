@@ -153,6 +153,16 @@ Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 �
 `LAW > REGULATION > INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM` 순으로
 권위 문서를 먼저 배치하고, 같은 유형 안에서는 하이브리드 점수로 정렬한다.
 
+벡터는 `ai_knowledge.chunk_embedding`에 chunk·모델 ID·고정 모델 버전·차원과 함께
+저장한다. 384차원 Hash/E5와 1024차원 Arctic-ko가 같은 chunk에 공존할 수 있고 검색은
+현재 provider와 모델 ID·버전·차원이 모두 일치하는 행만 사용한다. 승인된 고정 revision마다
+HNSW 부분 인덱스를 분리해 서로 다른 모델의 벡터 공간을 섞지 않는다. 기존
+`ai_knowledge.chunk.embedding`은 순차 배포 호환성을 위한 Hash 전용 레거시 컬럼이며
+신규 검색 경로에서는 사용하지 않는다.
+같은 결정론적 chunk를 다른 모델로 재-ingestion하면 chunk 행을 유지하고 해당 모델의
+벡터만 upsert하므로 기존 모델 벡터가 함께 보존된다. 새 파이프라인 결과에서 사라진
+chunk만 삭제하며, 그때 해당 chunk의 모든 파생 벡터도 cascade로 정리한다.
+
 ### 로컬 한국어 임베딩 모델
 
 운영 설정에서 활성화할 수 있는 신경망 후보는 현재

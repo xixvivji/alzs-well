@@ -99,18 +99,20 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "d.effective_from <= %s" in statement
     assert "ai_knowledge.document_authority_rank(document_type)" in statement
     assert "order by authority_rank desc, score desc" in statement
-    assert "c.embedding <=> search_query.embedding" in statement
+    assert "left join ai_knowledge.chunk_embedding e" in statement
+    assert "e.embedding::vector(384) <=> search_query.embedding" in statement
     assert "where score >= %s" in statement
     assert parameters[0] == "금융거래 안심차단"  # type: ignore[index]
     assert str(parameters[1]).startswith("[")  # type: ignore[index]
     assert parameters[2:] == (  # type: ignore[index]
-        "local-hash-ngram-ko-v1",
+        "local-hash-ngram-ko", "local-hash-ngram-ko-v1", 384,
         ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
         date(2026, 8, 25),
         KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD, 10,
     )
-    assert "c.embedding_model_version is distinct from %s" in statement
-    assert "and (c.embedding_model_version is null" not in statement
+    assert "e.embedding_model_id = %s" in statement
+    assert "e.embedding_model_version = %s" in statement
+    assert "e.embedding_dimensions = %s" in statement
     assert INDEX_VERSION == "hybrid-hash-ngram-v3"
     assert RESULT_THRESHOLD == 0.35
     assert results[0].chunk_id == "chk_" + "1" * 64
@@ -128,9 +130,63 @@ def test_search_uses_injected_model_but_keeps_other_models_for_keyword_score() -
 
     statement, parameters = cursor.executions[0]
     assert provider.queries == ["금융거래 안심차단"]
-    assert parameters[2] == "multilingual-e5-small@test"  # type: ignore[index]
-    assert "c.embedding_model_version is distinct from %s" in statement
-    assert "and (c.embedding_model_version is null" not in statement
+    assert parameters[2:5] == (  # type: ignore[index]
+        "intfloat/multilingual-e5-small",
+        "multilingual-e5-small@test",
+        384,
+    )
+    assert "e.embedding_model_version = %s" in statement
+
+
+def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:
+    class ArcticProvider(FakeEmbeddingProvider):
+        descriptor = EmbeddingDescriptor(
+            backend="local-arctic-ko",
+            model_id="dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+            model_version="snowflake-arctic-embed-l-v2.0-ko@test",
+            dimensions=1024,
+        )
+
+        def embed_query(self, value: str) -> tuple[float, ...]:
+            self.queries.append(value)
+            return (1.0,) + (0.0,) * 1023
+
+    cursor = FakeCursor([_row()])
+    repository = PostgresSearchRepository(
+        _config(), connect=Connector(cursor), embedding_provider=ArcticProvider()
+    )
+
+    repository.search(_request())
+
+    statement, parameters = cursor.executions[0]
+    assert "%s::vector(1024) as embedding" in statement
+    assert "e.embedding::vector(1024) <=> search_query.embedding" in statement
+    assert parameters[2:5] == (  # type: ignore[index]
+        "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+        "snowflake-arctic-embed-l-v2.0-ko@test",
+        1024,
+    )
+
+
+def test_search_rejects_unsupported_embedding_dimension_before_database_call() -> None:
+    class UnsupportedProvider(FakeEmbeddingProvider):
+        descriptor = EmbeddingDescriptor(
+            backend="unsupported",
+            model_id="unsupported/model",
+            model_version="unsupported@test",
+            dimensions=768,
+        )
+
+    connector = Connector()
+    repository = PostgresSearchRepository(
+        _config(), connect=connector, embedding_provider=UnsupportedProvider()
+    )
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        repository.search(_request())
+
+    assert caught.value.code == "EMBEDDING_VECTOR_INVALID"
+    assert connector.cursors == []
 
 
 def test_search_run_records_e5_index_version() -> None:

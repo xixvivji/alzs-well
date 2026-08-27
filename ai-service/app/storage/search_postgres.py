@@ -13,6 +13,7 @@ from app.embedding.base import EmbeddingProvider, vector_literal
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
+from app.storage.embedding_index import vector_type
 
 
 ConnectFunction = Callable[..., Any]
@@ -76,16 +77,19 @@ class PostgresSearchRepository:
             raise KnowledgeContractError("STORAGE_UNAVAILABLE") from None
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
+        descriptor = self._embedding_provider.descriptor
+        database_vector_type = vector_type(descriptor.dimensions)
         query_vector = vector_literal(
             self._embedding_provider.embed_query(request.query),
-            dimensions=self._embedding_provider.descriptor.dimensions,
+            dimensions=descriptor.dimensions,
         )
         try:
             with self._connect() as connection, connection.cursor() as cursor:
                 cursor.execute(
-                    """
+                    f"""
                     with search_query as (
-                        select websearch_to_tsquery('simple', %s) as terms, %s::vector as embedding
+                        select websearch_to_tsquery('simple', %s) as terms,
+                            %s::{database_vector_type} as embedding
                     ), ranked as (
                         select
                             c.document_id, c.version_label, c.chunk_id, c.chunk_order,
@@ -95,14 +99,24 @@ class PostgresSearchRepository:
                             ts_rank_cd(to_tsvector('simple', c.content), search_query.terms, 32)
                                 as keyword_score,
                             case
-                                when c.embedding is null
-                                  or c.embedding_model_version is distinct from %s
+                                when e.embedding is null
                                     then 0.0
-                                else greatest(0.0, 1.0 - (c.embedding <=> search_query.embedding))
+                                else greatest(
+                                    0.0,
+                                    1.0 - (
+                                        e.embedding::{database_vector_type}
+                                        <=> search_query.embedding
+                                    )
+                                )
                             end as vector_score
                         from ai_knowledge.chunk c
                         join ai_knowledge.document_snapshot d
                           on d.document_id = c.document_id and d.version_label = c.version_label
+                        left join ai_knowledge.chunk_embedding e
+                          on e.chunk_id = c.chunk_id
+                         and e.embedding_model_id = %s
+                         and e.embedding_model_version = %s
+                         and e.embedding_dimensions = %s
                         cross join search_query
                         where d.allowed_roles && %s::text[]
                           and (d.audience = 'BOTH' or d.audience = any(%s::text[]))
@@ -131,7 +145,9 @@ class PostgresSearchRepository:
                     (
                         request.query,
                         query_vector,
-                        self._embedding_provider.descriptor.model_version,
+                        descriptor.model_id,
+                        descriptor.model_version,
+                        descriptor.dimensions,
                         list(request.principal_roles),
                         list(request.requester_audiences),
                         request.as_of,
