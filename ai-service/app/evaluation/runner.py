@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from app.embedding.base import EmbeddingProvider
+from app.evaluation.embedding_cache import cached
 from app.embedding.local_hash import EMBEDDING_MODEL_VERSION
 from app.evaluation.metrics import CaseResult, EvaluationMetrics, evaluate
 from app.evaluation.models import EvaluationCase, EvaluationChunk
@@ -42,6 +43,7 @@ def tune(
     embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[tuple[SearchConfiguration, EvaluationMetrics], ...]:
     candidates: list[tuple[SearchConfiguration, EvaluationMetrics]] = []
+    evaluation_provider = cached(embedding_provider)
     for keyword_percent in (20, 30, 35, 40, 50):
         for threshold_percent in (10, 15, 20, 25, 30):
             for result_threshold_percent in (20, 25, 30, 35, 40):
@@ -52,7 +54,7 @@ def tune(
                     result_threshold=result_threshold_percent / 100,
                 )
                 metrics, _ = evaluate(
-                    corpus, cases, configuration, embedding_provider=embedding_provider
+                    corpus, cases, configuration, embedding_provider=evaluation_provider
                 )
                 candidates.append((configuration, metrics))
     candidates.sort(

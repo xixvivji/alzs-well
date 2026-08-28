@@ -10,6 +10,7 @@ from app.evaluation.review import (
     finalize_review_csv,
     load_review_candidates,
     validate_review_candidates,
+    write_provisional_benchmark_dataset,
     write_review_csv,
 )
 
@@ -32,6 +33,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     corpus = load_corpus(Path(args.corpus))
     candidates = load_review_candidates(Path(args.candidates))
+    if args.command == "benchmark":
+        case_count = write_provisional_benchmark_dataset(
+            Path(args.output_jsonl), candidates, corpus
+        )
+        print(json.dumps({
+            "ok": True,
+            "code": "PROVISIONAL_BENCHMARK_DATASET_CREATED",
+            "caseCount": case_count,
+            "outputJsonl": args.output_jsonl,
+        }, ensure_ascii=False))
+        return 0
     accepted_count = finalize_review_csv(
         Path(args.input_csv), Path(args.output_jsonl), candidates, corpus
     )
@@ -56,6 +68,10 @@ def _parser() -> argparse.ArgumentParser:
     finalize.add_argument("--candidates", required=True)
     finalize.add_argument("--input-csv", required=True)
     finalize.add_argument("--output-jsonl", required=True)
+    benchmark = subparsers.add_parser("benchmark")
+    benchmark.add_argument("--corpus", required=True)
+    benchmark.add_argument("--candidates", required=True)
+    benchmark.add_argument("--output-jsonl", required=True)
     return parser
 
 

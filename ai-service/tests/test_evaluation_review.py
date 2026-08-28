@@ -12,6 +12,7 @@ from app.evaluation.review import (
     finalize_review_csv,
     load_review_candidates,
     validate_review_candidates,
+    write_provisional_benchmark_dataset,
     write_review_csv,
 )
 from app.evaluation.review_cli import main
@@ -137,6 +138,36 @@ def test_review_cli_prepares_csv_and_finalizes_accepted_case(tmp_path: Path) -> 
         "--input-csv", str(review_csv), "--output-jsonl", str(output),
     ]) == 0
     assert '"expectNoResults":true' in output.read_text(encoding="utf-8")
+
+
+def test_provisional_benchmark_selects_cases_supported_by_corpus(
+    tmp_path: Path,
+) -> None:
+    corpus = load_corpus(CORPUS)
+    candidates = load_review_candidates(CANDIDATES)
+    supported_ids = {chunk.chunk_id for chunk in corpus[:2]}
+    reduced_corpus = tuple(chunk for chunk in corpus if chunk.chunk_id in supported_ids)
+    output = tmp_path / "benchmark.jsonl"
+
+    case_count = write_provisional_benchmark_dataset(output, candidates, reduced_corpus)
+    payloads = [json.loads(line) for line in output.read_text().splitlines()]
+
+    assert case_count == len(payloads)
+    assert any(payload["relevantChunkIds"] for payload in payloads)
+    assert all(
+        set(payload["relevantChunkIds"]) <= supported_ids for payload in payloads
+    )
+    assert any(payload["expectNoResults"] for payload in payloads)
+
+
+def test_review_cli_builds_provisional_benchmark(tmp_path: Path) -> None:
+    output = tmp_path / "benchmark.jsonl"
+
+    assert main([
+        "benchmark", "--corpus", str(CORPUS), "--candidates", str(CANDIDATES),
+        "--output-jsonl", str(output),
+    ]) == 0
+    assert output.is_file()
 
 
 def _rows(path: Path) -> list[dict[str, str]]:
