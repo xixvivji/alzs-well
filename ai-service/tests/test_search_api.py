@@ -78,6 +78,8 @@ def test_health_does_not_require_internal_token(monkeypatch: object) -> None:
         "embeddingModelVersion": "local-hash-ngram-ko-v1",
         "embeddingDimensions": 384,
         "arcticRolloutEnabled": False,
+        "deploymentEnvironment": "LOCAL",
+        "stagedApprovalEnabled": False,
         "embeddingFallbackUsed": False,
     }
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from hashlib import sha256
 from pathlib import Path
@@ -216,6 +217,49 @@ def test_embedding_config_loads_only_pinned_hash_verified_arctic(
     assert calls == [(model, ARCTIC_MODEL_REVISION)]
 
 
+def test_staged_arctic_requires_catalog_approval_and_golden_set_integrity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    environment, catalog, golden_set, model_hash = _staged_arctic_package(tmp_path)
+    monkeypatch.setattr("app.embedding.config.ARCTIC_MODEL_SHA256", model_hash)
+
+    config = EmbeddingConfig.from_environment(environment)
+
+    assert config.deployment_environment == "AWS_STAGING"
+    assert config.staged_approval_enabled
+    assert config.model_catalog_path == catalog
+    assert config.golden_set_path == golden_set
+
+    golden_set.write_text('{"queryId":"tampered"}\n', encoding="utf-8")
+    with pytest.raises(KnowledgeContractError) as tampered:
+        EmbeddingConfig.from_environment(environment)
+    assert tampered.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("ALZS_DEPLOYMENT_ENVIRONMENT", "LOCAL"),
+        ("ALZS_MODEL_STAGED_APPROVAL_ENABLED", "false"),
+        ("ALZS_EMBEDDING_MODEL_REVISION", "0" * 40),
+        ("ALZS_EMBEDDING_MODEL_SHA256", "sha256:" + "0" * 64),
+    ],
+)
+def test_staged_arctic_rejects_environment_or_pin_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    key: str,
+    value: str,
+) -> None:
+    environment, _, _, model_hash = _staged_arctic_package(tmp_path)
+    monkeypatch.setattr("app.embedding.config.ARCTIC_MODEL_SHA256", model_hash)
+    environment[key] = value
+
+    with pytest.raises(KnowledgeContractError) as failure:
+        EmbeddingConfig.from_environment(environment)
+    assert failure.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
+
 def test_embedding_config_falls_back_only_when_model_runtime_is_unavailable(
     tmp_path: Path,
 ) -> None:
@@ -321,3 +365,83 @@ def _environment(model_root: Path, model_hash: str) -> dict[str, str]:
         "ALZS_EMBEDDING_MODEL_SHA256": model_hash,
         "ALZS_EMBEDDING_ALLOW_HASH_FALLBACK": "true",
     }
+
+
+def _staged_arctic_package(
+    tmp_path: Path,
+) -> tuple[dict[str, str], Path, Path, str]:
+    model_root = tmp_path / "models"
+    model = model_root / "snowflake-arctic-embed-l-v2.0-ko"
+    model.mkdir(parents=True)
+    model_payload = b"staged synthetic arctic artifact"
+    (model / "model.safetensors").write_bytes(model_payload)
+    model_hash = "sha256:" + sha256(model_payload).hexdigest()
+    evaluation = tmp_path / "evaluation"
+    golden_set = evaluation / "datasets/official-operational-golden-v1.jsonl"
+    golden_set.parent.mkdir(parents=True)
+    golden_payload = b'{"queryId":"ORC-001"}\n'
+    golden_set.write_bytes(golden_payload)
+    catalog = evaluation / "model-artifacts-v1.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "catalogVersion": "1.1.0",
+                "automaticDownloadAllowed": False,
+                "models": [
+                    {
+                        "name": "snowflake-arctic-embed-l-v2.0-ko",
+                        "status": "STAGED_APPROVED",
+                        "approval": {
+                            "approvedBy": "staging-reviewer@example.invalid",
+                            "approvedAt": "2026-08-28T02:53:44Z",
+                            "approvalReference": "TEST-APPROVAL",
+                            "deploymentEnvironment": "AWS_STAGING",
+                            "goldenSet": {
+                                "file": (
+                                    "evaluation/datasets/"
+                                    "official-operational-golden-v1.jsonl"
+                                ),
+                                "caseCount": 1,
+                                "sha256": "sha256:" + sha256(golden_payload).hexdigest(),
+                            },
+                        },
+                        "modelId": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
+                        "sourceUrl": (
+                            "https://huggingface.co/dragonkue/"
+                            "snowflake-arctic-embed-l-v2.0-ko"
+                        ),
+                        "revision": ARCTIC_MODEL_REVISION,
+                        "license": "Apache-2.0",
+                        "localPath": "snowflake-arctic-embed-l-v2.0-ko",
+                        "dimensions": 1024,
+                        "queryPrefix": "query: ",
+                        "passagePrefix": "",
+                        "artifact": {
+                            "file": "model.safetensors",
+                            "sizeBytes": len(model_payload),
+                            "sha256": model_hash,
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return (
+        {
+            "ALZS_EMBEDDING_BACKEND": "local-arctic-ko",
+            "ALZS_ARCTIC_ROLLOUT_ENABLED": "true",
+            "ALZS_DEPLOYMENT_ENVIRONMENT": "AWS_STAGING",
+            "ALZS_MODEL_STAGED_APPROVAL_ENABLED": "true",
+            "ALZS_MODEL_CATALOG_PATH": str(catalog),
+            "ALZS_MODEL_GOLDEN_SET_PATH": str(golden_set),
+            "ALZS_EMBEDDING_MODEL_ROOT": str(model_root),
+            "ALZS_EMBEDDING_MODEL_PATH": "snowflake-arctic-embed-l-v2.0-ko",
+            "ALZS_EMBEDDING_MODEL_REVISION": ARCTIC_MODEL_REVISION,
+            "ALZS_EMBEDDING_MODEL_SHA256": model_hash,
+            "ALZS_EMBEDDING_ALLOW_HASH_FALLBACK": "false",
+        },
+        catalog,
+        golden_set,
+        model_hash,
+    )

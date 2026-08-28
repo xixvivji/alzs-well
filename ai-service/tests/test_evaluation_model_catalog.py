@@ -38,12 +38,13 @@ class StubProvider:
 
 def _payload(content: bytes) -> dict[str, object]:
     return {
-        "catalogVersion": "1.0.0",
+        "catalogVersion": "1.1.0",
         "automaticDownloadAllowed": False,
         "models": [
             {
                 "name": "arctic-ko",
                 "status": "EVALUATION_ONLY",
+                "approval": None,
                 "modelId": "owner/model",
                 "sourceUrl": "https://huggingface.co/owner/model",
                 "revision": "a" * 40,
@@ -73,6 +74,20 @@ def _package(tmp_path: Path) -> tuple[Path, Path, bytes]:
     return root, catalog, content
 
 
+def _approval(environment: str = "AWS_STAGING") -> dict[str, object]:
+    return {
+        "approvedBy": "reviewer@example.invalid",
+        "approvedAt": "2026-08-28T00:00:00Z",
+        "approvalReference": "PR-86",
+        "deploymentEnvironment": environment,
+        "goldenSet": {
+            "file": "evaluation/datasets/golden.jsonl",
+            "caseCount": 27,
+            "sha256": "sha256:" + "a" * 64,
+        },
+    }
+
+
 def test_catalog_creates_hash_verified_evaluation_provider(tmp_path: Path) -> None:
     root, catalog, _ = _package(tmp_path)
     calls: list[tuple[Path, LocalSentenceTransformerSpec]] = []
@@ -94,7 +109,7 @@ def test_catalog_creates_hash_verified_evaluation_provider(tmp_path: Path) -> No
     assert calls[0][1].dimensions == 1024
 
 
-def test_committed_catalog_keeps_models_evaluation_only() -> None:
+def test_committed_catalog_records_staged_arctic_approval() -> None:
     models = load_model_catalog(EVALUATION / "model-artifacts-v1.json")
 
     assert [model.name for model in models] == [
@@ -103,15 +118,31 @@ def test_committed_catalog_keeps_models_evaluation_only() -> None:
     ]
     assert [model.dimensions for model in models] == [384, 1024]
     assert [model.passage_prefix for model in models] == ["passage: ", ""]
+    assert [model.status for model in models] == [
+        "EVALUATION_ONLY",
+        "STAGED_APPROVED",
+    ]
+    assert models[0].approval is None
+    assert models[1].approval is not None
+    assert models[1].approval.deployment_environment == "AWS_STAGING"
+    assert models[1].approval.golden_set.case_count == 27
 
 
 @pytest.mark.parametrize(
     "mutate",
     [
         lambda payload: payload.update(automaticDownloadAllowed=True),
-        lambda payload: payload.update(catalogVersion="2.0.0"),
+        lambda payload: payload.update(catalogVersion="1.0.0"),
         lambda payload: payload.update(extra=True),
         lambda payload: payload["models"][0].update(status="APPROVED"),  # type: ignore[index,union-attr]
+        lambda payload: payload["models"][0].update(status="UNKNOWN"),  # type: ignore[index,union-attr]
+        lambda payload: payload["models"][0].update(approval={}),  # type: ignore[index,union-attr]
+        lambda payload: payload["models"][0].update(  # type: ignore[index,union-attr]
+            status="STAGED_APPROVED", approval=_approval("PRODUCTION")
+        ),
+        lambda payload: payload["models"][0].update(  # type: ignore[index,union-attr]
+            status="APPROVED", approval=_approval("AWS_STAGING")
+        ),
         lambda payload: payload["models"][0].update(revision="main"),  # type: ignore[index,union-attr]
         lambda payload: payload["models"][0].update(localPath="../escape"),  # type: ignore[index,union-attr]
         lambda payload: payload["models"][0].update(dimensions=True),  # type: ignore[index,union-attr]

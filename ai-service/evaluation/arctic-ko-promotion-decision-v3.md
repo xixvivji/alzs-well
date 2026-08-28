@@ -10,9 +10,10 @@
 ## 결정
 
 승인·활성 공식문서 5개가 지원하는 질의·근거 쌍 27건을 모두 `ACCEPTED`로 확정했다.
-Arctic-ko는 운영 기본 후보로 승격하되, 기본 Compose와 기본 환경값을 즉시 변경하지 않는다.
-`compose.arctic-ko.yaml`과 `ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 명시한 제한 환경부터
-단계적으로 활성화한다.
+Arctic-ko는 모델 카탈로그의 `STAGED_APPROVED`로 승격하되, 기본 Compose와 기본 환경값을
+변경하지 않는다. 승인된 AWS AI staging에서 `compose.arctic-ko.yaml`,
+`ALZS_ARCTIC_ROLLOUT_ENABLED=true`, `ALZS_DEPLOYMENT_ENVIRONMENT=AWS_STAGING`,
+`ALZS_MODEL_STAGED_APPROVAL_ENABLED=true`를 모두 명시할 때만 단계적으로 활성화한다.
 
 ## 승인 근거
 

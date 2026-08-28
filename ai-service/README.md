@@ -196,10 +196,17 @@ Arctic-ko는 저장소에 고정된 revision과 SHA-256이 정확히 일치할 �
 반입본으로 모델 런타임 오버레이를 사용할 때는 저장소 루트에서 다음처럼 실행한다.
 `ALZS_EMBEDDING_BACKEND=local-arctic-ko`만 지정하고
 `ALZS_ARCTIC_ROLLOUT_ENABLED=false`이면 모델 파일을 열지 않고 hash backend로 동작한다.
-Arctic-ko 활성화 환경은 반드시 `ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 명시해야 한다.
+Arctic-ko 활성화 환경은 반드시 `ALZS_ARCTIC_ROLLOUT_ENABLED=true`뿐 아니라
+`ALZS_DEPLOYMENT_ENVIRONMENT=AWS_STAGING`과
+`ALZS_MODEL_STAGED_APPROVAL_ENABLED=true`를 명시해야 한다. 런타임은 권위 모델 카탈로그의
+`STAGED_APPROVED` 상태, 승인 대상 revision·artifact SHA-256, 운영 골든셋 SHA-256과
+27개 문항 수를 모두 확인한다. 하나라도 다르면 모델을 열기 전에 기동을 거부한다.
 
 ```bash
-AI_MODEL_HOST_ROOT="$PWD/models" docker compose \
+AI_MODEL_HOST_ROOT="$PWD/models" \
+ALZS_DEPLOYMENT_ENVIRONMENT=AWS_STAGING \
+ALZS_MODEL_STAGED_APPROVAL_ENABLED=true \
+docker compose \
   -f backend/compose.yaml \
   -f backend/compose.arctic-ko.yaml \
   --profile ai up --build
@@ -217,8 +224,8 @@ hash 어댑터로 시작할 수 있다. 검색 시 다른 모델 버전으로 �
 
 Arctic-ko는 2026-08-28 운영형 골든셋 27건의 사람 최종 승인과 품질 재평가를 통과해
 `STAGED_APPROVED` 상태다. 기본 Compose와 기본 환경값은 계속 hash를 사용하며 자동으로
-전환하지 않는다. 제한된 내부 환경에서만 `compose.arctic-ko.yaml`과
-`ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 함께 지정해 활성화한다. 고정 artifact 검증,
+전환하지 않는다. 승인된 AWS AI staging에서만 `compose.arctic-ko.yaml`, 배포 환경,
+별도 승인 플래그를 함께 지정해 활성화한다. 고정 artifact 검증,
 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion, Spring citation 재검증 및 Hash
 폴백은 단계적 활성화에서도 그대로 유지한다.
 
