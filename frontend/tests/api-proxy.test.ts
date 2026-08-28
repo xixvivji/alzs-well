@@ -128,7 +128,14 @@ test("returns a timeout envelope without exposing upstream details", async () =>
       timeoutMs: 5,
       proxySharedSecret: PROXY_SECRET,
       fetchImpl: (request) => new Promise((_, reject) => {
-        request.signal.addEventListener("abort", () => reject(request.signal.reason), { once: true });
+        const safetyTimer = setTimeout(
+          () => reject(new Error("timeout signal was not delivered")),
+          1_000,
+        );
+        request.signal.addEventListener("abort", () => {
+          clearTimeout(safetyTimer);
+          reject(request.signal.reason);
+        }, { once: true });
       }),
     },
   );
