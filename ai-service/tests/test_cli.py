@@ -49,7 +49,7 @@ def test_cli_reports_real_manifest_as_valid_but_blocked(repo_root: Path, capsys:
     assert payload["governanceBlockingCodes"] == ["DOCUMENT_NOT_APPROVED", "DOCUMENT_NOT_ACTIVE"]
 
 
-def test_cli_preflights_unapproved_pdf_for_governance_review(
+def test_cli_preflights_approved_official_pdf(
     repo_root: Path,
     monkeypatch: object,
     capsys: object,
@@ -69,8 +69,8 @@ def test_cli_preflights_unapproved_pdf_for_governance_review(
     payload = json.loads(captured.out)
 
     assert exit_code == 0
-    assert payload["approvalAndLifecycleEligible"] is False
-    assert payload["governanceBlockingCodes"] == ["DOCUMENT_NOT_APPROVED", "DOCUMENT_NOT_ACTIVE"]
+    assert payload["approvalAndLifecycleEligible"] is True
+    assert payload["governanceBlockingCodes"] == []
     assert payload["source"] == {
         "activeContent": False,
         "encrypted": False,

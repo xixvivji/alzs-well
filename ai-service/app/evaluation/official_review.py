@@ -41,7 +41,7 @@ def build_official_review_corpus(
     *,
     as_of: date,
 ) -> OfficialReviewCorpusResult:
-    """Build a non-searchable corpus for human review without approving documents."""
+    """Build a non-searchable corpus from reviewable official documents."""
     if not manifest_paths or len(manifest_paths) != len(set(manifest_paths)):
         raise KnowledgeContractError("MANIFEST_SCHEMA_INVALID")
 
@@ -50,7 +50,7 @@ def build_official_review_corpus(
     summaries: list[ReviewDocumentSummary] = []
     for manifest_path in manifest_paths:
         manifest = load_and_validate_manifest(repository_root, manifest_path)
-        _ensure_review_only_manifest(manifest)
+        _ensure_review_corpus_manifest(manifest)
         document = _extract_document(repository_root, manifest)
         chunks = chunk_document(document)
         for chunk in chunks:
@@ -84,13 +84,20 @@ def build_official_review_corpus(
     )
 
 
-def _ensure_review_only_manifest(manifest: KnowledgeManifest) -> None:
+def _ensure_review_corpus_manifest(manifest: KnowledgeManifest) -> None:
+    governance = (
+        manifest.payload["usageRights"],
+        manifest.approval_status,
+        manifest.lifecycle_status,
+    )
+    allowed_governance = {
+        ("REVIEW_REQUIRED", "IN_REVIEW", "PENDING_ACTIVATION"),
+        ("INTERNAL_USE_APPROVED", "APPROVED", "ACTIVE"),
+    }
     if (
         manifest.payload["sourceType"] != "OFFICIAL_EXTERNAL"
         or manifest.classification != "PUBLIC_OFFICIAL"
-        or manifest.payload["usageRights"] != "REVIEW_REQUIRED"
-        or manifest.approval_status != "IN_REVIEW"
-        or manifest.lifecycle_status != "PENDING_ACTIVATION"
+        or governance not in allowed_governance
     ):
         raise KnowledgeContractError(
             "MANIFEST_SCHEMA_INVALID", {"schemaPath": "officialReviewGovernance"}

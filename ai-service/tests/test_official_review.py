@@ -80,6 +80,28 @@ def test_rejects_non_review_governance(repo_root: Path, tmp_path: Path) -> None:
     assert raised.value.safe_context == {"schemaPath": "officialReviewGovernance"}
 
 
+def test_accepts_approved_internal_use_source_for_review_corpus(
+    repo_root: Path, tmp_path: Path
+) -> None:
+    manifest = _write_review_repository(repo_root, tmp_path)
+    payload = manifest.read_text(encoding="utf-8")
+    payload = payload.replace("usageRights: REVIEW_REQUIRED", "usageRights: INTERNAL_USE_APPROVED")
+    payload = payload.replace("approvalStatus: IN_REVIEW", "approvalStatus: APPROVED")
+    payload = payload.replace("lifecycleStatus: PENDING_ACTIVATION", "lifecycleStatus: ACTIVE")
+    payload = payload.replace("approvedBy: null", "approvedBy: official-reviewer")
+    payload = payload.replace("approvedAt: null", 'approvedAt: "2026-08-28T00:31:28Z"')
+    manifest.write_text(payload, encoding="utf-8")
+
+    result = build_official_review_corpus(
+        tmp_path, (MANIFEST_PATH,), as_of=date(2026, 8, 28)
+    )
+    row = json.loads(result.output_path.read_text())
+
+    assert row["approvalStatus"] == "APPROVED"
+    assert row["lifecycleStatus"] == "ACTIVE"
+    assert row["reviewOnly"] is True
+
+
 def test_rejects_duplicate_manifests_and_duplicate_chunks(
     repo_root: Path, tmp_path: Path
 ) -> None:
@@ -195,7 +217,7 @@ def test_atomic_writer_removes_temporary_file_on_failure(
     assert not tuple(tmp_path.glob("*.tmp"))
 
 
-def test_committed_official_review_pack_matches_review_only_sources(
+def test_committed_official_review_pack_matches_reviewable_sources(
     repo_root: Path, tmp_path: Path
 ) -> None:
     _copy_official_review_sources(repo_root, tmp_path, HTML_OFFICIAL_MANIFESTS)
@@ -228,8 +250,11 @@ def test_committed_official_review_pack_matches_review_only_sources(
     assert sum(candidate.expected_action == "ANSWER" for candidate in candidates) == 24
     assert sum(candidate.expected_action == "ABSTAIN" for candidate in candidates) == 6
     assert {candidate.review_decision for candidate in candidates} == {"PENDING"}
-    assert {chunk.approval_status for chunk in corpus} == {"IN_REVIEW"}
-    assert {chunk.lifecycle_status for chunk in corpus} == {"PENDING_ACTIVATION"}
+    assert {chunk.approval_status for chunk in corpus} == {"APPROVED", "IN_REVIEW"}
+    assert {chunk.lifecycle_status for chunk in corpus} == {
+        "ACTIVE",
+        "PENDING_ACTIVATION",
+    }
     assert [row["candidateId"] for row in review_rows] == [
         candidate.candidate_id for candidate in candidates
     ]
@@ -242,11 +267,23 @@ def test_committed_official_review_pack_matches_review_only_sources(
         assert row["reviewDecision"] == candidate.review_decision
         assert row["reviewComment"] == candidate.review_comment
 
+    approved_manifests = {
+        "knowledge/manifests/DOC-FSC-DESIGNATED-PERSON-NOTICE-001.yaml",
+        "knowledge/manifests/DOC-FSC-NONFACE-ACCOUNT-BLOCK-QA-001.yaml",
+        "knowledge/manifests/DOC-KDIC-MISTAKEN-REMITTANCE-ELIGIBILITY-001.yaml",
+        "knowledge/manifests/DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001.yaml",
+        "knowledge/manifests/DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001.yaml",
+    }
     for manifest_path in OFFICIAL_MANIFESTS:
         manifest = load_and_validate_manifest(repo_root, manifest_path)
-        assert manifest.approval_status == "IN_REVIEW"
-        assert manifest.lifecycle_status == "PENDING_ACTIVATION"
-        assert manifest.payload["usageRights"] == "REVIEW_REQUIRED"
+        if manifest_path in approved_manifests:
+            assert manifest.approval_status == "APPROVED"
+            assert manifest.lifecycle_status == "ACTIVE"
+            assert manifest.payload["usageRights"] == "INTERNAL_USE_APPROVED"
+        else:
+            assert manifest.approval_status == "IN_REVIEW"
+            assert manifest.lifecycle_status == "PENDING_ACTIVATION"
+            assert manifest.payload["usageRights"] == "REVIEW_REQUIRED"
 
 
 def _write_review_repository(repo_root: Path, target: Path) -> Path:
