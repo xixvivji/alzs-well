@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import math
-import re
-import unicodedata
 from dataclasses import dataclass
 
 from app.embedding.base import EmbeddingProvider
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.evaluation.models import EvaluationCase, EvaluationChunk
+from app.retrieval.query import keyword_terms, normalize, requires_abstention
 
 
-TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]{2,}")
 DOCUMENT_AUTHORITY = {
     "LAW": 600,
     "REGULATION": 500,
@@ -58,6 +56,8 @@ def rank(
     limit: int = 5,
     embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[RankedChunk, ...]:
+    if requires_abstention(case.query):
+        return ()
     provider = embedding_provider or LocalHashEmbeddingProvider()
     query_embedding = provider.embed_query(case.query)
     ranked: list[RankedChunk] = []
@@ -86,8 +86,8 @@ def rank(
         )
     ranked.sort(
         key=lambda item: (
-            -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
             -item.score,
+            -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
             item.chunk.document_id,
             item.chunk.chunk_id,
         )
@@ -108,15 +108,11 @@ def is_eligible(chunk: EvaluationChunk, case: EvaluationCase) -> bool:
 
 
 def _keyword_score(query: str, text: str) -> float:
-    terms = set(TOKEN_PATTERN.findall(_normalize(query)))
+    terms = set(keyword_terms(query))
     if not terms:
         return 0.0
-    searchable = _normalize(text)
+    searchable = normalize(text)
     return sum(term in searchable for term in terms) / len(terms)
-
-
-def _normalize(value: str) -> str:
-    return unicodedata.normalize("NFC", " ".join(value.lower().split()))
 
 
 def _cosine(left: tuple[float, ...], right: tuple[float, ...]) -> float:

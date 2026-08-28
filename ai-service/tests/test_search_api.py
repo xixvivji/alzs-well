@@ -26,12 +26,14 @@ class FakeSearchRepository:
         self.started: tuple[SearchRequest, str] | None = None
         self.completed: tuple[UUID, int] | None = None
         self.failed: tuple[UUID, str] | None = None
+        self.search_calls = 0
 
     def start_run(self, request: SearchRequest, query_hash: str) -> UUID:
         self.started = (request, query_hash)
         return self.run_id
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
+        self.search_calls += 1
         assert request.as_of.isoformat() == "2026-08-25"
         if self.failure is not None:
             raise KnowledgeContractError(self.failure)
@@ -155,6 +157,25 @@ def test_search_records_safe_failure_code(monkeypatch: object) -> None:
     assert response.status_code == 503
     assert response.json()["code"] == "STORAGE_UNAVAILABLE"
     assert repository.failed == (repository.run_id, "STORAGE_UNAVAILABLE")
+
+
+def test_search_abstains_before_retrieval_for_case_specific_final_decision(
+    monkeypatch: object,
+) -> None:
+    client, repository = _client(monkeypatch)
+    payload = _request()
+    payload["query"] = "이 사건의 고객이 착오송금 반환지원 대상인지 최종 승인해 주세요."
+
+    response = client.post(
+        "/internal/v1/search",
+        headers={"X-Internal-Service-Token": TOKEN},
+        json=payload,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"] == []
+    assert repository.search_calls == 0
+    assert repository.completed == (repository.run_id, 0)
 
 
 def _client(

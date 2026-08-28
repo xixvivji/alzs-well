@@ -99,7 +99,7 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "d.lifecycle_status = 'ACTIVE'" in statement
     assert "d.effective_from <= %s" in statement
     assert "ai_knowledge.document_authority_rank(document_type)" in statement
-    assert "order by authority_rank desc, score desc" in statement
+    assert "order by score desc, authority_rank desc" in statement
     assert "left join ai_knowledge.chunk_embedding e" in statement
     assert "e.embedding::vector(384) <=> search_query.embedding" in statement
     assert "where score >= %s" in statement
@@ -137,6 +137,17 @@ def test_search_uses_injected_model_but_keeps_other_models_for_keyword_score() -
         384,
     )
     assert "e.embedding_model_version = %s" in statement
+
+
+def test_search_uses_korean_particle_normalized_keyword_query() -> None:
+    cursor = FakeCursor([_row()])
+    repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
+    request = _request().model_copy(update={"query": "피해환급금은 어떤 돈을 뜻하나요?"})
+
+    repository.search(request)
+
+    _, parameters = cursor.executions[0]
+    assert parameters[0] == "피해환급금 어떤 돈 뜻"  # type: ignore[index]
 
 
 def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:

@@ -13,6 +13,7 @@ from app.domain.search import Citation, SearchRequest, SearchResponse, SearchRes
 from app.embedding.base import EmbeddingProvider
 from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.errors import KnowledgeContractError
+from app.retrieval.query import requires_abstention
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import PostgresSearchRepository, hash_query
 
@@ -53,7 +54,9 @@ def create_app() -> FastAPI:
         query_hash = hash_query(payload.query)
         run_id = repository.start_run(payload, query_hash)
         try:
-            stored_results = repository.search(payload)
+            stored_results = (
+                () if requires_abstention(payload.query) else repository.search(payload)
+            )
             repository.complete_run(run_id, len(stored_results))
         except KnowledgeContractError as error:
             try:
