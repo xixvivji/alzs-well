@@ -26,8 +26,9 @@
 | E5-small | `614241f622f53c4eeff9890bdc4f31cfecc418b3` | `1a55775f...c98477` | 470,641,600 B | MIT |
 | Arctic-ko | `55ec6e9358a56d56af759bc8372e970caf8c305f` | `0b874517...e15b0` | 2,271,064,456 B | Apache-2.0 |
 
-전체 값과 prefix·차원 계약은 `model-artifacts-v1.json`에 기록한다. 실제 모델 파일은
-저장소의 `/models/` 아래에만 두고 Git에서 제외한다. 두 artifact는 현재
+전체 값과 prefix·차원, 런타임 소비 파일별 경로·크기·SHA-256 계약은
+`model-artifacts-v1.json`에 기록한다. 실제 모델 파일은 저장소의 `/models/` 아래에만 두고
+Git에서 제외하며 catalog에 없는 파일과 symlink를 반입하지 않는다. 두 artifact는 현재
 `EVALUATION_ONLY`이며 운영 승인 또는 배포 이미지 반입 승인을 뜻하지 않는다. 실행 중
 자동 다운로드는 계속 금지한다.
 

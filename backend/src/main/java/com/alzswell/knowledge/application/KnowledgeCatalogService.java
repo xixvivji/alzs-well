@@ -19,15 +19,46 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class KnowledgeCatalogService {
     private static final ZoneId SERVICE_ZONE=ZoneId.of("Asia/Seoul");
+    private static final String VERIFIED_CURRENT_PASSAGE_JOINS="""
+            join knowledge_document_version v on v.document_version_id=p.document_version_id
+            join knowledge_document d on d.document_id=v.document_id and d.current_version=v.version_label
+            join knowledge_document_governance g
+              on g.document_id=v.document_id and g.version_label=v.version_label
+            join knowledge_ai_passage_binding b
+              on b.passage_id=p.passage_id and b.document_id=v.document_id
+             and b.version_label=v.version_label and b.chunk_order=p.passage_order
+             and b.source_hash=g.source_hash
+            join knowledge_ingestion_import i
+              on i.import_id=b.import_id and i.document_id=b.document_id
+             and i.version_label=b.version_label and i.source_hash=b.source_hash
+             and i.ai_proof_version='AI_DB_SNAPSHOT_V1' and i.ai_verified_at is not null
+            """;
+    private static final String VERIFIED_CURRENT_POLICY="""
+            d.approval_status='APPROVED' and d.lifecycle_status='ACTIVE'
+              and g.approval_status='APPROVED' and g.lifecycle_status='ACTIVE'
+              and d.title=g.title and d.issuer=g.issuer
+              and d.source_url is not distinct from g.source_url
+              and d.audience=g.audience and d.allowed_roles=g.allowed_roles
+              and d.effective_from=g.effective_from and d.effective_to is not distinct from g.effective_to
+              and d.checked_at=g.checked_at
+              and d.effective_from<=:asOf and (d.effective_to is null or d.effective_to>=:asOf)
+              and g.effective_from<=:asOf and (g.effective_to is null or g.effective_to>=:asOf)
+              and (:requestedAudience='' or g.audience in ('BOTH',:requestedAudience))
+              and (g.audience='BOTH' or g.audience=any(string_to_array(:audiences,',')))
+              and g.allowed_roles && string_to_array(:roles,',')::varchar[]
+            """;
     private final JdbcClient jdbc;
     private final KnowledgeAccessPolicy accessPolicy;
     private final KnowledgeRetrievalPort retrievalPort;
+    private final VerifiedKnowledgeCitationResolver citationResolver;
     private final KnowledgeAccessAuditService audit;
     private final Clock clock;
 
     public KnowledgeCatalogService(JdbcClient jdbc,KnowledgeAccessPolicy accessPolicy,
-            KnowledgeRetrievalPort retrievalPort,KnowledgeAccessAuditService audit,Clock clock) {
-        this.jdbc=jdbc; this.accessPolicy=accessPolicy; this.retrievalPort=retrievalPort; this.audit=audit; this.clock=clock;
+            KnowledgeRetrievalPort retrievalPort,VerifiedKnowledgeCitationResolver citationResolver,
+            KnowledgeAccessAuditService audit,Clock clock) {
+        this.jdbc=jdbc; this.accessPolicy=accessPolicy; this.retrievalPort=retrievalPort;
+        this.citationResolver=citationResolver; this.audit=audit; this.clock=clock;
     }
 
     @Transactional
@@ -40,15 +71,15 @@ public class KnowledgeCatalogService {
             return new DocumentList(List.of(),0);
         }
         String audience=requestedAudience==null?"":requestedAudience;
-        List<DocumentSummary> items=jdbc.sql("""
-                select * from knowledge_document
-                where approval_status='APPROVED' and lifecycle_status='ACTIVE'
-                  and effective_from<=:asOf and (effective_to is null or effective_to>=:asOf)
-                  and (:requestedAudience='' or audience in ('BOTH',:requestedAudience))
-                  and (audience='BOTH' or audience=any(string_to_array(:audiences,',')))
-                  and allowed_roles && string_to_array(:roles,',')::varchar[]
-                order by title,document_id
-                """).param("asOf",date).param("requestedAudience",audience)
+        String sql="""
+                select distinct d.*
+                from knowledge_passage p
+                """+VERIFIED_CURRENT_PASSAGE_JOINS+"""
+                where
+                """+VERIFIED_CURRENT_POLICY+"""
+                order by d.title,d.document_id
+                """;
+        List<DocumentSummary> items=jdbc.sql(sql).param("asOf",date).param("requestedAudience",audience)
                 .param("audiences",access.audiencesCsv()).param("roles",access.rolesCsv())
                 .query(this::summary).list();
         List<String> ids=items.stream().map(DocumentSummary::documentId).toList();
@@ -76,8 +107,22 @@ public class KnowledgeCatalogService {
             throw new BusinessException(DOCUMENT_NOT_FOUND);
         }
         List<DocumentVersion> items=jdbc.sql("""
-                select * from knowledge_document_version where document_id=? order by approved_at desc,document_version_id
-                """).param(documentId).query((rs,n)->new DocumentVersion(rs.getObject("document_version_id",UUID.class),
+                select distinct v.* from knowledge_document_version v
+                join knowledge_document_governance g
+                  on g.document_id=v.document_id and g.version_label=v.version_label
+                join knowledge_ai_passage_binding b
+                  on b.document_id=v.document_id and b.version_label=v.version_label
+                join knowledge_ingestion_import i
+                  on i.import_id=b.import_id and i.document_id=b.document_id
+                 and i.version_label=b.version_label and i.source_hash=b.source_hash
+                 and i.ai_proof_version='AI_DB_SNAPSHOT_V1' and i.ai_verified_at is not null
+                where v.document_id=:documentId and g.approval_status='APPROVED'
+                  and g.lifecycle_status in ('ACTIVE','SUPERSEDED') and g.source_hash=b.source_hash
+                  and (g.audience='BOTH' or g.audience=any(string_to_array(:audiences,',')))
+                  and g.allowed_roles && string_to_array(:roles,',')::varchar[]
+                order by v.approved_at desc,v.document_version_id
+                """).param("documentId",documentId).param("audiences",access.audiencesCsv())
+                .param("roles",access.rolesCsv()).query((rs,n)->new DocumentVersion(rs.getObject("document_version_id",UUID.class),
                         rs.getString("version_label"),rs.getString("content_checksum"),
                         rs.getObject("published_at",OffsetDateTime.class),rs.getObject("approved_at",OffsetDateTime.class),
                         rs.getObject("superseded_at",OffsetDateTime.class))).list();
@@ -90,16 +135,14 @@ public class KnowledgeCatalogService {
     public Passage passage(UUID passageId,Authentication authentication) {
         AccessContext access=accessPolicy.resolve(authentication,"KNOWLEDGE_READ");
         LocalDate date=resolveAsOf(null);
-        Optional<Passage> result=jdbc.sql("""
+        String sql="""
                 select p.*,d.document_id,d.source_url,d.effective_from,d.effective_to,v.version_label
-                from knowledge_passage p join knowledge_document_version v on v.document_version_id=p.document_version_id
-                join knowledge_document d on d.document_id=v.document_id
-                where p.passage_id=:passageId and d.approval_status='APPROVED' and d.lifecycle_status='ACTIVE'
-                  and v.version_label=d.current_version and d.effective_from<=:asOf
-                  and (d.effective_to is null or d.effective_to>=:asOf)
-                  and (d.audience='BOTH' or d.audience=any(string_to_array(:audiences,',')))
-                  and d.allowed_roles && string_to_array(:roles,',')::varchar[]
-                """).param("passageId",passageId).param("asOf",date)
+                from knowledge_passage p
+                """+VERIFIED_CURRENT_PASSAGE_JOINS+"""
+                where p.passage_id=:passageId and
+                """+VERIFIED_CURRENT_POLICY;
+        Optional<Passage> result=jdbc.sql(sql).param("passageId",passageId).param("asOf",date)
+                .param("requestedAudience","")
                 .param("audiences",access.audiencesCsv()).param("roles",access.rolesCsv())
                 .query(this::mapPassage).optional();
         audit.record("PASSAGE_DETAIL",access,passageId.toString(),null,date,
@@ -125,8 +168,10 @@ public class KnowledgeCatalogService {
         return new SearchResult(command.query(),date,command.audience(),hits,hits.size(),false,vectorSearchUsed);
     }
 
-    @Transactional(readOnly=true)
-    public GuidanceCandidates guidanceCandidates(String reasonCode) {
+    @Transactional
+    public GuidanceCandidates guidanceCandidates(String reasonCode,Authentication authentication) {
+        AccessContext access=accessPolicy.resolve(authentication,"GUIDANCE_CANDIDATE_READ");
+        LocalDate date=resolveAsOf(null);
         Set<String> allowed=switch(reasonCode) {
             case "MISSED_RECURRING_PAYMENT","REPEATED_CONFIRMATION"->Set.of("BANK_CONSULTATION");
             case "DUPLICATE_TRANSFER"->Set.of("SAFE_BLOCK_INFO","BANK_CONSULTATION");
@@ -134,29 +179,28 @@ public class KnowledgeCatalogService {
         };
         if(allowed.isEmpty()) return new GuidanceCandidates(reasonCode,"context-policy-v1.0.0",List.of(),0);
         List<GuidanceCandidate> items=jdbc.sql("""
-                select * from protection_action_catalog where action_code in ('SAFE_BLOCK_INFO','BANK_CONSULTATION')
-                order by display_order
-                """).query((rs,n)->{
-                    String code=rs.getString("action_code");
-                    UUID citation="SAFE_BLOCK_INFO".equals(code)
-                            ?UUID.fromString("95000000-0000-0000-0000-000000000001")
-                            :UUID.fromString("95000000-0000-0000-0000-000000000002");
-                    return new GuidanceCandidate(code,rs.getString("title"),rs.getString("eligibility_summary"),
-                            rs.getString("issuer"),rs.getString("source_url"),rs.getString("execution_type"),
-                            "GUIDANCE_ALLOWED",citation,false);
-                }).list().stream().filter(item->allowed.contains(item.actionCode())).toList();
+                select * from protection_action_catalog
+                where action_code in ('SAFE_BLOCK_INFO','BANK_CONSULTATION') order by display_order
+                """).query((rs,n)->new GuidanceAction(rs.getString("action_code"),rs.getString("title"),
+                        rs.getString("eligibility_summary"),rs.getString("issuer"),rs.getString("source_url"),
+                        rs.getString("execution_type"))).list().stream()
+                .filter(item->allowed.contains(item.actionCode()))
+                .map(item->citationResolver.firstActionCitation(item.actionCode(),access,date)
+                        .map(citation->new GuidanceCandidate(item.actionCode(),item.title(),item.eligibilitySummary(),
+                                item.issuer(),item.sourceUrl(),item.executionType(),"GUIDANCE_ALLOWED",citation,false)))
+                .flatMap(Optional::stream).toList();
         return new GuidanceCandidates(reasonCode,"context-policy-v1.0.0",items,items.size());
     }
 
     private Optional<DocumentDetail> documentRow(String documentId,LocalDate date,AccessContext access) {
-        return jdbc.sql("""
-                select d.*,v.content_checksum from knowledge_document d
-                join knowledge_document_version v on v.document_id=d.document_id and v.version_label=d.current_version
-                where d.document_id=:documentId and d.approval_status='APPROVED' and d.lifecycle_status='ACTIVE'
-                  and d.effective_from<=:asOf and (d.effective_to is null or d.effective_to>=:asOf)
-                  and (d.audience='BOTH' or d.audience=any(string_to_array(:audiences,',')))
-                  and d.allowed_roles && string_to_array(:roles,',')::varchar[]
-                """).param("documentId",documentId).param("asOf",date)
+        String sql="""
+                select distinct d.*,v.content_checksum
+                from knowledge_passage p
+                """+VERIFIED_CURRENT_PASSAGE_JOINS+"""
+                where d.document_id=:documentId and
+                """+VERIFIED_CURRENT_POLICY;
+        return jdbc.sql(sql).param("documentId",documentId).param("asOf",date)
+                .param("requestedAudience","")
                 .param("audiences",access.audiencesCsv()).param("roles",access.rolesCsv())
                 .query((rs,n)->new DocumentDetail(summary(rs,n),rs.getString("source_url"),
                         rs.getString("content_checksum"),true)).optional();
@@ -178,4 +222,6 @@ public class KnowledgeCatalogService {
                 rs.getString("heading"),rs.getString("content"),keywords,rs.getString("citation_label"),
                 rs.getString("source_url"),rs.getObject("effective_from",LocalDate.class),rs.getObject("effective_to",LocalDate.class));
     }
+    private record GuidanceAction(String actionCode,String title,String eligibilitySummary,String issuer,
+            String sourceUrl,String executionType) {}
 }

@@ -10,12 +10,39 @@ export class ApiClientError extends Error {
   }
 }
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
-function apiUrl(path: string) {
-  if (!path.startsWith("/")) throw new ApiClientError("parse", "API 경로가 올바르지 않습니다.");
-  if (typeof window !== "undefined" && window.location.protocol === "https:" && API_BASE_URL.startsWith("http://")) {
-    throw new ApiClientError("network", "HTTPS 화면에서는 HTTP API를 사용할 수 없습니다.");
+export function resolveApiUrl(path: string, baseUrl = API_BASE_URL, browserUrl?: string): string {
+  if (path !== "/api" && !path.startsWith("/api/")) {
+    throw new ApiClientError("parse", "API 경로가 올바르지 않습니다.");
   }
-  return `${API_BASE_URL}${path}`;
+  if (!baseUrl) return path;
+
+  const currentUrl = browserUrl ?? (typeof window === "undefined" ? undefined : window.location.href);
+  if (!currentUrl) {
+    throw new ApiClientError("network", "서버 렌더링에서는 외부 API origin을 사용할 수 없습니다.");
+  }
+
+  let current: URL;
+  let backend: URL;
+  try {
+    current = new URL(currentUrl);
+    backend = new URL(baseUrl);
+  } catch {
+    throw new ApiClientError("network", "API 연결 설정이 올바르지 않습니다.");
+  }
+  if (
+    current.protocol !== "http:" ||
+    !isLoopback(current.hostname) ||
+    backend.protocol !== "http:" ||
+    !isLoopback(backend.hostname) ||
+    backend.username ||
+    backend.password ||
+    backend.pathname !== "/" ||
+    backend.search ||
+    backend.hash
+  ) {
+    throw new ApiClientError("network", "배포 환경에서는 같은 origin의 API 프록시만 사용할 수 있습니다.");
+  }
+  return `${backend.origin}${path}`;
 }
 function requestSignal(signal: AbortSignal | null | undefined, timeoutMs: number) {
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -25,7 +52,7 @@ export async function apiRequest<T>(path: string, options: RequestInit & { capab
   const { capability, demoRunId, idempotencyKey, timeoutMs = 10_000, headers, signal, ...requestOptions } = options;
   let response: Response;
   try {
-    response = await fetch(apiUrl(path), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
+    response = await fetch(resolveApiUrl(path), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
       "Content-Type": "application/json", ...(capability ? { "X-Demo-Capability": capability } : {}),
       ...(demoRunId ? { "X-Demo-Run-Id": demoRunId } : {}), ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}), ...headers,
     } });
@@ -50,4 +77,9 @@ export async function apiRequest<T>(path: string, options: RequestInit & { capab
   }
   if (!body) throw new ApiClientError("parse", "서버가 JSON 응답을 반환하지 않았습니다.", response.status, undefined, traceHeader);
   return { body, headers: response.headers };
+}
+
+function isLoopback(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "[::1]";
 }

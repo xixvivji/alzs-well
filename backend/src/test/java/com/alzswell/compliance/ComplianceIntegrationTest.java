@@ -110,6 +110,33 @@ class ComplianceIntegrationTest {
     }
 
     @Test
+    void includesWatchlistChangesWithAuthenticatedActorSnapshot() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID principalId = UUID.fromString("11111111-2222-4333-8444-555555555553");
+        UUID sessionId = UUID.fromString("66666666-7777-4888-8999-000000000003");
+        String customerId = "SYN_CUSTOMER_FIN_MGMT_001";
+        jdbcTemplate.update("""
+                insert into customer_watchlist_event(
+                    event_id,customer_id,event_type,version,instrument_ids,actor_id,actor_principal_id,
+                    actor_customer_id,actor_session_id,actor_type,occurred_at,event_hash,event_hash_version
+                ) values(?,?, 'REPLACED',2,'[]'::jsonb,?,?,?,?,'CUSTOMER',?,?,'ACTOR_SNAPSHOT_V2')
+                """, eventId, customerId, principalId, principalId, customerId, sessionId,
+                OffsetDateTime.parse("2026-08-27T01:00:00Z"), "c".repeat(64));
+
+        mockMvc.perform(get("/api/v1/audit/events/{eventId}", "WATCHLIST:" + eventId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sourceType").value("WATCHLIST"))
+                .andExpect(jsonPath("$.data.actorSubject").value(principalId.toString()))
+                .andExpect(jsonPath("$.data.customerId").value(customerId))
+                .andExpect(jsonPath("$.data.beforeState").value("1"))
+                .andExpect(jsonPath("$.data.afterState").value("2"))
+                .andExpect(jsonPath("$.data.detail.actorSessionId").value(sessionId.toString()))
+                .andExpect(jsonPath("$.data.detail.actorType").value("CUSTOMER"))
+                .andExpect(jsonPath("$.data.detail.integrityHashVersion").value("ACTOR_SNAPSHOT_V2"))
+                .andExpect(jsonPath("$.data.integrityHash").value("sha256:" + "c".repeat(64)));
+    }
+
+    @Test
     void cursorPreservesPostgresMicrosecondsBetweenPages() throws Exception {
         UUID microFirst = insertDecision("AUDIT_MICRO_FIRST", "sha256:audit-micro-first",
                 OffsetDateTime.parse("2099-08-21T00:00:00.123100Z"));

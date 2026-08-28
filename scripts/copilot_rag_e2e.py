@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import secrets
 import subprocess
 import sys
 import time
@@ -42,6 +43,11 @@ def load_environment() -> dict[str, str]:
         environment.setdefault(key, value)
     environment.setdefault("COMPOSE_PROJECT_NAME", "alzs-well-copilot-rag-e2e")
     environment.setdefault("BACKEND_PORT", "18083")
+    if environment.get("FRONTEND_PROXY_SHARED_SECRET", "") in {
+        "",
+        "replace-with-64-lowercase-hex",
+    }:
+        environment["FRONTEND_PROXY_SHARED_SECRET"] = secrets.token_hex(32)
     environment["AI_RETRIEVAL_ENABLED"] = "true"
     environment["COPILOT_RAG_ENABLED"] = "true"
     return environment
@@ -242,7 +248,7 @@ def ingest_synthetic_document() -> dict[str, Any]:
     return result
 
 
-def verify_multi_dimension_reingestion() -> None:
+def verify_single_provider_snapshot_reingestion() -> None:
     if EMBEDDING_MODE == "arctic-ko":
         ingest_synthetic_document()
         stored = psql(
@@ -258,7 +264,7 @@ def verify_multi_dimension_reingestion() -> None:
             where c.document_id='{DOCUMENT_ID}' and c.version_label='{VERSION}';
             """
         )
-        require(stored == "t", "Arctic-ko 1024 embeddings were not preserved on re-ingestion")
+        require(stored == "t", "Arctic-ko 1024 snapshot was not replaced consistently")
         return
     psql(
         f"""
@@ -277,13 +283,20 @@ def verify_multi_dimension_reingestion() -> None:
         """
     )
     ingest_synthetic_document()
-    coexistence = psql(
+    replacement = psql(
         f"""
         select coalesce(bool_and(
-          model_count = 2 and dimensions = array[384,1024]::bigint[]
+          model_count = 1
+          and model_ids = array['local-hash-ngram-ko']::text[]
+          and model_versions = array['local-hash-ngram-ko-v1']::text[]
+          and dimensions = array[384]::bigint[]
         ), false)
         from (
           select c.chunk_id, count(*) as model_count,
+            array_agg(e.embedding_model_id order by e.embedding_model_id)::text[]
+              as model_ids,
+            array_agg(e.embedding_model_version order by e.embedding_model_version)
+              ::text[] as model_versions,
             array_agg(e.embedding_dimensions::bigint order by e.embedding_dimensions)
               as dimensions
           from ai_knowledge.chunk c
@@ -293,7 +306,7 @@ def verify_multi_dimension_reingestion() -> None:
         ) stored;
         """
     )
-    require(coexistence == "t", "384/1024 embeddings did not survive re-ingestion")
+    require(replacement == "t", "re-ingestion did not keep one current-provider snapshot")
 
 
 def ingestion_import_payload() -> dict[str, Any]:
@@ -639,7 +652,7 @@ def main() -> int:
         access_token = login["data"]["accessToken"]
         register_and_publish(access_token)
         ingest_synthetic_document()
-        verify_multi_dimension_reingestion()
+        verify_single_provider_snapshot_reingestion()
         import_headers = bearer(access_token)
         import_headers["Idempotency-Key"] = "copilot-rag-e2e-import-v1"
         imported, _ = http(

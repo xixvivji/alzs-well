@@ -114,6 +114,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  ai-sca:
+    name: Python and model runtime vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned uv
+        run: python -m pip install uv==0.11.30
+      - name: Audit locked Python and model dependencies
+        working-directory: ai-service
+        run: uv audit --locked --python-version 3.12 --python-platform linux
+      - name: Build the offline model runtime image
+        run: >-
+          docker build
+          --file ai-service/Dockerfile.model-runtime
+          --tag alzs-well-ai-model-runtime:ci
+          ai-service
+      - name: Scan OS and Python packages in the model runtime image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: alzs-well-ai-model-runtime:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+
   frontend:
     name: Frontend lint, build and test
     runs-on: ubuntu-latest
@@ -149,6 +183,7 @@ jobs:
       POSTGRES_AI_PASSWORD: ci-only-ai-ingestion-password-never-use-in-production
       POSTGRES_AI_RUNTIME_PASSWORD: ci-only-ai-runtime-password-never-use-in-production
       AI_INTERNAL_TOKEN: ci-only-internal-ai-token-never-use-in-production
+      FRONTEND_PROXY_SHARED_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       CORS_CUSTOMER_ALLOWED_ORIGINS: https://customer-ci.example.invalid
       CORS_STAFF_ALLOWED_ORIGINS: https://staff-ci.example.invalid
       DEMO_STAFF_USERNAME: ci-demo-staff

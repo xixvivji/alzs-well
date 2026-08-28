@@ -96,7 +96,9 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "d.allowed_roles && %s::text[]" in statement
     assert "d.audience = 'BOTH'" in statement
     assert "d.approval_status = 'APPROVED'" in statement
-    assert "d.lifecycle_status = 'ACTIVE'" in statement
+    assert "d.lifecycle_status in ('PENDING_ACTIVATION', 'ACTIVE')" in statement
+    assert "SUPERSEDED" not in statement
+    assert "RETIRED" not in statement
     assert "d.effective_from <= %s" in statement
     assert "ai_knowledge.document_authority_rank(document_type)" in statement
     assert "order by authority_rank desc, score desc" in statement

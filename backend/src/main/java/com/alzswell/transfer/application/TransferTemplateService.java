@@ -5,6 +5,7 @@ import static com.alzswell.transfer.api.TransferTemplateErrorCode.LIMIT_EXCEEDED
 import static com.alzswell.transfer.api.TransferTemplateErrorCode.NOT_FOUND;
 import static com.alzswell.transfer.api.TransferTemplateErrorCode.RESOURCE_NOT_FOUND;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
@@ -144,6 +145,7 @@ public class TransferTemplateService {
 
     private void event(UUID templateId, String customerId, String eventType, CreateRequest snapshot,
             String status, long version, AuditActor actor, OffsetDateTime occurredAt) {
+        occurredAt = AuditTimestamp.canonical(occurredAt);
         String eventHash = hash(templateId + "|" + eventType + "|" + status + "|" + version
                 + "|" + snapshot + "|" + occurredAt);
         jdbc.update("""

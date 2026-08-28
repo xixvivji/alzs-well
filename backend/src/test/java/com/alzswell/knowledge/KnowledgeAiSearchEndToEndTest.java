@@ -57,6 +57,7 @@ class KnowledgeAiSearchEndToEndTest {
         insertApprovedGovernance();
         String textHash="sha256:"+sha256(TEXT.getBytes(StandardCharsets.UTF_8));
         String chunkId="chk_"+sha256(MAPPER.writeValueAsBytes(List.of(DOCUMENT_ID,VERSION,SECTION_PATH,1,textHash,"structure-ko-v1")));
+        insertAiIngestion(chunkId,textHash);
         mockMvc.perform(post("/api/v1/admin/knowledge/ingestion-imports").contentType(MediaType.APPLICATION_JSON)
                         .header("Idempotency-Key","e2e-import-v63-0001").content(importBody(chunkId,textHash)))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.searchable").value(true));
@@ -68,7 +69,9 @@ class KnowledgeAiSearchEndToEndTest {
                 .andExpect(jsonPath("$.data.items[0].passage.documentId").value(DOCUMENT_ID));
 
         MODE.set(Mode.TAMPERED);
-        mockMvc.perform(searchRequest()).andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(0));
+        mockMvc.perform(searchRequest()).andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.items[0].retrievalMode").value("DETERMINISTIC_FALLBACK"))
+                .andExpect(jsonPath("$.data.vectorSearchUsed").value(false));
         Integer rejected=jdbc.queryForObject("""
                 select (detail->>'rejectedCitations')::integer from knowledge_access_audit_event
                 where event_type='SEARCH' order by occurred_at desc limit 1
@@ -79,6 +82,7 @@ class KnowledgeAiSearchEndToEndTest {
         mockMvc.perform(searchRequest()).andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.items[0].retrievalMode").value("DETERMINISTIC_FALLBACK"))
                 .andExpect(jsonPath("$.data.vectorSearchUsed").value(false));
+
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder searchRequest() {
@@ -96,9 +100,27 @@ class KnowledgeAiSearchEndToEndTest {
                   registered_by,registered_at,updated_at
                 ) values(?,?,?,?,?,'SYNTHETIC_FIXTURE','contracts/knowledge/fixtures/synthetic-source.html',null,?,
                   '[]'::jsonb,'SYNTHETIC_FIXTURE','INTERNAL','STAFF',string_to_array('PROTECTION_STAFF,DETECTION_ADMIN',',')::varchar[],
-                  '2026-08-21',null,'2026-08-21','SYNTHETIC_UNRESTRICTED','APPROVED','ACTIVE','reviewer',?,2,'reviewer',?,?)
+                  '2026-08-21',null,'2026-08-21','SYNTHETIC_UNRESTRICTED','APPROVED','PENDING_ACTIVATION','reviewer',?,2,'reviewer',?,?)
                 """,UUID.randomUUID(),DOCUMENT_ID,VERSION,"합성 지식 계약 검증 안내","ALZ's well 테스트",SOURCE_HASH,
                 approvedAt,approvedAt,approvedAt);
+    }
+
+    private void insertAiIngestion(String chunkId,String textHash) {
+        UUID runId=UUID.fromString("97000000-0000-0000-0000-000000000063");
+        OffsetDateTime started=OffsetDateTime.parse("2026-08-21T00:00:00Z");
+        jdbc.update("""
+                insert into ai_knowledge.ingestion_run(
+                  run_id,document_id,version_label,source_hash,as_of,status,extractor_version,chunker_version,
+                  chunk_count,warning_codes,failure_code,started_at,finished_at)
+                values(?,?,?,?,?,'SUCCEEDED','html-structure-v1','structure-ko-v1',1,'{}',null,?,?)
+                """,runId,DOCUMENT_ID,VERSION,SOURCE_HASH,LocalDate.of(2026,8,21),started,started.plusSeconds(1));
+        jdbc.update("""
+                insert into ai_knowledge.chunk(
+                  chunk_id,run_id,document_id,version_label,heading,section_path,page,page_start,page_end,chunk_order,
+                  content,text_hash,source_hash,extractor_version,chunker_version,created_at)
+                values(?,?,?,?,?,string_to_array(?,?)::text[],null,null,null,1,?,?,?,'html-structure-v1','structure-ko-v1',?)
+                """,chunkId,runId,DOCUMENT_ID,VERSION,"신청 방법",String.join("\u001f",SECTION_PATH),"\u001f",
+                TEXT,textHash,SOURCE_HASH,started.plusSeconds(1));
     }
 
     private static String importBody(String chunkId,String textHash)throws Exception {

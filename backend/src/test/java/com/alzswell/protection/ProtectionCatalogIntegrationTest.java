@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -22,17 +23,23 @@ class ProtectionCatalogIntegrationTest {
     @Container @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new com.alzswell.test.PgVectorPostgreSqlContainer();
     @Autowired MockMvc mockMvc;
+    @Autowired JdbcTemplate jdbc;
 
     @Test
     @WithMockUser(username = CUSTOMER_ID, authorities = {
-            "PROTECTION_ACTION_READ", "PROTECTION_ACTION_EVALUATE", "PROTECTION_ENROLLMENT_READ"})
+            "ROLE_CUSTOMER", "PROTECTION_ACTION_READ", "PROTECTION_ACTION_EVALUATE", "PROTECTION_ENROLLMENT_READ"})
     void exposesGuidanceOnlyCatalogEvaluationAndSyntheticEnrollmentSnapshot() throws Exception {
         mockMvc.perform(get("/api/v1/protection-actions"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(2))
                 .andExpect(jsonPath("$.data.items[0].externalExecutionAvailable").value(false));
         mockMvc.perform(get("/api/v1/protection-actions/SAFE_BLOCK_INFO"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.applicationEndpointProvided").value(false))
-                .andExpect(jsonPath("$.data.citationPassageIds[0]").isNotEmpty());
+                .andExpect(jsonPath("$.data.citationPassageIds").isEmpty());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("""
+                select count(*) from knowledge_access_audit_event
+                where event_type='PROTECTION_ACTION_CITATION' and permission_code='PROTECTION_ACTION_READ'
+                  and requested_resource_id='SAFE_BLOCK_INFO' and outcome='NOT_FOUND'
+                """,Integer.class)).isOne();
         mockMvc.perform(post("/api/v1/protection-actions/SAFE_BLOCK_INFO/eligibility-evaluations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"customerId\":\"" + CUSTOMER_ID

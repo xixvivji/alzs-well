@@ -4,24 +4,35 @@ import os
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from hashlib import sha256
 from pathlib import Path, PurePosixPath
 
 from app.embedding.base import EmbeddingProvider
 from app.embedding.local_arctic import (
+    ARCTIC_DIMENSIONS,
+    ARCTIC_MODEL_ID,
     ARCTIC_MODEL_REVISION,
     ARCTIC_MODEL_SHA256,
+    ARCTIC_MODEL_VERSION_NAME,
     LocalArcticKoEmbeddingProvider,
 )
-from app.embedding.local_e5 import LocalE5EmbeddingProvider
+from app.embedding.local_e5 import (
+    E5_DIMENSIONS,
+    E5_MODEL_ID,
+    LocalE5EmbeddingProvider,
+)
 from app.embedding.local_hash import LocalHashEmbeddingProvider
+from app.embedding.model_package import ModelPackageFile, verify_model_package
 from app.errors import KnowledgeContractError
+from app.evaluation.model_catalog import load_model_catalog
 
 
 HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 REVISION_PATTERN = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]{0,79}$")
 E5Factory = Callable[[Path, str], EmbeddingProvider]
 ArcticFactory = Callable[[Path, str], EmbeddingProvider]
+DEFAULT_MODEL_CATALOG = (
+    Path(__file__).resolve().parents[2] / "evaluation/model-artifacts-v1.json"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,19 +42,44 @@ class EmbeddingConfig:
     model_path: str | None = None
     model_revision: str | None = None
     model_sha256: str | None = None
-    allow_hash_fallback: bool = True
+    allow_hash_fallback: bool = False
+    model_status: str | None = None
+    model_files: tuple[ModelPackageFile, ...] = ()
+    execution_context: str = "PRODUCTION"
+    allow_evaluation_model: bool = False
 
     @classmethod
     def from_environment(
-        cls, environment: Mapping[str, str] | None = None
+        cls,
+        environment: Mapping[str, str] | None = None,
+        *,
+        catalog_path: Path | None = None,
     ) -> EmbeddingConfig:
         values = os.environ if environment is None else environment
         backend = values.get("ALZS_EMBEDDING_BACKEND", "hash").strip().lower()
         if backend not in {"hash", "local-e5", "local-arctic-ko"}:
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-        fallback = _boolean(values.get("ALZS_EMBEDDING_ALLOW_HASH_FALLBACK", "true"))
+        execution_context = values.get(
+            "ALZS_EMBEDDING_EXECUTION_CONTEXT", "PRODUCTION"
+        ).strip().upper()
+        if execution_context not in {"PRODUCTION", "SYNTHETIC_TEST"}:
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+        fallback_default = "true" if execution_context == "SYNTHETIC_TEST" else "false"
+        fallback = _boolean(
+            values.get("ALZS_EMBEDDING_ALLOW_HASH_FALLBACK", fallback_default)
+        )
+        allow_evaluation_model = _boolean(
+            values.get("ALZS_EMBEDDING_ALLOW_EVALUATION_MODEL", "false")
+        )
+        if backend != "hash" and execution_context == "PRODUCTION" and fallback:
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         if backend == "hash":
-            return cls(backend=backend, allow_hash_fallback=fallback)
+            return cls(
+                backend=backend,
+                allow_hash_fallback=fallback,
+                execution_context=execution_context,
+                allow_evaluation_model=allow_evaluation_model,
+            )
         root_value = values.get("ALZS_EMBEDDING_MODEL_ROOT", "").strip()
         path_value = values.get("ALZS_EMBEDDING_MODEL_PATH", "").strip()
         revision = values.get("ALZS_EMBEDDING_MODEL_REVISION", "").strip()
@@ -63,14 +99,60 @@ class EmbeddingConfig:
             revision != ARCTIC_MODEL_REVISION or digest != ARCTIC_MODEL_SHA256
         ):
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-        return cls(
+        models = load_model_catalog(catalog_path or DEFAULT_MODEL_CATALOG)
+        if backend == "local-arctic-ko":
+            expected = (
+                ARCTIC_MODEL_VERSION_NAME,
+                ARCTIC_MODEL_ID,
+                ARCTIC_DIMENSIONS,
+                "query: ",
+                "",
+            )
+        else:
+            expected = (
+                "multilingual-e5-small",
+                E5_MODEL_ID,
+                E5_DIMENSIONS,
+                "query: ",
+                "passage: ",
+            )
+        (
+            expected_name,
+            expected_model_id,
+            dimensions,
+            query_prefix,
+            passage_prefix,
+        ) = expected
+        selected = next(
+            (
+                model
+                for model in models
+                if model.name == expected_name
+                and model.local_path == path_value
+                and model.model_id == expected_model_id
+                and model.revision == revision
+                and model.dimensions == dimensions
+                and model.query_prefix == query_prefix
+                and model.passage_prefix == passage_prefix
+            ),
+            None,
+        )
+        if selected is None or selected.file("model.safetensors").sha256 != digest:
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+        config = cls(
             backend=backend,
             model_root=root,
             model_path=path_value,
             model_revision=revision,
             model_sha256=digest,
             allow_hash_fallback=fallback,
+            model_status=selected.status,
+            model_files=selected.files,
+            execution_context=execution_context,
+            allow_evaluation_model=allow_evaluation_model,
         )
+        _validate_promotion(config)
+        return config
 
     def resolve_model_directory(self) -> Path:
         if (
@@ -105,8 +187,9 @@ def create_embedding_provider(
 ) -> EmbeddingProvider:
     if config.backend == "hash":
         return LocalHashEmbeddingProvider()
+    _validate_promotion(config)
     model_directory = config.resolve_model_directory()
-    _verify_safetensors(model_directory, config.model_sha256)
+    verify_model_package(model_directory, config.model_files)
     if config.backend == "local-arctic-ko":
         factory = _arctic_provider if arctic_factory is None else arctic_factory
     else:
@@ -127,18 +210,21 @@ def _arctic_provider(model_path: Path, revision: str) -> EmbeddingProvider:
     return LocalArcticKoEmbeddingProvider(model_path, revision=revision)
 
 
-def _verify_safetensors(model_directory: Path, expected_hash: str | None) -> None:
-    artifact = model_directory / "model.safetensors"
-    if expected_hash is None or not artifact.is_file() or artifact.is_symlink():
+def _validate_promotion(config: EmbeddingConfig) -> None:
+    if (
+        config.backend != "hash"
+        and config.execution_context == "PRODUCTION"
+        and config.allow_hash_fallback
+    ):
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-    digest = sha256()
-    try:
-        with artifact.open("rb") as stream:
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(block)
-    except OSError:
-        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID") from None
-    if "sha256:" + digest.hexdigest() != expected_hash:
+    if config.model_status not in {"APPROVED", "EVALUATION_ONLY"}:
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    if config.model_status == "EVALUATION_ONLY" and not (
+        config.execution_context == "SYNTHETIC_TEST"
+        and config.allow_evaluation_model
+    ):
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    if config.execution_context == "PRODUCTION" and config.allow_evaluation_model:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
 
 

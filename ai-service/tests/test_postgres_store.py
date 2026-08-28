@@ -130,6 +130,7 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
 
     statements = [statement for statement, _ in cursor.executions]
     assert statements[0].startswith("select pg_advisory_xact_lock")
+    assert cursor.executions[0][1] == ("DOC-SYN-STORE-001",)
     snapshot_parameters = next(
         parameters
         for statement, parameters in cursor.executions
@@ -141,8 +142,8 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
         for statement, parameters in cursor.executions
         if statement.startswith("delete from ai_knowledge.chunk")
     )
-    assert "not (chunk_id = any(%s::text[]))" in stale_delete[0]
-    assert stale_delete[1][2] == [chunks[0].chunk_id, chunks[1].chunk_id]  # type: ignore[index]
+    assert "not (chunk_id = any(%s::text[]))" not in stale_delete[0]
+    assert stale_delete[1] == ("DOC-SYN-STORE-001", "1.0.0")
     chunk_insert = next(
         statement
         for statement, _ in cursor.executions
@@ -153,13 +154,12 @@ def test_atomically_replaces_chunks_and_completes_run() -> None:
         for statement, _ in cursor.executions
         if statement.startswith("insert into ai_knowledge.chunk_embedding(")
     )
-    assert "on conflict(chunk_id) do update" in chunk_insert
-    assert "embedding = coalesce(" in chunk_insert
-    assert (
-        "on conflict(chunk_id, embedding_model_id, embedding_model_version)"
-        in embedding_insert
-    )
+    assert "on conflict" not in chunk_insert
+    assert "on conflict" not in embedding_insert
     assert statements[-1].startswith("update ai_knowledge.ingestion_run")
+    assert statements.index(stale_delete[0]) < statements.index(chunk_insert)
+    assert statements.index(chunk_insert) < statements.index(embedding_insert)
+    assert statements.index(embedding_insert) < len(statements) - 1
     assert len(cursor.batches) == 2
     chunk_batch, embedding_batch = cursor.batches
     assert len(chunk_batch) == 2
@@ -201,6 +201,50 @@ def test_ingestion_uses_injected_embedding_provider_and_records_version() -> Non
     assert str(embedding_batch[0][4]).startswith("[1,")
 
 
+def test_embedding_batch_is_built_before_database_transaction_and_lock() -> None:
+    events: list[str] = []
+    cursor = FakeCursor(
+        run=("DOC-SYN-STORE-001", "1.0.0", "sha256:" + "1" * 64, "RUNNING")
+    )
+
+    class OrderedProvider(FakeEmbeddingProvider):
+        def embed_passage(self, value: str) -> tuple[float, ...]:
+            events.append("embedding")
+            return super().embed_passage(value)
+
+    def connect(**kwargs: Any) -> FakeConnection:
+        del kwargs
+        events.append("database")
+        return FakeConnection(cursor)
+
+    store = PostgresIngestionStore(
+        _config(), connect=connect, embedding_provider=OrderedProvider()
+    )
+
+    store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
+
+    assert events == ["embedding", "database"]
+    assert cursor.executions[0][0].startswith("select pg_advisory_xact_lock")
+
+
+def test_embedding_failure_happens_without_opening_database_connection() -> None:
+    class BrokenProvider(FakeEmbeddingProvider):
+        def embed_passage(self, value: str) -> tuple[float, ...]:
+            del value
+            raise KnowledgeContractError("EMBEDDING_MODEL_UNAVAILABLE")
+
+    connector = Connector()
+    store = PostgresIngestionStore(
+        _config(), connect=connector, embedding_provider=BrokenProvider()
+    )
+
+    with pytest.raises(KnowledgeContractError) as failure:
+        store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
+
+    assert failure.value.code == "EMBEDDING_MODEL_UNAVAILABLE"
+    assert connector.calls == []
+
+
 def test_ingestion_stores_1024_dimension_embedding_without_legacy_write() -> None:
     class ArcticProvider(FakeEmbeddingProvider):
         descriptor = EmbeddingDescriptor(
@@ -229,7 +273,7 @@ def test_ingestion_stores_1024_dimension_embedding_without_legacy_write() -> Non
     assert len(str(embedding_batch[0][4])) > 1024
 
 
-def test_reingestion_preserves_other_model_embeddings_for_unchanged_chunks() -> None:
+def test_reingestion_replaces_the_complete_derived_snapshot_with_insert_only_writes() -> None:
     cursor = FakeCursor(
         run=("DOC-SYN-STORE-001", "1.0.0", "sha256:" + "1" * 64, "RUNNING")
     )
@@ -243,12 +287,24 @@ def test_reingestion_preserves_other_model_embeddings_for_unchanged_chunks() -> 
         for statement, parameters in cursor.executions
         if statement.startswith("delete from ai_knowledge.chunk")
     )
-    assert "not (chunk_id = any(%s::text[]))" in delete_statement
-    assert delete_parameters[2] == [chunk.chunk_id for chunk in chunks]  # type: ignore[index]
+    assert "not (chunk_id = any(%s::text[]))" not in delete_statement
+    assert delete_parameters == ("DOC-SYN-STORE-001", "1.0.0")
     assert not any(
         statement.startswith("delete from ai_knowledge.chunk_embedding")
         for statement, _ in cursor.executions
     )
+    chunk_insert = next(
+        statement
+        for statement, _ in cursor.executions
+        if statement.startswith("insert into ai_knowledge.chunk(")
+    )
+    embedding_insert = next(
+        statement
+        for statement, _ in cursor.executions
+        if statement.startswith("insert into ai_knowledge.chunk_embedding(")
+    )
+    assert "on conflict" not in chunk_insert
+    assert "on conflict" not in embedding_insert
 
 
 def test_rejects_unsupported_embedding_dimension_before_database_write() -> None:
@@ -300,6 +356,22 @@ def test_rejects_mixed_or_empty_chunks_before_database_write() -> None:
     assert connector.calls == []
 
 
+def test_rejects_more_than_contract_maximum_before_embedding_or_database() -> None:
+    connector = Connector()
+    embedding = FakeEmbeddingProvider()
+    store = PostgresIngestionStore(
+        _config(), connect=connector, embedding_provider=embedding
+    )
+    chunks = tuple(_chunk(order, "body") for order in range(1, 502))
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        store.complete_run(uuid4(), chunks, (), _manifest())
+
+    assert caught.value.code == "CHUNK_VALIDATION_FAILED"
+    assert embedding.passages == []
+    assert connector.calls == []
+
+
 def test_rejects_run_identity_or_state_mismatch() -> None:
     cursor = FakeCursor(run=("OTHER", "1.0.0", "sha256:" + "1" * 64, "RUNNING"))
     store = PostgresIngestionStore(_config(), connect=Connector(cursor))
@@ -335,6 +407,17 @@ def test_maps_database_errors_to_sanitized_storage_codes() -> None:
         conflict_store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
     assert conflict.value.code == "STORAGE_CONFLICT"
     assert "must-not-escape" not in conflict.value.safe_message
+
+    frozen_cursor = FakeCursor(
+        execute_error=psycopg.errors.ObjectNotInPrerequisiteState(
+            "verified content=must-not-escape"
+        )
+    )
+    frozen_store = PostgresIngestionStore(_config(), connect=Connector(frozen_cursor))
+    with pytest.raises(KnowledgeContractError) as frozen:
+        frozen_store.complete_run(uuid4(), (_chunk(1, "body"),), (), _manifest())
+    assert frozen.value.code == "STORAGE_CONFLICT"
+    assert "must-not-escape" not in frozen.value.safe_message
 
 
 def _config() -> DatabaseConfig:

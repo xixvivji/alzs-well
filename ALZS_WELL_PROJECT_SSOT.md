@@ -896,7 +896,7 @@ MVP P0는 벡터DB가 없어도 동작하는 구조화 공식 공개근거 카�
 - 문서 버전·체크섬
 - 접근등급과 허용 사용자
 
-정책엔진이 적용 가능한 후보를 먼저 고르고, LLM은 그 후보만 쉬운 말로 설명한다. URL과 페이지는 LLM이 생성하지 않고 검색 메타데이터에서 서버가 조립한다. 근거나 최신성을 확인할 수 없으면 `확인 불가·행원 재확인 필요`로 남긴다.
+정책엔진이 적용 가능한 후보를 먼저 고르고, LLM은 그 후보만 쉬운 말로 설명한다. URL과 페이지는 LLM이 생성하지 않고 검색 메타데이터에서 서버가 조립한다. 근거나 최신성을 확인할 수 없으면 `확인 불가·행원 재확인 필요`로 남긴다. publish는 검수된 버전을 `APPROVED/PENDING_ACTIVATION`으로만 만들며 기존 ACTIVE 근거를 중단하지 않는다. Spring 권위 카탈로그에는 exact `SUCCEEDED` ingestion 실행과 전체 chunk를 재검증하고 DB가 proof를 생성한 결과만 반영하며, target 활성화·이전 governance 대체·passage 적재·현재 버전 전환·이전 version supersede를 한 트랜잭션으로 처리한다. AI ingestion과 Spring publish/import는 같은 문서 ID advisory lock을 사용하고, `AI_DB_SNAPSHOT_V1` proof가 생성된 문서·버전의 AI chunk·manifest snapshot과 참조 terminal ingestion run을 불변으로 동결한다. 이후 내용 변경은 새 `versionLabel`로 적재한다. 내부 FastAPI는 import 전 `APPROVED/PENDING_ACTIVATION` snapshot을 후보로 반환할 수 있으나 권한 부여로 취급하지 않고, Spring의 current `APPROVED/ACTIVE` governance·proof 검증을 통과한 결과만 외부에 노출한다. 실패하면 기존 ACTIVE head를 유지한다. 목록·상세·passage·검색·안내 후보와 보호수단 상세 citation은 current `APPROVED/ACTIVE` governance와 `AI_DB_SNAPSHOT_V1` import proof를 공통으로 요구하며 legacy·미검증 자료는 숨긴다. action citation은 고정 UUID가 아니라 승인 document의 현재 버전 stable passage에서 선택하고, 근거가 없으면 빈 결과로 fail-closed한다. AI 장애 또는 Spring의 citation 전부 거부 시 결정론적 폴백은 같은 ACL·audience·효력 조건을 적용하고 제목·본문의 stored `simple` tsvector GIN과 별도 keyword GIN에서 parameter-bound query로 최대 200개 후보만 조회한다.
 
 ### 비상품성 금융지원 서비스 안내
 
@@ -1248,7 +1248,7 @@ POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 - 공모전 구현은 capability를 `X-Demo-Capability` 헤더로 전달하고 브라우저 메모리에만 보관한다. URL, `localStorage`, `sessionStorage`, 쿠키, 응답·접근로그에 저장하지 않으며 페이지 이탈·세션 만료 시 폐기한다.
 - 고객 API는 `CUSTOMER_DEMO`, 모의 행원 API는 별도 `DEMO_STAFF` capability를 요구한다. 고객 capability만으로 `/staff/**`, `/cases/**`를 조회·변경할 수 없다.
 - 모든 세션 하위 API는 capability subject, `sessionId`, 역할, 만료시각, `demoRunId` 소유권을 객체 단위로 확인한다. UUID 자체를 접근권한으로 취급하지 않는다.
-- 초기 운영 제한값은 세션 생성 `IP당 분당 10회`, 조회 `IP·capability 각각 분당 120회`, 상태변경 `IP·capability 각각 분당 30회`, 요청 본문 `32KiB`다. 신뢰 프록시는 환경별 CIDR allowlist로 제한하고, 초과 시 `429`와 `Retry-After`를 반환한다.
+- 초기 운영 제한값은 세션 생성 `클라이언트당 분당 10회`, 조회 `클라이언트·capability 각각 분당 120회`, 상태변경 `클라이언트·capability 각각 분당 30회`, 요청 본문 `32KiB`다. 직접 gateway 요청은 신뢰 proxy 처리 후의 연결 원본 IP를 쓰고, Sites Worker 경유 요청은 원본 IP를 전달하지 않은 채 서버 전용 공유 비밀로 인증된 HMAC 익명 client key를 사용한다. 공유 비밀·익명 key 헤더는 Nginx에서 소비하고 Spring으로 전달하지 않는다. 신뢰 프록시는 환경별 CIDR allowlist로 제한하고, 초과 시 `429`와 `Retry-After`를 반환한다.
 - 상태변경 요청은 정확한 `Origin` allowlist를 검증한다. 개발은 고객·직원 localhost origin을 분리하고, 운영은 환경변수로 주입한 서로 겹치지 않는 HTTPS 고객·직원 origin만 허용한다. 공개 세션 생성과 일반 고객 세션 경로에는 고객 origin만, 직원 발급과 세션 하위 `/staff/**`·`/cases/**`에는 직원 origin만 허용하며 capability 응답 헤더도 각 발급 경로에만 노출한다. CORS는 `allowCredentials=false`로 고정하며 빈 목록·wildcard·경로 또는 두 목록의 중복 origin을 기동 시 거절한다. 현재 header 기반 무쿠키 경로에는 CSRF 토큰을 사용하지 않지만, 향후 쿠키 인증으로 바꾸면 `Secure`·`HttpOnly`·`SameSite`와 CSRF 토큰 검증을 함께 적용한다. Gateway와 애플리케이션 양쪽에 연결·읽기·전체 요청 timeout을 둔다.
 - 만료·폐기된 capability는 즉시 거절한다. 만료 세션 업무데이터는 transaction advisory lock과 제한된 batch로 자동 정리하고 `DEMO_SESSION_EXPIRED_PURGED`를 추가하되, 감사 hash chain은 cascade 삭제하지 않는다.
 - 오류 응답에는 capability, 세션 존재 여부, DB·스택 정보가 노출되지 않는다. 교차세션 IDOR, 역할상승, 비허용 Origin, 향후 쿠키 경로의 CSRF, 멱등충돌, 과다요청을 공개 배포 전 자동시험한다.
@@ -1262,6 +1262,7 @@ POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 - 공식 문서는 프롬프트 지시가 아니라 비신뢰 데이터로 격리
 - 승인된 출처 allowlist와 검색 결과 검증
 - 모델·프롬프트·문서·정책·스키마 버전 감사
+- 고객·직원 변경 이벤트에는 논리 고객 ID와 별도로 실제 인증 principal·session·actor type snapshot을 남기고 통합 감사 조회에서 누락하지 않는다. 신규 무결성 해시는 event ID·발생시각과 이 actor snapshot까지 결속하고 기존 형식은 명시적인 legacy 버전으로 구분한다.
 - 중요 직원행위에 역할별 접근통제와 운영환경 추가인증
 - 직원의 전역 권한(`*_ALL`)만으로 임의 고객 자원에 접근할 수 없게 하고, 고객·직원 principal·업무목적·scope·만료를 결합한 유효 접근권을 서비스 계층에서 추가 검증한다. 접근권의 생성·평가·사용·철회는 불변 감사이력에 남긴다.
 - 사건 검토·안내승인·메모·후속처리는 현재 인증 직원이 해당 사건의 배정 담당자와 일치할 때만 허용한다. 메모·사유·결과에는 식별정보·계좌번호·연락처·질병 표현을 저장하지 않는다.

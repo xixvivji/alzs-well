@@ -1,5 +1,6 @@
 package com.alzswell.detection.application;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.detection.api.DetectionErrorCode;
@@ -50,7 +51,7 @@ public class DetectionPromotionService {
         List<DetectedSignal> detectedSignals = read(source.resultPayload(), new TypeReference<>() {});
         List<UUID> signalIds = new ArrayList<>();
         List<UUID> alertIds = new ArrayList<>();
-        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime now = AuditTimestamp.canonical(OffsetDateTime.now(clock));
 
         for (DetectedSignal detected : detectedSignals) {
             FeatureObservation observation = observations.stream()
@@ -134,14 +135,15 @@ public class DetectionPromotionService {
 
     private void insertEvidence(UUID signalId, List<EvidenceInput> evidenceItems) {
         for (EvidenceInput evidence : evidenceItems) {
+            OffsetDateTime occurredAt = AuditTimestamp.canonical(evidence.occurredAt());
             jdbcTemplate.update("""
                     insert into customer_signal_evidence_snapshot (
                         evidence_id, signal_id, evidence_type, source_reference, occurred_at,
                         amount, currency, description, integrity_hash
                     ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, UUID.randomUUID(), signalId, evidence.evidenceType(), evidence.sourceReference(),
-                    evidence.occurredAt(), evidence.amount(), evidence.currency(), evidence.description(),
-                    sha256(signalId + "|" + evidence.sourceReference() + "|" + evidence.occurredAt()));
+                    occurredAt, evidence.amount(), evidence.currency(), evidence.description(),
+                    sha256(signalId + "|" + evidence.sourceReference() + "|" + occurredAt));
         }
     }
 

@@ -1,5 +1,6 @@
 package com.alzswell.alert.application;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.alert.api.AlertErrorCode;
 import com.alzswell.alert.api.AlertRequests.ContextResponseCommand;
 import com.alzswell.alert.api.AlertRequests.DeferCommand;
@@ -186,7 +187,7 @@ public class OperationalAlertService {
                 || !List.of("AWAITING_CONTEXT", "DEFERRED", "CLOSED_NORMAL").contains(current.state())) {
             throw new BusinessException(AlertErrorCode.STATE_CONFLICT);
         }
-        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime now = AuditTimestamp.canonical(OffsetDateTime.now(clock));
         int updated = jdbcTemplate.update("""
                 update operational_alert set state='BANK_REVIEW',deferred_until=null,
                        alert_version=alert_version+1,updated_at=?
@@ -288,6 +289,7 @@ public class OperationalAlertService {
 
     private void writeAudit(UUID alertId, String eventType, String previousState, String resultingState,
                             Map<String, Object> detail, AuditActor actor, OffsetDateTime now) {
+        now = AuditTimestamp.canonical(now);
         UUID auditId = UUID.randomUUID();
         String detailJson = json(detail);
         String integrityHash = sha256(alertId + "|" + eventType + "|" + previousState + "|"

@@ -11,7 +11,7 @@
 - API 카탈로그는 272개이며 구현된 업무 API는 227개다. 직원 capability 발급 경로까지 포함한 전체 코드 operation은 228개다.
 - 나머지 45개는 P2·참조 카탈로그이며 코드 전용 직원 capability 1개는 272개 업무 카탈로그에 포함하지 않는다.
 - 공개 데모는 완전 합성데이터만 사용한다. 실제 금융기관, 마이데이터, 가족 연락, 송금, 주문, 차단, 외부 LLM을 호출하지 않는다.
-- 기존 Flyway V1~V68은 수정하지 않는다. 다음 스키마 변경은 반드시 V69부터 추가한다.
+- 기존 Flyway V1~V72는 수정하지 않는다. 다음 스키마 변경은 반드시 V73부터 추가한다.
 - V48은 직원 접근 목적·scope 매트릭스, 만료·거부 감사, 고객 변경 멱등 명령, 복합 소유권 FK를 추가했고 V49는 목적별 수임 역할, grant 핵심필드 불변성, 사건 배정 snapshot, 완료 멱등 응답 불변성, 탐지정책 DB 상태전이를 강화한다.
 - V50은 기존 계좌·부채 원장에 연결된 예금·대출·투자 보유 읽기 projection을 추가하며 모든 원본은 합성 데이터이고 외부 금융기관 호출·주문·상환을 실행하지 않는다.
 - V51은 안심은행 합성 예금·대출 상품, 금리, 만기 선택지 snapshot과 실행 없는 결정론적 이자·상환 모의계산을 추가한다.
@@ -26,6 +26,11 @@
 - V62는 합성 환율, 마스킹 외화계좌, 합성 해외송금 이력과 실행 없는 환전 모의계산을 추가한다. 실제 환전·송금·외부 호출은 실행하지 않는다. AI 키워드 검색은 V61이다.
 - V63은 `SMOKE/DEMO/LOAD/DEV` 결정론적 합성 고객·계좌·거래 생성 Job과 실행 manifest를 추가한다. 공개 API는 늘리지 않으며 migrator 역할의 일회성 Compose Job으로만 적재한다. V67은 250명 `LOAD` profile과 활성 정책 전체 고객 오탐·미탐 품질 리포트를 추가한다.
 - V68은 AI chunk와 분리된 다중 차원 임베딩 테이블을 추가하고 Hash/E5 384차원과 Arctic-ko 1024차원 HNSW 인덱스를 고정 모델 버전별로 격리한다. 기존 384차원 chunk 컬럼은 배포 호환성을 위해 유지한다.
+- V69는 publish를 `APPROVED/PENDING_ACTIVATION`으로 유지하고, Spring import를 실제 `SUCCEEDED` AI 실행 및 전체 chunk snapshot과 대조한 뒤 DB 생성 proof와 1:1 binding/passage 무결성을 강제한다. target 활성화·이전 governance 대체·새 지식 버전 적재·catalog head 전환·이전 version supersede는 한 트랜잭션이며 실패 시 기존 ACTIVE head를 보존한다. V28 legacy head는 명시적 supersedes로만 대체하고, import 전 막힌 pending은 후속 버전의 명시적 publish로 감사 가능한 `RETIRED` 상태로 교체한다.
+- V71은 문서 목록·상세·passage·내부 citation·결정론적 폴백을 current `APPROVED/ACTIVE` governance와 `AI_DB_SNAPSHOT_V1` import proof에 묶는다. V28 legacy 문서는 검증 import 전까지 노출하지 않으며, fallback은 제목·본문의 `simple` stored `tsvector` GIN과 별도 keyword GIN에서 parameter-bound query로 최대 200개 DB 후보만 조회한다. 안내 후보와 보호수단 상세의 citation은 고정 passage UUID가 아니라 `actionCode → documentId` 매핑에서 같은 verified-current ACL을 통과한 최신 stable passage를 선택하며 근거가 없으면 빈 목록/후보로 fail-closed한다. 두 우회조회는 각각 `GUIDANCE_CITATION`, `PROTECTION_ACTION_CITATION`으로 calling permission·action code·기준일·반환 passage와 결과를 감사한다.
+- V70은 계좌 표시·거래 범주/노트·관심종목 변경에 실제 Bearer principal·session·고객·actor type snapshot을 보존하고 관심종목 이벤트를 통합 감사 조회에 포함한다. 관심종목 신규 해시는 `ACTOR_SNAPSHOT_V2`, 기존 이력은 `LEGACY_V1`로 구분하며 rolling 배포 중에는 legacy `actor_id`와 신규 `actor_principal_id`를 동시 기록한다.
+- V72는 AI ingestion 역할의 `chunk`, `chunk_embedding` UPDATE 권한을 전부 회수하고 `chunk_embedding` 직접 DELETE도 회수한다. 임베딩 정리는 부모 chunk cascade로만 수행한다. AI ingestion과 Spring publish/import는 같은 문서 단위 advisory lock을 사용한다. 검증 import 전에는 기존 chunk와 cascade embedding을 삭제한 뒤 완전한 파생 snapshot을 INSERT-only로 교체하지만, `AI_DB_SNAPSHOT_V1` proof가 만들어진 문서·버전의 chunk·`document_snapshot`과 proof가 참조하는 terminal `ingestion_run`은 DB trigger가 이후 변경을 모두 거부한다. UPDATE 시 OLD와 NEW 키를 모두 검사하므로 검증 행을 다른 키로 옮길 수도 없다. 이후 내용 변경은 새 `versionLabel`로 적재해야 한다. 미검증·신규 버전의 `document_snapshot` upsert에 필요한 UPDATE 권한과 검색 runtime의 두 파생 테이블 SELECT는 유지한다.
+- 감사 해시에 시각을 포함할 때는 반드시 `AuditTimestamp.canonical`로 UTC·PostgreSQL 마이크로초 정밀도를 먼저 고정하고, 그 동일 객체를 해시와 `timestamptz` INSERT에 사용한다. 나노초나 원래 offset 문자열을 직접 해시에 넣으면 DB 재조회 후 검증할 수 없다.
 - V64는 검증된 AI ingestion import와 `chunkId ↔ passageId` 추가 전용 binding을 추가한다. Spring만 문서 권위·ACL·효력기간을 판정하며 AI 계정은 권위 테이블을 수정하지 않는다.
 - V65는 `local-hash-ngram-ko-v1` 384차원 임베딩과 pgvector HNSW 인덱스를 추가하고, 내부 FastAPI가 전문검색과 cosine 유사도를 결합한 하이브리드 검색을 제공한다. 외부 모델 다운로드와 LLM 호출은 없다.
 - 검색 평가는 `ai-service/evaluation/datasets/`의 합성 corpus·질의로 Recall@3/5, MRR, 무응답 오탐률과 ACL·audience·승인·효력 정책 위반을 측정한다. CI 기준을 통과하지 않은 가중치·임계값·임베딩 변경은 병합하지 않는다.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import unicodedata
+from collections.abc import Iterator
 
 from app.domain.chunk import KnowledgeChunk
 from app.domain.document import ExtractedDocument
@@ -12,6 +13,7 @@ from app.errors import KnowledgeContractError
 CHUNKER_VERSION = "structure-ko-v1"
 PDF_CHUNKER_VERSION = "pdf-structure-ko-v1"
 DEFAULT_MAX_CHARS = 1_200
+MAX_CHUNKS_PER_DOCUMENT = 500
 
 
 def chunk_document(
@@ -29,6 +31,8 @@ def chunk_document(
     def flush() -> None:
         nonlocal pending_path, pending_parts, pending_page_start, pending_page_end
         if pending_path is not None and pending_parts:
+            if len(candidates) >= MAX_CHUNKS_PER_DOCUMENT:
+                raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
             candidates.append(
                 (pending_path, "\n\n".join(pending_parts), pending_page_start, pending_page_end)
             )
@@ -49,6 +53,8 @@ def chunk_document(
             if pending_parts and len(proposed) > max_chars:
                 flush()
                 pending_path = block.section_path
+            if not pending_parts and len(candidates) >= MAX_CHUNKS_PER_DOCUMENT:
+                raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
             pending_parts.append(segment)
             pending_page_start = _minimum_page(pending_page_start, block.page_start)
             pending_page_end = _maximum_page(pending_page_end, block.page_end)
@@ -127,21 +133,28 @@ def _build_chunk(
     )
 
 
-def _split_text(text: str, max_chars: int) -> tuple[str, ...]:
-    remaining = text.strip()
-    segments: list[str] = []
-    while len(remaining) > max_chars:
-        split_at = remaining.rfind(" ", 0, max_chars + 1)
-        if split_at < 1:
-            split_at = max_chars
-        segments.append(remaining[:split_at].rstrip())
-        remaining = remaining[split_at:].lstrip()
-    if remaining:
-        segments.append(remaining)
-    return tuple(segments)
+def _split_text(text: str, max_chars: int) -> Iterator[str]:
+    normalized = text.strip()
+    start = 0
+    text_length = len(normalized)
+    while text_length - start > max_chars:
+        limit = start + max_chars
+        split_at = normalized.rfind(" ", start, limit + 1)
+        if split_at <= start:
+            split_at = limit
+        segment = normalized[start:split_at].rstrip()
+        if segment:
+            yield segment
+        start = split_at
+        while start < text_length and normalized[start].isspace():
+            start += 1
+    if start < text_length:
+        yield normalized[start:]
 
 
 def _validate_chunks(chunks: tuple[KnowledgeChunk, ...], max_chars: int) -> None:
+    if not 1 <= len(chunks) <= MAX_CHUNKS_PER_DOCUMENT:
+        raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
     for expected_order, chunk in enumerate(chunks, start=1):
         if (
             chunk.chunk_order != expected_order

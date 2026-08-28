@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -48,3 +48,40 @@ test("keeps the safety boundary visible in product source", async () => {
   assert.match(layout, /ALZ's well \| 금융생활 변화 조기알림/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview|Building your site/i);
 });
+
+test("fails closed when the deployed API proxy origin is not configured", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("api-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("https://app.example.com/api/v1/system/health"),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  assert.equal(response.status, 503);
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/i);
+  assert.match(response.headers.get("content-security-policy") ?? "", /connect-src 'self'/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const body = await response.json();
+  assert.equal(body.code, "BACKEND_PROXY_CONFIGURATION_INVALID");
+});
+
+test("does not serialize the server-only proxy secret into build artifacts", async () => {
+  const sentinel = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+  const dist = new URL("../dist/", import.meta.url);
+  const files = await allFiles(dist);
+  for (const file of files) {
+    const content = await readFile(file);
+    assert.equal(content.includes(Buffer.from(sentinel)), false, `secret leaked into ${file.pathname}`);
+  }
+});
+
+async function allFiles(directory) {
+  const result = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const target = new URL(entry.name + (entry.isDirectory() ? "/" : ""), directory);
+    if (entry.isDirectory()) result.push(...await allFiles(target));
+    else if (entry.isFile()) result.push(target);
+  }
+  return result;
+}

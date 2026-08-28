@@ -2,12 +2,13 @@
 
 승인된 내부 임베딩 모델로 교체하기 전에 검색 품질과 보안 필터 회귀를 수치로 확인한다.
 외부 네트워크나 모델 다운로드 없이 선택된 임베딩 어댑터를 사용한다. 기본값은
-`local-hash-ngram-ko-v1`이며 승인된 로컬 E5 환경 변수를 지정하면 같은 평가 명령이
-`multilingual-e5-small@<revision>`을 사용하고 보고서에 모델 버전을 기록한다.
+`local-hash-ngram-ko-v1`이며 평가 전용 catalog·모델명·model root 옵션을 명시하면 같은
+평가 명령이 고정 SentenceTransformer revision을 사용하고 보고서에 모델 버전을 기록한다.
 현재 측정값과 모델 선택 보류 조건은 `model-comparison-v1.md`에 기록한다.
 Arctic-ko 합성 E2E 부하 게이트의 측정법과 결과는 `arctic-ko-load-test-v1.md`에 기록한다.
-평가에 반입한 모델의 고정 revision·SHA-256·차원·prefix는
-`model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는 Git에 커밋하지 않는다.
+평가에 반입한 모델의 고정 revision·차원·prefix와 SentenceTransformer가 소비하는 모든
+파일의 상대경로·크기·SHA-256은 `model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는
+Git에 커밋하지 않는다.
 
 ## 데이터셋
 
@@ -90,9 +91,10 @@ uv run python -m app.evaluation.cli evaluate \
 ```
 
 반입 완료된 평가 모델은 catalog·모델 이름·절대 model root를 세 옵션 모두 지정해야 한다.
-CLI는 catalog의 고정 revision, 파일 크기, `model.safetensors` SHA-256을 확인한 뒤 CPU에서
-오프라인으로만 로드한다. 일부 옵션만 지정하거나 `../`, 절대 local path, 심볼릭 링크,
-추가 catalog 필드, 해시 불일치가 있으면 평가를 시작하지 않는다.
+CLI는 catalog의 고정 revision과 전체 소비 파일 manifest를 확인한 뒤 CPU에서 오프라인으로만
+로드한다. catalog에 없는 추가 파일, 누락 파일, `../`, 절대 local path, 중첩 심볼릭 링크,
+비정규 파일·hard link, 크기·해시 불일치가 있으면 평가를 시작하지 않는다. Hugging Face
+snapshot symlink를 그대로 사용하지 말고 catalog에 열거된 파일만 일반 파일로 복사한다.
 
 ```bash
 uv run python -m app.evaluation.cli evaluate \
