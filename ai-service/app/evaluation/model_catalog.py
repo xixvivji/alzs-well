@@ -5,7 +5,6 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from hashlib import sha256
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -14,13 +13,20 @@ from app.embedding.local_sentence_transformer import (
     LocalSentenceTransformerEmbeddingProvider,
     LocalSentenceTransformerSpec,
 )
+from app.embedding.model_package import (
+    ModelPackageFile,
+    validate_package_file,
+    verify_model_package,
+)
 from app.errors import KnowledgeContractError
 
 
+CATALOG_VERSION = "2.1.0"
 CATALOG_KEYS = {"catalogVersion", "automaticDownloadAllowed", "models"}
 MODEL_KEYS = {
     "name",
     "status",
+    "approval",
     "modelId",
     "sourceUrl",
     "revision",
@@ -29,10 +35,9 @@ MODEL_KEYS = {
     "dimensions",
     "queryPrefix",
     "passagePrefix",
-    "artifact",
-    "approval",
+    "files",
 }
-ARTIFACT_KEYS = {"file", "sizeBytes", "sha256"}
+FILE_KEYS = {"path", "sizeBytes", "sha256"}
 APPROVAL_KEYS = {
     "approvedBy",
     "approvedAt",
@@ -71,6 +76,7 @@ class ModelApproval:
 class EvaluationModelArtifact:
     name: str
     status: str
+    approval: ModelApproval | None
     model_id: str
     source_url: str
     revision: str
@@ -79,10 +85,7 @@ class EvaluationModelArtifact:
     dimensions: int
     query_prefix: str
     passage_prefix: str
-    artifact_file: str
-    artifact_size_bytes: int
-    artifact_sha256: str
-    approval: ModelApproval | None
+    files: tuple[ModelPackageFile, ...]
 
     def provider_spec(self) -> LocalSentenceTransformerSpec:
         return LocalSentenceTransformerSpec(
@@ -95,6 +98,12 @@ class EvaluationModelArtifact:
             passage_prefix=self.passage_prefix,
         )
 
+    def file(self, path: str) -> ModelPackageFile:
+        selected = next((entry for entry in self.files if entry.path == path), None)
+        if selected is None:
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+        return selected
+
 
 def load_model_catalog(path: Path) -> tuple[EvaluationModelArtifact, ...]:
     try:
@@ -104,7 +113,7 @@ def load_model_catalog(path: Path) -> tuple[EvaluationModelArtifact, ...]:
     if not isinstance(payload, dict) or set(payload) != CATALOG_KEYS:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
     if (
-        payload["catalogVersion"] != "1.1.0"
+        payload["catalogVersion"] != CATALOG_VERSION
         or payload["automaticDownloadAllowed"] is not False
         or not isinstance(payload["models"], list)
         or not payload["models"]
@@ -127,8 +136,8 @@ def create_evaluation_embedding_provider(
     selected = next((model for model in models if model.name == model_name), None)
     if selected is None:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-    model_directory = _resolve_model_directory(model_root, selected.local_path)
-    _verify_artifact(model_directory, selected)
+    model_directory = resolve_model_directory(model_root, selected.local_path)
+    verify_model_package(model_directory, selected.files)
     factory = _provider if provider_factory is None else provider_factory
     try:
         return factory(model_directory, selected.provider_spec())
@@ -141,10 +150,13 @@ def create_evaluation_embedding_provider(
 def _model(payload: Any) -> EvaluationModelArtifact:
     if not isinstance(payload, dict) or set(payload) != MODEL_KEYS:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-    artifact = payload["artifact"]
-    if not isinstance(artifact, dict) or set(artifact) != ARTIFACT_KEYS:
+    raw_files = payload["files"]
+    if not isinstance(raw_files, list) or not raw_files:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    package_files = tuple(_package_file(value) for value in raw_files)
     name = payload["name"]
+    status = payload["status"]
+    approval = _approval(payload["approval"])
     model_id = payload["modelId"]
     source_url = payload["sourceUrl"]
     revision = payload["revision"]
@@ -153,11 +165,6 @@ def _model(payload: Any) -> EvaluationModelArtifact:
     dimensions = payload["dimensions"]
     query_prefix = payload["queryPrefix"]
     passage_prefix = payload["passagePrefix"]
-    artifact_file = artifact["file"]
-    artifact_size = artifact["sizeBytes"]
-    artifact_hash = artifact["sha256"]
-    status = payload["status"]
-    approval = _approval(payload["approval"])
     relative = PurePosixPath(local_path) if isinstance(local_path, str) else None
     if (
         status not in MODEL_STATUSES
@@ -193,17 +200,14 @@ def _model(payload: Any) -> EvaluationModelArtifact:
         or not 1 <= dimensions <= 4096
         or not _valid_prefix(query_prefix)
         or not _valid_prefix(passage_prefix)
-        or artifact_file != "model.safetensors"
-        or not isinstance(artifact_size, int)
-        or isinstance(artifact_size, bool)
-        or artifact_size <= 0
-        or not isinstance(artifact_hash, str)
-        or not HASH_PATTERN.fullmatch(artifact_hash)
+        or len({entry.path for entry in package_files}) != len(package_files)
+        or "model.safetensors" not in {entry.path for entry in package_files}
     ):
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
     return EvaluationModelArtifact(
         name=name,
         status=status,
+        approval=approval,
         model_id=model_id,
         source_url=source_url,
         revision=revision,
@@ -212,10 +216,7 @@ def _model(payload: Any) -> EvaluationModelArtifact:
         dimensions=dimensions,
         query_prefix=query_prefix,
         passage_prefix=passage_prefix,
-        artifact_file=artifact_file,
-        artifact_size_bytes=artifact_size,
-        artifact_sha256=artifact_hash,
-        approval=approval,
+        files=package_files,
     )
 
 
@@ -268,6 +269,14 @@ def _approval(payload: Any) -> ModelApproval | None:
     )
 
 
+def _package_file(payload: Any) -> ModelPackageFile:
+    if not isinstance(payload, dict) or set(payload) != FILE_KEYS:
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    return validate_package_file(
+        payload["path"], payload["sizeBytes"], payload["sha256"]
+    )
+
+
 def _valid_prefix(value: Any) -> bool:
     return (
         isinstance(value, str)
@@ -276,7 +285,7 @@ def _valid_prefix(value: Any) -> bool:
     )
 
 
-def _resolve_model_directory(model_root: Path, local_path: str) -> Path:
+def resolve_model_directory(model_root: Path, local_path: str) -> Path:
     if not model_root.is_absolute():
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
     try:
@@ -292,35 +301,9 @@ def _resolve_model_directory(model_root: Path, local_path: str) -> Path:
         resolved.relative_to(root)
     except (FileNotFoundError, NotADirectoryError, ValueError):
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID") from None
-    try:
-        if not resolved.is_dir() or any(
-            candidate.is_symlink() for candidate in resolved.rglob("*")
-        ):
-            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-    except OSError:
-        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID") from None
-    return resolved
-
-
-def _verify_artifact(
-    model_directory: Path, selected: EvaluationModelArtifact
-) -> None:
-    artifact = model_directory / selected.artifact_file
-    try:
-        if (
-            not artifact.is_file()
-            or artifact.is_symlink()
-            or artifact.stat().st_size != selected.artifact_size_bytes
-        ):
-            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
-        digest = sha256()
-        with artifact.open("rb") as stream:
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(block)
-    except OSError:
-        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID") from None
-    if "sha256:" + digest.hexdigest() != selected.artifact_sha256:
+    if not resolved.is_dir():
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    return resolved
 
 
 def _provider(

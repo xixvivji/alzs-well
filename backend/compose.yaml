@@ -5,10 +5,14 @@ services:
     ports:
       - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
     environment:
-      NGINX_ENVSUBST_FILTER: TRUSTED_PROXY_CIDR
+      NGINX_ENVSUBST_FILTER: TRUSTED_PROXY_CIDR|FRONTEND_PROXY_SHARED_SECRET
       TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:-127.0.0.1/32}
+      FRONTEND_PROXY_SHARED_SECRET: ${FRONTEND_PROXY_SHARED_SECRET:?FRONTEND_PROXY_SHARED_SECRET must be set}
+    entrypoint: ["/bin/sh", "/opt/alzs-well/validate-gateway-env.sh"]
+    command: ["nginx", "-g", "daemon off;"]
     volumes:
       - ./docker/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./docker/validate-gateway-env.sh:/opt/alzs-well/validate-gateway-env.sh:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -220,6 +224,9 @@ services:
       ALZS_AI_DB_PASSWORD: ${POSTGRES_AI_PASSWORD:?POSTGRES_AI_PASSWORD must be set in .env}
       ALZS_AI_DB_SSLMODE: disable
       ALZS_AI_DB_CONNECT_TIMEOUT: "5"
+      ALZS_EMBEDDING_BACKEND: hash
+      ALZS_EMBEDDING_EXECUTION_CONTEXT: PRODUCTION
+      ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
     volumes:
       - ../knowledge:/workspace/knowledge:ro
       - ../contracts:/workspace/contracts:ro
@@ -258,6 +265,9 @@ services:
       ALZS_AI_DB_SSLMODE: disable
       ALZS_AI_DB_CONNECT_TIMEOUT: "5"
       ALZS_AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN must be set in .env}
+      ALZS_EMBEDDING_BACKEND: hash
+      ALZS_EMBEDDING_EXECUTION_CONTEXT: PRODUCTION
+      ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
     depends_on:
       backend:
         condition: service_healthy

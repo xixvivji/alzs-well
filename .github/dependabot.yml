@@ -26,12 +26,25 @@ updates:
       prefix: "chore"
       include: scope
 
+  - package-ecosystem: pip
+    directory: /ai-service
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:40"
+      timezone: Asia/Seoul
+    target-branch: develop
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: scope
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
-      time: "09:40"
+      time: "10:00"
       timezone: Asia/Seoul
     target-branch: develop
     open-pull-requests-limit: 5

@@ -118,16 +118,30 @@ public class ComplianceQueryService {
                 from recurring_payment_reminder_event e join recurring_payment p using(recurring_payment_id)
               union all
               select 'ACCOUNT_DISPLAY:'||e.event_id,'ACCOUNT_DISPLAY',e.event_id::text,
-                     'ACCOUNT_DISPLAY_SETTING_UPDATED',e.actor_id,e.customer_id,'ACCOUNT',e.account_id::text,
+                     'ACCOUNT_DISPLAY_SETTING_UPDATED',
+                     coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_id,e.actor_type),
+                     e.customer_id,'ACCOUNT',e.account_id::text,
                      null,e.row_version::text,jsonb_build_object('alias',e.alias_snapshot,
-                         'displayOrder',e.display_order_snapshot,'hidden',e.hidden_snapshot),null,e.occurred_at
+                         'displayOrder',e.display_order_snapshot,'hidden',e.hidden_snapshot,
+                         'actorSessionId',e.actor_session_id,'actorType',e.actor_type),null,e.occurred_at
                 from account_display_setting_event e
               union all
               select 'TRANSACTION_PREFERENCE:'||e.event_id,'TRANSACTION_PREFERENCE',e.event_id::text,
-                     e.event_type,e.actor_id,e.customer_id,'TRANSACTION',e.transaction_id::text,null,
+                     e.event_type,coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_id,e.actor_type),
+                     e.customer_id,'TRANSACTION',e.transaction_id::text,null,
                      e.row_version::text,jsonb_build_object('category',e.category_snapshot,
-                         'note',e.note_snapshot),null,e.occurred_at
+                         'note',e.note_snapshot,'actorSessionId',e.actor_session_id,
+                         'actorType',e.actor_type),null,e.occurred_at
                 from customer_transaction_preference_event e
+              union all
+              select 'WATCHLIST:'||e.event_id,'WATCHLIST',e.event_id::text,e.event_type,
+                     coalesce(e.actor_principal_id::text,e.actor_id::text,e.actor_customer_id,e.actor_type),e.customer_id,
+                     'CUSTOMER_WATCHLIST',e.customer_id,(e.version-1)::text,e.version::text,
+                     jsonb_build_object('instrumentIds',e.instrument_ids,'version',e.version,
+                         'actorSessionId',e.actor_session_id,'actorType',e.actor_type,
+                         'integrityHashVersion',e.event_hash_version),
+                     'sha256:'||e.event_hash,e.occurred_at
+                from customer_watchlist_event e
               union all
               select 'STAFF_ACCESS:'||e.event_id,'STAFF_ACCESS',e.event_id::text,e.event_type,
                      coalesce(e.actor_principal_id::text,e.actor_customer_id,e.actor_type),e.customer_id_snapshot,

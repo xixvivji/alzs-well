@@ -2,6 +2,7 @@ package com.alzswell.knowledge.application;
 
 import static com.alzswell.knowledge.api.KnowledgeGovernanceErrorCode.*;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
@@ -45,7 +46,8 @@ public class KnowledgeGovernanceService {
     }
 
     private GovernedDocument registerOnce(RegisterDocumentCommand command,AuditActor actor) {
-        UUID id=UUID.randomUUID(); OffsetDateTime now=OffsetDateTime.now(clock);
+        UUID id=UUID.randomUUID();
+        OffsetDateTime now=AuditTimestamp.canonical(OffsetDateTime.now(clock));
         try {
             jdbc.update("""
                 insert into knowledge_document_governance(
@@ -73,26 +75,102 @@ public class KnowledgeGovernanceService {
         if(!"IN_REVIEW".equals(target.approvalStatus())||!"PENDING_ACTIVATION".equals(target.lifecycleStatus()))
             throw new BusinessException(STATE_CONFLICT);
         if("REVIEW_REQUIRED".equals(target.usageRights())) throw new BusinessException(USAGE_REVIEW_REQUIRED);
-        OffsetDateTime now=OffsetDateTime.now(clock);
+        OffsetDateTime now=AuditTimestamp.canonical(OffsetDateTime.now(clock));
         List<Row> active=jdbc.query("select * from knowledge_document_governance where document_id=? and lifecycle_status='ACTIVE' for update",
                 this::row,documentId);
         if(!active.isEmpty()) {
             Row previous=active.getFirst();
             if(!Objects.equals(target.supersedesDocumentId(),previous.documentId())
                     || !Objects.equals(target.supersedesVersionLabel(),previous.versionLabel())) throw new BusinessException(INVALID_SUPERSEDES);
-            jdbc.update("update knowledge_document_governance set lifecycle_status='SUPERSEDED',row_version=row_version+1,updated_at=? where workflow_id=?",
-                    now,previous.workflowId());
-            event(find(previous.workflowId()),"SUPERSEDED",actor,command.approvalReference(),now);
-        } else if(target.supersedesDocumentId()!=null) throw new BusinessException(INVALID_SUPERSEDES);
-        int changed=jdbc.update("""
-            update knowledge_document_governance set approval_status='APPROVED',lifecycle_status='ACTIVE',
-             approved_by=?,approved_at=?,row_version=row_version+1,updated_at=?
-             where workflow_id=? and row_version=? and approval_status='IN_REVIEW' and lifecycle_status='PENDING_ACTIVATION'
-            """,actor.legacyActorId(),now,now,target.workflowId(),command.expectedVersion());
+        } else {
+            String legacyHead=currentCatalogVersion(documentId);
+            if(legacyHead==null) {
+                if(target.supersedesDocumentId()!=null) throw new BusinessException(INVALID_SUPERSEDES);
+            } else if(!documentId.equals(target.supersedesDocumentId())
+                    ||!legacyHead.equals(target.supersedesVersionLabel())) {
+                throw new BusinessException(INVALID_SUPERSEDES);
+            }
+        }
+        List<Row> pending=jdbc.query("""
+                select * from knowledge_document_governance
+                 where document_id=? and approval_status='APPROVED' and lifecycle_status='PENDING_ACTIVATION'
+                   and workflow_id<>? for update
+                """,this::row,documentId,target.workflowId());
+        if(pending.size()>1) throw new BusinessException(STATE_CONFLICT);
+        if(!pending.isEmpty()) {
+            Row replaced=pending.getFirst();
+            if(!Objects.equals(replaced.supersedesDocumentId(),target.supersedesDocumentId())
+                    ||!Objects.equals(replaced.supersedesVersionLabel(),target.supersedesVersionLabel())) {
+                throw new BusinessException(INVALID_SUPERSEDES);
+            }
+            int retired=jdbc.update("""
+                    update knowledge_document_governance
+                       set lifecycle_status='RETIRED',row_version=row_version+1,updated_at=?
+                     where workflow_id=? and approval_status='APPROVED' and lifecycle_status='PENDING_ACTIVATION'
+                    """,now,replaced.workflowId());
+            if(retired!=1) throw new BusinessException(VERSION_CONFLICT);
+            event(find(replaced.workflowId()),"RETIRED",actor,
+                    "REPLACED_BY:"+target.versionLabel(),now);
+        }
+        int changed;
+        try {
+            changed=jdbc.update("""
+                update knowledge_document_governance set approval_status='APPROVED',lifecycle_status='PENDING_ACTIVATION',
+                 approved_by=?,approved_at=?,row_version=row_version+1,updated_at=?
+                 where workflow_id=? and row_version=? and approval_status='IN_REVIEW' and lifecycle_status='PENDING_ACTIVATION'
+                """,actor.legacyActorId(),now,now,target.workflowId(),command.expectedVersion());
+        } catch(DuplicateKeyException exception) {
+            throw new BusinessException(STATE_CONFLICT);
+        }
         if(changed!=1) throw new BusinessException(VERSION_CONFLICT);
         GovernedDocument result=find(target.workflowId());
         event(result,"PUBLISHED",actor,command.approvalReference(),now);
         return result;
+    }
+
+    void activateVerifiedImport(String documentId,String versionLabel,String previousVersion,
+            AuditActor actor,OffsetDateTime now) {
+        Row target=locked(documentId,versionLabel);
+        if(!"APPROVED".equals(target.approvalStatus())
+                ||!"PENDING_ACTIVATION".equals(target.lifecycleStatus())) {
+            throw new BusinessException(STATE_CONFLICT);
+        }
+        if(previousVersion==null) {
+            if(target.supersedesDocumentId()!=null) throw new BusinessException(INVALID_SUPERSEDES);
+        } else {
+            if(!documentId.equals(target.supersedesDocumentId())
+                    ||!previousVersion.equals(target.supersedesVersionLabel())) {
+                throw new BusinessException(INVALID_SUPERSEDES);
+            }
+            List<Row> previousRows=jdbc.query("""
+                    select * from knowledge_document_governance
+                    where document_id=? and version_label=? for update
+                    """,this::row,documentId,previousVersion);
+            if(previousRows.size()>1) throw new BusinessException(STATE_CONFLICT);
+            if(!previousRows.isEmpty()) {
+                Row previous=previousRows.getFirst();
+                if(!"APPROVED".equals(previous.approvalStatus())
+                        ||!"ACTIVE".equals(previous.lifecycleStatus())) {
+                    throw new BusinessException(STATE_CONFLICT);
+                }
+                int superseded=jdbc.update("""
+                        update knowledge_document_governance
+                           set lifecycle_status='SUPERSEDED',row_version=row_version+1,updated_at=?
+                         where workflow_id=? and approval_status='APPROVED' and lifecycle_status='ACTIVE'
+                        """,now,previous.workflowId());
+                if(superseded!=1) throw new BusinessException(VERSION_CONFLICT);
+                event(find(previous.workflowId()),"SUPERSEDED",actor,"VERIFIED_AI_INGESTION",now);
+            } else if(!legacyCatalogHeadExists(documentId,previousVersion)) {
+                throw new BusinessException(INVALID_SUPERSEDES);
+            }
+        }
+        int activated=jdbc.update("""
+                update knowledge_document_governance
+                   set lifecycle_status='ACTIVE',row_version=row_version+1,updated_at=?
+                 where workflow_id=? and approval_status='APPROVED' and lifecycle_status='PENDING_ACTIVATION'
+                """,now,target.workflowId());
+        if(activated!=1) throw new BusinessException(VERSION_CONFLICT);
+        event(find(target.workflowId()),"ACTIVATED",actor,"VERIFIED_AI_INGESTION",now);
     }
 
     private void validate(RegisterDocumentCommand command) {
@@ -144,11 +222,33 @@ public class KnowledgeGovernanceService {
     }
 
     private GovernedDocument map(Row r) {
-        boolean ready="APPROVED".equals(r.approvalStatus())&&"ACTIVE".equals(r.lifecycleStatus());
+        boolean ready="APPROVED".equals(r.approvalStatus())&&"PENDING_ACTIVATION".equals(r.lifecycleStatus());
         return new GovernedDocument(r.workflowId(),r.documentId(),r.versionLabel(),r.title(),r.issuer(),r.sourceType(),
                 r.sourcePath(),r.sourceUrl(),r.sourceHash(),transformations(r.sourceTransformationsJson()),r.documentType(),r.classification(),r.audience(),r.allowedRoles(),
                 r.effectiveFrom(),r.effectiveTo(),r.checkedAt(),r.usageRights(),r.approvalStatus(),r.lifecycleStatus(),
                 r.approvedBy(),r.approvedAt(),r.version(),ready,false,false,r.updatedAt());
+    }
+
+    private String currentCatalogVersion(String documentId) {
+        List<String> rows=jdbc.query("select current_version from knowledge_document where document_id=? for share",
+                (rs,n)->rs.getString(1),documentId);
+        return rows.isEmpty()?null:rows.getFirst();
+    }
+
+    private boolean legacyCatalogHeadExists(String documentId,String versionLabel) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("""
+                select exists(
+                  select 1 from knowledge_document document
+                  join knowledge_document_version version
+                    on version.document_id=document.document_id and version.version_label=document.current_version
+                  where document.document_id=? and document.current_version=? and version.superseded_at is null
+                    and not exists(
+                      select 1 from knowledge_document_governance governance
+                      where governance.document_id=document.document_id
+                        and governance.version_label=document.current_version
+                    )
+                )
+                """,Boolean.class,documentId,versionLabel));
     }
 
     private void event(GovernedDocument state,String type,AuditActor actor,String approvalReference,OffsetDateTime now) {

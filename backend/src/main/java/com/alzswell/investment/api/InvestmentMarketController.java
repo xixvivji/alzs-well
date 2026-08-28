@@ -1,6 +1,7 @@
 package com.alzswell.investment.api;
 import com.alzswell.common.api.*;
 import com.alzswell.investment.application.InvestmentMarketService;
+import com.alzswell.common.security.AuditActor;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -26,5 +27,5 @@ public class InvestmentMarketController {
  @GetMapping("/customers/{customerId}/watchlist") @Operation(summary="고객 합성 관심종목 조회",description="본인의 합성 관심종목과 지연 시세만 조회합니다.") @PreAuthorize("#customerId == authentication.name and hasAuthority('INVESTMENT_WATCHLIST_READ')")
  public ResponseEntity<ApiResponse<InvestmentMarketResponses.Watchlist>> watchlist(@PathVariable @Pattern(regexp=CUSTOMER) String customerId){return ApiResponses.ok("INVESTMENT_WATCHLIST_RETRIEVED","합성 관심종목을 조회했습니다.",service.watchlist(customerId));}
  @PutMapping("/customers/{customerId}/watchlist") @Operation(summary="고객 합성 관심종목 전체 변경",description="최대 20개의 활성 합성 종목으로 관심목록만 변경하며 주문을 실행하지 않습니다.") @PreAuthorize("#customerId == authentication.name and hasAuthority('INVESTMENT_WATCHLIST_WRITE')")
- public ResponseEntity<ApiResponse<InvestmentMarketResponses.Watchlist>> replace(@PathVariable @Pattern(regexp=CUSTOMER) String customerId,@RequestHeader("Idempotency-Key") @Size(min=8,max=100) @Pattern(regexp="[A-Za-z0-9._:-]+") String key,@Valid @RequestBody InvestmentMarketRequests.ReplaceWatchlist command){return ApiResponses.ok("INVESTMENT_WATCHLIST_REPLACED","합성 관심종목을 변경했습니다.",service.replaceWatchlist(customerId,command,key));}
+ public ResponseEntity<ApiResponse<InvestmentMarketResponses.Watchlist>> replace(@PathVariable @Pattern(regexp=CUSTOMER) String customerId,@RequestHeader("Idempotency-Key") @Size(min=8,max=100) @Pattern(regexp="[A-Za-z0-9._:-]+") String key,@Valid @RequestBody InvestmentMarketRequests.ReplaceWatchlist command,Authentication authentication){return ApiResponses.ok("INVESTMENT_WATCHLIST_REPLACED","합성 관심종목을 변경했습니다.",service.replaceWatchlist(customerId,command,key,AuditActor.from(authentication)));}
 }

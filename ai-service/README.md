@@ -36,6 +36,9 @@ uv run python -m app.cli extract-html \
 
 manifest 검증부터 결정론적 청킹과 JSONL 원자 교체까지 전체 ingestion을 실행한다.
 파생 결과는 Git에서 제외된 `ai-service/data/derived/chunks/`에 저장한다.
+본문 분할은 전체 segment 목록을 먼저 만들지 않는 지연 iterator로 처리하며, 문서당 최대
+500개 청크 예산을 초과하는 501번째 청크가 확인되는 즉시 `CHUNK_VALIDATION_FAILED`로
+중단한다. 따라서 입력 크기 제한과 별개로 청킹 중간 결과도 유한하게 유지된다.
 
 ```bash
 uv run python -m app.cli ingest-html \
@@ -91,9 +94,16 @@ uv run python -m app.cli ingest-pdf \
   --storage postgres
 ```
 
-같은 `documentId`와 `versionLabel`의 재실행은 advisory lock 안에서 기존 파생 chunk를
-새 결정론적 결과로 교체한다. 성공 시 실행 상태와 chunk 교체가 같은 트랜잭션으로
-커밋되며, 추출·청킹 실패 시 본문이나 원문 없이 안전한 오류코드만 `FAILED` 실행에 남긴다.
+같은 `documentId`와 `versionLabel`의 재실행은 Spring import가 검증되기 전까지만 허용한다.
+AI와 Spring은 동일한 `documentId` advisory lock을 사용하며, AI는 기존 파생 chunk를 종속
+embedding과 함께 삭제한 뒤 새 실행의 결정론적 chunk·embedding을 INSERT-only로 교체한다.
+Spring이 `AI_DB_SNAPSHOT_V1` proof를 만든 뒤에는 해당 문서·버전의 chunk, manifest
+snapshot과 proof가 참조하는 terminal ingestion run이 DB trigger로 동결되므로 원문·추출기·
+청킹 결과를 바꾸려면 반드시 새 `versionLabel`로 ingestion해야 한다. 임베딩은 부모 chunk
+cascade로만 교체하며 ingestion 역할에는 `chunk_embedding` 직접 DELETE 권한이 없다.
+성공 시 실행 상태와 전체 파생 snapshot 교체가 같은 트랜잭션으로 커밋되며, 추출·청킹 실패
+시 본문이나 원문 없이 안전한 오류코드만 `FAILED` 실행에 남긴다. 이 방식은 최소 권한
+ingestion 계정에 기존 chunk의 UPDATE 권한을 부여하지 않는다.
 
 운영 compose에서는 DB 포트를 외부에 공개하지 않고 일회성 도구 프로필로 실행한다.
 
@@ -146,22 +156,25 @@ Content-Type: application/json
 ```
 
 검색은 PostgreSQL `simple` 전문검색과 기본 `local-hash-ngram-ko-v1` 384차원 임베딩의
-pgvector cosine 유사도를 결합하고 역할 교집합, audience,
-`APPROVED/ACTIVE`, 효력기간을 모두 만족하는 chunk만 반환한다. 감사 이력에는 원문
-검색어 대신 `sha256:<hex>`만 남긴다. 응답 citation은 권한 부여 결과가 아니므로
-Spring이 문서 ID·버전·chunk 및 원문 해시를 최종 재검증해야 한다. 임계값을 통과한 결과는
+pgvector cosine 유사도를 결합한다. 내부 후보는 역할 교집합, audience, 효력기간,
+`approvalStatus=APPROVED`, lifecycle `PENDING_ACTIVATION|ACTIVE`를 만족해야 한다. AI 적재
+snapshot은 Spring import 전에 만들어져 `PENDING_ACTIVATION`이므로 이를 후보로는 허용하되,
+외부 검색 결과로 승인하지 않는다. 감사 이력에는 원문 검색어 대신 `sha256:<hex>`만 남긴다.
+응답 citation은 권한 부여 결과가 아니며 Spring이 현재 `ACTIVE` catalog·governance,
+`AI_DB_SNAPSHOT_V1` proof, 문서 ID·버전·chunk 및 원문 해시를 최종 재검증한다. 임계값을 통과한 결과는
 `LAW > REGULATION > INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM` 순으로
 권위 문서를 먼저 배치하고, 같은 유형 안에서는 하이브리드 점수로 정렬한다.
 
 벡터는 `ai_knowledge.chunk_embedding`에 chunk·모델 ID·고정 모델 버전·차원과 함께
-저장한다. 384차원 Hash/E5와 1024차원 Arctic-ko가 같은 chunk에 공존할 수 있고 검색은
-현재 provider와 모델 ID·버전·차원이 모두 일치하는 행만 사용한다. 승인된 고정 revision마다
-HNSW 부분 인덱스를 분리해 서로 다른 모델의 벡터 공간을 섞지 않는다. 기존
+저장한다. 스키마와 HNSW 부분 인덱스는 384차원 Hash/E5와 1024차원 Arctic-ko를 모델별로
+구분하지만, 권위 ingestion snapshot은 문서·버전마다 현재 provider의 벡터만 유지한다.
+검색은 현재 provider와 모델 ID·버전·차원이 모두 일치하는 행만 사용한다. 기존
 `ai_knowledge.chunk.embedding`은 순차 배포 호환성을 위한 Hash 전용 레거시 컬럼이며
 신규 검색 경로에서는 사용하지 않는다.
-같은 결정론적 chunk를 다른 모델로 재-ingestion하면 chunk 행을 유지하고 해당 모델의
-벡터만 upsert하므로 기존 모델 벡터가 함께 보존된다. 새 파이프라인 결과에서 사라진
-chunk만 삭제하며, 그때 해당 chunk의 모든 파생 벡터도 cascade로 정리한다.
+검증 import 전이거나 격리된 평가 DB라면 같은 결정론적 문서를 다른 모델로 재-ingestion할 때
+기존 chunk와 모든 파생 벡터를 cascade로 정리한 뒤 새 snapshot을 원자적으로 넣는다. 운영
+DB에서 이미 검증된 버전은 재적재하지 않는다. 모델 간 비교평가는 격리 Compose 프로젝트와
+임시 볼륨에서 각각 ingestion해 수행하며 운영 DB에 서로 다른 모델 snapshot을 섞지 않는다.
 
 ### 로컬 한국어 임베딩 모델
 
@@ -180,8 +193,9 @@ E5와 Arctic-ko는 CPU 전용 공용 SentenceTransformer 어댑터를 사용한�
 wheelhouse 및 SBOM으로 함께 반입해야 한다. 기본 이미지는 모델 런타임을 설치하지 않으며,
 실행 중 패키지나 모델을 다운로드하지 않는다.
 
-활성화할 때는 승인된 `model.safetensors`를 읽기 전용 경로에 반입하고 다음 값을 모두
-지정한다.
+활성화할 때는 `evaluation/model-artifacts-v1.json`에 경로·크기·SHA-256이 고정된
+SentenceTransformer 소비 파일만 별도 읽기 전용 디렉터리에 반입하고 다음 값을 모두
+지정한다. 운영 context에서는 catalog 상태가 `APPROVED`인 모델만 기동된다.
 
 ```text
 ALZS_EMBEDDING_BACKEND=local-e5
@@ -189,7 +203,9 @@ ALZS_EMBEDDING_MODEL_ROOT=/opt/alzs-well/models
 ALZS_EMBEDDING_MODEL_PATH=multilingual-e5-small
 ALZS_EMBEDDING_MODEL_REVISION=<승인된 revision>
 ALZS_EMBEDDING_MODEL_SHA256=sha256:<model.safetensors의 64자리 lowercase hex>
-ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true
+ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=false
+ALZS_EMBEDDING_EXECUTION_CONTEXT=PRODUCTION
+ALZS_EMBEDDING_ALLOW_EVALUATION_MODEL=false
 ```
 
 Arctic-ko는 저장소에 고정된 revision과 SHA-256이 정확히 일치할 때만 선택된다. 로컬
@@ -216,16 +232,22 @@ docker compose \
 공식 PyTorch CPU wheel만 사용한다. 모델 파일은 이미지에 복사하지 않고 읽기 전용 volume으로
 마운트한다. Compose 오버레이는 각 AI 컨테이너에 3 GiB와 CPU 2개를 배정한다.
 
-모델 경로는 root 기준 상대경로만 허용하고 `../`, 심볼릭 링크, 해시 불일치를 거부한다.
-해시 불일치는 fallback하지 않으며, 검증된 모델이 런타임에서 로드되지 않을 때만 기본
-hash 어댑터로 시작할 수 있다. 검색 시 다른 모델 버전으로 생성된 벡터에는 cosine 점수를
+모델 경로는 root 기준 상대경로만 허용한다. catalog에 없는 추가 파일, 누락 파일,
+중첩 심볼릭 링크, 비정규 파일, hard link, 크기·SHA-256 불일치를 모두 거부한다. Hugging Face
+cache의 symlink snapshot을 그대로 마운트하지 않고 catalog의 9개 소비 파일을 일반 파일로
+복사한 최소 패키지를 사용한다. 무결성 실패는 fallback하지 않으며, 검증된 모델이 런타임에서
+로드되지 않을 때만 비운영 `SYNTHETIC_TEST` 환경에서 기본 hash 어댑터로 시작할 수 있다.
+`ALZS_EMBEDDING_ALLOW_HASH_FALLBACK`의 기본값은 `SYNTHETIC_TEST`에서만 `true`이고 운영에서는
+`false`다. 운영에서 non-hash backend와 fallback을 함께 명시하면 설정 오류로 기동을
+거부한다. 검색 시 다른 모델 버전으로 생성된 벡터에는 cosine 점수를
 적용하지 않지만 keyword 검색 대상에서는 제외하지 않는다. 모델을 전환하면 승인 문서를
 새 모델 버전으로 재-ingestion한 뒤 동일 검수 평가셋으로 Recall@K와 MRR을 다시 측정한다.
 
 Arctic-ko는 2026-08-28 운영형 골든셋 27건의 사람 최종 승인과 품질 재평가를 통과해
 `STAGED_APPROVED` 상태다. 기본 Compose와 기본 환경값은 계속 hash를 사용하며 자동으로
 전환하지 않는다. 승인된 AWS AI staging에서만 `compose.arctic-ko.yaml`, 배포 환경,
-별도 승인 플래그를 함께 지정해 활성화한다. 고정 artifact 검증,
+별도 승인 플래그를 함께 지정해 활성화한다. catalog에 고정된 9개 소비 파일 전체의
+경로·크기·SHA-256과 운영 골든셋을 함께 검증하며,
 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion, Spring citation 재검증 및 Hash
 폴백은 단계적 활성화에서도 그대로 유지한다.
 
@@ -237,6 +259,8 @@ Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 Fa
 
 ```bash
 AI_MODEL_HOST_ROOT="$PWD/models" \
+ALZS_DEPLOYMENT_ENVIRONMENT=AWS_STAGING \
+ALZS_MODEL_STAGED_APPROVAL_ENABLED=true \
 COPILOT_RAG_EXTRA_COMPOSE_FILE=backend/compose.arctic-ko.yaml \
 COPILOT_RAG_EMBEDDING_MODE=arctic-ko \
 COPILOT_RAG_LOAD_TEST_ENABLED=true \

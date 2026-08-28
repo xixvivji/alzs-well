@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ApiClientError, apiRequest } from "../lib/api.ts";
+import { ApiClientError, apiRequest, resolveApiUrl } from "../lib/api.ts";
 
 const responseBody = {
   success: true, status: 200, code: "OK", message: "ok", data: { value: 1 }, errors: [],
@@ -49,4 +49,38 @@ test("rejects malformed JSON without losing the HTTP status", async (t) => {
     assert.equal(error.traceId, "parse-trace");
     return true;
   });
+});
+
+test("uses only same-origin API paths in hosted HTTPS", () => {
+  assert.equal(resolveApiUrl("/api/v1/test", "", "https://app.example.com/demo"), "/api/v1/test");
+  assert.throws(
+    () => resolveApiUrl("/api/v1/test", "https://attacker.example", "https://app.example.com/demo"),
+    (error: unknown) => error instanceof ApiClientError && error.kind === "network",
+  );
+  assert.throws(
+    () => resolveApiUrl("/api/v1/test", "http://localhost:8080", "https://app.example.com/demo"),
+    (error: unknown) => error instanceof ApiClientError && error.kind === "network",
+  );
+});
+
+test("permits an origin-only loopback API only from loopback HTTP development", () => {
+  assert.equal(
+    resolveApiUrl("/api/v1/test", "http://127.0.0.1:8080", "http://localhost:3000/demo"),
+    "http://127.0.0.1:8080/api/v1/test",
+  );
+  for (const baseUrl of [
+    "http://localhost:8080/backend",
+    "http://user:password@localhost:8080",
+    "http://localhost:8080/?target=other",
+    "https://localhost:8080",
+  ]) {
+    assert.throws(
+      () => resolveApiUrl("/api/v1/test", baseUrl, "http://localhost:3000/demo"),
+      (error: unknown) => error instanceof ApiClientError && error.kind === "network",
+    );
+  }
+  assert.throws(
+    () => resolveApiUrl("/not-api", "", "https://app.example.com/demo"),
+    (error: unknown) => error instanceof ApiClientError && error.kind === "parse",
+  );
 });

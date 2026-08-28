@@ -2,12 +2,16 @@ package com.alzswell.account;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import java.util.List;
+import com.alzswell.identity.application.AuthSessionService.AuthenticatedPrincipal;
+import com.alzswell.identity.application.AuthSessionService.AuthenticatedSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,6 +21,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -29,6 +35,8 @@ class AccountIntegrationTest {
     private static final UUID CHECKING = UUID.fromString("95000000-0000-0000-0000-000000000001");
     private static final UUID DEPOSIT = UUID.fromString("95000000-0000-0000-0000-000000000003");
     private static final UUID STATEMENT = UUID.fromString("95200000-0000-0000-0000-000000000002");
+    private static final UUID WRITE_PRINCIPAL = UUID.fromString("11111111-2222-4333-8444-555555555551");
+    private static final UUID WRITE_SESSION = UUID.fromString("66666666-7777-4888-8999-000000000001");
 
     @Container
     @ServiceConnection
@@ -129,7 +137,7 @@ class AccountIntegrationTest {
     void updatesDisplaySettingWithOwnershipAuthorityAndOptimisticLock() throws Exception {
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
                         .header("Idempotency-Key", "account-display-001")
-                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .with(writeUser())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"alias\":\"생활 중심\",\"hidden\":true,\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
@@ -139,7 +147,7 @@ class AccountIntegrationTest {
 
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
                         .header("Idempotency-Key", "account-display-001")
-                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .with(writeUser())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"alias\":\"생활 중심\",\"hidden\":true,\"expectedVersion\":1}"))
                 .andExpect(status().isOk())
@@ -147,7 +155,7 @@ class AccountIntegrationTest {
 
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
                         .header("Idempotency-Key", "account-display-002")
-                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .with(writeUser())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hidden\":false,\"expectedVersion\":1}"))
                 .andExpect(status().isConflict())
@@ -162,7 +170,7 @@ class AccountIntegrationTest {
 
         mockMvc.perform(patch("/api/v1/accounts/{id}/display-settings", CHECKING)
                         .header("Idempotency-Key", "account-display-004")
-                        .with(user(CUSTOMER).authorities(() -> "ACCOUNT_WRITE"))
+                        .with(writeUser())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hidden\":false,\"expectedVersion\":2}"))
                 .andExpect(status().isOk());
@@ -170,6 +178,12 @@ class AccountIntegrationTest {
         Integer events = jdbc.queryForObject(
                 "select count(*) from account_display_setting_event where account_id=?", Integer.class, CHECKING);
         org.assertj.core.api.Assertions.assertThat(events).isEqualTo(2);
+        Integer attributed = jdbc.queryForObject("""
+                select count(*) from account_display_setting_event
+                 where account_id=? and actor_principal_id=? and actor_customer_id=?
+                   and actor_session_id=? and actor_type='CUSTOMER'
+                """, Integer.class, CHECKING, WRITE_PRINCIPAL, CUSTOMER, WRITE_SESSION);
+        org.assertj.core.api.Assertions.assertThat(attributed).isEqualTo(2);
     }
 
     @Test
@@ -186,5 +200,13 @@ class AccountIntegrationTest {
 
     private org.springframework.test.web.servlet.request.RequestPostProcessor readUser() {
         return user(CUSTOMER).authorities(() -> "ACCOUNT_READ");
+    }
+
+    private org.springframework.test.web.servlet.request.RequestPostProcessor writeUser() {
+        var token = UsernamePasswordAuthenticationToken.authenticated(
+                new AuthenticatedPrincipal(WRITE_PRINCIPAL, CUSTOMER), null,
+                List.of(new SimpleGrantedAuthority("ACCOUNT_WRITE")));
+        token.setDetails(new AuthenticatedSession(WRITE_SESSION));
+        return authentication(token);
     }
 }

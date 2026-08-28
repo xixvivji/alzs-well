@@ -1,5 +1,6 @@
 package com.alzswell.demo.application;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.web.TraceIdContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,6 +54,7 @@ public class DemoAuditWriter {
             Map<String, Object> payload,
             OffsetDateTime occurredAt
     ) {
+        occurredAt = AuditTimestamp.canonical(occurredAt);
         String traceId = TraceIdContext.currentOrCreate();
         String payloadJson = toJson(payload);
         String actorType = stringValue(payload, "actorType", "SYSTEM");

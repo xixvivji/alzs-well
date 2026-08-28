@@ -16,7 +16,7 @@ class ResilientKnowledgeRetrievalAdapterTest {
     void usesInternalRetrievalWhenEnabled() {
         InternalRagKnowledgeRetrievalAdapter internal=mock(InternalRagKnowledgeRetrievalAdapter.class);
         DeterministicKnowledgeRetrievalAdapter deterministic=mock(DeterministicKnowledgeRetrievalAdapter.class);
-        RetrievalResult expected=new RetrievalResult(List.of(),"INTERNAL_RAG_HYBRID",false,1);
+        RetrievalResult expected=new RetrievalResult(List.of(),"INTERNAL_RAG_HYBRID",false,0);
         when(internal.retrieve(query)).thenReturn(expected);
         assertThat(new ResilientKnowledgeRetrievalAdapter(true,internal,deterministic).retrieve(query)).isSameAs(expected);
         verifyNoInteractions(deterministic);
@@ -31,6 +31,23 @@ class ResilientKnowledgeRetrievalAdapterTest {
         RetrievalResult result=new ResilientKnowledgeRetrievalAdapter(true,internal,deterministic).retrieve(query);
         assertThat(result.retrievalMode()).isEqualTo("DETERMINISTIC_FALLBACK");
         assertThat(result.fallbackUsed()).isTrue();
+    }
+
+    @Test
+    void fallsBackWhenSpringRejectsEveryAiCitation() {
+        InternalRagKnowledgeRetrievalAdapter internal=mock(InternalRagKnowledgeRetrievalAdapter.class);
+        DeterministicKnowledgeRetrievalAdapter deterministic=mock(DeterministicKnowledgeRetrievalAdapter.class);
+        when(internal.retrieve(query)).thenReturn(new RetrievalResult(
+                List.of(),"INTERNAL_RAG_HYBRID",false,2));
+        when(deterministic.retrieve(query)).thenReturn(new RetrievalResult(
+                List.of(),"DETERMINISTIC_KEYWORD",false,0));
+
+        RetrievalResult result=new ResilientKnowledgeRetrievalAdapter(true,internal,deterministic).retrieve(query);
+
+        assertThat(result.retrievalMode()).isEqualTo("DETERMINISTIC_FALLBACK");
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.rejectedCitations()).isEqualTo(2);
+        verify(deterministic).retrieve(query);
     }
 
     @Test

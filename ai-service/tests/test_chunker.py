@@ -7,7 +7,8 @@ import pytest
 
 from app.domain.document import ExtractedBlock, ExtractedDocument
 from app.errors import KnowledgeContractError
-from app.ingestion.chunker import canonical_chunk_id, chunk_document
+from app.ingestion import chunker
+from app.ingestion.chunker import _split_text, canonical_chunk_id, chunk_document
 from app.ingestion.html_extractor import extract_html_document
 from app.ingestion.manifest_loader import load_and_validate_manifest
 from app.ingestion.source_validator import validate_source
@@ -70,6 +71,14 @@ def test_splits_unbroken_text_at_hard_limit() -> None:
     assert [chunk.text for chunk in chunks] == ["가나다", "라마바", "사"]
 
 
+def test_split_text_is_lazy() -> None:
+    segments = _split_text("가나다 라마바 사아자", 3)
+
+    assert iter(segments) is segments
+    assert next(segments) == "가나다"
+    assert tuple(segments) == ("라마바", "사아자")
+
+
 def test_rejects_heading_only_document() -> None:
     with pytest.raises(KnowledgeContractError) as caught:
         chunk_document(_document((ExtractedBlock(1, "HEADING", "절", 2, ("문서", "절")),)))
@@ -80,6 +89,41 @@ def test_rejects_heading_only_document() -> None:
 def test_rejects_non_positive_maximum() -> None:
     with pytest.raises(ValueError):
         chunk_document(_document(()), max_chars=0)
+
+
+def test_rejects_more_than_contract_maximum_chunks_during_chunking() -> None:
+    document = _document((
+        ExtractedBlock(1, "PARAGRAPH", " ".join("가" for _ in range(501)), None, ("문서",)),
+    ))
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        chunk_document(document, max_chars=1)
+
+    assert caught.value.code == "CHUNK_VALIDATION_FAILED"
+
+
+def test_stops_lazy_splitter_as_soon_as_chunk_budget_is_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    yielded = 0
+
+    def many_segments(text: str, max_chars: int):  # type: ignore[no-untyped-def]
+        nonlocal yielded
+        del text, max_chars
+        for _ in range(1_000):
+            yielded += 1
+            yield "가"
+
+    monkeypatch.setattr(chunker, "_split_text", many_segments)
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        chunk_document(
+            _document((ExtractedBlock(1, "PARAGRAPH", "ignored", None, ("문서",)),)),
+            max_chars=1,
+        )
+
+    assert caught.value.code == "CHUNK_VALIDATION_FAILED"
+    assert yielded == 501
 
 
 def _document(blocks: tuple[ExtractedBlock, ...]) -> ExtractedDocument:

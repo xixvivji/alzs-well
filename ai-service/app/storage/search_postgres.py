@@ -140,7 +140,7 @@ class PostgresSearchRepository:
                         where d.allowed_roles && %s::text[]
                           and (d.audience = 'BOTH' or d.audience = any(%s::text[]))
                           and d.approval_status = 'APPROVED'
-                          and d.lifecycle_status = 'ACTIVE'
+                          and d.lifecycle_status in ('PENDING_ACTIVATION', 'ACTIVE')
                           and d.effective_from <= %s
                           and (d.effective_to is null or d.effective_to >= %s)
                     ), scored as (

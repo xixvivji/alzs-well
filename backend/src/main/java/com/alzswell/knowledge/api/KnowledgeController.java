@@ -45,7 +45,9 @@ public class KnowledgeController {
     }
     @GetMapping("/guidance-candidates") @PreAuthorize("hasAuthority('GUIDANCE_CANDIDATE_READ')")
     public ResponseEntity<ApiResponse<GuidanceCandidates>> guidance(
-            @RequestParam @Pattern(regexp="MISSED_RECURRING_PAYMENT|DUPLICATE_TRANSFER|REPEATED_CONFIRMATION") String reasonCode){
-        return ApiResponses.ok("GUIDANCE_CANDIDATES_RETRIEVED","정책이 허용한 안내 후보를 조회했습니다.",service.guidanceCandidates(reasonCode));
+            @RequestParam @Pattern(regexp="MISSED_RECURRING_PAYMENT|DUPLICATE_TRANSFER|REPEATED_CONFIRMATION") String reasonCode,
+            Authentication authentication){
+        return ApiResponses.ok("GUIDANCE_CANDIDATES_RETRIEVED","정책이 허용한 안내 후보를 조회했습니다.",
+                service.guidanceCandidates(reasonCode,authentication));
     }
 }

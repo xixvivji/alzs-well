@@ -1,9 +1,12 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { isApiProxyPath, proxyApiRequest } from "./api-proxy";
 
 interface Env {
   ASSETS: Fetcher;
+  BACKEND_API_ORIGIN?: string;
+  BACKEND_PROXY_SHARED_SECRET?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -54,6 +57,13 @@ function withSecurityHeaders(response: Response, request: Request): Response {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (isApiProxyPath(url.pathname)) {
+      return withSecurityHeaders(await proxyApiRequest(request, env.BACKEND_API_ORIGIN, {
+        proxySharedSecret: env.BACKEND_PROXY_SHARED_SECRET,
+        trustedClientAddress: request.headers.get("CF-Connecting-IP"),
+      }), request);
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

@@ -1,5 +1,6 @@
 package com.alzswell.identity.application;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.identity.api.AuthErrorCode;
 import com.alzswell.identity.api.AuthResponses.AuthSessionList;
@@ -344,6 +345,7 @@ public class AuthSessionService {
 
     private void recordSessionEvent(UUID principalId, UUID actorSessionId, UUID targetSessionId,
             String outcome, OffsetDateTime now) {
+        now = AuditTimestamp.canonical(now);
         UUID eventId = UUID.randomUUID();
         String integrity = hash(eventId + "|" + principalId + "|" + actorSessionId + "|"
                 + targetSessionId + "|" + outcome + "|" + now);

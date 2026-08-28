@@ -2,6 +2,7 @@ package com.alzswell.transaction.application;
 
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.idempotency.MutationIdempotencyService;
+import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.transaction.api.TransactionErrorCode;
 import com.alzswell.transaction.api.TransactionRequests.UpdateCategory;
@@ -143,30 +144,32 @@ public class TransactionService {
     }
 
     @Transactional
-    public TransactionPreference updateCategory(String customerId, UUID transactionId, UpdateCategory command,
+    public TransactionPreference updateCategory(AuditActor actor, UUID transactionId, UpdateCategory command,
             String idempotencyKey) {
+        String customerId = actor.customerId();
         return idempotency.execute("TRANSACTION_CATEGORY:" + customerId + ":" + transactionId,
                 idempotencyKey, command, TransactionPreference.class, TransactionErrorCode.IDEMPOTENCY_CONFLICT,
                 () -> { ownedTransaction(customerId, transactionId); return updatePreference(customerId,
                         transactionId, "CATEGORY_UPDATED", command.category(), null,
-                        command.expectedVersion(), true); });
+                        command.expectedVersion(), true, actor); });
     }
 
     @Transactional
-    public TransactionPreference updateNote(String customerId, UUID transactionId, UpdateNote command,
+    public TransactionPreference updateNote(AuditActor actor, UUID transactionId, UpdateNote command,
             String idempotencyKey) {
+        String customerId = actor.customerId();
         String note = command.note().isBlank() ? null : sensitiveTextPolicy.validate(command.note(), "note");
         record SafeNote(String note,long expectedVersion) {}
         SafeNote safe = new SafeNote(note, command.expectedVersion());
         return idempotency.execute("TRANSACTION_NOTE:" + customerId + ":" + transactionId,
                 idempotencyKey, safe, TransactionPreference.class, TransactionErrorCode.IDEMPOTENCY_CONFLICT,
                 () -> { ownedTransaction(customerId, transactionId); return updatePreference(customerId,
-                        transactionId, "NOTE_UPDATED", null, note, command.expectedVersion(), false); });
+                        transactionId, "NOTE_UPDATED", null, note, command.expectedVersion(), false, actor); });
     }
 
     private TransactionPreference updatePreference(String customerId, UUID transactionId, String eventType,
                                                    String category, String note, long expectedVersion,
-                                                   boolean categoryUpdate) {
+                                                   boolean categoryUpdate, AuditActor actor) {
         Preference current = preference(customerId, transactionId);
         String nextCategory = categoryUpdate ? category : current.category();
         String nextNote = categoryUpdate ? current.note() : note;
@@ -181,10 +184,12 @@ public class TransactionService {
         jdbc.update("""
                 insert into customer_transaction_preference_event(
                     event_id,transaction_id,customer_id,event_type,category_snapshot,note_snapshot,
-                    row_version,actor_id,occurred_at
-                ) values(?,?,?,?,?,?,?,?,?)
+                    row_version,actor_id,actor_principal_id,actor_customer_id,actor_session_id,
+                    actor_type,occurred_at
+                ) values(?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, UUID.randomUUID(), transactionId, customerId, eventType, nextCategory, nextNote,
-                nextVersion, customerId, now);
+                nextVersion, actor.legacyActorId(), actor.principalId(), actor.customerId(), actor.sessionId(),
+                actor.actorType(), now);
         return new TransactionPreference(transactionId, nextCategory, nextNote, nextVersion, now, false);
     }
 

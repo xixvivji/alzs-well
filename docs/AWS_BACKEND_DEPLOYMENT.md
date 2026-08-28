@@ -24,6 +24,7 @@ CORS_STAFF_ALLOWED_ORIGINS=https://staff-demo.example.com
 DEMO_STAFF_USERNAME=replace-with-a-non-default-operator-name
 DEMO_STAFF_PASSWORD=replace-with-a-long-random-staff-password
 POSTGRES_PASSWORD=replace-with-a-long-random-admin-password
+FRONTEND_PROXY_SHARED_SECRET=replace-with-64-lowercase-hex-from-openssl-rand
 POSTGRES_MIGRATION_PASSWORD=replace-with-a-long-random-migration-password
 POSTGRES_APP_PASSWORD=replace-with-a-long-random-runtime-password
 GATEWAY_BIND_ADDRESS=0.0.0.0
@@ -43,11 +44,12 @@ SYNTHETIC_PROVIDER_ONLY=true
 3. ALB 인증서와 HTTP→HTTPS redirect를 구성한다.
 4. EC2 보안그룹은 gateway port의 source를 ALB 보안그룹으로 한정하고 SSH는 Session Manager로 대체한다.
 5. ALB 앞 AWS WAF에도 세션 생성 rate rule을 두고 `DEMO_MAX_ACTIVE_SESSIONS`를 예상 시연 인원에 맞게 낮춘다. 단일 IP 제한만으로 분산 요청을 완전히 막을 수는 없다.
-6. `docker compose config`, 전체 자동시험, `/api/v1/system/readiness`를 통과시키고 ALB target group health check path도 동일한 readiness 경로로 설정한다.
-7. capability 원문과 요청 본문을 ALB·Nginx access log에 남기지 않는지 확인한다.
-8. EBS 암호화·스냅샷·복구 절차 또는 RDS 백업을 설정한다.
-9. CloudWatch에는 상태·지연·429/5xx 같은 운영 지표만 보내고 자유입력·거래 원문은 보내지 않는다.
-10. ALB가 넘긴 `X-Forwarded-Proto`·`X-Forwarded-Port`가 gateway에서 내부 HTTP 값으로 덮어써지지 않는지 redirect·절대 URL·보안 헤더를 확인한다.
-11. production 기본값처럼 OpenAPI·Swagger UI와 readiness 외 관리 endpoint를 공개하지 않는다. 일시적으로 문서가 필요하면 접근통제된 내부 환경에서만 활성화한다.
+6. Sites Worker의 `BACKEND_PROXY_SHARED_SECRET`와 gateway의 `FRONTEND_PROXY_SHARED_SECRET`에 동일한 `openssl rand -hex 32` 결과를 서버 전용으로 주입한다. 이 값은 브라우저 번들·로그에 넣지 않는다. `.env.example`의 의도적으로 무효한 placeholder를 그대로 사용하면 gateway가 시작을 거부한다.
+7. `docker compose config`, 전체 자동시험, `/api/v1/system/readiness`를 통과시키고 ALB target group health check path도 동일한 readiness 경로로 설정한다.
+8. capability 원문과 요청 본문을 ALB·Nginx access log에 남기지 않는지 확인한다.
+9. EBS 암호화·스냅샷·복구 절차 또는 RDS 백업을 설정한다.
+10. CloudWatch에는 상태·지연·429/5xx 같은 운영 지표만 보내고 자유입력·거래 원문은 보내지 않는다.
+11. ALB가 넘긴 `X-Forwarded-Proto`·`X-Forwarded-Port`가 gateway에서 내부 HTTP 값으로 덮어써지지 않는지 redirect·절대 URL·보안 헤더를 확인한다.
+12. production 기본값처럼 OpenAPI·Swagger UI와 readiness 외 관리 endpoint를 공개하지 않는다. 일시적으로 문서가 필요하면 접근통제된 내부 환경에서만 활성화한다.
 
 이 구성은 공모전용 합성데모 staging 기준이다. 금융회사 실서비스 보안성 심사, 개인정보·신용정보 처리 승인 또는 법규 준수 완료를 의미하지 않는다.

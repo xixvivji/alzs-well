@@ -3,6 +3,7 @@ package com.alzswell.account.api;
 import com.alzswell.account.api.AccountResponses.*;
 import com.alzswell.account.api.AccountRequests.UpdateDisplaySetting;
 import com.alzswell.account.application.AccountQueryService;
+import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.api.ApiResponse;
 import com.alzswell.common.api.ApiResponses;
 import jakarta.validation.constraints.Pattern;
@@ -108,7 +109,7 @@ public class AccountController {
             @Valid @RequestBody UpdateDisplaySetting command,
             Authentication auth) {
         return ApiResponses.ok("ACCOUNT_DISPLAY_SETTING_UPDATED", "계좌 표시 설정을 변경했습니다.",
-                service.updateDisplaySetting(auth.getName(), accountId, command, idempotencyKey));
+                service.updateDisplaySetting(AuditActor.from(auth), accountId, command, idempotencyKey));
     }
 
     @GetMapping("/customers/{customerId}/account-groups")

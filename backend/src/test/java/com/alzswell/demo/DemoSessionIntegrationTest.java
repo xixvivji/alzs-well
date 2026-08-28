@@ -12,11 +12,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.alzswell.common.security.DemoCapabilityService;
+import com.alzswell.demo.application.DemoAuditWriter;
 import com.alzswell.demo.application.DemoSessionCleanupService;
 import com.alzswell.demo.application.DemoSessionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.OffsetDateTime;
+import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +50,7 @@ class DemoSessionIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired DemoSessionCleanupService cleanupService;
+    @Autowired DemoAuditWriter auditWriter;
 
     private DemoTestClient client;
 
@@ -116,6 +123,48 @@ class DemoSessionIntegrationTest {
 
         DemoTestClient.Session ingested = client.ingest(session, "ingest-after-reset-0001");
         assertThat(ingested.demoRunId()).isNotNull();
+    }
+
+    @Test
+    void decisionAuditHashCanBeRecomputedFromThePersistedTimestamp() throws Exception {
+        DemoTestClient.Session session = client.create();
+        OffsetDateTime nanosecondTimestamp = OffsetDateTime.parse("2026-08-27T12:34:56.123456789+09:00");
+        String eventType = "TIMESTAMP_CANONICALIZATION_TEST";
+
+        auditWriter.write(session.sessionId(), eventType, Map.of(), nanosecondTimestamp);
+
+        Map<String, Object> event = jdbcTemplate.queryForMap("""
+                select audit_id,demo_session_id,demo_run_id,trace_id,event_type,actor_type,actor_id,
+                       target_type,target_id,before_state,after_state,policy_version,algorithm_version,
+                       schema_version,event_payload::text,previous_event_hash,event_hash
+                  from decision_audit where demo_session_id=? and event_type=?
+                """, session.sessionId(), eventType);
+        OffsetDateTime persisted = jdbcTemplate.queryForObject("""
+                select occurred_at from decision_audit where demo_session_id=? and event_type=?
+                """, (rs, row) -> rs.getObject("occurred_at", OffsetDateTime.class),
+                session.sessionId(), eventType);
+        assertThat(persisted.getNano() % 1_000).isZero();
+        assertThat(persisted).isEqualTo(OffsetDateTime.parse("2026-08-27T03:34:56.123456Z"));
+
+        String recalculated = sha256(String.join("\n",
+                String.valueOf(event.get("previous_event_hash")),
+                event.get("audit_id").toString(),
+                event.get("demo_session_id").toString(),
+                event.get("demo_run_id") == null ? "" : event.get("demo_run_id").toString(),
+                event.get("trace_id").toString(),
+                event.get("event_type").toString(),
+                event.get("actor_type").toString(),
+                event.get("actor_id") == null ? "" : event.get("actor_id").toString(),
+                event.get("target_type").toString(),
+                event.get("target_id").toString(),
+                event.get("before_state") == null ? "" : event.get("before_state").toString(),
+                event.get("after_state") == null ? "" : event.get("after_state").toString(),
+                event.get("policy_version").toString(),
+                event.get("algorithm_version").toString(),
+                event.get("schema_version").toString(),
+                event.get("event_payload").toString(),
+                persisted.toInstant().toString()));
+        assertThat(event.get("event_hash")).isEqualTo(recalculated);
     }
 
     @Test
@@ -338,5 +387,10 @@ class DemoSessionIntegrationTest {
         );
         assertThat(remainingSessions).isZero();
         assertThat(purgeAuditCount).isEqualTo(1);
+    }
+
+    private String sha256(String value) throws Exception {
+        return "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8)));
     }
 }

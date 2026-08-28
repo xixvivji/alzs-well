@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
@@ -36,9 +37,9 @@ class StubProvider:
         return (1.0,) + (0.0,) * 1023
 
 
-def _payload(content: bytes) -> dict[str, object]:
+def _payload(content: bytes, tokenizer: bytes = b"{}") -> dict[str, object]:
     return {
-        "catalogVersion": "1.1.0",
+        "catalogVersion": "2.1.0",
         "automaticDownloadAllowed": False,
         "models": [
             {
@@ -53,11 +54,18 @@ def _payload(content: bytes) -> dict[str, object]:
                 "dimensions": 1024,
                 "queryPrefix": "query: ",
                 "passagePrefix": "",
-                "artifact": {
-                    "file": "model.safetensors",
-                    "sizeBytes": len(content),
-                    "sha256": "sha256:" + sha256(content).hexdigest(),
-                },
+                "files": [
+                    {
+                        "path": "model.safetensors",
+                        "sizeBytes": len(content),
+                        "sha256": "sha256:" + sha256(content).hexdigest(),
+                    },
+                    {
+                        "path": "tokenizer.json",
+                        "sizeBytes": len(tokenizer),
+                        "sha256": "sha256:" + sha256(tokenizer).hexdigest(),
+                    },
+                ],
             }
         ],
     }
@@ -69,6 +77,7 @@ def _package(tmp_path: Path) -> tuple[Path, Path, bytes]:
     model = root / "arctic-ko"
     model.mkdir(parents=True)
     (model / "model.safetensors").write_bytes(content)
+    (model / "tokenizer.json").write_bytes(b"{}")
     catalog = tmp_path / "catalog.json"
     catalog.write_text(json.dumps(_payload(content)), encoding="utf-8")
     return root, catalog, content
@@ -126,6 +135,7 @@ def test_committed_catalog_records_staged_arctic_approval() -> None:
     assert models[1].approval is not None
     assert models[1].approval.deployment_environment == "AWS_STAGING"
     assert models[1].approval.golden_set.case_count == 27
+    assert all(len(model.files) == 9 for model in models)
 
 
 @pytest.mark.parametrize(
@@ -143,11 +153,12 @@ def test_committed_catalog_records_staged_arctic_approval() -> None:
         lambda payload: payload["models"][0].update(  # type: ignore[index,union-attr]
             status="APPROVED", approval=_approval("AWS_STAGING")
         ),
+        lambda payload: payload["models"][0].update(status="PROMOTED"),  # type: ignore[index,union-attr]
         lambda payload: payload["models"][0].update(revision="main"),  # type: ignore[index,union-attr]
         lambda payload: payload["models"][0].update(localPath="../escape"),  # type: ignore[index,union-attr]
         lambda payload: payload["models"][0].update(dimensions=True),  # type: ignore[index,union-attr]
         lambda payload: payload["models"][0].update(queryPrefix="bad\n"),  # type: ignore[index,union-attr]
-        lambda payload: payload["models"][0]["artifact"].update(file="model.bin"),  # type: ignore[index,union-attr]
+        lambda payload: payload["models"][0]["files"][0].update(path="../model.bin"),  # type: ignore[index,union-attr]
     ],
 )
 def test_catalog_rejects_unsafe_or_unknown_contract_fields(
@@ -198,14 +209,82 @@ def test_catalog_rejects_relative_root_symlinks_and_artifact_mismatch(
         create_evaluation_embedding_provider(catalog, "arctic-ko", symlink_root)
 
     linked_tokenizer = root / "arctic-ko" / "tokenizer.json"
+    linked_tokenizer.unlink()
     linked_tokenizer.symlink_to(tmp_path / "outside-tokenizer.json")
     with pytest.raises(KnowledgeContractError):
         create_evaluation_embedding_provider(catalog, "arctic-ko", root)
     linked_tokenizer.unlink()
 
     payload = _payload(content)
-    payload["models"][0]["artifact"]["sizeBytes"] += 1  # type: ignore[index,union-attr,operator]
+    payload["models"][0]["files"][0]["sizeBytes"] += 1  # type: ignore[index,union-attr,operator]
     catalog.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(KnowledgeContractError):
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+
+
+def test_catalog_rejects_unlisted_and_non_regular_package_files(tmp_path: Path) -> None:
+    root, catalog, _ = _package(tmp_path)
+    model = root / "arctic-ko"
+    (model / "unapproved.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(KnowledgeContractError):
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+
+    (model / "unapproved.json").unlink()
+    (model / "nested").mkdir()
+    with pytest.raises(KnowledgeContractError):
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+
+    (model / "nested").rmdir()
+    (model / "nested").mkdir()
+    (model / "nested" / "tokenizer.json").symlink_to(model / "tokenizer.json")
+    with pytest.raises(KnowledgeContractError):
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+
+
+def test_catalog_rejects_excessive_directory_depth_and_entry_fanout(tmp_path: Path) -> None:
+    root, catalog, content = _package(tmp_path)
+    model = root / "arctic-ko"
+    tokenizer = model / "tokenizer.json"
+    tokenizer.unlink()
+    deep_relative = "/".join(f"d{index}" for index in range(9)) + "/tokenizer.json"
+    deep_tokenizer = model.joinpath(*deep_relative.split("/"))
+    deep_tokenizer.parent.mkdir(parents=True)
+    deep_tokenizer.write_bytes(b"{}")
+    payload = _payload(content)
+    payload["models"][0]["files"][1]["path"] = deep_relative  # type: ignore[index,union-attr]
+    catalog.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(KnowledgeContractError) as depth_failure:
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+    assert depth_failure.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
+    # Recreate a valid shallow package, then add many unapproved directories. The scanner
+    # must reject the first unexpected entry without recursively walking the fanout.
+    deep_tokenizer.unlink()
+    parent = deep_tokenizer.parent
+    while parent != model:
+        next_parent = parent.parent
+        parent.rmdir()
+        parent = next_parent
+    tokenizer.write_bytes(b"{}")
+    catalog.write_text(json.dumps(_payload(content)), encoding="utf-8")
+    for index in range(200):
+        (model / f"unexpected-{index:03d}").mkdir()
+    with pytest.raises(KnowledgeContractError) as fanout_failure:
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+    assert fanout_failure.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
+def test_catalog_rejects_hardlinked_and_special_package_files(tmp_path: Path) -> None:
+    root, catalog, _ = _package(tmp_path)
+    model = root / "arctic-ko"
+    outside_link = tmp_path / "shared-tokenizer.json"
+    os.link(model / "tokenizer.json", outside_link)
+    with pytest.raises(KnowledgeContractError):
+        create_evaluation_embedding_provider(catalog, "arctic-ko", root)
+
+    outside_link.unlink()
+    fifo = model / "runtime.pipe"
+    os.mkfifo(fifo)
     with pytest.raises(KnowledgeContractError):
         create_evaluation_embedding_provider(catalog, "arctic-ko", root)
 

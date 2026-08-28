@@ -1,5 +1,6 @@
 package com.alzswell.casework.application;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.casework.api.CaseworkErrorCode;
 import com.alzswell.casework.api.CaseworkRequests.AssignmentCommand;
 import com.alzswell.casework.api.CaseworkRequests.GuidancePlanCommand;
@@ -267,7 +268,7 @@ public class OperationalCaseService {
         CaseNote replay = findNote(caseId, keyHash, requestHash, true);
         if (replay != null) return replay;
         UUID noteId = UUID.randomUUID();
-        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime now = AuditTimestamp.canonical(OffsetDateTime.now(clock));
         String integrityHash = sha256(caseId + "|" + noteId + "|" + actor.legacyActorId() + "|" + normalized + "|" + now);
         jdbcTemplate.update("""
                 insert into operational_case_note (
@@ -427,7 +428,7 @@ public class OperationalCaseService {
                 select s.algorithm_version from operational_protection_case c
                 join customer_detection_signal s on s.signal_id=c.signal_id where c.case_id=?
                 """, String.class, caseId);
-        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime now = AuditTimestamp.canonical(OffsetDateTime.now(clock));
         int updated = jdbcTemplate.update("""
                 update operational_protection_case set task_status='IN_REVIEW',
                        case_version=case_version+1,updated_at=?
@@ -649,6 +650,7 @@ public class OperationalCaseService {
     private void writeFollowUpEvent(UUID followUpId, UUID caseId, String eventType, String previousStatus,
                                     String resultingStatus, String actor, java.util.Map<String, Object> detail,
                                     OffsetDateTime now) {
+        now = AuditTimestamp.canonical(now);
         UUID eventId = UUID.randomUUID();
         String detailJson = json(detail);
         String integrityHash = sha256(eventId + "|" + followUpId + "|" + eventType + "|"

@@ -13,7 +13,7 @@
 
 ## 로컬 실행
 
-Java 21과 Docker가 필요하다. `.env.example`을 `.env`로 복사한 뒤 PostgreSQL 관리자·migration·runtime 비밀번호와 직원 capability 발급용 계정 비밀번호를 각각 충분히 긴 임의값으로 교체한다. 고객·직원 CORS origin도 실제 HTTPS 주소로 분리해 지정한다.
+Java 21과 Docker가 필요하다. `.env.example`을 `.env`로 복사한 뒤 PostgreSQL 관리자·migration·runtime 비밀번호와 직원 capability 발급용 계정 비밀번호를 각각 충분히 긴 임의값으로 교체한다. `FRONTEND_PROXY_SHARED_SECRET`도 `openssl rand -hex 32`로 생성해야 하며 placeholder가 남아 있으면 gateway가 시작을 거부한다. 고객·직원 CORS origin도 실제 HTTPS 주소로 분리해 지정한다.
 
 ```bash
 docker compose --env-file .env up -d --build
