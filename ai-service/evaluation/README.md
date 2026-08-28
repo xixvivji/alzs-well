@@ -6,6 +6,7 @@
 `multilingual-e5-small@<revision>`을 사용하고 보고서에 모델 버전을 기록한다.
 현재 측정값과 모델 선택 보류 조건은 `model-comparison-v1.md`에 기록한다.
 Arctic-ko 합성 E2E 부하 게이트의 측정법과 결과는 `arctic-ko-load-test-v1.md`에 기록한다.
+사람 승인 후 단계적 활성화 재검증 결과는 `arctic-ko-staged-e2e-v1.md`에 기록한다.
 평가에 반입한 모델의 고정 revision·SHA-256·차원·prefix는
 `model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는 Git에 커밋하지 않는다.
 
