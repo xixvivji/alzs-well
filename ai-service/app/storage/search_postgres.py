@@ -12,6 +12,7 @@ from app.domain.search import SearchRequest, StoredSearchResult
 from app.embedding.base import EmbeddingProvider, vector_literal
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
+from app.retrieval.query import keyword_query
 from app.storage.database_config import DatabaseConfig
 from app.storage.embedding_index import vector_type
 
@@ -138,12 +139,12 @@ class PostgresSearchRepository:
                         source_url, source_hash, text_hash, content, score
                     from scored
                     where score >= %s
-                    order by authority_rank desc, score desc,
+                    order by score desc, authority_rank desc,
                         document_id, version_label, chunk_order
                     limit %s
                     """,
                     (
-                        request.query,
+                        keyword_query(request.query),
                         query_vector,
                         descriptor.model_id,
                         descriptor.model_version,
