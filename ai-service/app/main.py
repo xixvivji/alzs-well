@@ -30,13 +30,22 @@ def create_app() -> FastAPI:
     application.add_exception_handler(RequestValidationError, _validation_error_handler)
 
     @application.get("/health")
-    def health() -> dict[str, str]:
+    def health() -> dict[str, str | int | bool]:
+        config = get_embedding_config()
         descriptor = get_embedding_provider().descriptor
         return {
             "status": "UP",
             "service": "ai-rag",
+            "embeddingConfiguredBackend": config.backend,
             "embeddingBackend": descriptor.backend,
             "embeddingModelVersion": descriptor.model_version,
+            "embeddingDimensions": descriptor.dimensions,
+            "arcticRolloutEnabled": config.arctic_rollout_enabled,
+            "embeddingFallbackUsed": (
+                config.backend == "local-arctic-ko"
+                and config.arctic_rollout_enabled
+                and descriptor.backend == "hash"
+            ),
         }
 
     @application.post(
@@ -106,7 +115,12 @@ def get_search_repository() -> PostgresSearchRepository:
 
 @lru_cache
 def get_embedding_provider() -> EmbeddingProvider:
-    return create_embedding_provider(EmbeddingConfig.from_environment())
+    return create_embedding_provider(get_embedding_config())
+
+
+@lru_cache
+def get_embedding_config() -> EmbeddingConfig:
+    return EmbeddingConfig.from_environment()
 
 
 @lru_cache

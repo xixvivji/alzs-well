@@ -25,6 +25,21 @@ KEYWORD_WEIGHT = 0.35
 VECTOR_WEIGHT = 0.65
 VECTOR_THRESHOLD = 0.15
 RESULT_THRESHOLD = 0.35
+ARCTIC_KEYWORD_WEIGHT = 0.2
+ARCTIC_VECTOR_WEIGHT = 0.8
+ARCTIC_VECTOR_THRESHOLD = 0.15
+ARCTIC_RESULT_THRESHOLD = 0.4
+
+
+def search_parameters(backend: str) -> tuple[float, float, float, float]:
+    if backend == "local-arctic-ko":
+        return (
+            ARCTIC_KEYWORD_WEIGHT,
+            ARCTIC_VECTOR_WEIGHT,
+            ARCTIC_VECTOR_THRESHOLD,
+            ARCTIC_RESULT_THRESHOLD,
+        )
+    return KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD
 
 
 class PostgresSearchRepository:
@@ -79,6 +94,9 @@ class PostgresSearchRepository:
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
         descriptor = self._embedding_provider.descriptor
+        keyword_weight, vector_weight, vector_threshold, result_threshold = (
+            search_parameters(descriptor.backend)
+        )
         database_vector_type = vector_type(descriptor.dimensions)
         query_vector = vector_literal(
             self._embedding_provider.embed_query(request.query),
@@ -153,10 +171,10 @@ class PostgresSearchRepository:
                         list(request.requester_audiences),
                         request.as_of,
                         request.as_of,
-                        KEYWORD_WEIGHT,
-                        VECTOR_WEIGHT,
-                        VECTOR_THRESHOLD,
-                        RESULT_THRESHOLD,
+                        keyword_weight,
+                        vector_weight,
+                        vector_threshold,
+                        result_threshold,
                         request.limit,
                     ),
                 )

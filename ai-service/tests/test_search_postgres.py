@@ -12,6 +12,10 @@ from app.embedding.base import EmbeddingDescriptor
 from app.errors import KnowledgeContractError
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import (
+    ARCTIC_KEYWORD_WEIGHT,
+    ARCTIC_RESULT_THRESHOLD,
+    ARCTIC_VECTOR_THRESHOLD,
+    ARCTIC_VECTOR_WEIGHT,
     ARCTIC_INDEX_VERSION,
     E5_INDEX_VERSION,
     INDEX_VERSION,
@@ -179,6 +183,12 @@ def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:
         1024,
     )
     assert repository.index_version == ARCTIC_INDEX_VERSION
+    assert parameters[9:13] == (  # type: ignore[index]
+        ARCTIC_KEYWORD_WEIGHT,
+        ARCTIC_VECTOR_WEIGHT,
+        ARCTIC_VECTOR_THRESHOLD,
+        ARCTIC_RESULT_THRESHOLD,
+    )
 
 
 def test_search_rejects_unsupported_embedding_dimension_before_database_call() -> None:

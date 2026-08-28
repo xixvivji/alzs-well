@@ -194,6 +194,9 @@ ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true
 
 Arctic-ko는 저장소에 고정된 revision과 SHA-256이 정확히 일치할 때만 선택된다. 로컬
 반입본으로 모델 런타임 오버레이를 사용할 때는 저장소 루트에서 다음처럼 실행한다.
+`ALZS_EMBEDDING_BACKEND=local-arctic-ko`만 지정하고
+`ALZS_ARCTIC_ROLLOUT_ENABLED=false`이면 모델 파일을 열지 않고 hash backend로 동작한다.
+Arctic-ko 활성화 환경은 반드시 `ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 명시해야 한다.
 
 ```bash
 AI_MODEL_HOST_ROOT="$PWD/models" docker compose \
