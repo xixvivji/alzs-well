@@ -135,6 +135,29 @@ uv run python -m app.evaluation.review_cli prepare \
 
 ## 실행
 
+### 데모 검색 순위 최종 검수
+
+운영 골든셋의 각 질문에 대해 Arctic-ko Top-5 문서·문단과 결합·키워드·벡터 점수를
+JSON과 Markdown으로 출력한다. 기대 근거가 Top-1이면 `PASS_TOP_1`, Top-2~3이면
+`REVIEW_TOP_2_OR_3`, Top-3 밖이거나 없으면 `FAIL_BELOW_TOP_3`으로 분류한다. 무응답
+질의는 결과가 없을 때만 `PASS_NO_RESULTS`다. `--fail-on-top-3-miss`를 사용하면 Top-3
+실패나 무응답 오탐이 하나라도 있을 때 종료 코드 1을 반환한다.
+
+```bash
+uv run python -m app.evaluation.ranking_review_cli \
+  --corpus data/derived/evaluation/retrieval-official-corpus-2026-08-28.jsonl \
+  --dataset evaluation/datasets/official-operational-golden-v1.jsonl \
+  --output-json data/derived/evaluation/demo-ranking-review-v1.json \
+  --output-markdown data/derived/evaluation/demo-ranking-review-v1.md \
+  --evaluation-model-catalog evaluation/model-artifacts-v1.json \
+  --evaluation-model-name snowflake-arctic-embed-l-v2.0-ko \
+  --evaluation-model-root /absolute/path/to/models \
+  --fail-on-top-3-miss
+```
+
+생성 결과는 파생 데이터이므로 Git에 커밋하지 않는다. 모델 revision과 artifact SHA-256은
+기존 권위 카탈로그 검증을 그대로 통과해야 하며 실행 중 모델 다운로드는 허용하지 않는다.
+
 ```bash
 uv run python -m app.evaluation.cli evaluate \
   --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
