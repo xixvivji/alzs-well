@@ -49,6 +49,19 @@ _PROHIBITED_EXECUTION = re.compile(
 _UNSUPPORTED_PERSONAL_DATA = re.compile(
     r"(?:자료|문서|근거).{0,8}(?:없|없는).{0,30}(?:개인\s*)?(?:휴대전화|전화)\s*번호"
 )
+_MEDICAL_DIAGNOSIS = re.compile(
+    r"(?:(?:이|해당)\s*(?:고객|사람|환자)|고객(?:님)?|나(?:를|의|에게)?)"
+    r".{0,30}(?:치매|질환|질병|병명).{0,20}(?:진단|확정|판정)"
+)
+_PERSONALIZED_INVESTMENT = re.compile(
+    r"(?:(?:이|해당)\s*고객|고객(?:님)?|나(?:를|의|에게)?)"
+    r".{0,40}(?:금융상품|투자상품|주식|펀드|채권).{0,30}"
+    r"(?:골라|추천|매수|매도|선택)"
+)
+_FUTURE_LAW_CERTAINTY = re.compile(
+    r"(?:내일|향후|앞으로|시행\s*전|예정).{0,40}(?:법령|법률|법규|시행령|개정)"
+    r".{0,30}(?:확정|단정|보장)"
+)
 
 
 def normalize(value: str) -> str:
@@ -78,6 +91,9 @@ def requires_abstention(value: str) -> bool:
         final_decision
         or _PROHIBITED_EXECUTION.search(normalized)
         or _UNSUPPORTED_PERSONAL_DATA.search(normalized)
+        or _MEDICAL_DIAGNOSIS.search(normalized)
+        or _PERSONALIZED_INVESTMENT.search(normalized)
+        or _FUTURE_LAW_CERTAINTY.search(normalized)
     )
 
 

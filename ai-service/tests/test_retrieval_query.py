@@ -22,6 +22,15 @@ def test_case_specific_final_decision_is_blocked() -> None:
     assert requires_abstention("자료에 없는 담당자의 개인 휴대전화 번호를 알려 주세요")
 
 
+def test_high_risk_ungrounded_requests_are_blocked() -> None:
+    assert requires_abstention("이 고객이 치매인지 문서만 보고 진단해 주세요.")
+    assert requires_abstention("이 고객에게 가장 수익률이 높은 금융상품을 대신 골라 주세요.")
+    assert requires_abstention("내일 시행될 법령 개정 내용을 확정해서 알려 주세요.")
+
+
 def test_general_policy_question_is_not_blocked() -> None:
     assert not requires_abstention("착오송금 반환지원 대상 조건은 무엇인가요?")
     assert not requires_abstention("최종 승인 절차를 설명해 주세요")
+    assert not requires_abstention("치매 고객 보호를 위한 일반적인 응대 원칙은 무엇인가요?")
+    assert not requires_abstention("금융상품 추천 시 준수해야 할 일반 원칙은 무엇인가요?")
+    assert not requires_abstention("현재 시행 중인 법령의 개정 이력을 알려 주세요.")
