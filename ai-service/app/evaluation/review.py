@@ -123,6 +123,48 @@ def finalize_review_csv(
     return len(accepted)
 
 
+def write_provisional_benchmark_dataset(
+    output_jsonl: Path,
+    candidates: tuple[ReviewCandidate, ...],
+    corpus: tuple[EvaluationChunk, ...],
+) -> int:
+    """Build a model-comparison dataset scoped to the supplied approved corpus.
+
+    Review decisions are deliberately not promoted here. The output is provisional
+    benchmark input and must not be represented as a human-finalized golden set.
+    """
+    known_chunk_ids = {chunk.chunk_id for chunk in corpus}
+    selected: list[dict[str, object]] = []
+    for candidate in candidates:
+        relevant = set(candidate.relevant_chunk_ids)
+        overlap = relevant & known_chunk_ids
+        if overlap and overlap != relevant:
+            raise ValueError(f"{candidate.candidate_id}: partially available relevance set")
+        if relevant and not overlap:
+            continue
+        selected.append({
+            "queryId": candidate.candidate_id,
+            "query": candidate.query,
+            "principalRoles": list(candidate.principal_roles),
+            "requesterAudiences": list(candidate.requester_audiences),
+            "asOf": candidate.as_of.isoformat(),
+            "relevantChunkIds": list(candidate.relevant_chunk_ids),
+            "expectNoResults": candidate.expected_action == "ABSTAIN",
+            "tags": list(candidate.tags),
+        })
+    if not selected or not any(payload["relevantChunkIds"] for payload in selected):
+        raise ValueError("benchmark dataset requires at least one answer case")
+    output_jsonl.parent.mkdir(parents=True, exist_ok=True)
+    output_jsonl.write_text(
+        "".join(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n"
+            for payload in selected
+        ),
+        encoding="utf-8",
+    )
+    return len(selected)
+
+
 def _candidate(payload: dict[str, Any]) -> ReviewCandidate:
     return ReviewCandidate(
         candidate_id=str(payload["candidateId"]),

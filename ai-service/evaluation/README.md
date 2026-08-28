@@ -86,11 +86,24 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 `PENDING`이다. 1차 후보 선정 근거와 알려진 추출 한계는
 `official-golden-set-v1.md`에 기록한다.
 
-공식 manifest는 모두 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
-운영 ingestion 경로, PostgreSQL, pgvector에 기록하지 않고
+공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
+2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
+운영 ingestion 경로와 분리해
 `data/derived/evaluation/retrieval-official-review-corpus-<date>.jsonl`에만 원자적으로 생성한다.
 따라서 이 흐름은 검색 정답 후보를 검토하기 위한 도구일 뿐 문서 승인이나 검색 노출을
 수행하지 않는다.
+
+승인된 5개 문서의 E5-small/Arctic-ko 비교 결과와 pgvector 공존 검증은
+`approved-model-comparison-v1.md`에 기록한다. 공식 후보 중 승인 corpus가 완전히 지원하는
+질의만 잠정 비교셋으로 만들려면 다음 명령을 사용한다. 이 출력은 사람이 최종 확정한
+골든셋으로 간주하지 않는다.
+
+```bash
+uv run python -m app.evaluation.review_cli benchmark \
+  --corpus data/derived/evaluation/retrieval-official-corpus-2026-08-28.jsonl \
+  --candidates evaluation/reviews/official-retrieval-review-candidates-v1.jsonl \
+  --output-jsonl data/derived/evaluation/retrieval-approved-provisional-v1.jsonl
+```
 
 ```bash
 uv run python -m app.evaluation.official_review_cli \
