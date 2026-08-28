@@ -181,7 +181,7 @@ def _review_row(
     }
 
 
-def _evidence_excerpt(content: str, query: str, *, limit: int = 360) -> str:
+def _evidence_excerpt(content: str, query: str, *, limit: int = 720) -> str:
     """Return a deterministic, query-focused review excerpt.
 
     Prefix-only excerpts hid the actual answer when a long chunk began with a table,
@@ -205,17 +205,22 @@ def _evidence_excerpt(content: str, query: str, *, limit: int = 360) -> str:
         reverse=True,
     )
     best_index = ranked[0][0]
-    selected = paragraphs[best_index]
-    for distance in range(1, len(paragraphs)):
-        for index in (best_index + distance, best_index - distance):
-            if index < 0 or index >= len(paragraphs):
-                continue
-            candidate = f"{selected}\n\n{paragraphs[index]}"
-            if len(candidate) > limit:
-                continue
-            selected = candidate
-        if len(selected) >= limit * 0.75:
+    selected_indexes = [best_index]
+    for index in range(best_index + 1, len(paragraphs)):
+        candidate_indexes = [*selected_indexes, index]
+        candidate = "\n\n".join(paragraphs[value] for value in candidate_indexes)
+        if len(candidate) > limit:
             break
+        selected_indexes = candidate_indexes
+    selected_length = len("\n\n".join(paragraphs[index] for index in selected_indexes))
+    if selected_length < limit * 0.5:
+        for index in range(best_index - 1, -1, -1):
+            candidate_indexes = [index, *selected_indexes]
+            candidate = "\n\n".join(paragraphs[value] for value in candidate_indexes)
+            if len(candidate) > limit:
+                break
+            selected_indexes = candidate_indexes
+    selected = "\n\n".join(paragraphs[index] for index in selected_indexes)
     return selected[:limit].rstrip()
 
 

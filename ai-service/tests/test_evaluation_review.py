@@ -33,7 +33,7 @@ def test_evidence_excerpt_focuses_on_query_relevant_paragraph() -> None:
 
     assert "지정인 동의" in excerpt
     assert "안내 메시지 전송" in excerpt
-    assert len(excerpt) <= 360
+    assert len(excerpt) <= 720
 
 
 def test_committed_review_pack_contains_fifty_pending_candidates(tmp_path: Path) -> None:

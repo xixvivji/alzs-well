@@ -20,7 +20,7 @@ from app.ingestion.pdf_validator import (
 )
 
 
-EXTRACTOR_VERSION = "pypdf-text-v1"
+EXTRACTOR_VERSION = "pypdf-text-v2"
 MIN_PAGES_FOR_COVERAGE_CHECK = 5
 MIN_SEARCHABLE_PAGE_RATIO = 0.10
 WHITESPACE = re.compile(r"[\t\x0b\x0c\r ]+")
@@ -35,6 +35,13 @@ HEADING_PATTERNS = (
     (re.compile(r"^\d+[.)]\s*\S"), 2),
     (re.compile(r"^[IVX]+[.)]\s*\S", re.IGNORECASE), 2),
     (re.compile(r"^[가-힣][.)]\s*\S"), 3),
+)
+LEGAL_DOCUMENT_TYPES = {"LAW", "REGULATION"}
+LEGAL_ARTICLE = re.compile(
+    r"^(?P<label>제\s*\d+\s*조(?:의\s*\d+)?(?:\([^)]*\))?)(?:\s+(?P<body>.*))?$"
+)
+LEGAL_ITEM = re.compile(
+    r"^(?:[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]|\d+(?:의\d+)?[.)]|[가-하][.)])\s*\S"
 )
 
 
@@ -62,7 +69,11 @@ def extract_pdf_document(
         raise KnowledgeContractError("OCR_REQUIRED")
     cleaned_pages, margin_warnings = _remove_repeated_margins(page_lines)
 
-    blocks = _build_blocks(cleaned_pages, title)
+    blocks = _build_blocks(
+        cleaned_pages,
+        title,
+        legal_structure=manifest.payload.get("documentType") in LEGAL_DOCUMENT_TYPES,
+    )
     if not any(block.block_type != "HEADING" for block in blocks):
         raise KnowledgeContractError("NO_EXTRACTABLE_CONTENT")
 
@@ -213,7 +224,10 @@ def _first_content_line(pages: tuple[tuple[str, ...], ...]) -> str | None:
 
 
 def _build_blocks(
-    pages: tuple[tuple[str, ...], ...], title: str
+    pages: tuple[tuple[str, ...], ...],
+    title: str,
+    *,
+    legal_structure: bool = False,
 ) -> list[ExtractedBlock]:
     blocks: list[ExtractedBlock] = []
     heading_stack: dict[int, str] = {1: title}
@@ -245,6 +259,34 @@ def _build_blocks(
                 continue
             if page_number == 1 and not blocks and not paragraph and line == title:
                 continue
+            if legal_structure:
+                article = LEGAL_ARTICLE.match(line)
+                if article:
+                    flush_paragraph()
+                    label = article.group("label")
+                    for level in tuple(heading_stack):
+                        if level >= 3:
+                            heading_stack.pop(level)
+                    heading_stack[3] = label
+                    blocks.append(
+                        ExtractedBlock(
+                            block_order=len(blocks) + 1,
+                            block_type="HEADING",
+                            text=label,
+                            heading_level=3,
+                            section_path=_section_path(heading_stack, title),
+                            page_start=page_number,
+                            page_end=page_number,
+                        )
+                    )
+                    body = article.group("body")
+                    if body:
+                        paragraph.append(body)
+                    continue
+                if LEGAL_ITEM.match(line):
+                    flush_paragraph()
+                    paragraph.append(line)
+                    continue
             heading_level = _heading_level(line)
             if heading_level is None:
                 paragraph.append(line)
