@@ -32,6 +32,7 @@ class EmbeddingConfig:
     model_revision: str | None = None
     model_sha256: str | None = None
     allow_hash_fallback: bool = True
+    arctic_rollout_enabled: bool = False
 
     @classmethod
     def from_environment(
@@ -42,8 +43,23 @@ class EmbeddingConfig:
         if backend not in {"hash", "local-e5", "local-arctic-ko"}:
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         fallback = _boolean(values.get("ALZS_EMBEDDING_ALLOW_HASH_FALLBACK", "true"))
+        arctic_rollout = _boolean(
+            values.get("ALZS_ARCTIC_ROLLOUT_ENABLED", "false")
+        )
+        if arctic_rollout and backend != "local-arctic-ko":
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         if backend == "hash":
-            return cls(backend=backend, allow_hash_fallback=fallback)
+            return cls(
+                backend=backend,
+                allow_hash_fallback=fallback,
+                arctic_rollout_enabled=arctic_rollout,
+            )
+        if backend == "local-arctic-ko" and not arctic_rollout:
+            return cls(
+                backend=backend,
+                allow_hash_fallback=fallback,
+                arctic_rollout_enabled=False,
+            )
         root_value = values.get("ALZS_EMBEDDING_MODEL_ROOT", "").strip()
         path_value = values.get("ALZS_EMBEDDING_MODEL_PATH", "").strip()
         revision = values.get("ALZS_EMBEDDING_MODEL_REVISION", "").strip()
@@ -70,6 +86,7 @@ class EmbeddingConfig:
             model_revision=revision,
             model_sha256=digest,
             allow_hash_fallback=fallback,
+            arctic_rollout_enabled=arctic_rollout,
         )
 
     def resolve_model_directory(self) -> Path:
@@ -104,6 +121,8 @@ def create_embedding_provider(
     arctic_factory: ArcticFactory | None = None,
 ) -> EmbeddingProvider:
     if config.backend == "hash":
+        return LocalHashEmbeddingProvider()
+    if config.backend == "local-arctic-ko" and not config.arctic_rollout_enabled:
         return LocalHashEmbeddingProvider()
     model_directory = config.resolve_model_directory()
     _verify_safetensors(model_directory, config.model_sha256)

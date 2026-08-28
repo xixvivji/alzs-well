@@ -9,6 +9,7 @@ from app.errors import KnowledgeContractError
 from app.main import (
     _api_config,
     create_app,
+    get_embedding_config,
     get_embedding_provider,
     get_search_repository,
 )
@@ -72,9 +73,31 @@ def test_health_does_not_require_internal_token(monkeypatch: object) -> None:
     assert response.json() == {
         "service": "ai-rag",
         "status": "UP",
+        "embeddingConfiguredBackend": "hash",
         "embeddingBackend": "hash",
         "embeddingModelVersion": "local-hash-ngram-ko-v1",
+        "embeddingDimensions": 384,
+        "arcticRolloutEnabled": False,
+        "embeddingFallbackUsed": False,
     }
+
+
+def test_health_reports_arctic_rollout_disabled_without_loading_model(
+    monkeypatch: object,
+) -> None:
+    monkeypatch.setenv("ALZS_EMBEDDING_BACKEND", "local-arctic-ko")  # type: ignore[attr-defined]
+    monkeypatch.setenv("ALZS_ARCTIC_ROLLOUT_ENABLED", "false")  # type: ignore[attr-defined]
+    get_embedding_provider.cache_clear()
+    get_embedding_config.cache_clear()
+    client, _ = _client(monkeypatch)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["embeddingConfiguredBackend"] == "local-arctic-ko"
+    assert response.json()["embeddingBackend"] == "hash"
+    assert response.json()["arcticRolloutEnabled"] is False
+    assert response.json()["embeddingFallbackUsed"] is False
 
 
 def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object) -> None:
@@ -184,6 +207,7 @@ def _client(
     monkeypatch.setenv("ALZS_AI_INTERNAL_TOKEN", TOKEN)  # type: ignore[attr-defined]
     _api_config.cache_clear()
     get_embedding_provider.cache_clear()
+    get_embedding_config.cache_clear()
     repository = FakeSearchRepository(failure=failure)
     application = create_app()
     application.dependency_overrides[get_search_repository] = lambda: repository
