@@ -12,6 +12,7 @@ from app.domain.search import SearchRequest, StoredSearchResult
 from app.embedding.base import EmbeddingProvider, vector_literal
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
+from app.retrieval.query import keyword_query
 from app.storage.database_config import DatabaseConfig
 from app.storage.embedding_index import vector_type
 
@@ -24,6 +25,21 @@ KEYWORD_WEIGHT = 0.35
 VECTOR_WEIGHT = 0.65
 VECTOR_THRESHOLD = 0.15
 RESULT_THRESHOLD = 0.35
+ARCTIC_KEYWORD_WEIGHT = 0.2
+ARCTIC_VECTOR_WEIGHT = 0.8
+ARCTIC_VECTOR_THRESHOLD = 0.15
+ARCTIC_RESULT_THRESHOLD = 0.4
+
+
+def search_parameters(backend: str) -> tuple[float, float, float, float]:
+    if backend == "local-arctic-ko":
+        return (
+            ARCTIC_KEYWORD_WEIGHT,
+            ARCTIC_VECTOR_WEIGHT,
+            ARCTIC_VECTOR_THRESHOLD,
+            ARCTIC_RESULT_THRESHOLD,
+        )
+    return KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD
 
 
 class PostgresSearchRepository:
@@ -78,6 +94,9 @@ class PostgresSearchRepository:
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
         descriptor = self._embedding_provider.descriptor
+        keyword_weight, vector_weight, vector_threshold, result_threshold = (
+            search_parameters(descriptor.backend)
+        )
         database_vector_type = vector_type(descriptor.dimensions)
         query_vector = vector_literal(
             self._embedding_provider.embed_query(request.query),
@@ -138,12 +157,12 @@ class PostgresSearchRepository:
                         source_url, source_hash, text_hash, content, score
                     from scored
                     where score >= %s
-                    order by authority_rank desc, score desc,
+                    order by score desc, authority_rank desc,
                         document_id, version_label, chunk_order
                     limit %s
                     """,
                     (
-                        request.query,
+                        keyword_query(request.query),
                         query_vector,
                         descriptor.model_id,
                         descriptor.model_version,
@@ -152,10 +171,10 @@ class PostgresSearchRepository:
                         list(request.requester_audiences),
                         request.as_of,
                         request.as_of,
-                        KEYWORD_WEIGHT,
-                        VECTOR_WEIGHT,
-                        VECTOR_THRESHOLD,
-                        RESULT_THRESHOLD,
+                        keyword_weight,
+                        vector_weight,
+                        vector_threshold,
+                        result_threshold,
                         request.limit,
                     ),
                 )

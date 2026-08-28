@@ -9,6 +9,7 @@ Arctic-ko 합성 E2E 부하 게이트의 측정법과 결과는 `arctic-ko-load-
 평가에 반입한 모델의 고정 revision·차원·prefix와 SentenceTransformer가 소비하는 모든
 파일의 상대경로·크기·SHA-256은 `model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는
 Git에 커밋하지 않는다.
+사람 승인 후 단계적 활성화 재검증 결과는 `arctic-ko-staged-e2e-v1.md`에 기록한다.
 
 ## 데이터셋
 
@@ -78,6 +79,60 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 실제 공식 문서가 `APPROVED/ACTIVE`가 되면 해당 ingestion chunk로 corpus를 새로 만들고,
 동일한 검수 흐름에서 최소 2명의 담당자가 정답 근거를 확인한 데이터셋을 별도 버전으로
 추가한다.
+
+### 공식문서 사전 검수 팩
+
+`reviews/official-retrieval-review-candidates-v1.jsonl`과
+`reviews/official-retrieval-review-v1.csv`는 저장소에 반입된 공식문서 7개를 대상으로 만든
+검수 팩이다. 승인·활성 문서 5개가 완전히 지원하는 답변형 21개와 무응답형 6개,
+총 27개는 2026-08-28 사람 최종 검수로 `ACCEPTED`가 되었다. 아직 승인되지 않은 문서에
+의존하는 ORC-004, ORC-005, ORC-013은 `PENDING`을 유지한다. 승인된 27개만
+`datasets/official-operational-golden-v1.jsonl`에 고정한다.
+
+공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
+2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
+운영 ingestion 경로와 분리해
+`data/derived/evaluation/retrieval-official-review-corpus-<date>.jsonl`에만 원자적으로 생성한다.
+따라서 이 흐름은 검색 정답 후보를 검토하기 위한 도구일 뿐 문서 승인이나 검색 노출을
+수행하지 않는다.
+
+승인된 5개 문서의 E5-small/Arctic-ko 비교 결과와 pgvector 공존 검증은
+`approved-model-comparison-v1.md`에 기록한다. 공식 후보 중 승인 corpus가 완전히 지원하는
+질의만 잠정 비교셋으로 만들려면 다음 명령을 사용한다. 운영 회귀에는 잠정 출력이 아니라
+사람이 최종 확정한 `datasets/official-operational-golden-v1.jsonl`을 사용한다.
+
+```bash
+uv run python -m app.evaluation.review_cli benchmark \
+  --corpus data/derived/evaluation/retrieval-official-corpus-2026-08-28.jsonl \
+  --candidates evaluation/reviews/official-retrieval-review-candidates-v1.jsonl \
+  --output-jsonl data/derived/evaluation/retrieval-approved-provisional-v1.jsonl
+```
+
+```bash
+uv run python -m app.evaluation.official_review_cli \
+  --repo-root .. \
+  --as-of 2026-08-27 \
+  --manifest knowledge/manifests/DOC-FSC-DESIGNATED-PERSON-NOTICE-001.yaml \
+  --manifest knowledge/manifests/DOC-FSC-FACE-TO-FACE-PHISHING-RELIEF-001.yaml \
+  --manifest knowledge/manifests/DOC-FSC-NONFACE-ACCOUNT-BLOCK-QA-001.yaml \
+  --manifest knowledge/manifests/DOC-FSC-SAFE-BLOCK-001.yaml \
+  --manifest knowledge/manifests/DOC-KDIC-MISTAKEN-REMITTANCE-ELIGIBILITY-001.yaml \
+  --manifest knowledge/manifests/DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001.yaml \
+  --manifest knowledge/manifests/DOC-REG-TELECOM-FRAUD-REFUND-DECREE-001.yaml
+```
+
+생성된 corpus로 검수 CSV를 재현할 수 있다.
+
+```bash
+uv run python -m app.evaluation.review_cli prepare \
+  --corpus data/derived/evaluation/retrieval-official-review-corpus-2026-08-27.jsonl \
+  --candidates evaluation/reviews/official-retrieval-review-candidates-v1.jsonl \
+  --output-csv evaluation/reviews/official-retrieval-review-v1.csv
+```
+
+검수자는 XLSX 또는 CSV에서 `reviewDecision`과 `reviewComment`만 수정한다. `ACCEPTED`는
+질문-근거 쌍을 평가셋으로 승격해도 된다는 뜻이며, 원문 manifest의 승인 상태는 별도
+지식 거버넌스 절차에서 변경해야 한다.
 
 ## 실행
 

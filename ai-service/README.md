@@ -210,6 +210,9 @@ ALZS_EMBEDDING_ALLOW_EVALUATION_MODEL=false
 
 Arctic-ko는 저장소에 고정된 revision과 SHA-256이 정확히 일치할 때만 선택된다. 로컬
 반입본으로 모델 런타임 오버레이를 사용할 때는 저장소 루트에서 다음처럼 실행한다.
+`ALZS_EMBEDDING_BACKEND=local-arctic-ko`만 지정하고
+`ALZS_ARCTIC_ROLLOUT_ENABLED=false`이면 모델 파일을 열지 않고 hash backend로 동작한다.
+Arctic-ko 활성화 환경은 반드시 `ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 명시해야 한다.
 
 ```bash
 AI_EVALUATION_TEST_APPROVAL=true \
@@ -234,11 +237,14 @@ cache의 symlink snapshot을 그대로 마운트하지 않고 catalog의 9개 �
 적용하지 않지만 keyword 검색 대상에서는 제외하지 않는다. 모델을 전환하면 승인 문서를
 새 모델 버전으로 재-ingestion한 뒤 동일 검수 평가셋으로 Recall@K와 MRR을 다시 측정한다.
 
-Arctic-ko는 품질 검토 상태가 `EVALUATION_ONLY`이므로 production context에서 기동할 수 없다.
-제한된 합성 E2E와 부하 시험만 `SYNTHETIC_TEST` context와
-`AI_EVALUATION_TEST_APPROVAL=true`를 함께 명시해 `local-arctic-ko` backend를 활성화한다.
-고정 artifact 검증, 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion 및 Spring citation
-재검증이 모두 통과한 뒤에만 운영 기본값 변경을 별도 승인한다.
+Arctic-ko는 2026-08-28 운영형 골든셋 27건의 사람 최종 승인과 품질 재평가를 통과해
+승격 의사결정은 `STAGED_GO`다. 다만 권위 모델 catalog는 아직 `EVALUATION_ONLY`이므로
+AWS staging 런타임에는 활성화하지 않는다. 기본 Compose와 기본 환경값은 계속 hash를
+사용하며 자동으로 전환하지 않는다. 현재 `compose.arctic-ko.yaml`은 제한된 합성 E2E와
+부하 시험에서만 `SYNTHETIC_TEST`, `AI_EVALUATION_TEST_APPROVAL=true`,
+`ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 함께 지정해 사용한다. 고정 artifact 검증,
+1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion, Spring citation 재검증 및
+결정론적 폴백은 단계적 활성화에서도 그대로 유지한다.
 
 Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 FastAPI 내부 검색과 Spring
 검색 API를 각각 동시성 4, 100건으로 측정한다. p95 1초 이하, 오류율 0%, 처리량 2 RPS
@@ -276,6 +282,12 @@ ai-service/.venv/bin/python scripts/copilot_rag_e2e.py
 검수자는 `reviewDecision`과 `reviewComment`만 작성하며, `ACCEPTED`로 확인된 행만 별도
 평가 데이터셋으로 승격할 수 있다. 현재 후보는 합성 corpus 전용이며 공식문서 승인이나
 운영 품질을 의미하지 않는다.
+
+공식문서 사전 검수는 별도 안전 경로인 `app.evaluation.official_review_cli`를 사용한다.
+이 경로는 `IN_REVIEW/PENDING_ACTIVATION/REVIEW_REQUIRED` 공식 manifest만 허용하고,
+운영 chunk·DB·벡터 저장소 대신 `data/derived/evaluation`에 검수 전용 corpus만 생성한다.
+30개 공식문서 검색 후보와 검수 방법은
+[`evaluation/official-golden-set-v1.md`](evaluation/official-golden-set-v1.md)에 정리되어 있다.
 
 ## 테스트
 

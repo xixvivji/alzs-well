@@ -140,6 +140,18 @@ def test_embedding_config_defaults_to_hash() -> None:
     assert config.allow_hash_fallback is False
 
 
+def test_arctic_backend_stays_on_hash_until_rollout_is_enabled() -> None:
+    config = EmbeddingConfig.from_environment(
+        {"ALZS_EMBEDDING_BACKEND": "local-arctic-ko"}
+    )
+
+    provider = create_embedding_provider(config)
+
+    assert config.backend == "local-arctic-ko"
+    assert not config.arctic_rollout_enabled
+    assert isinstance(provider, LocalHashEmbeddingProvider)
+
+
 def test_embedding_config_loads_only_hash_verified_local_e5(
     tmp_path: Path,
 ) -> None:
@@ -175,6 +187,7 @@ def test_embedding_config_loads_only_pinned_hash_verified_arctic(
         "ALZS_EMBEDDING_MODEL_REVISION": ARCTIC_MODEL_REVISION,
         "ALZS_EMBEDDING_MODEL_SHA256": ARCTIC_MODEL_SHA256,
         "ALZS_EMBEDDING_ALLOW_HASH_FALLBACK": "false",
+        "ALZS_ARCTIC_ROLLOUT_ENABLED": "true",
     }
 
     with pytest.raises(KnowledgeContractError) as not_promoted:
@@ -209,6 +222,7 @@ def test_embedding_config_loads_only_pinned_hash_verified_arctic(
         model_files=(_package_file("model.safetensors", payload),),
         execution_context="SYNTHETIC_TEST",
         allow_evaluation_model=True,
+        arctic_rollout_enabled=True,
     )
     calls: list[tuple[Path, str]] = []
 
@@ -300,6 +314,7 @@ def test_arctic_config_falls_back_only_when_model_runtime_is_unavailable(
         model_files=(_package_file("model.safetensors", payload),),
         execution_context="SYNTHETIC_TEST",
         allow_evaluation_model=True,
+        arctic_rollout_enabled=True,
     )
 
     def unavailable(path: Path, revision: str) -> ArcticStubProvider:
@@ -345,6 +360,8 @@ def test_embedding_config_rejects_hash_mismatch_and_can_disable_fallback(
             "ALZS_EMBEDDING_MODEL_ROOT": "relative/models",
         },
         {"ALZS_EMBEDDING_ALLOW_HASH_FALLBACK": "yes"},
+        {"ALZS_ARCTIC_ROLLOUT_ENABLED": "yes"},
+        {"ALZS_ARCTIC_ROLLOUT_ENABLED": "true"},
     ],
 )
 def test_embedding_config_rejects_unsafe_or_unknown_values(

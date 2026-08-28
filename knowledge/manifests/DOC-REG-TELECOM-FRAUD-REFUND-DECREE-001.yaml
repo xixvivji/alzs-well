@@ -18,10 +18,10 @@ allowedRoles:
   - KNOWLEDGE_ADMIN
 effectiveFrom: "2026-08-04"
 effectiveTo: null
-checkedAt: "2026-08-26"
-usageRights: REVIEW_REQUIRED
-approvalStatus: IN_REVIEW
-lifecycleStatus: PENDING_ACTIVATION
-approvedBy: null
-approvedAt: null
+checkedAt: "2026-08-28"
+usageRights: INTERNAL_USE_APPROVED
+approvalStatus: APPROVED
+lifecycleStatus: ACTIVE
+approvedBy: kjw3568@naver.com
+approvedAt: "2026-08-28T00:31:28Z"
 supersedes: null

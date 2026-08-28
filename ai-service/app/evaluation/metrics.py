@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass
 
 from app.embedding.base import EmbeddingProvider
+from app.evaluation.embedding_cache import cached
 from app.evaluation.models import EvaluationCase, EvaluationChunk
 from app.evaluation.ranker import SearchConfiguration, is_eligible, rank
 
@@ -36,8 +37,9 @@ def evaluate(
     configuration: SearchConfiguration,
     embedding_provider: EmbeddingProvider | None = None,
 ) -> tuple[EvaluationMetrics, tuple[CaseResult, ...]]:
+    evaluation_provider = cached(embedding_provider)
     results = tuple(
-        _evaluate_case(corpus, case, configuration, embedding_provider) for case in cases
+        _evaluate_case(corpus, case, configuration, evaluation_provider) for case in cases
     )
     answerable = tuple(
         (case, result) for case, result in zip(cases, results, strict=True) if not case.expect_no_results

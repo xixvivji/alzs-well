@@ -13,6 +13,7 @@ from app.domain.search import Citation, SearchRequest, SearchResponse, SearchRes
 from app.embedding.base import EmbeddingProvider
 from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.errors import KnowledgeContractError
+from app.retrieval.query import requires_abstention
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import PostgresSearchRepository, hash_query
 
@@ -29,13 +30,22 @@ def create_app() -> FastAPI:
     application.add_exception_handler(RequestValidationError, _validation_error_handler)
 
     @application.get("/health")
-    def health() -> dict[str, str]:
+    def health() -> dict[str, str | int | bool]:
+        config = get_embedding_config()
         descriptor = get_embedding_provider().descriptor
         return {
             "status": "UP",
             "service": "ai-rag",
+            "embeddingConfiguredBackend": config.backend,
             "embeddingBackend": descriptor.backend,
             "embeddingModelVersion": descriptor.model_version,
+            "embeddingDimensions": descriptor.dimensions,
+            "arcticRolloutEnabled": config.arctic_rollout_enabled,
+            "embeddingFallbackUsed": (
+                config.backend == "local-arctic-ko"
+                and config.arctic_rollout_enabled
+                and descriptor.backend == "hash"
+            ),
         }
 
     @application.post(
@@ -53,7 +63,9 @@ def create_app() -> FastAPI:
         query_hash = hash_query(payload.query)
         run_id = repository.start_run(payload, query_hash)
         try:
-            stored_results = repository.search(payload)
+            stored_results = (
+                () if requires_abstention(payload.query) else repository.search(payload)
+            )
             repository.complete_run(run_id, len(stored_results))
         except KnowledgeContractError as error:
             try:
@@ -103,7 +115,12 @@ def get_search_repository() -> PostgresSearchRepository:
 
 @lru_cache
 def get_embedding_provider() -> EmbeddingProvider:
-    return create_embedding_provider(EmbeddingConfig.from_environment())
+    return create_embedding_provider(get_embedding_config())
+
+
+@lru_cache
+def get_embedding_config() -> EmbeddingConfig:
+    return EmbeddingConfig.from_environment()
 
 
 @lru_cache

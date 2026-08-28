@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.model-runtime
     environment: &arctic-environment
       ALZS_EMBEDDING_BACKEND: local-arctic-ko
+      ALZS_ARCTIC_ROLLOUT_ENABLED: "true"
       ALZS_EMBEDDING_MODEL_ROOT: /opt/alzs-well/models
       ALZS_EMBEDDING_MODEL_PATH: snowflake-arctic-embed-l-v2.0-ko
       ALZS_EMBEDDING_MODEL_REVISION: 55ec6e9358a56d56af759bc8372e970caf8c305f

@@ -65,7 +65,7 @@ def test_all_official_manifests_conform_to_the_shared_contract(repo_root: Path) 
         assert (repo_root / manifest.source_path).is_file()
 
 
-def test_current_telecom_fraud_law_manifests_are_versioned_and_still_blocked(
+def test_current_telecom_fraud_law_manifests_are_versioned_and_approved(
     repo_root: Path,
 ) -> None:
     act = load_and_validate_manifest(
@@ -83,12 +83,8 @@ def test_current_telecom_fraud_law_manifests_are_versioned_and_still_blocked(
     assert decree.document_type == "REGULATION"
     assert decree.effective_from == date(2026, 8, 4)
     assert decree.effective_to is None
-    assert governance_blocking_codes(act, date(2026, 8, 26)) == [
-        "DOCUMENT_NOT_APPROVED",
-    ]
-    assert governance_blocking_codes(decree, date(2026, 8, 26)) == [
-        "DOCUMENT_NOT_APPROVED",
-    ]
+    assert governance_blocking_codes(act, date(2026, 8, 26)) == []
+    assert governance_blocking_codes(decree, date(2026, 8, 26)) == []
 
 
 @pytest.mark.parametrize(

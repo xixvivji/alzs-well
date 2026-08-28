@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.embedding.base import EmbeddingDescriptor, EmbeddingVector
+from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.evaluation.metrics import EvaluationMetrics, evaluate
 from app.evaluation.models import load_cases, load_corpus
 from app.evaluation.ranker import SearchConfiguration
@@ -66,3 +68,35 @@ def test_tuning_ranks_gate_passing_candidate_first_and_writes_all_candidates(
     assert QualityGate().failures(candidates[0][1]) == ()
     assert payload["best"]["qualityGatePassed"] is True
     assert len(payload["candidates"]) == 125
+
+
+def test_evaluation_caches_passage_embeddings_across_cases() -> None:
+    corpus = load_corpus(DATASETS / "retrieval-corpus-v1.jsonl")
+    cases = load_cases(DATASETS / "retrieval-v1.jsonl")
+    provider = _CountingProvider()
+
+    evaluate(corpus, cases, SearchConfiguration(), embedding_provider=provider)
+
+    assert provider.query_calls == len({case.query for case in cases})
+    assert provider.passage_calls <= len(corpus)
+
+
+class _CountingProvider:
+    def __init__(self) -> None:
+        self._delegate = LocalHashEmbeddingProvider()
+        self.descriptor = EmbeddingDescriptor(
+            backend="test",
+            model_id="counting",
+            model_version="counting-v1",
+            dimensions=self._delegate.descriptor.dimensions,
+        )
+        self.query_calls = 0
+        self.passage_calls = 0
+
+    def embed_query(self, value: str) -> EmbeddingVector:
+        self.query_calls += 1
+        return self._delegate.embed_query(value)
+
+    def embed_passage(self, value: str) -> EmbeddingVector:
+        self.passage_calls += 1
+        return self._delegate.embed_passage(value)

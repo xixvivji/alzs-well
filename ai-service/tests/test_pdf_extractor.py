@@ -7,11 +7,13 @@ import pytest
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
+from app.domain.document import ExtractedDocument
 from app.domain.manifest import KnowledgeManifest
 from app.errors import KnowledgeContractError
 from app.ingestion.chunker import chunk_document
 from app.ingestion.pdf_extractor import (
     EXTRACTOR_VERSION,
+    _build_blocks,
     _heading_level,
     _join_wrapped_marked_headings,
     _metadata_title,
@@ -173,6 +175,45 @@ def test_joins_only_wrapped_marked_question_headings() -> None:
         "1. 일반 절",
         "질문인가요?",
     )
+
+
+def test_legal_structure_preserves_article_items_as_searchable_text() -> None:
+    blocks = _build_blocks(
+        (
+            (
+                "제2조(정의) 이 법에서 사용하는 용어의 뜻은 다음과 같다.",
+                "2. “전기통신금융사기”란 다음 각 목의 행위를 말한다.",
+                "가. 자금을 송금ㆍ이체하도록 하는 행위",
+            ),
+            (
+                "나. 개인정보를 알아내어 자금을 송금ㆍ이체하는 행위",
+                "다. 자금을 교부받도록 하는 행위",
+                "라. 자금을 출금하도록 하는 행위",
+            ),
+        ),
+        "통신사기피해환급법",
+        legal_structure=True,
+    )
+
+    chunks = chunk_document(
+        ExtractedDocument(
+            document_id="DOC-LAW-SYN-001",
+            version_label="1.0.0",
+            title="통신사기피해환급법",
+            source_hash="sha256:" + "0" * 64,
+            extractor_version=EXTRACTOR_VERSION,
+            blocks=tuple(blocks),
+            warnings=(),
+        )
+    )
+
+    assert chunks[0].section_path == ("통신사기피해환급법", "제2조(정의)")
+    assert "2. “전기통신금융사기”" in chunks[0].text
+    assert "가. 자금을 송금ㆍ이체" in chunks[0].text
+    assert "나. 개인정보" in chunks[0].text
+    assert "라. 자금을 출금" in chunks[0].text
+    assert chunks[0].page_start == 1
+    assert chunks[0].page_end == 2
 
 
 @pytest.mark.parametrize(

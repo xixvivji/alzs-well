@@ -47,6 +47,7 @@ class EmbeddingConfig:
     model_files: tuple[ModelPackageFile, ...] = ()
     execution_context: str = "PRODUCTION"
     allow_evaluation_model: bool = False
+    arctic_rollout_enabled: bool = False
 
     @classmethod
     def from_environment(
@@ -73,12 +74,26 @@ class EmbeddingConfig:
         )
         if backend != "hash" and execution_context == "PRODUCTION" and fallback:
             raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+        arctic_rollout = _boolean(
+            values.get("ALZS_ARCTIC_ROLLOUT_ENABLED", "false")
+        )
+        if arctic_rollout and backend != "local-arctic-ko":
+            raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
         if backend == "hash":
             return cls(
                 backend=backend,
                 allow_hash_fallback=fallback,
                 execution_context=execution_context,
                 allow_evaluation_model=allow_evaluation_model,
+                arctic_rollout_enabled=arctic_rollout,
+            )
+        if backend == "local-arctic-ko" and not arctic_rollout:
+            return cls(
+                backend=backend,
+                allow_hash_fallback=fallback,
+                execution_context=execution_context,
+                allow_evaluation_model=allow_evaluation_model,
+                arctic_rollout_enabled=False,
             )
         root_value = values.get("ALZS_EMBEDDING_MODEL_ROOT", "").strip()
         path_value = values.get("ALZS_EMBEDDING_MODEL_PATH", "").strip()
@@ -150,6 +165,7 @@ class EmbeddingConfig:
             model_files=selected.files,
             execution_context=execution_context,
             allow_evaluation_model=allow_evaluation_model,
+            arctic_rollout_enabled=arctic_rollout,
         )
         _validate_promotion(config)
         return config
@@ -186,6 +202,8 @@ def create_embedding_provider(
     arctic_factory: ArcticFactory | None = None,
 ) -> EmbeddingProvider:
     if config.backend == "hash":
+        return LocalHashEmbeddingProvider()
+    if config.backend == "local-arctic-ko" and not config.arctic_rollout_enabled:
         return LocalHashEmbeddingProvider()
     _validate_promotion(config)
     model_directory = config.resolve_model_directory()

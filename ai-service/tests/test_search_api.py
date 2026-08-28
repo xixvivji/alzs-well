@@ -9,6 +9,7 @@ from app.errors import KnowledgeContractError
 from app.main import (
     _api_config,
     create_app,
+    get_embedding_config,
     get_embedding_provider,
     get_search_repository,
 )
@@ -26,12 +27,14 @@ class FakeSearchRepository:
         self.started: tuple[SearchRequest, str] | None = None
         self.completed: tuple[UUID, int] | None = None
         self.failed: tuple[UUID, str] | None = None
+        self.search_calls = 0
 
     def start_run(self, request: SearchRequest, query_hash: str) -> UUID:
         self.started = (request, query_hash)
         return self.run_id
 
     def search(self, request: SearchRequest) -> tuple[StoredSearchResult, ...]:
+        self.search_calls += 1
         assert request.as_of.isoformat() == "2026-08-25"
         if self.failure is not None:
             raise KnowledgeContractError(self.failure)
@@ -70,9 +73,31 @@ def test_health_does_not_require_internal_token(monkeypatch: object) -> None:
     assert response.json() == {
         "service": "ai-rag",
         "status": "UP",
+        "embeddingConfiguredBackend": "hash",
         "embeddingBackend": "hash",
         "embeddingModelVersion": "local-hash-ngram-ko-v1",
+        "embeddingDimensions": 384,
+        "arcticRolloutEnabled": False,
+        "embeddingFallbackUsed": False,
     }
+
+
+def test_health_reports_arctic_rollout_disabled_without_loading_model(
+    monkeypatch: object,
+) -> None:
+    monkeypatch.setenv("ALZS_EMBEDDING_BACKEND", "local-arctic-ko")  # type: ignore[attr-defined]
+    monkeypatch.setenv("ALZS_ARCTIC_ROLLOUT_ENABLED", "false")  # type: ignore[attr-defined]
+    get_embedding_provider.cache_clear()
+    get_embedding_config.cache_clear()
+    client, _ = _client(monkeypatch)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["embeddingConfiguredBackend"] == "local-arctic-ko"
+    assert response.json()["embeddingBackend"] == "hash"
+    assert response.json()["arcticRolloutEnabled"] is False
+    assert response.json()["embeddingFallbackUsed"] is False
 
 
 def test_search_returns_ranked_content_and_contract_citation(monkeypatch: object) -> None:
@@ -157,12 +182,32 @@ def test_search_records_safe_failure_code(monkeypatch: object) -> None:
     assert repository.failed == (repository.run_id, "STORAGE_UNAVAILABLE")
 
 
+def test_search_abstains_before_retrieval_for_case_specific_final_decision(
+    monkeypatch: object,
+) -> None:
+    client, repository = _client(monkeypatch)
+    payload = _request()
+    payload["query"] = "이 사건의 고객이 착오송금 반환지원 대상인지 최종 승인해 주세요."
+
+    response = client.post(
+        "/internal/v1/search",
+        headers={"X-Internal-Service-Token": TOKEN},
+        json=payload,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"] == []
+    assert repository.search_calls == 0
+    assert repository.completed == (repository.run_id, 0)
+
+
 def _client(
     monkeypatch: object, *, failure: str | None = None
 ) -> tuple[TestClient, FakeSearchRepository]:
     monkeypatch.setenv("ALZS_AI_INTERNAL_TOKEN", TOKEN)  # type: ignore[attr-defined]
     _api_config.cache_clear()
     get_embedding_provider.cache_clear()
+    get_embedding_config.cache_clear()
     repository = FakeSearchRepository(failure=failure)
     application = create_app()
     application.dependency_overrides[get_search_repository] = lambda: repository
