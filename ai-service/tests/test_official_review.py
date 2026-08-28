@@ -249,7 +249,9 @@ def test_committed_official_review_pack_matches_reviewable_sources(
     assert len(review_rows) == 30
     assert sum(candidate.expected_action == "ANSWER" for candidate in candidates) == 24
     assert sum(candidate.expected_action == "ABSTAIN" for candidate in candidates) == 6
-    assert {candidate.review_decision for candidate in candidates} == {"PENDING"}
+    decisions = [candidate.review_decision for candidate in candidates]
+    assert decisions.count("ACCEPTED") == 27
+    assert decisions.count("PENDING") == 3
     assert {chunk.approval_status for chunk in corpus} == {"APPROVED", "IN_REVIEW"}
     assert {chunk.lifecycle_status for chunk in corpus} == {
         "ACTIVE",
@@ -266,6 +268,23 @@ def test_committed_official_review_pack_matches_reviewable_sources(
         assert row["relevantChunkIds"] == "|".join(candidate.relevant_chunk_ids)
         assert row["reviewDecision"] == candidate.review_decision
         assert row["reviewComment"] == candidate.review_comment
+
+    approved_dataset = repo_root / (
+        "ai-service/evaluation/datasets/official-operational-golden-v1.jsonl"
+    )
+    approved_rows = [
+        json.loads(line)
+        for line in approved_dataset.read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(approved_rows) == 27
+    assert {row["queryId"] for row in approved_rows} == {
+        candidate.candidate_id
+        for candidate in candidates
+        if candidate.review_decision == "ACCEPTED"
+    }
+    assert {"ORC-004", "ORC-005", "ORC-013"}.isdisjoint(
+        row["queryId"] for row in approved_rows
+    )
 
     approved_manifests = {
         "knowledge/manifests/DOC-FSC-DESIGNATED-PERSON-NOTICE-001.yaml",

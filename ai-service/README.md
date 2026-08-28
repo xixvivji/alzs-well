@@ -215,10 +215,12 @@ hash 어댑터로 시작할 수 있다. 검색 시 다른 모델 버전으로 �
 적용하지 않지만 keyword 검색 대상에서는 제외하지 않는다. 모델을 전환하면 승인 문서를
 새 모델 버전으로 재-ingestion한 뒤 동일 검수 평가셋으로 Recall@K와 MRR을 다시 측정한다.
 
-Arctic-ko는 품질 검토 상태가 `EVALUATION_ONLY`이므로 기본 모델로 자동 승격하지 않는다.
-다만 제한된 합성 E2E와 부하 시험에서는 `local-arctic-ko` backend로 활성화할 수 있다.
-고정 artifact 검증, 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion 및 Spring citation
-재검증이 모두 통과한 뒤에만 운영 기본값 변경을 별도 승인한다.
+Arctic-ko는 2026-08-28 운영형 골든셋 27건의 사람 최종 승인과 품질 재평가를 통과해
+`STAGED_APPROVED` 상태다. 기본 Compose와 기본 환경값은 계속 hash를 사용하며 자동으로
+전환하지 않는다. 제한된 내부 환경에서만 `compose.arctic-ko.yaml`과
+`ALZS_ARCTIC_ROLLOUT_ENABLED=true`를 함께 지정해 활성화한다. 고정 artifact 검증,
+1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion, Spring citation 재검증 및 Hash
+폴백은 단계적 활성화에서도 그대로 유지한다.
 
 Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 FastAPI 내부 검색과 Spring
 검색 API를 각각 동시성 4, 100건으로 측정한다. p95 1초 이하, 오류율 0%, 처리량 2 RPS

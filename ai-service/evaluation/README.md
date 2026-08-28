@@ -82,9 +82,10 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 
 `reviews/official-retrieval-review-candidates-v1.jsonl`과
 `reviews/official-retrieval-review-v1.csv`는 저장소에 반입된 공식문서 7개를 대상으로 만든
-사전 검수 팩이다. 답변형 24개와 무응답형 6개, 총 30개 후보가 있으며 모든 판정은
-`PENDING`이다. 1차 후보 선정 근거와 알려진 추출 한계는
-`official-golden-set-v1.md`에 기록한다.
+검수 팩이다. 승인·활성 문서 5개가 완전히 지원하는 답변형 21개와 무응답형 6개,
+총 27개는 2026-08-28 사람 최종 검수로 `ACCEPTED`가 되었다. 아직 승인되지 않은 문서에
+의존하는 ORC-004, ORC-005, ORC-013은 `PENDING`을 유지한다. 승인된 27개만
+`datasets/official-operational-golden-v1.jsonl`에 고정한다.
 
 공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
 2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
@@ -95,8 +96,8 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 
 승인된 5개 문서의 E5-small/Arctic-ko 비교 결과와 pgvector 공존 검증은
 `approved-model-comparison-v1.md`에 기록한다. 공식 후보 중 승인 corpus가 완전히 지원하는
-질의만 잠정 비교셋으로 만들려면 다음 명령을 사용한다. 이 출력은 사람이 최종 확정한
-골든셋으로 간주하지 않는다.
+질의만 잠정 비교셋으로 만들려면 다음 명령을 사용한다. 운영 회귀에는 잠정 출력이 아니라
+사람이 최종 확정한 `datasets/official-operational-golden-v1.jsonl`을 사용한다.
 
 ```bash
 uv run python -m app.evaluation.review_cli benchmark \
