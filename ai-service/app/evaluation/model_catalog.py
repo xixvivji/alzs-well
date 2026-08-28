@@ -4,6 +4,7 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -29,8 +30,18 @@ MODEL_KEYS = {
     "queryPrefix",
     "passagePrefix",
     "artifact",
+    "approval",
 }
 ARTIFACT_KEYS = {"file", "sizeBytes", "sha256"}
+APPROVAL_KEYS = {
+    "approvedBy",
+    "approvedAt",
+    "approvalReference",
+    "deploymentEnvironment",
+    "goldenSet",
+}
+GOLDEN_SET_KEYS = {"file", "caseCount", "sha256"}
+MODEL_STATUSES = {"EVALUATION_ONLY", "STAGED_APPROVED", "APPROVED"}
 NAME_PATTERN = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]{0,127}$")
 MODEL_ID_PATTERN = re.compile(
     r"^[0-9A-Za-z][0-9A-Za-z._-]{0,63}/[0-9A-Za-z][0-9A-Za-z._-]{0,127}$"
@@ -41,8 +52,25 @@ ProviderFactory = Callable[[Path, LocalSentenceTransformerSpec], EmbeddingProvid
 
 
 @dataclass(frozen=True, slots=True)
+class GoldenSetApproval:
+    file: str
+    case_count: int
+    sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class ModelApproval:
+    approved_by: str
+    approved_at: str
+    approval_reference: str
+    deployment_environment: str
+    golden_set: GoldenSetApproval
+
+
+@dataclass(frozen=True, slots=True)
 class EvaluationModelArtifact:
     name: str
+    status: str
     model_id: str
     source_url: str
     revision: str
@@ -54,6 +82,7 @@ class EvaluationModelArtifact:
     artifact_file: str
     artifact_size_bytes: int
     artifact_sha256: str
+    approval: ModelApproval | None
 
     def provider_spec(self) -> LocalSentenceTransformerSpec:
         return LocalSentenceTransformerSpec(
@@ -75,7 +104,7 @@ def load_model_catalog(path: Path) -> tuple[EvaluationModelArtifact, ...]:
     if not isinstance(payload, dict) or set(payload) != CATALOG_KEYS:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
     if (
-        payload["catalogVersion"] != "1.0.0"
+        payload["catalogVersion"] != "1.1.0"
         or payload["automaticDownloadAllowed"] is not False
         or not isinstance(payload["models"], list)
         or not payload["models"]
@@ -127,9 +156,23 @@ def _model(payload: Any) -> EvaluationModelArtifact:
     artifact_file = artifact["file"]
     artifact_size = artifact["sizeBytes"]
     artifact_hash = artifact["sha256"]
+    status = payload["status"]
+    approval = _approval(payload["approval"])
     relative = PurePosixPath(local_path) if isinstance(local_path, str) else None
     if (
-        payload["status"] != "EVALUATION_ONLY"
+        status not in MODEL_STATUSES
+        or (status == "EVALUATION_ONLY" and approval is not None)
+        or (status != "EVALUATION_ONLY" and approval is None)
+        or (
+            status == "STAGED_APPROVED"
+            and approval is not None
+            and approval.deployment_environment != "AWS_STAGING"
+        )
+        or (
+            status == "APPROVED"
+            and approval is not None
+            and approval.deployment_environment != "PRODUCTION"
+        )
         or not isinstance(name, str)
         or not NAME_PATTERN.fullmatch(name)
         or not isinstance(model_id, str)
@@ -160,6 +203,7 @@ def _model(payload: Any) -> EvaluationModelArtifact:
         raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
     return EvaluationModelArtifact(
         name=name,
+        status=status,
         model_id=model_id,
         source_url=source_url,
         revision=revision,
@@ -171,6 +215,56 @@ def _model(payload: Any) -> EvaluationModelArtifact:
         artifact_file=artifact_file,
         artifact_size_bytes=artifact_size,
         artifact_sha256=artifact_hash,
+        approval=approval,
+    )
+
+
+def _approval(payload: Any) -> ModelApproval | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict) or set(payload) != APPROVAL_KEYS:
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    golden_set = payload["goldenSet"]
+    if not isinstance(golden_set, dict) or set(golden_set) != GOLDEN_SET_KEYS:
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    approved_by = payload["approvedBy"]
+    approved_at = payload["approvedAt"]
+    approval_reference = payload["approvalReference"]
+    environment = payload["deploymentEnvironment"]
+    golden_file = golden_set["file"]
+    golden_relative = PurePosixPath(golden_file) if isinstance(golden_file, str) else None
+    try:
+        parsed_at = datetime.fromisoformat(str(approved_at).replace("Z", "+00:00"))
+    except ValueError:
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID") from None
+    if (
+        not isinstance(approved_by, str)
+        or not 3 <= len(approved_by) <= 160
+        or not approved_by.isprintable()
+        or parsed_at.tzinfo is None
+        or not isinstance(approval_reference, str)
+        or not NAME_PATTERN.fullmatch(approval_reference)
+        or environment not in {"AWS_STAGING", "PRODUCTION"}
+        or golden_relative is None
+        or golden_relative.is_absolute()
+        or ".." in golden_relative.parts
+        or not isinstance(golden_set["caseCount"], int)
+        or isinstance(golden_set["caseCount"], bool)
+        or golden_set["caseCount"] <= 0
+        or not isinstance(golden_set["sha256"], str)
+        or not HASH_PATTERN.fullmatch(golden_set["sha256"])
+    ):
+        raise KnowledgeContractError("EMBEDDING_CONFIGURATION_INVALID")
+    return ModelApproval(
+        approved_by=approved_by,
+        approved_at=approved_at,
+        approval_reference=approval_reference,
+        deployment_environment=environment,
+        golden_set=GoldenSetApproval(
+            file=golden_file,
+            case_count=golden_set["caseCount"],
+            sha256=golden_set["sha256"],
+        ),
     )
 
 

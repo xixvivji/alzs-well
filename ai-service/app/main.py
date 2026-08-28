@@ -41,6 +41,8 @@ def create_app() -> FastAPI:
             "embeddingModelVersion": descriptor.model_version,
             "embeddingDimensions": descriptor.dimensions,
             "arcticRolloutEnabled": config.arctic_rollout_enabled,
+            "deploymentEnvironment": config.deployment_environment,
+            "stagedApprovalEnabled": config.staged_approval_enabled,
             "embeddingFallbackUsed": (
                 config.backend == "local-arctic-ko"
                 and config.arctic_rollout_enabled

@@ -27,9 +27,10 @@
 | Arctic-ko | `55ec6e9358a56d56af759bc8372e970caf8c305f` | `0b874517...e15b0` | 2,271,064,456 B | Apache-2.0 |
 
 전체 값과 prefix·차원 계약은 `model-artifacts-v1.json`에 기록한다. 실제 모델 파일은
-저장소의 `/models/` 아래에만 두고 Git에서 제외한다. 두 artifact는 현재
-`EVALUATION_ONLY`이며 운영 승인 또는 배포 이미지 반입 승인을 뜻하지 않는다. 실행 중
-자동 다운로드는 계속 금지한다.
+저장소의 `/models/` 아래에만 두고 Git에서 제외한다. E5-small은 `EVALUATION_ONLY`를
+유지한다. Arctic-ko는 공식문서 운영 골든셋 27건의 사람 승인과 품질·통합 게이트를 근거로
+`STAGED_APPROVED`이며 승인된 AWS AI staging에서만 명시적으로 활성화할 수 있다. 운영
+기본 모델 승인이나 자동 승격을 뜻하지 않으며 실행 중 자동 다운로드는 계속 금지한다.
 
 ## CPU 성능
 
@@ -68,10 +69,11 @@ peak memory는 2,527.70 MiB였다. p95 1초, 오류율 0%, 최소 2 RPS, peak RS
 - 합성 검수셋 기준 정확도 후보는 Arctic-ko가 우세하며 유일하게 모든 품질 게이트를 통과했다.
 - 1024차원 pgvector 공존 구조와 모델별 인덱스를 적용했고, 제한된 합성 E2E에서 실제
   Arctic-ko 재-ingestion·검색·Spring 인용 재검증·FastAPI 장애 폴백을 통과했다.
-- Arctic-ko를 즉시 운영 기본값으로 지정하지 않는다. 합성 제한 부하 게이트는 통과했지만
-  승인 공식문서 골든셋 재평가와 목표 배포 장비의 장시간 부하 시험이 먼저다.
+- Arctic-ko는 승인 공식문서 골든셋과 제한 E2E를 통과해 AWS AI staging에 한정한
+  `STAGED_APPROVED`로 승격한다. 기본 모델은 Hash로 유지하고 목표 배포 장비의 장시간
+  부하 시험과 별도 운영 승인 전에는 `APPROVED`로 올리지 않는다.
 - E5-small은 현재 384차원 스키마와 지연시간을 유지할 수 있지만 무응답 오탐 게이트를
   통과하지 못했으므로 기본 모델로 확정하지 않는다.
 - Hash는 폐쇄망 MVP와 모델 장애 시 결정론적 fallback으로 유지한다.
-- 실제 법률·시행령 manifest는 사람 검수 전까지 `IN_REVIEW/PENDING_ACTIVATION`을 유지한다.
-- 다음 평가는 승인 공식문서 corpus에서 근거 조항 적중률과 무응답 질의를 함께 검수한다.
+- 승인된 공식문서 5개와 운영 골든셋 27건만 staging 승격 근거로 사용한다. 아직 승인되지
+  않은 문서에 의존하는 ORC-004, ORC-005, ORC-013은 `PENDING`을 유지한다.

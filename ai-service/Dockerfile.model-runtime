@@ -13,6 +13,8 @@ COPY --from=uv /uv /uvx /bin/
 WORKDIR /opt/ai-service
 COPY pyproject.toml uv.lock README.md ./
 COPY app ./app
+COPY evaluation/model-artifacts-v1.json ./evaluation/model-artifacts-v1.json
+COPY evaluation/datasets/official-operational-golden-v1.jsonl ./evaluation/datasets/official-operational-golden-v1.jsonl
 RUN uv sync --locked --no-dev --group model-runtime && \
     useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin ai-ingestor
 

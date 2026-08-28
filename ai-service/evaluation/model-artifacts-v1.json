@@ -1,10 +1,11 @@
 {
-  "catalogVersion": "1.0.0",
+  "catalogVersion": "1.1.0",
   "automaticDownloadAllowed": false,
   "models": [
     {
       "name": "multilingual-e5-small",
       "status": "EVALUATION_ONLY",
+      "approval": null,
       "modelId": "intfloat/multilingual-e5-small",
       "sourceUrl": "https://huggingface.co/intfloat/multilingual-e5-small",
       "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
@@ -21,7 +22,18 @@
     },
     {
       "name": "snowflake-arctic-embed-l-v2.0-ko",
-      "status": "EVALUATION_ONLY",
+      "status": "STAGED_APPROVED",
+      "approval": {
+        "approvedBy": "kjw3568@naver.com",
+        "approvedAt": "2026-08-28T02:53:44Z",
+        "approvalReference": "PR-86",
+        "deploymentEnvironment": "AWS_STAGING",
+        "goldenSet": {
+          "file": "evaluation/datasets/official-operational-golden-v1.jsonl",
+          "caseCount": 27,
+          "sha256": "sha256:3fddb047d75674a64ac56467675959c0cee90615572f9eac2ed07dd491c989d3"
+        }
+      },
       "modelId": "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
       "sourceUrl": "https://huggingface.co/dragonkue/snowflake-arctic-embed-l-v2.0-ko",
       "revision": "55ec6e9358a56d56af759bc8372e970caf8c305f",
