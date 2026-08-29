@@ -2,7 +2,6 @@ package com.alzswell.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -31,6 +30,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -317,11 +317,15 @@ class DemoSessionIntegrationTest {
         mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
-                        .with(httpBasic(DemoTestClient.STAFF_USERNAME, "wrong-password")))
+                        .header(HttpHeaders.AUTHORIZATION, "Basic ZGVtby1zdGFmZjpkZW1vLXBhc3N3b3Jk"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + "b".repeat(64)))
                 .andExpect(status().isUnauthorized());
         MvcResult staffIssuance = mockMvc.perform(post(
                         "/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
-                        .with(httpBasic(DemoTestClient.STAFF_USERNAME, DemoTestClient.STAFF_PASSWORD)))
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + DemoTestClient.STAFF_BOOTSTRAP_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn();
         assertThat(staffIssuance.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER)).isNotBlank();

@@ -2,9 +2,11 @@
 
 금융생활 변화 조기알림 및 행원 보호업무 코파일럿 프로젝트다.
 
+개발 브랜치와 커밋 규칙은 [`CONTRIBUTING.md`](./CONTRIBUTING.md)를 따른다.
+
 ## 현행 문서
 
-프로젝트에서 유지·갱신하는 문서는 다음 여섯 개뿐이다.
+프로젝트에서 유지·갱신하는 문서는 다음 일곱 개뿐이다.
 
 1. 제품·기술 최상위 기준: [`ALZS_WELL_PROJECT_SSOT.md`](./ALZS_WELL_PROJECT_SSOT.md)
 2. 백엔드 API 계약: [`docs/FINAL_BACKEND_API_SPEC.md`](./docs/FINAL_BACKEND_API_SPEC.md)
@@ -12,6 +14,7 @@
 4. 백엔드 실행·검증: [`backend/README.md`](./backend/README.md)
 5. CI·보안 품질 게이트: [`docs/CI_SECURITY_GUIDE.md`](./docs/CI_SECURITY_GUIDE.md)
 6. 후속 백엔드 개발 인수인계: [`docs/BACKEND_DEVELOPER_HANDOFF.md`](./docs/BACKEND_DEVELOPER_HANDOFF.md)
+7. GitFlow·커밋·PR 규칙: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 
 충돌 시 `최신 대회 공식 공지 → 최종 SSOT → 최종 API 명세 → 실제 구현과 테스트` 순서로 판단하고, 차이가 생기면 문서와 구현을 같은 변경에서 함께 갱신한다.
 

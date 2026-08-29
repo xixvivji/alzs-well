@@ -17,5 +17,4 @@ app:
     staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS:http://localhost:4173}
     require-https: false
   demo:
-    staff-bootstrap-username: ${DEMO_STAFF_USERNAME}
-    staff-bootstrap-password: ${DEMO_STAFF_PASSWORD}
+    staff-bootstrap-token: ${DEMO_STAFF_BOOTSTRAP_TOKEN}

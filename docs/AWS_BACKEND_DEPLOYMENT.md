@@ -13,7 +13,7 @@
 - 공모전 단기 데모는 단일 EC2의 Docker Compose로 시작할 수 있다. 장기 운영·복구가 필요하면 DB를 private subnet의 RDS PostgreSQL로 분리한다.
 - 현재 시스템에는 실제 고객정보를 넣지 않고 완전 합성 fixture만 사용한다.
 - AI·외부 금융사·푸시·문자·전화 연결은 계속 비활성화한다.
-- 공개 세션 생성은 고객 capability만 발급한다. 직원 capability는 직원 origin에서 별도 HTTP Basic 인증을 거친 staging 운영자에게만 발급한다. 이 임시 인증은 기업 직원 인증을 대체하지 않으므로 실제 IdP·MFA·RBAC가 붙기 전 배포는 합성 staging 경계로 취급한다.
+- 공개 세션 생성은 고객 capability만 발급한다. 직원 capability는 직원 origin에서 별도 opaque bootstrap Bearer 토큰을 제시한 staging 운영자에게만 발급한다. 이 임시 인증은 기업 직원 인증을 대체하지 않으므로 실제 IdP·MFA·RBAC가 붙기 전 배포는 합성 staging 경계로 취급한다.
 
 ## 운영 환경값
 
@@ -21,8 +21,7 @@
 SPRING_PROFILES_ACTIVE=production
 CORS_CUSTOMER_ALLOWED_ORIGINS=https://customer-demo.example.com
 CORS_STAFF_ALLOWED_ORIGINS=https://staff-demo.example.com
-DEMO_STAFF_USERNAME=replace-with-a-non-default-operator-name
-DEMO_STAFF_PASSWORD=replace-with-a-long-random-staff-password
+DEMO_STAFF_BOOTSTRAP_TOKEN=replace-with-a-random-bootstrap-bearer-token-at-least-64-characters
 POSTGRES_PASSWORD=replace-with-a-long-random-admin-password
 FRONTEND_PROXY_SHARED_SECRET=replace-with-64-lowercase-hex-from-openssl-rand
 POSTGRES_MIGRATION_PASSWORD=replace-with-a-long-random-migration-password
@@ -35,11 +34,11 @@ REMOTE_MODEL_ENABLED=false
 SYNTHETIC_PROVIDER_ONLY=true
 ```
 
-`TRUSTED_PROXY_CIDR`는 임의의 전역망이 아니라 ALB가 위치한 실제 VPC/private subnet CIDR로 좁힌다. 운영 프로필은 고객·직원 CORS 항목이 비어 있거나 서로 겹치거나 wildcard, HTTP, path/query가 포함되면 애플리케이션 기동을 실패시킨다. 두 화면은 서로 다른 HTTPS origin을 allowlist에 명시하되, CORS만 믿지 않고 각각 `CUSTOMER_DEMO`, `DEMO_STAFF` capability와 서버 메서드 권한을 적용한다. 직원 bootstrap 자격증명은 브라우저 번들·정적 파일·프론트 환경변수에 넣지 않는다.
+`TRUSTED_PROXY_CIDR`는 임의의 전역망이 아니라 ALB가 위치한 실제 VPC/private subnet CIDR로 좁힌다. 운영 프로필은 고객·직원 CORS 항목이 비어 있거나 서로 겹치거나 wildcard, HTTP, path/query가 포함되면 애플리케이션 기동을 실패시킨다. 두 화면은 서로 다른 HTTPS origin을 allowlist에 명시하되, CORS만 믿지 않고 각각 `CUSTOMER_DEMO`, `DEMO_STAFF` capability와 서버 메서드 권한을 적용한다. 직원 bootstrap Bearer 토큰은 브라우저 번들·정적 파일·프론트 환경변수에 넣지 않는다.
 
 ## 배포 전 체크
 
-1. PostgreSQL 관리자·migration·runtime 비밀번호와 직원 bootstrap 비밀번호는 `.env`에 장기 보관하지 말고 AWS Secrets Manager 또는 SSM Parameter Store에서 각각 주입한다. Spring은 `alzswell_app`, Flyway는 `alzswell_migrator` 역할을 사용하고 관리자 계정을 애플리케이션에 전달하지 않는다.
+1. PostgreSQL 관리자·migration·runtime 비밀번호와 직원 bootstrap Bearer 토큰은 `.env`에 장기 보관하지 말고 AWS Secrets Manager 또는 SSM Parameter Store에서 각각 주입한다. Spring은 `alzswell_app`, Flyway는 `alzswell_migrator` 역할을 사용하고 관리자 계정을 애플리케이션에 전달하지 않는다.
 2. nginx·PostgreSQL·애플리케이션 이미지는 검증 후 tag 대신 immutable digest로 고정한다.
 3. ALB 인증서와 HTTP→HTTPS redirect를 구성한다.
 4. EC2 보안그룹은 gateway port의 source를 ALB 보안그룹으로 한정하고 SSH는 Session Manager로 대체한다.

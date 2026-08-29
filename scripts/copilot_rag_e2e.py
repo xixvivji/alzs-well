@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import os
 import secrets
@@ -354,13 +353,10 @@ def run_demo_copilot() -> dict[str, Any]:
     session_id = created["data"]["sessionId"]
     customer_capability = response_headers.get("X-Demo-Customer-Capability")
     require(bool(customer_capability), "customer capability header missing")
-    credentials = (
-        ENVIRONMENT["DEMO_STAFF_USERNAME"] + ":" + ENVIRONMENT["DEMO_STAFF_PASSWORD"]
-    ).encode("utf-8")
     _, staff_headers = http(
         "POST",
         f"/api/v1/demo/staff/sessions/{session_id}/capability",
-        headers={"Authorization": "Basic " + base64.b64encode(credentials).decode("ascii")},
+        headers={"Authorization": "Bearer " + ENVIRONMENT["DEMO_STAFF_BOOTSTRAP_TOKEN"]},
     )
     staff_capability = staff_headers.get("X-Demo-Staff-Capability")
     require(bool(staff_capability), "staff capability header missing")

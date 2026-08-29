@@ -1504,7 +1504,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 | `X-Demo-Capability` | 모든 세션 범위 API에서 필수 | 고객 세션 생성 또는 인증된 직원 발급 경로에서 받은 256-bit 이상의 불투명 소유권 토큰; URL·본문·로그에 기록 금지 |
 | `X-Demo-Run-Id` | 시나리오 적재 후 run 파생 API에서 필수 | Reset 전후 실행을 구분하는 서버 발급 ID; 오래된 탭의 상태 혼합 방지 |
 | `Authorization: Bearer {token}` | PoC/운영 행원 API | 공개 합성데모에서는 생략; 운영에서는 RBAC 적용 |
-| `Authorization: Basic {credentials}` | staging 직원 capability 발급 API | 신뢰된 운영자 전용 임시 경계; 브라우저 번들에 자격증명을 넣지 않으며 실제 운영 전 기업 IdP·MFA로 교체 |
+| `Authorization: Bearer {bootstrap-token}` | staging 직원 capability 발급 API | 신뢰된 운영자 전용 opaque 임시 토큰; 브라우저 번들에 넣지 않으며 실제 운영 전 기업 IdP·MFA로 교체 |
 
 모든 응답은 `X-Trace-Id` 헤더를 반환하며 본문의 `traceId`와 같아야 한다.
 
@@ -1518,7 +1518,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 
 `CUSTOMER_DEMO` capability는 세션 조회·적재·Reset, 금융생활 읽기, 알림 조회와 맥락 제출에만 사용할 수 있다. `DEMO_STAFF` capability는 행원 사건큐·상세·검토·안내계획과 필요한 감사조회에만 사용할 수 있다. 역할 범위를 벗어난 유효 토큰은 `403 DEMO_CAPABILITY_SCOPE_FORBIDDEN`을 반환한다. 두 토큰을 하나로 합치거나 고객 화면에 staff 토큰을 전달하지 않는다.
 
-현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 HTTP Basic으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, 자격증명은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
+현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 opaque bootstrap Bearer 토큰으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, bootstrap 토큰은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
 
 시나리오가 적재되면 서버는 `demoRunId`를 발급한다. alert·context·audit·case와 시나리오 파생 금융생활 조회는 `{sessionId, demoRunId}` 복합범위에 귀속된다. Reset 뒤 이전 run ID로 변경 요청을 보내면 `409 DEMO_RUN_STALE`을 반환하고 이전 run의 감사이력은 읽기 전용으로만 보존한다.
 
@@ -1708,7 +1708,7 @@ Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability
 
 ```http
 POST /api/v1/demo/staff/sessions/{sessionId}/capability
-Authorization: Basic {staging-operator-credentials}
+Authorization: Bearer {staging-bootstrap-token}
 ```
 
 직원 origin과 인증된 staging 운영자에게만 허용한다. 발급할 때마다 기존 staff capability는 즉시 회전되어 이전 원문은 더 이상 사용할 수 없다. 자격증명을 직원 SPA 번들에 포함하면 안 되며 실제 운영 전에는 기업 IdP·MFA·RBAC로 교체한다.
