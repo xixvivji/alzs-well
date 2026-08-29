@@ -9,3 +9,22 @@ paths = [
   '''(^|/)archive/legacy-docs/2026-08-14/API_SPEC\.md$'''
 ]
 regexes = ['''Idempotency-Key:\s*[A-Za-z0-9_-]+''']
+
+[[allowlists]]
+description = "지식 반입 통합 테스트의 비밀이 아닌 멱등키 fixture"
+regexTarget = "line"
+paths = ['''(^|/)backend/src/test/java/com/alzswell/knowledge/KnowledgeGovernanceIntegrationTest\.java$''']
+regexes = ['''\.header\("Idempotency-Key","idem-v(?:63|69)-[A-Za-z0-9-]+"\)''']
+
+[[allowlists]]
+description = "프런트 빌드 테스트에서만 사용하는 고정 HMAC fixture"
+regexTarget = "line"
+paths = [
+  '''(^|/)frontend/package\.json$''',
+  '''(^|/)frontend/tests/api-proxy\.test\.ts$'''
+]
+regexes = [
+  '''BACKEND_PROXY_SHARED_SECRET=[a-f0-9]{64}''',
+  '''const PROXY_SECRET = "[a-f0-9]{16}"\.repeat\(4\);''',
+  '''"Idempotency-Key": "idem-[A-Za-z0-9-]+"'''
+]

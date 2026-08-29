@@ -2,6 +2,7 @@ package com.alzswell.knowledge.application;
 
 import static com.alzswell.knowledge.api.KnowledgeImportErrorCode.*;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.common.security.AuditActor;
@@ -26,10 +27,12 @@ public class KnowledgeIngestionImportService {
     private final MutationIdempotencyService idempotency;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final KnowledgeGovernanceService governanceService;
 
     public KnowledgeIngestionImportService(JdbcTemplate jdbc,MutationIdempotencyService idempotency,
-            ObjectMapper objectMapper,Clock clock) {
+            ObjectMapper objectMapper,Clock clock,KnowledgeGovernanceService governanceService) {
         this.jdbc=jdbc;this.idempotency=idempotency;this.objectMapper=objectMapper;this.clock=clock;
+        this.governanceService=governanceService;
     }
 
     @Transactional
@@ -40,18 +43,25 @@ public class KnowledgeIngestionImportService {
     }
 
     private ImportResult importOnce(ImportIngestionCommand command,AuditActor actor) {
+        jdbc.queryForObject("select pg_advisory_xact_lock(hashtextextended(?,0))",Object.class,command.documentId());
         Governance governance=governance(command);
-        if(!"APPROVED".equals(governance.approvalStatus())||!"ACTIVE".equals(governance.lifecycleStatus())
+        if(!"APPROVED".equals(governance.approvalStatus())||!"PENDING_ACTIVATION".equals(governance.lifecycleStatus())
                 ||!governance.sourceHash().equals(command.sourceHash())
                 ||command.asOf().isBefore(governance.effectiveFrom())
                 ||governance.effectiveTo()!=null&&command.asOf().isAfter(governance.effectiveTo()))
             throw new BusinessException(GOVERNANCE_NOT_READY);
         if(command.chunks().stream().anyMatch(chunk->(governance.title()+" — "+chunk.heading()).length()>400))
             throw new BusinessException(PAYLOAD_INVALID);
-        if(Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from knowledge_document where document_id=?)",
-                Boolean.class,command.documentId()))) throw new BusinessException(CATALOG_CONFLICT);
+        verifyAiIngestion(command);
+        CatalogHead catalogHead=catalogHead(command.documentId());
+        if(catalogHead==null) {
+            if(governance.supersedesDocumentId()!=null) throw new BusinessException(CATALOG_CONFLICT);
+        } else if(!command.documentId().equals(governance.supersedesDocumentId())
+                ||!catalogHead.currentVersion().equals(governance.supersedesVersionLabel())) {
+            throw new BusinessException(CATALOG_CONFLICT);
+        }
         UUID importId=UUID.randomUUID();
-        OffsetDateTime now=OffsetDateTime.now(clock);
+        OffsetDateTime now=AuditTimestamp.canonical(OffsetDateTime.now(clock));
         String payloadHash=sha256(jsonBytes(command));
         String integrityHash=sha256((importId+"|"+command.ingestionRunId()+"|"+command.documentId()+"|"
                 +command.versionLabel()+"|"+payloadHash+"|"+actor.legacyActorId()+"|"+now)
@@ -60,17 +70,25 @@ public class KnowledgeIngestionImportService {
         List<UUID> passageIds=new ArrayList<>();
         try {
             jdbc.update("""
-                    insert into knowledge_ingestion_import values(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    insert into knowledge_ingestion_import(
+                      import_id,ingestion_run_id,document_id,version_label,source_hash,as_of,extractor_version,
+                      chunker_version,chunk_count,imported_by,imported_at,payload_hash,integrity_hash,
+                      ai_proof_version,ai_verified_at)
+                    values(?,?,?,?,?,?,?,?,?,?,?,?,?,'AI_DB_SNAPSHOT_V1',?)
                     """,importId,command.ingestionRunId(),command.documentId(),command.versionLabel(),command.sourceHash(),
                     command.asOf(),command.extractorVersion(),command.chunkerVersion(),command.chunks().size(),
-                    actor.legacyActorId(),now,payloadHash,integrityHash);
-            jdbc.update("""
-                    insert into knowledge_document(document_id,title,source_type,issuer,source_url,audience,status,
-                      effective_from,effective_to,checked_at,current_version,approval_status,lifecycle_status,allowed_roles)
-                    values(?,?,?,?,?,?,'APPROVED',?,?,?,?, 'APPROVED','ACTIVE',string_to_array(?,',')::varchar[])
-                    """,command.documentId(),governance.title(),catalogSourceType(governance.sourceType()),governance.issuer(),
-                    governance.sourceUrl(),governance.audience(),governance.effectiveFrom(),governance.effectiveTo(),
-                    governance.checkedAt(),command.versionLabel(),String.join(",",governance.allowedRoles()));
+                    actor.legacyActorId(),now,payloadHash,integrityHash,now);
+            governanceService.activateVerifiedImport(command.documentId(),command.versionLabel(),
+                    catalogHead==null?null:catalogHead.currentVersion(),actor,now);
+            if(catalogHead==null) {
+                jdbc.update("""
+                        insert into knowledge_document(document_id,title,source_type,issuer,source_url,audience,status,
+                          effective_from,effective_to,checked_at,current_version,approval_status,lifecycle_status,allowed_roles)
+                        values(?,?,?,?,?,?,'APPROVED',?,?,?,?, 'APPROVED','ACTIVE',string_to_array(?,',')::varchar[])
+                        """,command.documentId(),governance.title(),catalogSourceType(governance.sourceType()),governance.issuer(),
+                        governance.sourceUrl(),governance.audience(),governance.effectiveFrom(),governance.effectiveTo(),
+                        governance.checkedAt(),command.versionLabel(),String.join(",",governance.allowedRoles()));
+            }
             jdbc.update("""
                     insert into knowledge_document_version(document_version_id,document_id,version_label,content_checksum,
                       published_at,approved_at,superseded_at) values(?,?,?,?,?,?,null)
@@ -92,9 +110,74 @@ public class KnowledgeIngestionImportService {
                         String.join("\u001f",chunk.sectionPath()),"\u001f",chunk.page(),chunk.pageStart(),chunk.pageEnd(),
                         chunk.sourceHash(),chunk.textHash(),chunk.extractorVersion(),chunk.chunkerVersion());
             }
+            if(catalogHead!=null) switchCatalogVersion(command,governance,catalogHead,now);
         } catch(DuplicateKeyException exception) {throw new BusinessException(CATALOG_CONFLICT);}
         return new ImportResult(importId,command.ingestionRunId(),command.documentId(),command.versionLabel(),
                 passageIds.size(),List.copyOf(passageIds),true,now);
+    }
+
+    private void verifyAiIngestion(ImportIngestionCommand command) {
+        List<AiSnapshotRow> snapshot=jdbc.query("""
+                select r.document_id as run_document_id,r.version_label as run_version_label,
+                       r.source_hash as run_source_hash,r.as_of,r.status,r.extractor_version as run_extractor_version,
+                       r.chunker_version as run_chunker_version,r.chunk_count,
+                       c.chunk_id,c.document_id,c.version_label,c.heading,c.section_path,c.page,c.page_start,c.page_end,
+                       c.chunk_order,c.content,c.text_hash,c.source_hash,c.extractor_version,c.chunker_version
+                from ai_knowledge.ingestion_run r left join ai_knowledge.chunk c on c.run_id=r.run_id
+                where r.run_id=? order by c.chunk_order,c.chunk_id
+                """,(rs,n)->{
+                    AiRun run=new AiRun(rs.getString("run_document_id"),rs.getString("run_version_label"),
+                            rs.getString("run_source_hash"),rs.getObject("as_of",LocalDate.class),rs.getString("status"),
+                            rs.getString("run_extractor_version"),rs.getString("run_chunker_version"),
+                            rs.getObject("chunk_count",Integer.class));
+                    String chunkId=rs.getString("chunk_id");
+                    if(chunkId==null) return new AiSnapshotRow(run,null);
+                    Array path=rs.getArray("section_path");
+                    AiChunk chunk=new AiChunk(chunkId,rs.getString("document_id"),rs.getString("version_label"),
+                            rs.getString("heading"),List.of((String[])path.getArray()),rs.getObject("page",Integer.class),
+                            rs.getObject("page_start",Integer.class),rs.getObject("page_end",Integer.class),
+                            rs.getInt("chunk_order"),rs.getString("content"),rs.getString("text_hash"),
+                            rs.getString("source_hash"),rs.getString("extractor_version"),rs.getString("chunker_version"));
+                    return new AiSnapshotRow(run,chunk);
+                },command.ingestionRunId());
+        if(snapshot.isEmpty()) throw new BusinessException(AI_INGESTION_NOT_VERIFIED);
+        AiRun run=snapshot.getFirst().run();
+        if(!command.documentId().equals(run.documentId())||!command.versionLabel().equals(run.versionLabel())
+                ||!command.sourceHash().equals(run.sourceHash())||!command.asOf().equals(run.asOf())
+                ||!"SUCCEEDED".equals(run.status())||!command.extractorVersion().equals(run.extractorVersion())
+                ||!command.chunkerVersion().equals(run.chunkerVersion())
+                ||!Objects.equals(command.chunks().size(),run.chunkCount()))
+            throw new BusinessException(AI_INGESTION_NOT_VERIFIED);
+        List<AiChunk> chunks=snapshot.stream().map(AiSnapshotRow::chunk).filter(Objects::nonNull).toList();
+        if(chunks.size()!=command.chunks().size()) throw new BusinessException(AI_INGESTION_NOT_VERIFIED);
+        for(int index=0;index<chunks.size();index++) {
+            AiChunk actual=chunks.get(index); ImportChunk expected=command.chunks().get(index);
+            if(!actual.matches(command,expected)) throw new BusinessException(AI_INGESTION_NOT_VERIFIED);
+        }
+    }
+
+    private CatalogHead catalogHead(String documentId) {
+        List<CatalogHead> rows=jdbc.query("select current_version from knowledge_document where document_id=? for update",
+                (rs,n)->new CatalogHead(rs.getString("current_version")),documentId);
+        return rows.isEmpty()?null:rows.getFirst();
+    }
+
+    private void switchCatalogVersion(ImportIngestionCommand command,Governance governance,CatalogHead previous,
+            OffsetDateTime now) {
+        int documentChanged=jdbc.update("""
+                update knowledge_document set title=?,source_type=?,issuer=?,source_url=?,audience=?,status='APPROVED',
+                  effective_from=?,effective_to=?,checked_at=?,current_version=?,approval_status='APPROVED',
+                  lifecycle_status='ACTIVE',allowed_roles=string_to_array(?,',')::varchar[]
+                where document_id=? and current_version=?
+                """,governance.title(),catalogSourceType(governance.sourceType()),governance.issuer(),governance.sourceUrl(),
+                governance.audience(),governance.effectiveFrom(),governance.effectiveTo(),governance.checkedAt(),
+                command.versionLabel(),String.join(",",governance.allowedRoles()),command.documentId(),previous.currentVersion());
+        if(documentChanged!=1) throw new BusinessException(CATALOG_CONFLICT);
+        int versionChanged=jdbc.update("""
+                update knowledge_document_version set superseded_at=?
+                where document_id=? and version_label=? and superseded_at is null
+                """,now,command.documentId(),previous.currentVersion());
+        if(versionChanged!=1) throw new BusinessException(CATALOG_CONFLICT);
     }
 
     private Governance governance(ImportIngestionCommand command) {
@@ -108,7 +191,8 @@ public class KnowledgeIngestionImportService {
                             List.of((String[])roles.getArray()),rs.getObject("effective_from",LocalDate.class),
                             rs.getObject("effective_to",LocalDate.class),rs.getObject("checked_at",LocalDate.class),
                             rs.getString("approval_status"),rs.getString("lifecycle_status"),
-                            rs.getObject("approved_at",OffsetDateTime.class));
+                            rs.getObject("approved_at",OffsetDateTime.class),rs.getString("supersedes_document_id"),
+                            rs.getString("supersedes_version_label"));
                 },command.documentId(),command.versionLabel());
         if(rows.size()!=1) throw new BusinessException(GOVERNANCE_NOT_READY);
         return rows.getFirst();
@@ -131,13 +215,10 @@ public class KnowledgeIngestionImportService {
                     ||!nfc(chunk.text())||!nfc(chunk.heading())||chunk.sectionPath().stream().anyMatch(value->!nfc(value))
                     ||chunk.sectionPath().stream().anyMatch(value->value.indexOf('\u001f')>=0)
                     ||!textHash(chunk.text()).equals(chunk.textHash())
-                    ||!chunkId(command,chunk).equals(chunk.chunkId())) throw new BusinessException(PAYLOAD_INVALID);
+                    ||!KnowledgeChunkId.compute(command.documentId(),command.versionLabel(),chunk.sectionPath(),
+                        chunk.chunkOrder(),chunk.textHash(),chunk.chunkerVersion()).chunkId().equals(chunk.chunkId()))
+                throw new BusinessException(PAYLOAD_INVALID);
         }
-    }
-
-    private String chunkId(ImportIngestionCommand command,ImportChunk chunk) {
-        return "chk_"+sha256(jsonBytes(List.of(command.documentId(),command.versionLabel(),chunk.sectionPath(),
-                chunk.chunkOrder(),chunk.textHash(),chunk.chunkerVersion())));
     }
     private String textHash(String value){return "sha256:"+sha256(value.getBytes(StandardCharsets.UTF_8));}
     private boolean nfc(String value){return Normalizer.isNormalized(value,Normalizer.Form.NFC);}
@@ -158,5 +239,23 @@ public class KnowledgeIngestionImportService {
 
     private record Governance(String title,String issuer,String sourceType,String sourceUrl,String sourceHash,
             String audience,List<String> allowedRoles,LocalDate effectiveFrom,LocalDate effectiveTo,LocalDate checkedAt,
-            String approvalStatus,String lifecycleStatus,OffsetDateTime approvedAt) {}
+            String approvalStatus,String lifecycleStatus,OffsetDateTime approvedAt,String supersedesDocumentId,
+            String supersedesVersionLabel) {}
+    private record CatalogHead(String currentVersion) {}
+    private record AiRun(String documentId,String versionLabel,String sourceHash,LocalDate asOf,String status,
+            String extractorVersion,String chunkerVersion,Integer chunkCount) {}
+    private record AiSnapshotRow(AiRun run,AiChunk chunk) {}
+    private record AiChunk(String chunkId,String documentId,String versionLabel,String heading,List<String> sectionPath,
+            Integer page,Integer pageStart,Integer pageEnd,int chunkOrder,String content,String textHash,String sourceHash,
+            String extractorVersion,String chunkerVersion) {
+        boolean matches(ImportIngestionCommand command,ImportChunk expected) {
+            return command.documentId().equals(documentId)&&command.versionLabel().equals(versionLabel)
+                    &&expected.chunkId().equals(chunkId)&&expected.heading().equals(heading)
+                    &&expected.sectionPath().equals(sectionPath)&&Objects.equals(expected.page(),page)
+                    &&Objects.equals(expected.pageStart(),pageStart)&&Objects.equals(expected.pageEnd(),pageEnd)
+                    &&expected.chunkOrder()==chunkOrder&&expected.text().equals(content)
+                    &&expected.textHash().equals(textHash)&&expected.sourceHash().equals(sourceHash)
+                    &&expected.extractorVersion().equals(extractorVersion)&&expected.chunkerVersion().equals(chunkerVersion);
+        }
+    }
 }

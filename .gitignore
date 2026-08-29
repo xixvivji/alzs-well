@@ -4,6 +4,7 @@
 .idea/
 .vscode/
 *.iml
+/.worktrees/
 
 # Local credentials and keys
 .env

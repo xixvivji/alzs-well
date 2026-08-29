@@ -10,8 +10,25 @@ export BACKEND_PORT
 GATEWAY_PORT="${BACKEND_PORT}"
 ARTIFACT_DIRECTORY="${COMPOSE_SMOKE_ARTIFACT_DIR:-${REPOSITORY_ROOT}/artifacts/compose-smoke}"
 BASE_URL="http://127.0.0.1:${GATEWAY_PORT}"
-EXPECTED_SCHEMA_VERSION="${EXPECTED_SCHEMA_VERSION:-$(sed -n 's/^    schema: "\([^"]*\)"/\1/p' "${BACKEND_DIRECTORY}/src/main/resources/application.yml")}"
+EXPECTED_SCHEMA_VERSION="${EXPECTED_SCHEMA_VERSION:-}"
+if [[ -z "${EXPECTED_SCHEMA_VERSION}" ]]; then
+  EXPECTED_SCHEMA_VERSION="$(sed -n 's/^    schema: "\([^"]*\)"/\1/p' \
+    "${BACKEND_DIRECTORY}/src/main/resources/application.yml")"
+fi
 SESSION_HEADER_FILE="$(mktemp "${TMPDIR:-/tmp}/alzs-well-smoke-headers.XXXXXX")"
+PROXY_SECRET_FOR_SMOKE="${FRONTEND_PROXY_SHARED_SECRET:-}"
+
+if [[ -z "${PROXY_SECRET_FOR_SMOKE}" || "${PROXY_SECRET_FOR_SMOKE}" = "replace-with-64-lowercase-hex" ]]; then
+  command -v openssl > /dev/null || {
+    printf '%s\n' 'openssl is required to create an isolated smoke-test proxy secret' >&2
+    exit 1
+  }
+  PROXY_SECRET_FOR_SMOKE="$(openssl rand -hex 32)"
+elif [[ ! "${PROXY_SECRET_FOR_SMOKE}" =~ ^[a-f0-9]{64}$ ]]; then
+  printf '%s\n' 'FRONTEND_PROXY_SHARED_SECRET must be a 32-byte lowercase hex value' >&2
+  exit 1
+fi
+export FRONTEND_PROXY_SHARED_SECRET="${PROXY_SECRET_FOR_SMOKE}"
 
 test -n "${EXPECTED_SCHEMA_VERSION}"
 
@@ -40,6 +57,20 @@ test "${ACTUATOR_STATUS}" = "404"
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/readiness" \
   | tee "${ARTIFACT_DIRECTORY}/readiness.json" \
   | jq -e '.code == "SYSTEM_READY" and .data.ready == true and .data.checks.flyway == "UP"' > /dev/null
+
+INVALID_PROXY_STATUS="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  --header 'X-Alzs-Client-Key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+  "${BASE_URL}/api/v1/system/readiness")"
+test "${INVALID_PROXY_STATUS}" = "403"
+INVALID_SECRET_STATUS="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  --header 'X-Alzs-Proxy-Secret: invalid' \
+  --header 'X-Alzs-Client-Key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+  "${BASE_URL}/api/v1/system/readiness")"
+test "${INVALID_SECRET_STATUS}" = "403"
+curl --fail --silent --show-error \
+  --header "X-Alzs-Proxy-Secret: ${PROXY_SECRET_FOR_SMOKE}" \
+  --header 'X-Alzs-Client-Key: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+  "${BASE_URL}/api/v1/system/readiness" > /dev/null
 
 curl --fail --silent --show-error "${BASE_URL}/api/v1/system/versions" \
   | tee "${ARTIFACT_DIRECTORY}/versions.json" \

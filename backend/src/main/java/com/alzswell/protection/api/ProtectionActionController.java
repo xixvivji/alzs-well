@@ -29,9 +29,11 @@ public class ProtectionActionController {
     }
 
     @GetMapping("/protection-actions/{actionCode}") @PreAuthorize("hasAuthority('PROTECTION_ACTION_READ')")
-    public ResponseEntity<ApiResponse<ActionDetail>> action(
-            @PathVariable @Pattern(regexp = ACTION_CODE_PATTERN) String actionCode) {
-        return ApiResponses.ok("PROTECTION_ACTION_RETRIEVED", "보호수단 안내 상세를 조회했습니다.", service.action(actionCode));
+    // Stateless bearer auth has no ambient browser credential; the only write is append-only access audit.
+    public ResponseEntity<ApiResponse<ActionDetail>> action( // lgtm[java/csrf-unprotected-request-type]
+            @PathVariable @Pattern(regexp = ACTION_CODE_PATTERN) String actionCode,Authentication authentication) {
+        return ApiResponses.ok("PROTECTION_ACTION_RETRIEVED", "보호수단 안내 상세를 조회했습니다.",
+                service.action(actionCode,authentication));
     }
 
     @PostMapping("/protection-actions/{actionCode}/eligibility-evaluations")

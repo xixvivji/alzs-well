@@ -409,6 +409,44 @@ class PostgreSqlIntegrationTest {
                 "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk','DELETE')",
                 Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk','SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*)
+                from pg_attribute
+                where attrelid = 'ai_knowledge.chunk'::regclass
+                  and attnum > 0
+                  and not attisdropped
+                  and has_column_privilege(
+                      'alzswell_ai_ingestor', 'ai_knowledge.chunk', attname, 'UPDATE'
+                  )
+                """, Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk_embedding','SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk_embedding','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.chunk_embedding','DELETE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*)
+                from pg_attribute
+                where attrelid = 'ai_knowledge.chunk_embedding'::regclass
+                  and attnum > 0
+                  and not attisdropped
+                  and has_column_privilege(
+                      'alzswell_ai_ingestor', 'ai_knowledge.chunk_embedding', attname, 'UPDATE'
+                  )
+                """, Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_ingestor','ai_knowledge.document_snapshot','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_ai_ingestor','knowledge_document','INSERT')",
                 Boolean.class)).isFalse();
         assertThat(jdbcTemplate.queryForObject(
@@ -430,6 +468,12 @@ class PostgreSqlIntegrationTest {
                 Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk_embedding','SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.chunk_embedding','UPDATE')",
                 Boolean.class)).isFalse();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.document_snapshot','UPDATE')",
@@ -526,7 +570,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '68'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '72'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -599,7 +643,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("68"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("72"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));

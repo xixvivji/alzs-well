@@ -7,6 +7,9 @@ from typing import Any, Mapping
 from app.errors import KnowledgeContractError
 
 
+INGESTIBLE_LIFECYCLE_STATUSES = frozenset({"PENDING_ACTIVATION", "ACTIVE"})
+
+
 @dataclass(frozen=True, slots=True)
 class KnowledgeManifest:
     payload: Mapping[str, Any]
@@ -86,7 +89,7 @@ def governance_blocking_codes(manifest: KnowledgeManifest, as_of: date | None = 
     codes: list[str] = []
     if manifest.approval_status != "APPROVED":
         codes.append("DOCUMENT_NOT_APPROVED")
-    if manifest.lifecycle_status != "ACTIVE":
+    if manifest.lifecycle_status not in INGESTIBLE_LIFECYCLE_STATUSES:
         codes.append("DOCUMENT_NOT_ACTIVE")
     if as_of is not None and not is_effective(manifest, as_of):
         codes.append("DOCUMENT_NOT_EFFECTIVE")

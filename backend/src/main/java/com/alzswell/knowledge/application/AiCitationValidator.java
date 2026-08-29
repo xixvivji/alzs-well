@@ -37,8 +37,18 @@ public class AiCitationValidator {
                 join knowledge_document d on d.document_id=v.document_id
                 join knowledge_document_governance g on g.document_id=d.document_id and g.version_label=v.version_label
                 join knowledge_ai_passage_binding b on b.passage_id=p.passage_id
+                  and b.document_id=v.document_id and b.version_label=v.version_label
+                  and b.chunk_order=p.passage_order and b.source_hash=g.source_hash
+                join knowledge_ingestion_import i on i.import_id=b.import_id
+                  and i.document_id=b.document_id and i.version_label=b.version_label and i.source_hash=b.source_hash
+                  and i.ai_proof_version='AI_DB_SNAPSHOT_V1' and i.ai_verified_at is not null
                 where d.document_id=:documentId and v.version_label=:versionLabel and p.passage_order=:chunkOrder
                   and d.approval_status='APPROVED' and d.lifecycle_status='ACTIVE' and v.version_label=d.current_version
+                  and d.title=g.title and d.issuer=g.issuer
+                  and d.source_url is not distinct from g.source_url
+                  and d.audience=g.audience and d.allowed_roles=g.allowed_roles
+                  and d.effective_from=g.effective_from and d.effective_to is not distinct from g.effective_to
+                  and d.checked_at=g.checked_at
                   and d.effective_from<=:asOf and (d.effective_to is null or d.effective_to>=:asOf)
                   and (:audience='' or d.audience in ('BOTH',:audience))
                   and (d.audience='BOTH' or d.audience=any(string_to_array(:audiences,',')))

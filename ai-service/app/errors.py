@@ -52,7 +52,7 @@ SAFE_MESSAGES: dict[str, str] = {
     "MANIFEST_DUPLICATE_KEY": "Manifest에 중복 키가 있습니다.",
     "MANIFEST_ALIAS_FORBIDDEN": "Manifest의 alias 또는 anchor는 허용되지 않습니다.",
     "DOCUMENT_NOT_APPROVED": "승인되지 않은 문서는 ingestion할 수 없습니다.",
-    "DOCUMENT_NOT_ACTIVE": "활성 상태가 아닌 문서는 ingestion할 수 없습니다.",
+    "DOCUMENT_NOT_ACTIVE": "ingestion 허용 생명주기 상태가 아닌 문서는 처리할 수 없습니다.",
     "DOCUMENT_NOT_EFFECTIVE": "기준일에 유효하지 않은 문서입니다.",
     "REPOSITORY_ROOT_REQUIRED": "저장소 루트를 명시해야 합니다.",
     "DATABASE_CONFIGURATION_INVALID": "AI 저장소 연결 설정이 올바르지 않습니다.",

@@ -49,7 +49,15 @@ PENDING_ACTIVATION → ACTIVE → SUPERSEDED
 - `RETIRED`: 효력기간과 무관한 운영상 철회
 - `DISPOSED`: 검색 생명주기가 아니라 별도 물리적 보존·폐기 상태 및 감사기록
 
-`ACTIVE`, `SUPERSEDED`, `EXPIRED`, `RETIRED`는 과거 또는 현재에 승인된 문서에만 허용한다. AI ingestion은 `approvalStatus=APPROVED`와 `lifecycleStatus=ACTIVE`를 모두 만족하는 문서만 처리한다. AI는 두 상태를 변경하지 않는다. ingestion 실행 상태 `PENDING/RUNNING/SUCCEEDED/FAILED`는 manifest가 아니라 파생 리포트와 향후 `ai_ingestion_run`에 기록한다.
+`ACTIVE`, `SUPERSEDED`, `EXPIRED`, `RETIRED`는 과거 또는 현재에 승인된 문서에만 허용한다. AI ingestion은 `approvalStatus=APPROVED`이고 lifecycle이 `PENDING_ACTIVATION` 또는 `ACTIVE`인 문서만 파생 적재한다. AI 적재 snapshot은 Spring import 전에 만들어지므로 내부 FastAPI는 `APPROVED/PENDING_ACTIVATION`을 검색 후보로 반환할 수 있지만, 이는 권한 부여나 외부 노출 결과가 아니다. Spring이 `SUCCEEDED` 실행과 전체 chunk를 재검증한 import 트랜잭션에서 권위 governance를 `ACTIVE`로 전환하고 current version·proof·ACL·효력을 다시 확인한 뒤에만 최종 검색 응답에 포함한다. AI는 Spring 권위 상태를 변경하지 않는다. ingestion 실행 상태 `PENDING/RUNNING/SUCCEEDED/FAILED`는 manifest가 아니라 파생 리포트와 `ai_knowledge.ingestion_run`에 기록한다.
+
+공용 manifest 계약은 검토 도구를 위한 `DRAFT/REJECTED/EXPIRED`까지 표현하지만, 현재 Spring V69
+관리자 API의 실행 부분집합은 `IN_REVIEW → APPROVED/PENDING_ACTIVATION → ACTIVE`다. import 전
+오승인·영구 실패 후보가 후속 버전을 막지 않도록, 관리자가 같은 catalog head를 기준으로 새 버전을
+등록하고 명시적으로 publish하면 기존 `APPROVED/PENDING_ACTIVATION` 후보를 `RETIRED`로 전환하고
+`RETIRED` 감사 이벤트에 `REPLACED_BY:<version>`만 남긴다. publish 요청 자체의
+낙관적 버전·멱등키와 제한된 approval reference 형식을 재사용하므로 자유입력 사유나 민감정보는
+저장하지 않는다. verified import가 한 번 생성된 후보는 이 교체 경로로 retire할 수 없다.
 
 현재 PostgreSQL 구현은 Spring 권위 테이블과 분리된 `ai_knowledge.ingestion_run`에 실행
 상태를 기록하고 `ai_knowledge.chunk`에 파생 청크를 저장한다. AI 계정에는 이 스키마의
@@ -190,10 +198,20 @@ Python과 Java는 서로의 결과만 비교하지 않고 `chunk-id-test-vectors
 
 FastAPI가 반환한 citation은 권한 부여 결과가 아니다. Spring은 `documentId`, `versionLabel`, `chunkId`, `sourceHash`, `textHash`, 명시적 `retrievedAsOf`를 사용해 최종 ACL·효력·활성 상태와 인용 일치를 다시 검증한다. 검증에 실패한 passage는 응답과 생성 문맥에서 제외하고 감사 이벤트에 실패 사유코드만 기록한다.
 
-Spring import는 `APPROVED/ACTIVE` governance와 source hash를 먼저 확인하고 모든 chunk의 NFC,
-본문 hash, 결정론적 chunk ID, 순서, extractor/chunker 버전과 페이지 범위를 재계산한다. 통과한
-결과만 `chunkId`와 Spring `passageId`의 추가 전용 binding으로 저장한다. AI 계정은 Spring 권위
+Spring import는 `APPROVED/PENDING_ACTIVATION` governance와 source hash를 먼저 확인하고, `ingestionRunId`가
+같은 PostgreSQL의 `ai_knowledge.ingestion_run`에서 `SUCCEEDED`인지 하나의 DB statement snapshot으로 확인한다. run의
+문서·버전·기준일·extractor/chunker·chunk 수와 그 run에 속한 모든 chunk의 본문·NFC·hash·결정론적
+ID·순서·페이지 범위가 import bundle과 정확히 같아야 한다. 통과한 결과만 검증시각 및
+`AI_DB_SNAPSHOT_V1` 증명 규칙과 함께 `chunkId`와 Spring `passageId`의 추가 전용 binding으로
+저장한다. AI와 Spring은 같은 문서 ID advisory lock을 사용하며, proof가 생성된 문서·버전의
+AI chunk·manifest snapshot과 참조 terminal ingestion run은 DB trigger가 이후 변경을 차단한다.
+AI 계정은 Spring 권위
 카탈로그를 직접 수정하지 않으며, 같은 문서 버전의 재작성이나 부분 교체는 허용하지 않는다.
+내용을 바꾸려면 새 `versionLabel`을 사용해야 한다. 새 문서 버전은 현재 catalog version을 명시적으로 supersede한
+governance만 허용하고 target governance 활성화, 이전 governance 대체, 새 passage 저장, catalog
+head 전환, 이전 version 종료를 한 트랜잭션에서 수행한다. 실패하면 기존 `ACTIVE` head와 검색 결과를
+그대로 유지한다. V28 legacy head는 새 governance의 `supersedes`가 현재 document/version을 정확히
+가리킬 때만 같은 verified import 경로로 명시적으로 대체할 수 있다.
 
 ## 내부 하이브리드 검색 v1
 

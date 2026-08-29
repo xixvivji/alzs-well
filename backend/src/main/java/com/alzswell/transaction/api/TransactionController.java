@@ -6,6 +6,7 @@ import com.alzswell.transaction.api.TransactionRequests.UpdateCategory;
 import com.alzswell.transaction.api.TransactionRequests.UpdateNote;
 import com.alzswell.transaction.api.TransactionResponses.*;
 import com.alzswell.transaction.application.TransactionService;
+import com.alzswell.common.security.AuditActor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -121,7 +122,7 @@ public class TransactionController {
             @Valid @RequestBody UpdateCategory command,
             Authentication auth) {
         return ApiResponses.ok("TRANSACTION_CATEGORY_UPDATED", "고객 지정 거래 범주를 변경했습니다.",
-                service.updateCategory(auth.getName(), transactionId, command, idempotencyKey));
+                service.updateCategory(AuditActor.from(auth), transactionId, command, idempotencyKey));
     }
 
     @PutMapping("/transactions/{transactionId}/note")
@@ -133,6 +134,6 @@ public class TransactionController {
             @Valid @RequestBody UpdateNote command,
             Authentication auth) {
         return ApiResponses.ok("TRANSACTION_NOTE_UPDATED", "금융 기억노트를 변경했습니다.",
-                service.updateNote(auth.getName(), transactionId, command, idempotencyKey));
+                service.updateNote(AuditActor.from(auth), transactionId, command, idempotencyKey));
     }
 }

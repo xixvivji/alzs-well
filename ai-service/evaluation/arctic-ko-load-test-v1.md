@@ -55,6 +55,7 @@ FastAPI 직접 경로와 Spring 경로는 순서대로 측정하므로 두 처�
 
 ```bash
 AI_MODEL_HOST_ROOT="$PWD/models" \
+AI_EVALUATION_TEST_APPROVAL=true \
 COPILOT_RAG_EXTRA_COMPOSE_FILE=backend/compose.arctic-ko.yaml \
 COPILOT_RAG_EMBEDDING_MODE=arctic-ko \
 COPILOT_RAG_LOAD_TEST_ENABLED=true \

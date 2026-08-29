@@ -26,11 +26,13 @@
 | E5-small | `614241f622f53c4eeff9890bdc4f31cfecc418b3` | `1a55775f...c98477` | 470,641,600 B | MIT |
 | Arctic-ko | `55ec6e9358a56d56af759bc8372e970caf8c305f` | `0b874517...e15b0` | 2,271,064,456 B | Apache-2.0 |
 
-전체 값과 prefix·차원 계약은 `model-artifacts-v1.json`에 기록한다. 실제 모델 파일은
-저장소의 `/models/` 아래에만 두고 Git에서 제외한다. E5-small은 `EVALUATION_ONLY`를
-유지한다. Arctic-ko는 공식문서 운영 골든셋 27건의 사람 승인과 품질·통합 게이트를 근거로
-`STAGED_APPROVED`이며 승인된 AWS AI staging에서만 명시적으로 활성화할 수 있다. 운영
-기본 모델 승인이나 자동 승격을 뜻하지 않으며 실행 중 자동 다운로드는 계속 금지한다.
+전체 값과 prefix·차원, 런타임 소비 파일별 경로·크기·SHA-256 계약은
+`model-artifacts-v1.json`에 기록한다. 실제 모델 파일은 저장소의 `/models/` 아래에만 두고
+Git에서 제외하며 catalog에 없는 파일과 symlink를 반입하지 않는다. E5-small은
+`EVALUATION_ONLY`를 유지한다. Arctic-ko는 공식문서 운영 골든셋 27건의 사람 승인과
+품질·통합 게이트를 근거로 `STAGED_APPROVED`이며, 승인된 AWS AI staging에서만 전체 모델
+패키지와 골든셋 무결성을 검증한 뒤 명시적으로 활성화할 수 있다. 운영 기본 모델 승인이나
+자동 승격을 뜻하지 않으며 실행 중 자동 다운로드는 계속 금지한다.
 
 ## CPU 성능
 

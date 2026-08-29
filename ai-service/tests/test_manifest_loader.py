@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.domain.manifest import ensure_ingestion_eligible, governance_blocking_codes
+from app.domain.manifest import KnowledgeManifest, ensure_ingestion_eligible, governance_blocking_codes
 from app.errors import KnowledgeContractError
 from app.ingestion.manifest_loader import (
     _load_yaml_12,
@@ -29,13 +29,27 @@ def test_loads_approved_active_synthetic_manifest(repo_root: Path) -> None:
     ensure_ingestion_eligible(manifest, as_of=date(2026, 8, 21))
 
 
+def test_approved_pending_manifest_is_ingestion_eligible_but_not_search_active(repo_root: Path) -> None:
+    active = load_and_validate_manifest(
+        repo_root,
+        "contracts/knowledge/fixtures/synthetic-approved-active.yaml",
+    )
+    payload = dict(active.payload)
+    payload["lifecycleStatus"] = "PENDING_ACTIVATION"
+    pending = KnowledgeManifest(payload)
+
+    assert governance_blocking_codes(pending, date(2026, 8, 21)) == []
+    ensure_ingestion_eligible(pending, as_of=date(2026, 8, 21))
+    assert pending.lifecycle_status != "ACTIVE"
+
+
 def test_real_manifest_is_valid_but_not_ingestion_eligible(repo_root: Path) -> None:
     manifest = load_and_validate_manifest(
         repo_root,
         "knowledge/manifests/DOC-FSC-SAFE-BLOCK-001.yaml",
     )
 
-    assert governance_blocking_codes(manifest) == ["DOCUMENT_NOT_APPROVED", "DOCUMENT_NOT_ACTIVE"]
+    assert governance_blocking_codes(manifest) == ["DOCUMENT_NOT_APPROVED"]
     with pytest.raises(KnowledgeContractError) as raised:
         ensure_ingestion_eligible(manifest, as_of=date(2026, 8, 21))
     assert raised.value.code == "DOCUMENT_NOT_APPROVED"

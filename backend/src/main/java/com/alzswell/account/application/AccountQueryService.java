@@ -5,6 +5,7 @@ import com.alzswell.account.api.AccountRequests.UpdateDisplaySetting;
 import com.alzswell.account.api.AccountResponses.*;
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.idempotency.MutationIdempotencyService;
+import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -150,14 +151,16 @@ public class AccountQueryService {
     }
 
     @Transactional
-    public DisplaySetting updateDisplaySetting(String customerId, UUID accountId, UpdateDisplaySetting command,
+    public DisplaySetting updateDisplaySetting(AuditActor actor, UUID accountId, UpdateDisplaySetting command,
             String idempotencyKey) {
+        String customerId = actor.customerId();
         return idempotency.execute("ACCOUNT_DISPLAY:" + customerId + ":" + accountId, idempotencyKey,
                 command, DisplaySetting.class, AccountErrorCode.IDEMPOTENCY_CONFLICT,
-                () -> updateDisplaySettingOnce(customerId, accountId, command));
+                () -> updateDisplaySettingOnce(actor, accountId, command));
     }
 
-    private DisplaySetting updateDisplaySettingOnce(String customerId, UUID accountId, UpdateDisplaySetting command) {
+    private DisplaySetting updateDisplaySettingOnce(AuditActor actor, UUID accountId, UpdateDisplaySetting command) {
+        String customerId = actor.customerId();
         ownedAccount(customerId, accountId);
         if (command.alias() == null && command.displayOrder() == null && command.hidden() == null) {
             throw new BusinessException(AccountErrorCode.INVALID_DISPLAY_SETTING);
@@ -182,10 +185,12 @@ public class AccountQueryService {
         jdbc.update("""
                 insert into account_display_setting_event(
                     event_id,account_id,customer_id,alias_snapshot,display_order_snapshot,
-                    hidden_snapshot,row_version,actor_id,occurred_at
-                ) values(?,?,?,?,?,?,?,?,?)
+                    hidden_snapshot,row_version,actor_id,actor_principal_id,actor_customer_id,
+                    actor_session_id,actor_type,occurred_at
+                ) values(?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, UUID.randomUUID(), accountId, customerId, alias, displayOrder,
-                hidden, nextVersion, customerId, now);
+                hidden, nextVersion, actor.legacyActorId(), actor.principalId(), actor.customerId(),
+                actor.sessionId(), actor.actorType(), now);
         return new DisplaySetting(accountId, alias, displayOrder, hidden, nextVersion, now);
     }
 

@@ -854,12 +854,12 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **271** |
+| 전체 | **272** |
 | P0-A 기존 핵심 데모 | **12** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
 | P1 제품 핵심 | **170** |
-| P2 은행·증권 확장 | **78** |
-| OWNED | **182** |
+| P2 은행·증권 확장 | **79** |
+| OWNED | **183** |
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
@@ -1031,7 +1031,7 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 
 P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_account_snapshot`, `customer_account_balance_snapshot`, `customer_account_restriction_snapshot`, `customer_account_statement_snapshot`으로 `IMPLEMENTED-SYNTHETIC-READ-ONLY`다. V43은 반복 상대·계좌 그룹을 불변 합성 snapshot으로 추가하고, 별칭·노출 순서·숨김 여부만 `account_display_setting`에서 변경하도록 원천 계좌 데이터와 분리했다. `ACCOUNT_READ|WRITE` 권한과 고객 소유권을 Controller·서비스 양쪽에서 확인하며 `{accountId}` 단독 경로와 `{statementId}` 상세도 다른 고객의 식별자를 사용하면 404를 반환한다. 계좌번호는 마스킹 형식만 DB 제약으로 허용하고 원문 번호·거래 원문은 저장하지 않는다.
 
-잔액 추세의 `from`, `to`는 `YYYY-MM-DD`이며 생략 시 기준일을 끝으로 최근 약 3개월을 반환하고 최대 366일로 제한한다. 잘못된 기간은 `400 ACCOUNT_BALANCE_DATE_RANGE_INVALID`, 계좌 없음·소유권 불일치는 `404 ACCOUNT_NOT_FOUND`, 명세서 없음은 `404 ACCOUNT_STATEMENT_NOT_FOUND`다. 표시 설정 PATCH는 `alias`, `displayOrder`, `hidden` 중 하나 이상과 `expectedVersion`을 받고 변경 이력을 추가 전용으로 기록한다. 버전 충돌은 `409 ACCOUNT_DISPLAY_VERSION_CONFLICT`, 표시 순서 충돌은 `409 ACCOUNT_DISPLAY_ORDER_CONFLICT`다. 계좌 목록·상세의 요약 객체는 `providerMode=SYNTHETIC_PROVIDER`, `syntheticData=true`, `externalExecutionAvailable=false`를 유지한다. 상세의 `transferAvailable=false`, `closureAvailable=false`, 명세의 `fileAvailable=false`, `externalDownloadAvailable=false`를 고정하며 실제 은행 API·이체·출금·계좌해지·명세 다운로드를 실행하지 않는다.
+잔액 추세의 `from`, `to`는 `YYYY-MM-DD`이며 생략 시 기준일을 끝으로 최근 약 3개월을 반환하고 최대 366일로 제한한다. 잘못된 기간은 `400 ACCOUNT_BALANCE_DATE_RANGE_INVALID`, 계좌 없음·소유권 불일치는 `404 ACCOUNT_NOT_FOUND`, 명세서 없음은 `404 ACCOUNT_STATEMENT_NOT_FOUND`다. 표시 설정 PATCH는 `alias`, `displayOrder`, `hidden` 중 하나 이상과 `expectedVersion`을 받고 변경 이력을 추가 전용으로 기록한다. 변경 이벤트에는 고객 ID뿐 아니라 실제 Bearer `principalId`, `sessionId`, `actorType` snapshot을 보존하며 V70 이전 이력은 `LEGACY`로 구분한다. 버전 충돌은 `409 ACCOUNT_DISPLAY_VERSION_CONFLICT`, 표시 순서 충돌은 `409 ACCOUNT_DISPLAY_ORDER_CONFLICT`다. 계좌 목록·상세의 요약 객체는 `providerMode=SYNTHETIC_PROVIDER`, `syntheticData=true`, `externalExecutionAvailable=false`를 유지한다. 상세의 `transferAvailable=false`, `closureAvailable=false`, 명세의 `fileAvailable=false`, `externalDownloadAvailable=false`를 고정하며 실제 은행 API·이체·출금·계좌해지·명세 다운로드를 실행하지 않는다.
 
 #### 3.3.6 통합자산·현금흐름 — 8개
 
@@ -1069,7 +1069,7 @@ P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_a
 
 앞의 P1 9개는 Flyway V44의 `financial_transaction_snapshot`, `transaction_enrichment_snapshot`, `customer_transaction_preference`, `customer_transaction_preference_event`로 구현됐다. 원천 거래와 enrichment는 추가 전용 불변 snapshot이며 `TRANSACTION_READ`와 고객 소유권을 서비스 계층에서도 확인한다. 목록·검색은 `occurredAt DESC, transactionId DESC` 복합 정렬과 UUID cursor를 사용하고 기간은 최대 366일, limit은 최대 100으로 제한한다. 검색어는 최대 80자이며 민감정보 정책을 통과한 마스킹 설명·상대방 이름만 검색한다. `q` 원문이 URI access log에 남지 않도록 거래 검색 경로의 Nginx access log는 비활성화한다.
 
-범주·노트 PUT은 `TRANSACTION_WRITE`, `Idempotency-Key`, `expectedVersion`을 요구한다. 고객 보정 범주는 고정 enum만 허용하고, 기억노트는 최대 120자이며 식별정보·계좌번호·연락처·질병 표현을 거부한다. 변경은 원천 거래를 수정하지 않고 별도 preference만 갱신하며 추가 전용 이벤트를 남긴다. 버전 충돌은 `409 TRANSACTION_PREFERENCE_VERSION_CONFLICT`, 잘못된 cursor는 `400 TRANSACTION_CURSOR_INVALID`, 기간·금액 범위 오류는 각각 `400 TRANSACTION_DATE_RANGE_INVALID`, `400 TRANSACTION_AMOUNT_RANGE_INVALID`다. 응답은 `syntheticData=true`, `externalActionAvailable=false`, `externalActionExecuted=false`를 유지하며 실제 취소·정정·이체·export를 실행하지 않는다.
+범주·노트 PUT은 `TRANSACTION_WRITE`, `Idempotency-Key`, `expectedVersion`을 요구한다. 고객 보정 범주는 고정 enum만 허용하고, 기억노트는 최대 120자이며 식별정보·계좌번호·연락처·질병 표현을 거부한다. 변경은 원천 거래를 수정하지 않고 별도 preference만 갱신하며 추가 전용 이벤트에 실제 Bearer `principalId`, `sessionId`, 고객 ID와 `actorType`을 함께 남긴다. 버전 충돌은 `409 TRANSACTION_PREFERENCE_VERSION_CONFLICT`, 잘못된 cursor는 `400 TRANSACTION_CURSOR_INVALID`, 기간·금액 범위 오류는 각각 `400 TRANSACTION_DATE_RANGE_INVALID`, `400 TRANSACTION_AMOUNT_RANGE_INVALID`다. 응답은 `syntheticData=true`, `externalActionAvailable=false`, `externalActionExecuted=false`를 유지하며 실제 취소·정정·이체·export를 실행하지 않는다.
 
 #### 3.3.8 정기납부·구독·청구 — 8개
 
@@ -1181,7 +1181,7 @@ V59의 저장 이체 양식 3개는 `TRANSFER_TEMPLATE_READ|WRITE`와 고객 본
 
 P1 예금·대출·투자 보유 조회 8개는 Flyway V50과 `FinancialHoldingController`로 구현한다. 기존 V42 계좌와 V45 부채 snapshot을 원장으로 재사용하며, 상품 상세·상환일정·투자 포지션 projection은 고객 ID와 원장 ID의 복합 외래키로 소유권을 강제한다. 권한은 본인의 `FINANCIAL_OVERVIEW_READ`로 제한하고 모든 신규 snapshot은 append-only 및 runtime DML 회수를 적용한다. 기관은 `안심은행`, `안심증권` 합성 기관만 사용하고 응답의 외부 호출·만기처리·상환·주문 실행 가능 여부는 항상 `false`다.
 
-앞의 P2 주문이력·시세·차트·관심종목 5개는 Flyway V52와 `InvestmentMarketController`로 구현한다. 주문이력은 합성 snapshot을 최대 100건까지 반환하고, 시세는 지연된 고정 snapshot만 제공하며, 차트 조회기간은 최대 366일이다. 관심종목은 최대 20개를 전체 교체하고 `Idempotency-Key`와 `expectedVersion`으로 중복 요청과 충돌을 제어하며 변경 이력을 append-only로 남긴다. 실제 시세망 호출·투자 추천·주문·취소는 실행하지 않으며 주문 생성·취소 2개 API는 계속 `REFERENCE_ONLY`다.
+앞의 P2 주문이력·시세·차트·관심종목 5개는 Flyway V52와 `InvestmentMarketController`로 구현한다. 주문이력은 합성 snapshot을 최대 100건까지 반환하고, 시세는 지연된 고정 snapshot만 제공하며, 차트 조회기간은 최대 366일이다. 관심종목은 최대 20개를 전체 교체하고 `Idempotency-Key`와 `expectedVersion`으로 중복 요청과 충돌을 제어한다. V70부터 변경 이벤트는 요청을 수행한 실제 Bearer principal·session·고객·actor type을 append-only snapshot으로 남기며 `WATCHLIST` source로 통합 감사 목록·상세·내보내기에 포함한다. 신규 이벤트의 `ACTOR_SNAPSHOT_V2` 무결성 해시는 event ID·고객·버전·종목 순서·발생시각과 전체 actor snapshot을 함께 결속하며, V70 이전 이벤트는 `LEGACY_V1`로 명시한다. 실제 시세망 호출·투자 추천·주문·취소는 실행하지 않으며 주문 생성·취소 2개 API는 계속 `REFERENCE_ONLY`다.
 
 ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다.
 
@@ -1200,7 +1200,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P2 | POST | /api/v1/protection-enrollments | 실제 보호수단 신청 참조 | REFERENCE_ONLY |
 | P2 | DELETE | /api/v1/protection-enrollments/{enrollmentId} | 실제 해지 기능 참조 | REFERENCE_ONLY |
 
-앞의 P1 4개는 Flyway V29와 함께 구현했다. 카탈로그와 상세는 공식 출처·확인일·승인된 근거 passage를 반환하고, 안내 가능성 평가는 고정 정책 버전과 reason code만 사용하는 결정론적 결과다. 가입상태는 `안심은행` 합성 snapshot만 읽으며 `externalProviderCalled=false`를 명시한다. 모든 응답에서 신청 endpoint와 외부 실행은 제공하지 않고, 실제 신청·해지 API는 계속 `REFERENCE_ONLY`다.
+앞의 P1 4개는 Flyway V29와 함께 구현했다. 카탈로그와 상세는 공식 출처·확인일을 반환하고, 근거 citation은 `actionCode → documentId` 정책 매핑에서 현재 `APPROVED/ACTIVE` governance·역할 ACL·효력일·verified binding·`AI_DB_SNAPSHOT_V1` proof를 통과한 첫 passage를 동적으로 선택한다. 고정 V28 passage UUID를 반환하지 않으며 검증된 현재 근거가 없으면 citation 목록을 비워 fail-closed한다. 새 문서 버전 import 뒤에는 동일 document의 새 stable passage ID를 반환한다. citation resolution은 `PROTECTION_ACTION_CITATION` 접근감사에 호출 permission, action code, 기준일, 반환 passage ID, `ALLOWED/NOT_FOUND`를 남긴다. 안내 가능성 평가는 고정 정책 버전과 reason code만 사용하는 결정론적 결과다. 가입상태는 `안심은행` 합성 snapshot만 읽으며 `externalProviderCalled=false`를 명시한다. 모든 응답에서 신청 endpoint와 외부 실행은 제공하지 않고, 실제 신청·해지 API는 계속 `REFERENCE_ONLY`다.
 
 연금 보유목록과 연금 전망, 신탁 보유목록·상세 4개는 Flyway V53과 `FinancialHoldingController`로 구현한다. 모든 원본은 `안심은행` 합성 snapshot이며 고객 소유권과 `FINANCIAL_OVERVIEW_READ`를 함께 검사한다. 연금 전망은 보장·추천이 아닌 두 개의 고정 가정 시나리오로만 제공하고, 신탁은 수익자 수만 반환하며 수익자 식별정보를 저장하거나 노출하지 않는다. 가입·변경·해지·지급 등 외부 실행 기능은 모두 `false`이며 snapshot은 append-only다.
 
@@ -1307,7 +1307,7 @@ V49부터 경보 접근권은 `DETECTION_ADMIN`, 그 밖의 보호업무 접근�
 
 이 절의 6개 operation은 `IMPLEMENTED-PRIVATE`다. Flyway V40의 `staff_access_grant`와 추가 전용 event 이력으로 고객·직원 principal·목적·scope·만료를 결합하며, 동의·신뢰연락인·금융의향·사건·개인정보 대행 API가 기존 `*_ALL` 권한만으로 고객 경계를 넘지 못하도록 서비스 계층에서 다시 검사한다. 접근권 생성·평가·사용·철회는 모두 감사이력에 남고 실제 은행 IAM이나 외부 시스템은 호출하지 않는다.
 
-V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUID로 고정하고, 검토·안내승인·메모·후속처리 주체가 배정 principal과 일치하는지 확인한다. 사건 메모·검토사유·후속 목적·결과는 식별정보·계좌·연락처·질병 표현 검사를 통과해야 한다. 금융의향 command는 고객 ID가 포함된 scope와 SHA-256 멱등키만 저장하고, 기존 승인 의향과 새 승인이 충돌하면 명시적 `409`를 반환한다. 통합 감사와 인앱 알림 cursor는 PostgreSQL 마이크로초를 보존하는 v2 형식이며 기존 밀리초 cursor는 읽기 호환만 유지한다.
+V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUID로 고정하고, 검토·안내승인·메모·후속처리 주체가 배정 principal과 일치하는지 확인한다. 사건 메모·검토사유·후속 목적·결과는 식별정보·계좌·연락처·질병 표현 검사를 통과해야 한다. 금융의향 command는 고객 ID가 포함된 scope와 SHA-256 멱등키만 저장하고, 기존 승인 의향과 새 승인이 충돌하면 명시적 `409`를 반환한다. 통합 감사와 인앱 알림 cursor는 PostgreSQL 마이크로초를 보존하는 v2 형식이며 기존 밀리초 cursor는 읽기 호환만 유지한다. 감사 무결성 해시에 포함되는 시각은 UTC·마이크로초로 먼저 정규화하고 같은 값을 `timestamptz`에 저장해 DB 재조회 후 동일 해시를 재계산할 수 있게 한다.
 
 #### 3.3.19 공식 근거·지식 카탈로그 — 9개
 
@@ -1323,11 +1323,13 @@ V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUI
 | P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/admin/knowledge/ingestion-imports | 검증된 AI chunk를 Spring 권위 passage로 반영 (`IMPLEMENTED`) | OWNED |
 
-앞의 P1 6개는 Flyway V28의 승인 문서·불변 버전·인용 passage 테이블과 함께 구현했다. `asOf`와 audience로 승인·효력기간을 제한하며, AI 기능 플래그가 꺼졌거나 내부 서비스가 실패하면 허용된 passage의 결정론적 키워드 일치만 사용한다. V65부터 내부 FastAPI가 활성화된 경우 외부 다운로드가 없는 384차원 로컬 임베딩과 PostgreSQL 전문검색 점수를 pgvector에서 결합한다. keyword/vector 가중치는 각각 `0.35/0.65`이며 vector 후보 임계값 `0.15`, 최종 결합 점수 임계값 `0.35` 미만은 무응답 처리한다. 이 설정은 합성 평가 데이터셋의 Recall@3·Recall@5·MRR·무응답 오탐률과 정책 위반 수를 CI 품질 게이트로 검증한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하며 `externalExecutionCreated=false`를 강제한다. 실제 은행 내부문서, 외부 검색 API, 외부 모델과 LLM 호출은 포함하지 않는다.
+앞의 P1 6개는 Flyway V28의 문서·불변 버전·인용 passage 구조를 기반으로 구현하되, V28 seed 자체는 검증된 AI import가 없는 legacy 자료이므로 조회·검색에 노출하지 않는다. `asOf`와 audience로 승인·효력기간을 제한하며, AI 기능 플래그가 꺼졌거나 내부 서비스가 실패하면 검증된 현재 passage의 결정론적 키워드 일치만 사용한다. V65부터 내부 FastAPI가 활성화된 경우 외부 다운로드가 없는 384차원 로컬 임베딩과 PostgreSQL 전문검색 점수를 pgvector에서 결합한다. AI 적재 snapshot은 import 전 `PENDING_ACTIVATION`이므로 내부 FastAPI는 `APPROVED`이면서 `PENDING_ACTIVATION|ACTIVE`인 chunk를 후보로 반환할 수 있지만, Spring이 current `APPROVED/ACTIVE` governance·proof·ACL·효력을 최종 검증하기 전에는 외부 응답에 포함하지 않는다. keyword/vector 가중치는 각각 `0.35/0.65`이며 vector 후보 임계값 `0.15`, 최종 결합 점수 임계값 `0.35` 미만은 무응답 처리한다. 이 설정은 합성 평가 데이터셋의 Recall@3·Recall@5·MRR·무응답 오탐률과 정책 위반 수를 CI 품질 게이트로 검증한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하되, 현재 로그인 역할로 직접 조회 가능한 검증 passage가 있는 후보만 반환하며 `externalExecutionCreated=false`를 강제한다. 각 resolution은 `GUIDANCE_CITATION` 접근감사에 호출 permission, action code, 기준일, 반환 passage ID와 결과를 남긴다. 실제 은행 내부문서, 외부 검색 API, 외부 모델과 LLM 호출은 포함하지 않는다.
 
-V55와 V64의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 항상 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과한 뒤에만 `APPROVED/ACTIVE`가 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`다. import는 승인된 governance와 source hash를 확인한 뒤 NFC, 본문 hash, chunk ID, 순서·페이지·버전을 재계산하고 통과한 `chunkId ↔ passageId` binding만 추가 전용으로 저장한다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·import는 불변 감사이력에 보존된다.
+V55·V64·V69의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과하면 `APPROVED/PENDING_ACTIVATION`이 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`이고 기존 `ACTIVE` head는 계속 검색된다. import는 같은 PostgreSQL의 정확한 `SUCCEEDED` ingestion run과 전체 chunk를 statement snapshot으로 대조하며, DB trigger가 proof 값을 직접 생성하고 커밋 시 binding·passage가 모든 AI chunk와 1:1인지 다시 강제한다. 실행이나 chunk가 없거나 본문·순서·페이지·해시·버전이 다르면 fail-closed 처리한다. 검증을 통과한 트랜잭션에서만 target governance `ACTIVE`, 이전 governance `SUPERSEDED`, 새 version·passage, `currentVersion` 전환, 이전 version `supersededAt`을 함께 반영하므로 어느 단계든 실패하면 기존 `ACTIVE` head가 유지된다. V28 legacy head도 새 governance의 supersedes가 현재 document/version과 정확히 일치할 때만 이 경로로 대체한다. import 전 오승인·영구 실패 pending은 같은 catalog head를 기준으로 등록한 후속 버전을 명시적으로 publish할 때 `RETIRED` 감사 이벤트와 제한된 replacement reference를 남기고 교체한다. 별도 자유입력 사유는 받지 않으며 verified import가 생긴 후보에는 이 경로를 허용하지 않는다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·활성화·대체·import는 불변 감사이력에 보존된다.
 
-V56부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 문서 `allowedRoles`의 교집합, 역할에서 계산한 requester audience, 문서 audience, `APPROVED/ACTIVE`, 효력일을 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능한 문서를 `404`로 숨긴다. 모든 조회·검색은 추가 전용 `knowledge_access_audit_event`에 permission, 역할, audience, 필터, 반환 ID를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤에서 V65 내부 FastAPI 하이브리드 어댑터와 결정론적 폴백을 선택하고, Spring이 반환 citation을 권위 DB와 다시 대조한다.
+AI 검색 장애 시뿐 아니라 내부 AI가 반환한 citation을 Spring이 전부 거부한 경우에도 결정론적 폴백을 사용하고 거부 건수를 감사에 보존한다. 폴백은 Spring catalog 조건만 신뢰하지 않는다. 현재 version과 동일한 `APPROVED/ACTIVE` governance, 역할 ACL, audience, 효력일, source hash가 일치하는 AI binding과 `AI_DB_SNAPSHOT_V1` import proof를 모두 요구한다. V71의 제목·본문 `pg_catalog.simple` stored `tsvector` GIN과 별도 keyword GIN에서 사용자 입력을 `plainto_tsquery`·배열 포함 조건의 바인딩 값으로만 조회하고, 요청 limit에 비례하되 DB 후보를 최대 200개로 제한해 DB에서 일치 개수와 순서를 결정한다. 따라서 SQL 문법을 사용자 문자열로 조립하지 않고, superseded·legacy·미검증 자료를 재노출하지 않으며 전체 corpus DB/메모리 scan도 수행하지 않는다.
+
+V56·V71부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 current version governance의 `allowedRoles` 교집합, 역할에서 계산한 requester audience, 문서 audience, catalog와 governance 양쪽의 `APPROVED/ACTIVE`, 효력일, source hash가 일치하는 binding, `AI_DB_SNAPSHOT_V1` import proof를 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능하거나 legacy·미검증인 문서를 `404`로 숨긴다. 모든 직접 조회·검색과 안내/보호수단의 citation 우회조회는 추가 전용 `knowledge_access_audit_event`에 호출 permission, 역할, audience, action code 또는 필터, 반환 ID와 결과를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤에서 V65 내부 FastAPI 하이브리드 어댑터와 결정론적 폴백을 선택하고, Spring이 반환 citation을 동일한 proof와 권위 DB에 다시 대조한다.
 
 #### 3.3.20 인앱 알림·고객지원 — 10개
 
@@ -2238,7 +2240,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "68",
+        "schemaVersion": "72",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2771,7 +2773,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V40과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V72와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
 
 #### 공개 설정
 
@@ -2824,7 +2826,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "68",
+    "schemaVersion": "72",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3734,10 +3736,30 @@ Flyway V63은 위 공개 operation 수를 늘리지 않고 배포용 `synthetic-
 Flyway V67은 `LOAD` profile과 추가 전용 `synthetic_fixture_quality_report`를 추가한다. `SYNTHETIC_SEED_VERIFY_DETECTION=true`인 Job은 생성된 모든 고객을 현재 활성 정책과 고정 알고리즘으로 평가한다. 정책이 실행 도중 바뀌지 않고 기대·실제 신호 수가 일치하며 정상 고객 오탐과 이상 고객 미탐이 모두 0일 때만 `PASSED`다. 리포트에는 정책·알고리즘 버전, precision·recall, 64자리 report hash를 남기며 외부 실행과 advisory AI는 허용하지 않는다.
 
 Flyway V68은 AI 파생 `chunk_embedding` 테이블을 추가해 384차원과 1024차원 벡터를
-동시에 저장한다. 각 행은 chunk, 모델 ID, 고정 모델 버전, 차원을 함께 식별하며
+모델별로 구분한다. 각 행은 chunk, 모델 ID, 고정 모델 버전, 차원을 함께 식별하며
 Hash v1, 고정 E5-small revision, 고정 Arctic-ko revision마다 별도 HNSW 부분 인덱스를
 사용한다. 기존 `chunk.embedding`은 배포 호환성을 위해 유지하고 Hash 벡터를 신규
-테이블로 이관한다.
+테이블로 이관한다. 운영 ingestion은 Spring publish/import와 같은 문서별 advisory lock 안에서 기존 chunk와
+종속 embedding을 삭제한 뒤 현재 provider의 완전한 파생 snapshot을 INSERT-only로
+교체하며, 실행 완료와 교체를 같은 트랜잭션으로 커밋한다. 이 교체는 검증 import 전까지만
+허용되며 `AI_DB_SNAPSHOT_V1` proof 생성 후 내용 변경은 새 `versionLabel`을 사용한다. 모델 비교는 격리된 임시 DB에서
+각각 ingestion해 운영 snapshot에 서로 다른 모델 결과를 섞지 않는다.
+
+Flyway V72는 `alzswell_ai_ingestor`의 `ai_knowledge.chunk`와
+`ai_knowledge.chunk_embedding` UPDATE 권한을 테이블·컬럼 수준에서 모두 회수한다.
+ingestor는 chunk에 SELECT·INSERT·DELETE, chunk_embedding에 SELECT·INSERT만 가지며 임베딩
+삭제는 부모 chunk cascade로만 수행한다. Spring과 공유하는 문서 advisory lock 안에서 검증
+import 전까지만 삭제 후 INSERT-only로 교체한다. proof가 생성된 문서·버전의 chunk·manifest
+snapshot과 proof가 참조하는 terminal ingestion run은 SECURITY DEFINER trigger가 이후 변경을
+거부하고, UPDATE는 OLD·NEW 양쪽 키를 검사한다. 이후 내용 변경은 새 버전으로 적재한다. 미검증·신규
+버전의 권위 DB snapshot 동기화에 필요한 `ai_knowledge.document_snapshot` UPDATE와 검색 runtime의
+파생 테이블 SELECT는 유지한다.
+
+AI ingestion은 문서당 최대 500개 청크를 허용하고 지연 분할 중 501번째 청크가 생기는
+즉시 실패한다. 운영 Compose는 `PRODUCTION`, `hash`, hash fallback 비활성화를 명시한다.
+운영에서 non-hash backend에 `ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true`를 함께 설정하면
+대체 모델로 조용히 강등하지 않고 `EMBEDDING_CONFIGURATION_INVALID`로 기동을 거부한다.
+fallback은 `SYNTHETIC_TEST`에서만 선택적으로 사용할 수 있다.
 
 이 Job은 HTTP Controller를 제공하지 않는다. `alzswell_migrator` 역할과 `synthetic-tools` Compose profile에서만 실행하며 `SYNTHETIC_DATA_ONLY=true`, `SYNTHETIC_PROVIDER_ONLY=true`, `EXTERNAL_ACTIONS_ENABLED=false`가 아니면 시작 전에 실패한다. 생성된 모든 계좌·거래는 `SYNTHETIC_PROVIDER`이고 실제 금융기관 호출·송금·알림·외부 AI 실행을 만들지 않는다.
 

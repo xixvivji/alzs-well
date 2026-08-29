@@ -23,6 +23,7 @@ from app.storage.embedding_index import vector_type
 
 
 ConnectFunction = Callable[..., Any]
+MAX_CHUNKS_PER_RUN = 500
 
 
 class PostgresIngestionStore:
@@ -83,11 +84,16 @@ class PostgresIngestionStore:
             or manifest.source_hash != chunks[0].source_hash
         ):
             raise KnowledgeContractError("STORAGE_CONFLICT")
+        created_at = _now()
+        chunk_writes = tuple(
+            _chunk_write(run_id, chunk, created_at, self._embedding_provider)
+            for chunk in chunks
+        )
         try:
             with self._connect() as connection, connection.cursor() as cursor:
                 cursor.execute(
                     "select pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                    (f"{document_id}\x1f{version_label}",),
+                    (document_id,),
                 )
                 cursor.execute(
                     """
@@ -153,15 +159,9 @@ class PostgresIngestionStore:
                     """
                     delete from ai_knowledge.chunk
                     where document_id = %s and version_label = %s
-                      and not (chunk_id = any(%s::text[]))
                     """,
-                    (document_id, version_label, [chunk.chunk_id for chunk in chunks]),
+                    (document_id, version_label),
                 )
-                created_at = _now()
-                chunk_writes = [
-                    _chunk_write(run_id, chunk, created_at, self._embedding_provider)
-                    for chunk in chunks
-                ]
                 cursor.executemany(
                     """
                     insert into ai_knowledge.chunk(
@@ -173,27 +173,6 @@ class PostgresIngestionStore:
                         %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s
                     )
-                    on conflict(chunk_id) do update set
-                        run_id = excluded.run_id,
-                        heading = excluded.heading,
-                        section_path = excluded.section_path,
-                        page = excluded.page,
-                        page_start = excluded.page_start,
-                        page_end = excluded.page_end,
-                        chunk_order = excluded.chunk_order,
-                        content = excluded.content,
-                        text_hash = excluded.text_hash,
-                        source_hash = excluded.source_hash,
-                        extractor_version = excluded.extractor_version,
-                        chunker_version = excluded.chunker_version,
-                        embedding = coalesce(
-                            excluded.embedding, ai_knowledge.chunk.embedding
-                        ),
-                        embedding_model_version = coalesce(
-                            excluded.embedding_model_version,
-                            ai_knowledge.chunk.embedding_model_version
-                        ),
-                        created_at = excluded.created_at
                     """,
                     [write.chunk_parameters for write in chunk_writes],
                 )
@@ -203,11 +182,6 @@ class PostgresIngestionStore:
                         chunk_id, embedding_model_id, embedding_model_version,
                         embedding_dimensions, embedding, created_at
                     ) values (%s, %s, %s, %s, %s::vector, %s)
-                    on conflict(chunk_id, embedding_model_id, embedding_model_version)
-                    do update set
-                        embedding_dimensions = excluded.embedding_dimensions,
-                        embedding = excluded.embedding,
-                        created_at = excluded.created_at
                     """,
                     [write.embedding_parameters for write in chunk_writes],
                 )
@@ -233,6 +207,8 @@ class PostgresIngestionStore:
         except KnowledgeContractError:
             raise
         except psycopg.IntegrityError:
+            raise KnowledgeContractError("STORAGE_CONFLICT") from None
+        except psycopg.errors.ObjectNotInPrerequisiteState:
             raise KnowledgeContractError("STORAGE_CONFLICT") from None
         except psycopg.Error:
             raise KnowledgeContractError("STORAGE_UNAVAILABLE") from None
@@ -269,7 +245,7 @@ class PostgresIngestionStore:
 
 
 def _validate_chunks(chunks: tuple[KnowledgeChunk, ...]) -> tuple[str, str]:
-    if not chunks:
+    if not 1 <= len(chunks) <= MAX_CHUNKS_PER_RUN:
         raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
     first = chunks[0]
     if any(

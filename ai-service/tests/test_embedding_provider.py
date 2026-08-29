@@ -18,6 +18,7 @@ from app.embedding.local_arctic import (
 )
 from app.embedding.local_e5 import E5_DIMENSIONS, LocalE5EmbeddingProvider
 from app.embedding.local_hash import LocalHashEmbeddingProvider
+from app.embedding.model_package import ModelPackageFile
 from app.errors import KnowledgeContractError
 
 
@@ -136,6 +137,7 @@ def test_embedding_config_defaults_to_hash() -> None:
 
     assert isinstance(provider, LocalHashEmbeddingProvider)
     assert provider.descriptor.model_version == "local-hash-ngram-ko-v1"
+    assert config.allow_hash_fallback is False
 
 
 def test_arctic_backend_stays_on_hash_until_rollout_is_enabled() -> None:
@@ -153,9 +155,9 @@ def test_arctic_backend_stays_on_hash_until_rollout_is_enabled() -> None:
 def test_embedding_config_loads_only_hash_verified_local_e5(
     tmp_path: Path,
 ) -> None:
-    model_root, model_hash = _model_package(tmp_path)
+    model_root, model_hash, catalog = _model_package(tmp_path)
     config = EmbeddingConfig.from_environment(
-        _environment(model_root, model_hash)
+        _environment(model_root, model_hash), catalog_path=catalog
     )
     calls: list[tuple[Path, str]] = []
 
@@ -166,7 +168,7 @@ def test_embedding_config_loads_only_hash_verified_local_e5(
     provider = create_embedding_provider(config, e5_factory=factory)
 
     assert isinstance(provider, StubProvider)
-    assert calls == [(model_root / "multilingual-e5-small", "approved-revision")]
+    assert calls == [(model_root / "multilingual-e5-small", "a" * 40)]
 
 
 def test_embedding_config_loads_only_pinned_hash_verified_arctic(
@@ -188,6 +190,10 @@ def test_embedding_config_loads_only_pinned_hash_verified_arctic(
         "ALZS_ARCTIC_ROLLOUT_ENABLED": "true",
     }
 
+    with pytest.raises(KnowledgeContractError) as not_promoted:
+        EmbeddingConfig.from_environment(environment)
+    assert not_promoted.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
     # Production pins prevent a synthetic artifact from being accepted even if its
     # own digest is internally consistent.
     environment["ALZS_EMBEDDING_MODEL_SHA256"] = configured_hash
@@ -203,6 +209,10 @@ def test_embedding_config_loads_only_pinned_hash_verified_arctic(
         model_revision=ARCTIC_MODEL_REVISION,
         model_sha256=configured_hash,
         allow_hash_fallback=False,
+        model_status="EVALUATION_ONLY",
+        model_files=(_package_file("model.safetensors", payload),),
+        execution_context="SYNTHETIC_TEST",
+        allow_evaluation_model=True,
         arctic_rollout_enabled=True,
     )
     calls: list[tuple[Path, str]] = []
@@ -263,8 +273,10 @@ def test_staged_arctic_rejects_environment_or_pin_mismatch(
 def test_embedding_config_falls_back_only_when_model_runtime_is_unavailable(
     tmp_path: Path,
 ) -> None:
-    model_root, model_hash = _model_package(tmp_path)
-    config = EmbeddingConfig.from_environment(_environment(model_root, model_hash))
+    model_root, model_hash, catalog = _model_package(tmp_path)
+    config = EmbeddingConfig.from_environment(
+        _environment(model_root, model_hash), catalog_path=catalog
+    )
 
     def unavailable(path: Path, revision: str) -> StubProvider:
         del path, revision
@@ -273,6 +285,48 @@ def test_embedding_config_falls_back_only_when_model_runtime_is_unavailable(
     provider = create_embedding_provider(config, e5_factory=unavailable)
 
     assert isinstance(provider, LocalHashEmbeddingProvider)
+
+
+def test_production_local_model_rejects_hash_fallback_even_when_explicit(
+    tmp_path: Path,
+) -> None:
+    model_root, model_hash, catalog = _model_package(tmp_path)
+    environment = _environment(model_root, model_hash)
+    environment.update(
+        ALZS_EMBEDDING_EXECUTION_CONTEXT="PRODUCTION",
+        ALZS_EMBEDDING_ALLOW_HASH_FALLBACK="true",
+    )
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        EmbeddingConfig.from_environment(environment, catalog_path=catalog)
+
+    assert caught.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
+
+def test_production_local_model_defaults_to_strict_no_fallback(
+    tmp_path: Path,
+) -> None:
+    model_root, model_hash, catalog = _model_package(tmp_path)
+    environment = _environment(model_root, model_hash)
+    environment["ALZS_EMBEDDING_EXECUTION_CONTEXT"] = "PRODUCTION"
+
+    config = EmbeddingConfig.from_environment(environment, catalog_path=catalog)
+
+    assert config.allow_hash_fallback is False
+
+
+def test_programmatic_production_local_model_rejects_hash_fallback() -> None:
+    config = EmbeddingConfig(
+        backend="local-e5",
+        allow_hash_fallback=True,
+        model_status="APPROVED",
+        execution_context="PRODUCTION",
+    )
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        create_embedding_provider(config)
+
+    assert caught.value.code == "EMBEDDING_CONFIGURATION_INVALID"
 
 
 def test_arctic_config_falls_back_only_when_model_runtime_is_unavailable(
@@ -290,6 +344,10 @@ def test_arctic_config_falls_back_only_when_model_runtime_is_unavailable(
         model_revision=ARCTIC_MODEL_REVISION,
         model_sha256="sha256:" + sha256(payload).hexdigest(),
         allow_hash_fallback=True,
+        model_status="EVALUATION_ONLY",
+        model_files=(_package_file("model.safetensors", payload),),
+        execution_context="SYNTHETIC_TEST",
+        allow_evaluation_model=True,
         arctic_rollout_enabled=True,
     )
 
@@ -305,17 +363,18 @@ def test_arctic_config_falls_back_only_when_model_runtime_is_unavailable(
 def test_embedding_config_rejects_hash_mismatch_and_can_disable_fallback(
     tmp_path: Path,
 ) -> None:
-    model_root, model_hash = _model_package(tmp_path)
-    invalid = EmbeddingConfig.from_environment(
-        _environment(model_root, "sha256:" + "0" * 64)
-    )
+    model_root, model_hash, catalog = _model_package(tmp_path)
     with pytest.raises(KnowledgeContractError) as mismatch:
-        create_embedding_provider(invalid, e5_factory=lambda path, revision: StubProvider())
+        EmbeddingConfig.from_environment(
+            _environment(model_root, "sha256:" + "0" * 64), catalog_path=catalog
+        )
     assert mismatch.value.code == "EMBEDDING_CONFIGURATION_INVALID"
 
     strict_environment = _environment(model_root, model_hash)
     strict_environment["ALZS_EMBEDDING_ALLOW_HASH_FALLBACK"] = "false"
-    strict = EmbeddingConfig.from_environment(strict_environment)
+    strict = EmbeddingConfig.from_environment(
+        strict_environment, catalog_path=catalog
+    )
 
     def unavailable(path: Path, revision: str) -> StubProvider:
         del path, revision
@@ -347,13 +406,111 @@ def test_embedding_config_rejects_unsafe_or_unknown_values(
     assert caught.value.code == "EMBEDDING_CONFIGURATION_INVALID"
 
 
-def _model_package(tmp_path: Path) -> tuple[Path, str]:
+def test_evaluation_only_model_requires_explicit_synthetic_test_context(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "models"
+    model = root / "multilingual-e5-small"
+    model.mkdir(parents=True)
+    payload = b"evaluation fixture"
+    (model / "model.safetensors").write_bytes(payload)
+    files = (_package_file("model.safetensors", payload),)
+    production = EmbeddingConfig(
+        backend="local-e5",
+        model_root=root,
+        model_path="multilingual-e5-small",
+        model_revision="a" * 40,
+        model_sha256=files[0].sha256,
+        model_status="EVALUATION_ONLY",
+        model_files=files,
+    )
+    with pytest.raises(KnowledgeContractError) as blocked:
+        create_embedding_provider(
+            production, e5_factory=lambda path, revision: StubProvider()
+        )
+    assert blocked.value.code == "EMBEDDING_CONFIGURATION_INVALID"
+
+    synthetic_test = EmbeddingConfig(
+        backend=production.backend,
+        model_root=production.model_root,
+        model_path=production.model_path,
+        model_revision=production.model_revision,
+        model_sha256=production.model_sha256,
+        model_status=production.model_status,
+        model_files=production.model_files,
+        execution_context="SYNTHETIC_TEST",
+        allow_evaluation_model=True,
+    )
+    assert isinstance(
+        create_embedding_provider(
+            synthetic_test, e5_factory=lambda path, revision: StubProvider()
+        ),
+        StubProvider,
+    )
+
+
+def _model_package(tmp_path: Path) -> tuple[Path, str, Path]:
     root = tmp_path / "models"
     model = root / "multilingual-e5-small"
     model.mkdir(parents=True)
     payload = b"approved synthetic safetensors fixture"
     (model / "model.safetensors").write_bytes(payload)
-    return root, "sha256:" + sha256(payload).hexdigest()
+    model_hash = "sha256:" + sha256(payload).hexdigest()
+    catalog = tmp_path / "model-catalog.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "catalogVersion": "2.1.0",
+                "automaticDownloadAllowed": False,
+                "models": [
+                    {
+                        "name": "multilingual-e5-small",
+                        "status": "APPROVED",
+                        "approval": _approval("PRODUCTION"),
+                        "modelId": "intfloat/multilingual-e5-small",
+                        "sourceUrl": "https://huggingface.co/intfloat/multilingual-e5-small",
+                        "revision": "a" * 40,
+                        "license": "MIT",
+                        "localPath": "multilingual-e5-small",
+                        "dimensions": 384,
+                        "queryPrefix": "query: ",
+                        "passagePrefix": "passage: ",
+                        "files": [
+                            {
+                                "path": "model.safetensors",
+                                "sizeBytes": len(payload),
+                                "sha256": model_hash,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return root, model_hash, catalog
+
+
+def _approval(environment: str) -> dict[str, object]:
+    return {
+        "approvedBy": "synthetic-test-reviewer",
+        "approvedAt": "2026-08-28T00:00:00Z",
+        "approvalReference": "TEST-APPROVAL",
+        "deploymentEnvironment": environment,
+        "goldenSet": {
+            "file": "evaluation/datasets/golden.jsonl",
+            "caseCount": 1,
+            "sha256": "sha256:" + "a" * 64,
+        },
+    }
+
+
+def _package_file(path: str, payload: bytes) -> ModelPackageFile:
+    return ModelPackageFile(
+        path=path,
+        size_bytes=len(payload),
+        sha256="sha256:" + sha256(payload).hexdigest(),
+    )
 
 
 def _environment(model_root: Path, model_hash: str) -> dict[str, str]:
@@ -361,9 +518,9 @@ def _environment(model_root: Path, model_hash: str) -> dict[str, str]:
         "ALZS_EMBEDDING_BACKEND": "local-e5",
         "ALZS_EMBEDDING_MODEL_ROOT": str(model_root),
         "ALZS_EMBEDDING_MODEL_PATH": "multilingual-e5-small",
-        "ALZS_EMBEDDING_MODEL_REVISION": "approved-revision",
+        "ALZS_EMBEDDING_MODEL_REVISION": "a" * 40,
         "ALZS_EMBEDDING_MODEL_SHA256": model_hash,
-        "ALZS_EMBEDDING_ALLOW_HASH_FALLBACK": "true",
+        "ALZS_EMBEDDING_EXECUTION_CONTEXT": "SYNTHETIC_TEST",
     }
 
 
@@ -385,7 +542,7 @@ def _staged_arctic_package(
     catalog.write_text(
         json.dumps(
             {
-                "catalogVersion": "1.1.0",
+                "catalogVersion": "2.1.0",
                 "automaticDownloadAllowed": False,
                 "models": [
                     {
@@ -416,11 +573,13 @@ def _staged_arctic_package(
                         "dimensions": 1024,
                         "queryPrefix": "query: ",
                         "passagePrefix": "",
-                        "artifact": {
-                            "file": "model.safetensors",
-                            "sizeBytes": len(model_payload),
-                            "sha256": model_hash,
-                        },
+                        "files": [
+                            {
+                                "path": "model.safetensors",
+                                "sizeBytes": len(model_payload),
+                                "sha256": model_hash,
+                            }
+                        ],
                     }
                 ],
             }
@@ -440,6 +599,7 @@ def _staged_arctic_package(
             "ALZS_EMBEDDING_MODEL_REVISION": ARCTIC_MODEL_REVISION,
             "ALZS_EMBEDDING_MODEL_SHA256": model_hash,
             "ALZS_EMBEDDING_ALLOW_HASH_FALLBACK": "false",
+            "ALZS_EMBEDDING_EXECUTION_CONTEXT": "STAGING",
         },
         catalog,
         golden_set,
