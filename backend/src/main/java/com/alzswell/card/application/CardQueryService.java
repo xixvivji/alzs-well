@@ -65,7 +65,7 @@ public class CardQueryService {
             args.add(cursor);
         }
         sql.append(" order by occurred_at desc,card_transaction_id desc limit ?");
-        args.add(limit + 1);
+        args.add(Math.incrementExact(limit));
         List<CardTransaction> rows = jdbc.query(sql.toString(), (rs, n) -> new CardTransaction(
                 rs.getObject("card_transaction_id", UUID.class),
                 rs.getObject("occurred_at", OffsetDateTime.class), rs.getString("merchant_display_name"),

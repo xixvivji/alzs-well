@@ -23,7 +23,10 @@ public class OperationalInboxService {
         requireCustomer(customerId);
         Cursor after=decode(cursor);
         StringBuilder sql=new StringBuilder("select * from customer_inbox_message where customer_id=:customerId");
-        Map<String,Object> params=new HashMap<>(Map.of("customerId",customerId,"limit",limit+1));
+        Map<String,Object> params=new HashMap<>(Map.of(
+                "customerId", customerId,
+                "limit", Math.incrementExact(limit)
+        ));
         if (Boolean.TRUE.equals(unreadOnly)) sql.append(" and read_at is null");
         if (type!=null && !type.isBlank()) { sql.append(" and message_type=:type"); params.put("type",type); }
         if (after!=null) {

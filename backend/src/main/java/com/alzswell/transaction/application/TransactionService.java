@@ -219,7 +219,8 @@ public class TransactionService {
             sql.append(" and (t.occurred_at,t.transaction_id)<(?,?)");
             args.add(cursorTime); args.add(cursor);
         }
-        sql.append(" order by t.occurred_at desc,t.transaction_id desc limit ?"); args.add(limit + 1);
+        sql.append(" order by t.occurred_at desc,t.transaction_id desc limit ?");
+        args.add(Math.incrementExact(limit));
         List<TransactionItem> rows = jdbc.query(sql.toString(), this::transactionItem, args.toArray());
         boolean hasNext = rows.size() > limit;
         List<TransactionItem> items = hasNext ? List.copyOf(rows.subList(0, limit)) : List.copyOf(rows);

@@ -1,0 +1,6 @@
+name: "ALZ's well CodeQL configuration"
+
+# These are immutable copies of third-party public pages used only as RAG source
+# evidence. They are never served or executed by this application.
+paths-ignore:
+  - "knowledge/official-source/**"

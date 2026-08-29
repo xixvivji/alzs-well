@@ -126,7 +126,7 @@ public class SyntheticFinanceQueryService {
             args.add(decoded.occurredAt()); args.add(decoded.occurredAt()); args.add(decoded.transactionId());
         }
         sql.append(" order by occurred_at desc, transaction_id desc limit ?");
-        args.add(limit + 1);
+        args.add(Math.incrementExact(limit));
         List<TransactionListResponse.TransactionItem> rows = jdbcTemplate.query(sql.toString(),
                 (rs, row) -> new TransactionListResponse.TransactionItem(
                         rs.getString("transaction_id"), rs.getObject("occurred_at", OffsetDateTime.class),
