@@ -15,6 +15,23 @@ test("parses a successful JSON API envelope", async (t) => {
   assert.equal(result.body.data?.value, 1);
 });
 
+test("sends an issued staff capability through the shared capability request header", async (t) => {
+  let requestHeaders = new Headers();
+  t.mock.method(globalThis, "fetch", async (_input, init) => {
+    requestHeaders = new Headers(init?.headers);
+    return new Response(JSON.stringify(responseBody), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  });
+
+  await apiRequest<{ value: number }>("/api/v1/demo/staff/cases", {
+    staffCapability: "staff-capability",
+  });
+
+  assert.equal(requestHeaders.get("X-Demo-Capability"), "staff-capability");
+  assert.equal(requestHeaders.get("X-Demo-Staff-Capability"), null);
+});
+
 test("preserves API status, code and trace ID", async (t) => {
   t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
     ...responseBody, success: false, status: 429, code: "RATE_LIMITED", message: "잠시 후 다시 시도", data: null,
