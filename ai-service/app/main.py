@@ -15,7 +15,11 @@ from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.errors import KnowledgeContractError
 from app.retrieval.query import requires_abstention
 from app.storage.database_config import DatabaseConfig
-from app.storage.search_postgres import PostgresSearchRepository, hash_query
+from app.storage.search_postgres import (
+    PostgresSearchRepository,
+    hash_query,
+    index_version_for_backend,
+)
 
 
 def create_app() -> FastAPI:
@@ -30,7 +34,7 @@ def create_app() -> FastAPI:
     application.add_exception_handler(RequestValidationError, _validation_error_handler)
 
     @application.get("/health")
-    def health() -> dict[str, str | int | bool]:
+    def health() -> dict[str, str | int | bool | None]:
         config = get_embedding_config()
         descriptor = get_embedding_provider().descriptor
         return {
@@ -40,6 +44,11 @@ def create_app() -> FastAPI:
             "embeddingBackend": descriptor.backend,
             "embeddingModelVersion": descriptor.model_version,
             "embeddingDimensions": descriptor.dimensions,
+            "modelStatus": config.model_status or "BUILT_IN",
+            "modelRevision": config.model_revision or descriptor.model_version,
+            "artifactSha256": config.model_sha256,
+            "goldenSetSha256": config.golden_set_sha256,
+            "indexVersion": index_version_for_backend(descriptor.backend),
             "arcticRolloutEnabled": config.arctic_rollout_enabled,
             "deploymentEnvironment": config.deployment_environment,
             "stagedApprovalEnabled": config.staged_approval_enabled,

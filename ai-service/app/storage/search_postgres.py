@@ -31,6 +31,13 @@ ARCTIC_VECTOR_THRESHOLD = 0.15
 ARCTIC_RESULT_THRESHOLD = 0.4
 
 
+def index_version_for_backend(backend: str) -> str:
+    return {
+        "local-e5": E5_INDEX_VERSION,
+        "local-arctic-ko": ARCTIC_INDEX_VERSION,
+    }.get(backend, INDEX_VERSION)
+
+
 def search_parameters(backend: str) -> tuple[float, float, float, float]:
     if backend == "local-arctic-ko":
         return (
@@ -53,10 +60,9 @@ class PostgresSearchRepository:
         self._config = config
         self._connect_function = connect
         self._embedding_provider = embedding_provider or LocalHashEmbeddingProvider()
-        self._index_version = {
-            "local-e5": E5_INDEX_VERSION,
-            "local-arctic-ko": ARCTIC_INDEX_VERSION,
-        }.get(self._embedding_provider.descriptor.backend, INDEX_VERSION)
+        self._index_version = index_version_for_backend(
+            self._embedding_provider.descriptor.backend
+        )
 
     @property
     def index_version(self) -> str:

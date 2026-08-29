@@ -251,6 +251,12 @@ Arctic-ko는 2026-08-28 운영형 골든셋 27건의 사람 최종 승인과 품
 1024차원 pgvector 저장, 모델별 인덱스, 재-ingestion, Spring citation 재검증 및 Hash
 폴백은 단계적 활성화에서도 그대로 유지한다.
 
+AWS AI EC2에서는 [`../backend/compose.aws-ai.yaml`](../backend/compose.aws-ai.yaml)을 사용한다.
+8000번 포트는 업무 EC2 보안그룹에서만 허용하고 ALB에는 연결하지 않는다. `/health`는
+모델 상태, revision, artifact/golden-set SHA-256, index version과 배포 환경을 반환하며
+업무 EC2의 Spring strict readiness가 이를 기대값과 다시 비교한다. ingestion은 HTTP로
+공개하지 않고 Session Manager에서 `ingestion` profile의 일회성 CLI로만 실행한다.
+
 Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 FastAPI 내부 검색과 Spring
 검색 API를 각각 동시성 4, 100건으로 측정한다. p95 1초 이하, 오류율 0%, 처리량 2 RPS
 이상, AI 프로세스 peak RSS 2.5 GiB 이하, 기동 30초 이하를 모두 만족해야 한다. Linux

@@ -111,6 +111,14 @@ SIWC establishes identity only; it does not prove workspace membership. Use the
 Sites hosting platform's access policy controls for workspace-wide restrictions,
 or enforce explicit server-side membership or allowlist checks.
 
+The staff case route uses both controls. `/staff/cases` requires SIWC, and the Worker-only
+`/api/internal/staff-capability/{sessionId}` route checks the server-side
+`STAFF_ALLOWED_USER_IDS` comma-separated allowlist before using
+`DEMO_STAFF_BOOTSTRAP_TOKEN`. Both values are runtime secrets/configuration and must never use
+a `NEXT_PUBLIC_` prefix. The bootstrap token is sent only from the Worker to Spring; browser
+code receives the short-lived demo staff capability and keeps it in memory. Configure the
+hosting access policy as an additional boundary.
+
 Use SIWC for account pages, user-specific dashboards, saved records, and write
 actions tied to the current ChatGPT user. Leave public content anonymous.
 

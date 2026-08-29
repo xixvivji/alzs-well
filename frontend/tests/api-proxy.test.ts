@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { isApiProxyPath, proxyApiRequest, resolveBackendOrigin } from "../worker/api-proxy";
+import { issueStaffCapability } from "../worker/staff-capability";
 
 const PROXY_SECRET = "0123456789abcdef".repeat(4);
 
@@ -187,4 +188,35 @@ test("requires a server-only proxy secret before contacting the backend", async 
   assert.equal(response.status, 503);
   assert.equal((await response.json()).code, "BACKEND_PROXY_CONFIGURATION_INVALID");
   assert.equal(called, false);
+});
+
+test("직원 allowlist 사용자만 서버 비밀값으로 capability를 발급한다", async () => {
+  const session = "98000000-0000-4000-8000-000000000001";
+  const bootstrap = "b".repeat(64);
+  let upstream: Request | null = null;
+  const response = await issueStaffCapability(new Request(`https://app.example.com/api/internal/staff-capability/${session}`, {
+    method: "POST", headers: { "oai-authenticated-user-id": "staff-user-1" },
+  }), {
+    backendOrigin: "https://backend.example.com", proxySharedSecret: PROXY_SECRET,
+    bootstrapToken: bootstrap, allowedUserIds: "staff-user-1",
+    fetchImpl: async (request) => {
+      upstream = request;
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "Content-Type": "application/json", "X-Demo-Staff-Capability": "staff-secret" },
+      });
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("X-Demo-Staff-Capability"), "staff-secret");
+  assert.equal(upstream?.headers.get("Authorization"), `Bearer ${bootstrap}`);
+});
+
+test("allowlist 밖의 사용자는 직원 capability 발급 전에 거부한다", async () => {
+  const session = "98000000-0000-4000-8000-000000000001";
+  const response = await issueStaffCapability(new Request(`https://app.example.com/api/internal/staff-capability/${session}`, {
+    method: "POST", headers: { "oai-authenticated-user-id": "unknown" },
+  }), { backendOrigin: "https://backend.example.com", proxySharedSecret: PROXY_SECRET,
+    bootstrapToken: "b".repeat(64), allowedUserIds: "staff-user-1" });
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).code, "STAFF_ACCESS_DENIED");
 });

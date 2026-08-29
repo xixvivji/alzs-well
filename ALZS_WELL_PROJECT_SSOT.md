@@ -1082,6 +1082,10 @@ LLM은 `reasonCodes`, 사건 상태, 우선순위, 연락권한, `actionCode`를
 
 **Spring Boot 기반 모듈형 모놀리스**를 사용한다. 별도 Python ML 서버, GPU 서버, MSA는 공모전 P0가 아니다.
 
+P1 AI 통합 staging은 업무 도메인을 분리하는 MSA 전환이 아니라 내부 RAG 어댑터를 위한
+FastAPI 프로세스 분리다. 외부 Spring API 계약과 최종 ACL·정책·인용 검증·감사는 계속
+Spring이 소유한다.
+
 ### 기본 기술 구성
 
 - Java 21
@@ -1275,6 +1279,25 @@ POST /api/v1/demo/sessions/{sessionId}/cases/{caseId}/guidance-plan
 - kill switch, 템플릿 모드, 감사 가능한 직원 override
 - 익명 세션 만료·격리·Reset 테스트
 - guardrail 설정이 위험하거나 활성 탐지정책이 정확히 하나가 아니면 readiness를 실패시키는 fail-closed 기동검사
+- AWS AI 통합 staging에서는 업무 EC2의 Spring strict readiness가 AI EC2 health의
+  `STAGED_APPROVED`, revision, artifact·골든셋 SHA-256, index version, `AWS_STAGING`을
+  다시 검증하고 불일치·AI 무응답 시 target 등록을 거부한다. 로컬과 AI 선택 환경은
+  핵심 업무 가용성을 위해 결정론적 템플릿 폴백을 유지한다.
+
+### 공모전 AI 통합 staging 토폴로지
+
+```text
+WAF + HTTPS ALB
+  → 업무 EC2(private): Nginx + Spring Boot
+  → AI EC2(private): FastAPI + Arctic-ko + SSM 전용 ingestion CLI
+  → Private RDS PostgreSQL + pgvector
+```
+
+- AI 8000은 업무 EC2 보안그룹에서만, RDS 5432는 업무·AI EC2 보안그룹에서만 허용한다.
+- 인터넷에서 AI와 RDS로의 직접 접근 및 SSH는 차단하고 Session Manager를 사용한다.
+- Spring·AI는 RDS TLS `verify-full`과 역할별 계정을 사용한다.
+- ingestion은 ALB에 라우팅하지 않고 승인 manifest를 대상으로 SSM 일회성 작업으로 실행한다.
+- 단일 EC2는 AI 없는 최소 staging, 로컬 개발은 단일 Docker Compose로 한정한다.
 
 ---
 

@@ -2764,7 +2764,10 @@ GET /api/v1/system/readiness
       "database": "UP",
       "flyway": "UP",
       "syntheticFixtures": "UP",
-      "policyCatalog": "UP"
+      "policyCatalog": "UP",
+      "detectionPolicy": "UP",
+      "safeGuardrails": "UP",
+      "aiRetrieval": "DISABLED"
     }
   },
   "errors": [],
@@ -2773,7 +2776,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V72와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V72와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. AI가 비활성화되면 `aiRetrieval=DISABLED`, 선택 연결이면 초기 기동 순서와 결정론적 폴백을 방해하지 않도록 능동 probe 없이 `OPTIONAL`을 표시한다. AWS AI 통합 staging은 strict 모드를 사용하므로 FastAPI health의 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경이 기대값과 다르면 `MISMATCH`, 무응답이면 `DOWN`으로 readiness를 실패시킨다.
 
 #### 공개 설정
 

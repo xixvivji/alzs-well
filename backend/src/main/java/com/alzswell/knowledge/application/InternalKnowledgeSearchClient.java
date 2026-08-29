@@ -5,6 +5,7 @@ import java.util.*;
 
 public interface InternalKnowledgeSearchClient {
     AiSearchResponse search(AiSearchRequest request);
+    AiHealthResponse health();
 
     record AiSearchRequest(String contractVersion,UUID requestId,String query,List<String> permissions,
             List<String> principalRoles,List<String> requesterAudiences,LocalDate asOf,int limit) {}
@@ -14,4 +15,9 @@ public interface InternalKnowledgeSearchClient {
             String title,String issuer,String heading,List<String> sectionPath,Integer page,String citationLabel,
             String sourceUrl,String sourceHash,String textHash,LocalDate retrievedAsOf,String retrievalMethod,
             String indexVersion) {}
+    record AiHealthResponse(String status,String service,String embeddingConfiguredBackend,
+            String embeddingBackend,String embeddingModelVersion,int embeddingDimensions,
+            String modelStatus,String modelRevision,String artifactSha256,String goldenSetSha256,
+            String indexVersion,boolean arcticRolloutEnabled,String deploymentEnvironment,
+            boolean stagedApprovalEnabled,boolean embeddingFallbackUsed) {}
 }

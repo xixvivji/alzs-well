@@ -105,6 +105,13 @@ app:
     internal-token: ${AI_INTERNAL_TOKEN:}
     connect-timeout-ms: ${AI_RETRIEVAL_CONNECT_TIMEOUT_MS:500}
     request-timeout-ms: ${AI_RETRIEVAL_REQUEST_TIMEOUT_MS:1500}
+    strict-readiness: ${AI_RETRIEVAL_STRICT_READINESS:false}
+    expected-model-status: ${AI_EXPECTED_MODEL_STATUS:}
+    expected-model-revision: ${AI_EXPECTED_MODEL_REVISION:}
+    expected-artifact-sha256: ${AI_EXPECTED_ARTIFACT_SHA256:}
+    expected-golden-set-sha256: ${AI_EXPECTED_GOLDEN_SET_SHA256:}
+    expected-index-version: ${AI_EXPECTED_INDEX_VERSION:}
+    expected-deployment-environment: ${AI_EXPECTED_DEPLOYMENT_ENVIRONMENT:}
   copilot:
     rag-enabled: ${COPILOT_RAG_ENABLED:false}
   synthetic-seed:

@@ -1,0 +1,64 @@
+name: alzs-well-ai
+
+services:
+  ai-service:
+    image: ${AI_IMAGE:?AI_IMAGE must be an immutable ECR digest}
+    restart: unless-stopped
+    entrypoint: ["uvicorn", "app.main:app"]
+    command: ["--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log"]
+    ports:
+      - "${AI_BIND_ADDRESS:?AI_BIND_ADDRESS must be the private EC2 address}:8000:8000"
+    environment: &ai-environment
+      ALZS_AI_DB_HOST: ${RDS_HOST:?RDS_HOST must be set}
+      ALZS_AI_DB_PORT: "5432"
+      ALZS_AI_DB_NAME: ${RDS_DATABASE:-alzs_well}
+      ALZS_AI_DB_USER: ${RDS_AI_RUNTIME_USER:-alzswell_ai_runtime}
+      ALZS_AI_DB_PASSWORD: ${RDS_AI_RUNTIME_PASSWORD:?RDS_AI_RUNTIME_PASSWORD must be set}
+      ALZS_AI_DB_SSLMODE: verify-full
+      PGSSLROOTCERT: /run/secrets/rds-ca.pem
+      ALZS_AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN must be set}
+      ALZS_EMBEDDING_BACKEND: local-arctic-ko
+      ALZS_EMBEDDING_EXECUTION_CONTEXT: STAGING
+      ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
+      ALZS_ARCTIC_ROLLOUT_ENABLED: "true"
+      ALZS_DEPLOYMENT_ENVIRONMENT: AWS_STAGING
+      ALZS_MODEL_STAGED_APPROVAL_ENABLED: "true"
+      ALZS_EMBEDDING_MODEL_ROOT: /opt/models
+      ALZS_EMBEDDING_MODEL_PATH: snowflake-arctic-embed-l-v2.0-ko
+      ALZS_EMBEDDING_MODEL_REVISION: ${AI_MODEL_REVISION:?AI_MODEL_REVISION must be set}
+      ALZS_EMBEDDING_MODEL_SHA256: ${AI_MODEL_SHA256:?AI_MODEL_SHA256 must be set}
+      ALZS_MODEL_CATALOG_PATH: /opt/alzs-well/evaluation/model-artifacts-v1.json
+      ALZS_MODEL_GOLDEN_SET_PATH: /opt/alzs-well/evaluation/datasets/official-operational-golden-v1.jsonl
+    volumes:
+      - ${AI_MODEL_ROOT:?AI_MODEL_ROOT must be set}:/opt/models:ro
+      - ${AI_EVALUATION_ROOT:?AI_EVALUATION_ROOT must be set}:/opt/alzs-well/evaluation:ro
+      - ${RDS_CA_BUNDLE_PATH:?RDS_CA_BUNDLE_PATH must be set}:/run/secrets/rds-ca.pem:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 8
+      start_period: 120s
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp:size=256m,mode=1777]
+    stop_grace_period: 60s
+
+  ingestion:
+    profiles: [ingestion]
+    image: ${AI_IMAGE:?AI_IMAGE must be an immutable ECR digest}
+    restart: "no"
+    environment:
+      <<: *ai-environment
+      ALZS_AI_DB_USER: ${RDS_AI_INGESTION_USER:-alzswell_ai_ingestion}
+      ALZS_AI_DB_PASSWORD: ${RDS_AI_INGESTION_PASSWORD:?RDS_AI_INGESTION_PASSWORD must be set}
+    volumes:
+      - ${REPOSITORY_ROOT:?REPOSITORY_ROOT must be set}:/workspace:ro
+      - ${AI_MODEL_ROOT:?AI_MODEL_ROOT must be set}:/opt/models:ro
+      - ${AI_EVALUATION_ROOT:?AI_EVALUATION_ROOT must be set}:/opt/alzs-well/evaluation:ro
+      - ${RDS_CA_BUNDLE_PATH:?RDS_CA_BUNDLE_PATH must be set}:/run/secrets/rds-ca.pem:ro
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp:size=256m,mode=1777]
