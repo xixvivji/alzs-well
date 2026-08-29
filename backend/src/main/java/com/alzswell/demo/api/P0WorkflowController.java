@@ -13,10 +13,13 @@ import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
 import com.alzswell.demo.application.P0WorkflowService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/demo/sessions/{sessionId}")
+@Validated
 public class P0WorkflowController {
 
     public static final String DEMO_RUN_HEADER = "X-Demo-Run-Id";
@@ -93,7 +97,7 @@ public class P0WorkflowController {
             @PathVariable String alertId,
             @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit
     ) {
         return withRun(ApiResponses.ok(
                 "ALERT_AUDIT_RETRIEVED",
@@ -110,7 +114,7 @@ public class P0WorkflowController {
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String reviewPriority,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit
     ) {
         return withRun(ApiResponses.ok(
                 "CASE_QUEUE_RETRIEVED",

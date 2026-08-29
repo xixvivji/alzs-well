@@ -229,7 +229,7 @@ public class ComplianceQueryService {
             args.add(decoded.occurredAt()); args.add(decoded.occurredAt()); args.add(decoded.eventId());
         }
         sql.append(" order by occurred_at desc,event_key desc limit ?");
-        args.add(limit + 1);
+        args.add(Math.incrementExact(limit));
         List<AuditEvent> rows = jdbcTemplate.query(sql.toString(), this::mapEvent, args.toArray());
         boolean hasNext = rows.size() > limit;
         List<AuditEvent> items = hasNext ? List.copyOf(rows.subList(0, limit)) : List.copyOf(rows);

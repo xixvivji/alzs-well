@@ -330,7 +330,7 @@ public class P0WorkflowService {
             args.add(decoded.auditId());
         }
         sql.append(" order by occurred_at desc, audit_id desc limit ?");
-        args.add(limit + 1);
+        args.add(Math.incrementExact(limit));
         List<AuditRow> rows = jdbcTemplate.query(sql.toString(), this::auditRow, args.toArray());
         boolean hasMore = rows.size() > limit;
         List<AuditRow> page = hasMore ? rows.subList(0, limit) : rows;
@@ -384,7 +384,7 @@ public class P0WorkflowService {
         }
         sql.append(" order by case c.review_priority when 'HIGH' then 1 when 'MEDIUM' then 2 else 3 end,")
                 .append(" c.created_at asc, c.case_id asc limit ?");
-        args.add(limit + 1);
+        args.add(Math.incrementExact(limit));
         List<QueueRow> rows = jdbcTemplate.query(sql.toString(), this::queueRow, args.toArray());
         boolean hasMore = rows.size() > limit;
         List<QueueRow> page = hasMore ? rows.subList(0, limit) : rows;
