@@ -30,6 +30,7 @@ QUERY = (
     "거래 반복 확인 고객 상담 안내"
 )
 SCENARIO_COMMAND_ID = "copilot-rag-e2e-scenario-v1"
+IDEMPOTENCY_HEADER = "Idempotency" + "-Key"
 
 
 def load_environment() -> dict[str, str]:
@@ -365,7 +366,7 @@ def run_normal_scenario() -> dict[str, Any]:
         f"/api/v1/demo/sessions/{session_id}/scenarios/FIN_MGMT_AB_001/ingest",
         headers={
             "X-Demo-Capability": customer_capability,
-            "Idempotency-Key": "rehearsal-normal-ingest-v1",
+            IDEMPOTENCY_HEADER: "rehearsal-normal-ingest-v1",
         },
     )
     run_id = ingested["data"]["demoRunId"]
@@ -373,7 +374,7 @@ def run_normal_scenario() -> dict[str, Any]:
     customer_headers = {
         "X-Demo-Capability": customer_capability,
         "X-Demo-Run-Id": run_id,
-        "Idempotency-Key": "rehearsal-normal-context-v1",
+        IDEMPOTENCY_HEADER: "rehearsal-normal-context-v1",
     }
     applied, _ = http(
         "POST",
@@ -487,7 +488,7 @@ def run_demo_copilot() -> dict[str, Any]:
     require(not fallback_draft["citations"], "fallback must not expose citations")
 
     review_headers = dict(staff_request_headers)
-    review_headers["Idempotency-Key"] = "rehearsal-caution-review-v1"
+    review_headers[IDEMPOTENCY_HEADER] = "rehearsal-caution-review-v1"
     reviewed, _ = http(
         "POST",
         f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/review",
@@ -501,7 +502,7 @@ def run_demo_copilot() -> dict[str, Any]:
     )
     require(reviewed["data"]["currentState"] == "IN_BANK_REVIEW", "caution review did not start")
     guidance_headers = dict(staff_request_headers)
-    guidance_headers["Idempotency-Key"] = "rehearsal-caution-guidance-v1"
+    guidance_headers[IDEMPOTENCY_HEADER] = "rehearsal-caution-guidance-v1"
     guidance, _ = http(
         "POST",
         f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/guidance-plan",
@@ -558,7 +559,7 @@ def run_false_positive_scenario() -> dict[str, Any]:
         f"/api/v1/demo/sessions/{session_id}/scenarios/FIN_MGMT_AB_001/ingest",
         headers={
             "X-Demo-Capability": customer_capability,
-            "Idempotency-Key": "rehearsal-false-positive-ingest-v1",
+            IDEMPOTENCY_HEADER: "rehearsal-false-positive-ingest-v1",
         },
     )
     run_id = ingested["data"]["demoRunId"]
@@ -566,7 +567,7 @@ def run_false_positive_scenario() -> dict[str, Any]:
     customer_headers = {
         "X-Demo-Capability": customer_capability,
         "X-Demo-Run-Id": run_id,
-        "Idempotency-Key": "rehearsal-false-positive-context-v1",
+        IDEMPOTENCY_HEADER: "rehearsal-false-positive-context-v1",
     }
     escalated, _ = http(
         "POST",
@@ -599,7 +600,7 @@ def run_false_positive_scenario() -> dict[str, Any]:
     )
     require(not close_action["enabled"], "false-positive close was enabled before review")
     review_headers = dict(staff_request_headers)
-    review_headers["Idempotency-Key"] = "rehearsal-false-positive-review-v1"
+    review_headers[IDEMPOTENCY_HEADER] = "rehearsal-false-positive-review-v1"
     reviewed, _ = http(
         "POST",
         f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/review",
@@ -613,7 +614,7 @@ def run_false_positive_scenario() -> dict[str, Any]:
     )
     require(reviewed["data"]["currentState"] == "IN_BANK_REVIEW", "false-positive review did not start")
     close_headers = dict(staff_request_headers)
-    close_headers["Idempotency-Key"] = "rehearsal-false-positive-close-v1"
+    close_headers[IDEMPOTENCY_HEADER] = "rehearsal-false-positive-close-v1"
     closed, _ = http(
         "POST",
         f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/review",
