@@ -79,13 +79,12 @@ Compose 계약 검증:
 docker compose --project-directory backend --env-file backend/.env.example config --quiet
 ```
 
-로컬 development 기동은 프로필과 직원 bootstrap 비밀번호를 명시해야 한다. 기본 프로필로는 기동되지 않는다.
+로컬 development 기동은 프로필과 직원 bootstrap Bearer 토큰을 명시해야 한다. 기본 프로필로는 기동되지 않는다.
 
 ```bash
 cd backend
 SPRING_PROFILES_ACTIVE=development \
-DEMO_STAFF_USERNAME=demo-staff \
-DEMO_STAFF_PASSWORD='32자 이상의 로컬 전용 임의 비밀번호' \
+DEMO_STAFF_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)" \
 ./gradlew bootRun
 ```
 

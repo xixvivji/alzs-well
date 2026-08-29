@@ -62,8 +62,8 @@ class SecurityConfigTest {
         new ApplicationContextRunner()
                 .withUserConfiguration(SecurityConfig.class)
                 .withPropertyValues(
-                        "app.demo.staff-bootstrap-username=demo-staff",
-                        "app.demo.staff-bootstrap-password=01234567890123456789012345678901"
+                        "app.demo.staff-bootstrap-token="
+                                + "test-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 )
                 .run(context -> {
                     assertThat(context).hasNotFailed();

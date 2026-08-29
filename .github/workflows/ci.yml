@@ -186,8 +186,7 @@ jobs:
       FRONTEND_PROXY_SHARED_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       CORS_CUSTOMER_ALLOWED_ORIGINS: https://customer-ci.example.invalid
       CORS_STAFF_ALLOWED_ORIGINS: https://staff-ci.example.invalid
-      DEMO_STAFF_USERNAME: ci-demo-staff
-      DEMO_STAFF_PASSWORD: ci-only-demo-staff-password-never-use-in-production
+      DEMO_STAFF_BOOTSTRAP_TOKEN: ci-only-demo-staff-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@v7
       - name: Validate production compose rendering

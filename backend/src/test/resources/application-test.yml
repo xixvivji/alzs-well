@@ -18,5 +18,4 @@ app:
     staff-allowed-origins: http://localhost:4173
     require-https: false
   demo:
-    staff-bootstrap-username: demo-staff
-    staff-bootstrap-password: local-demo-staff-password-change-me-1234567890
+    staff-bootstrap-token: test-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

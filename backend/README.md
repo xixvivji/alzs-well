@@ -131,7 +131,7 @@ GET /api/v1/customers/{customerId}/connections/{connectionId}
 
 - 세션 생성은 비멱등이며 호출마다 새 세션을 만든다.
 - 공개 세션 생성 응답은 `X-Demo-Customer-Capability`만 한 번 반환한다.
-- 직원 화면은 별도 origin에서 HTTP Basic으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`를 호출해 `X-Demo-Staff-Capability`를 한 번 발급받는다. staging의 Basic 계정은 직원 프론트 번들에 넣지 않고 신뢰된 운영자만 사용하며, 실제 운영 전에는 기업 IdP·MFA·RBAC로 교체한다.
+- 직원 화면은 별도 origin에서 `Authorization: Bearer {bootstrap-token}`으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`를 호출해 `X-Demo-Staff-Capability`를 한 번 발급받는다. bootstrap 토큰은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용하며, 실제 운영 전에는 기업 IdP·MFA·RBAC로 교체한다.
 - token 원문은 URL·JSON·DB·감사로그에 저장하지 않는다. 서버에는 SHA-256 hash만 저장한다.
 - 이후 세션 API는 `X-Demo-Capability`, 적재 후 파생 API는 `X-Demo-Run-Id`를 요구한다.
 - 고객 token으로 `/staff/**`·`/cases/**`를 호출하면 `403`, 다른 세션 token·만료 token은 존재 여부를 감추기 위해 `404`다.

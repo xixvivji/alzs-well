@@ -789,6 +789,11 @@ class PostgreSqlIntegrationTest {
         JsonNode staffIssuance = specification.path("paths")
                 .path("/api/v1/demo/staff/sessions/{sessionId}/capability")
                 .path("post");
+        JsonNode staffBootstrapScheme = specification.path("components")
+                .path("securitySchemes")
+                .path("DemoStaffBootstrap");
+        assertThat(staffBootstrapScheme.path("type").asText()).isEqualTo("http");
+        assertThat(staffBootstrapScheme.path("scheme").asText()).isEqualTo("bearer");
         assertThat(staffIssuance.path("security").toString()).contains("DemoStaffBootstrap");
         assertThat(staffIssuance.path("responses").path("200").path("headers")
                 .has("X-Demo-Staff-Capability")).isTrue();
