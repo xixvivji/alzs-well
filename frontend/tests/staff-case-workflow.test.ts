@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   approveStaffGuidancePlan,
+  closeStaffCaseAsFalsePositive,
   generateStaffCopilotDraft,
   issueStaffCapability,
   loadStaffCase,
@@ -53,7 +54,7 @@ test("loads case detail and immutable evidence with the staff capability", async
   ]);
 });
 
-test("connects copilot, review and guidance commands without external action fields", async (t) => {
+test("connects copilot, review, guidance and false-positive commands without external action fields", async (t) => {
   const calls: Array<{ path: string; body: Record<string, unknown>; headers: Headers }> = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input);
@@ -68,12 +69,19 @@ test("connects copilot, review and guidance commands without external action fie
   assert.equal(draft.safety.humanReviewRequired, true);
   await startStaffCaseReview(context, "CASE_001", "staff-secret", 1);
   await approveStaffGuidancePlan(context, "CASE_001", "staff-secret", 2, ["SAFE_BLOCK_INFO"], "공식 조건 확인");
+  await closeStaffCaseAsFalsePositive(context, "CASE_001", "staff-secret", 2, "정상 거래 근거 확인");
 
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 4);
   assert.deepEqual(calls[0]?.body, { draftType: "CONSULTATION_NOTE" });
   assert.equal(calls[1]?.body.action, "START_REVIEW");
   assert.deepEqual(calls[2]?.body.selectedActionCodes, ["SAFE_BLOCK_INFO"]);
   assert.equal(calls[2]?.body.externalExecutionCreated, undefined);
+  assert.deepEqual(calls[3]?.body, {
+    action: "CLOSE_FALSE_POSITIVE",
+    caseVersion: 2,
+    note: "정상 거래 근거 확인",
+    followUpAt: null,
+  });
   for (const call of calls) {
     assert.equal(call.headers.get("X-Demo-Capability"), "staff-secret");
     assert.equal(call.headers.get("X-Demo-Run-Id"), context.demoRunId);
@@ -81,4 +89,5 @@ test("connects copilot, review and guidance commands without external action fie
   assert.equal(calls[0]?.headers.get("Idempotency-Key"), null);
   assert.ok(calls[1]?.headers.get("Idempotency-Key"));
   assert.ok(calls[2]?.headers.get("Idempotency-Key"));
+  assert.ok(calls[3]?.headers.get("Idempotency-Key"));
 });

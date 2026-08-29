@@ -1459,15 +1459,23 @@ public class P0WorkflowService {
         return switch (state) {
             case "PENDING_BANK_REVIEW" -> List.of(
                     allowedAction("START_REVIEW", true, null),
-                    allowedAction("APPROVE_GUIDANCE_PLAN", false, "REVIEW_NOT_STARTED")
+                    allowedAction("APPROVE_GUIDANCE_PLAN", false, "REVIEW_NOT_STARTED"),
+                    allowedAction("CLOSE_FALSE_POSITIVE", false, "REVIEW_NOT_STARTED")
             );
             case "IN_BANK_REVIEW" -> List.of(
                     allowedAction("START_REVIEW", false, "REVIEW_ALREADY_STARTED"),
-                    allowedAction("APPROVE_GUIDANCE_PLAN", true, null)
+                    allowedAction("APPROVE_GUIDANCE_PLAN", true, null),
+                    allowedAction("CLOSE_FALSE_POSITIVE", true, null)
+            );
+            case "FOLLOW_UP_REQUIRED" -> List.of(
+                    allowedAction("START_REVIEW", false, "FOLLOW_UP_PENDING"),
+                    allowedAction("APPROVE_GUIDANCE_PLAN", false, "FOLLOW_UP_PENDING"),
+                    allowedAction("CLOSE_FALSE_POSITIVE", true, null)
             );
             default -> List.of(
                     allowedAction("START_REVIEW", false, "INVALID_STATE"),
-                    allowedAction("APPROVE_GUIDANCE_PLAN", false, "INVALID_STATE")
+                    allowedAction("APPROVE_GUIDANCE_PLAN", false, "INVALID_STATE"),
+                    allowedAction("CLOSE_FALSE_POSITIVE", false, "INVALID_STATE")
             );
         };
     }

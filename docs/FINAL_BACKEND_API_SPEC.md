@@ -2436,6 +2436,11 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
         "action": "APPROVE_GUIDANCE_PLAN",
         "enabled": false,
         "disabledReasonCode": "REVIEW_NOT_STARTED"
+      },
+      {
+        "action": "CLOSE_FALSE_POSITIVE",
+        "enabled": false,
+        "disabledReasonCode": "REVIEW_NOT_STARTED"
       }
     ]
   },
@@ -2446,6 +2451,7 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 ```
 
 `protectionCandidates`는 공식 조건과 상담 경로만 제공한다. `executionType`은 P0에서 항상 `GUIDANCE_ONLY`다.
+`allowedActions`는 화면이 서버 상태머신을 추측하지 않도록 `START_REVIEW`, `APPROVE_GUIDANCE_PLAN`, `CLOSE_FALSE_POSITIVE`의 현재 허용 여부를 함께 반환한다. 오탐 종결은 반드시 행원이 검토를 시작한 뒤에만 활성화한다.
 
 #### 5.4.2.0 행원 내부 메모 조회
 
