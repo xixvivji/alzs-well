@@ -21,6 +21,8 @@ public class KnowledgeController {
     public KnowledgeController(KnowledgeCatalogService service){this.service=service;}
 
     @GetMapping("/knowledge/documents") @PreAuthorize("hasAuthority('KNOWLEDGE_READ')")
+    // Stateless bearer auth has no ambient browser credential; the only write is append-only access audit.
+    // codeql[java/csrf-unprotected-request-type]
     public ResponseEntity<ApiResponse<DocumentList>> documents(
             @RequestParam(required=false) @Pattern(regexp="CUSTOMER|STAFF") String audience,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate asOf,
@@ -28,10 +30,14 @@ public class KnowledgeController {
         return ApiResponses.ok("KNOWLEDGE_DOCUMENTS_RETRIEVED","승인된 근거 문서를 조회했습니다.",service.documents(audience,asOf,authentication));
     }
     @GetMapping("/knowledge/documents/{documentId}") @PreAuthorize("hasAuthority('KNOWLEDGE_READ')")
+    // Stateless bearer auth has no ambient browser credential; the only write is append-only access audit.
+    // codeql[java/csrf-unprotected-request-type]
     public ResponseEntity<ApiResponse<DocumentDetail>> document(@PathVariable String documentId,Authentication authentication){
         return ApiResponses.ok("KNOWLEDGE_DOCUMENT_RETRIEVED","승인된 근거 문서를 조회했습니다.",service.document(documentId,authentication));
     }
     @GetMapping("/knowledge/documents/{documentId}/versions") @PreAuthorize("hasAuthority('KNOWLEDGE_READ')")
+    // Stateless bearer auth has no ambient browser credential; the only write is append-only access audit.
+    // codeql[java/csrf-unprotected-request-type]
     public ResponseEntity<ApiResponse<VersionList>> versions(@PathVariable String documentId,Authentication authentication){
         return ApiResponses.ok("KNOWLEDGE_VERSIONS_RETRIEVED","근거 문서 버전을 조회했습니다.",service.versions(documentId,authentication));
     }
@@ -40,6 +46,8 @@ public class KnowledgeController {
         return ApiResponses.ok("KNOWLEDGE_SEARCH_COMPLETED","승인된 유효 근거를 검색했습니다.",service.search(command,authentication));
     }
     @GetMapping("/knowledge/passages/{passageId}") @PreAuthorize("hasAuthority('KNOWLEDGE_READ')")
+    // Stateless bearer auth has no ambient browser credential; the only write is append-only access audit.
+    // codeql[java/csrf-unprotected-request-type]
     public ResponseEntity<ApiResponse<Passage>> passage(@PathVariable UUID passageId,Authentication authentication){
         return ApiResponses.ok("KNOWLEDGE_PASSAGE_RETRIEVED","인용 가능한 근거 구절을 조회했습니다.",service.passage(passageId,authentication));
     }

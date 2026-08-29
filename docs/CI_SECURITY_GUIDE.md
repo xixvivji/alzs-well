@@ -37,6 +37,7 @@ Dependabot은 매주 월요일 다음 생태계를 `develop` 대상으로 확인
 - npm audit은 high 이상이면 프론트 필수 상태검사를 실패시킨다. 현재 남은 moderate 항목은 배포 런타임이 아닌 Drizzle 개발 도구의 구형 esbuild 경로이며, 무리한 major downgrade 대신 상위 패치를 추적한다.
 - `uv audit --locked`는 Linux Python 3.12 기준으로 model-runtime 그룹까지 검사한다. 이어서 `Dockerfile.model-runtime`을 실제 빌드하고 Trivy가 이미지의 OS·Python high/critical 취약점을 차단한다.
 - CodeQL은 Java와 JavaScript/TypeScript를 대상으로 실행하며 저장소 변수 `CODEQL_ENABLED=true`로 활성화했다.
+- CodeQL 위치별 억제는 오탐 근거를 소스에 함께 기록한 경우만 허용한다. 현재 CSRF 억제는 쿠키·세션 없이 명시적 Bearer/Capability 헤더로 인증하고, GET의 유일한 쓰기가 append-only 접근 감사인 핸들러에만 적용한다.
 - Dependency Review는 저장소 변수 `DEPENDENCY_REVIEW_ENABLED=true`로 활성화했다.
 - 공개 저장소의 GitHub Secret Scanning과 Push Protection을 활성화했으며 Gitleaks 전체 이력 검사도 독립된 방어선으로 유지한다.
 
