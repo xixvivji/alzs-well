@@ -300,6 +300,12 @@ class P0WorkflowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.demoRunId").value(current.demoRunId().toString()));
 
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/staff/cases",
+                        current.sessionId()), current))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("CASE_QUEUE_RETRIEVED"));
+
         Integer isolatedRuns = jdbcTemplate.queryForObject(
                 "select count(distinct demo_run_id) from alert_incident where demo_session_id = ?",
                 Integer.class, current.sessionId()

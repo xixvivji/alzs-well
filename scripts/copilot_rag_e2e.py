@@ -11,6 +11,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime
 from itertools import cycle
 from pathlib import Path
@@ -31,6 +32,15 @@ QUERY = (
 )
 SCENARIO_COMMAND_ID = "copilot-rag-e2e-scenario-v1"
 IDEMPOTENCY_HEADER = "Idempotency" + "-Key"
+
+
+@dataclass(frozen=True)
+class RehearsalSession:
+    session_id: str
+    customer_capability: str
+    staff_capability: str
+    run_id: str
+    alert_id: str
 
 
 def load_environment() -> dict[str, str]:
@@ -349,67 +359,7 @@ def ingestion_import_payload() -> dict[str, Any]:
     return json.loads(raw)
 
 
-def run_normal_scenario() -> dict[str, Any]:
-    created, response_headers = http("POST", "/api/v1/demo/sessions")
-    session_id = created["data"]["sessionId"]
-    customer_capability = response_headers.get("X-Demo-Customer-Capability")
-    require(bool(customer_capability), "normal scenario customer capability missing")
-    _, staff_headers = http(
-        "POST",
-        f"/api/v1/demo/staff/sessions/{session_id}/capability",
-        headers={"Authorization": "Bearer " + ENVIRONMENT["DEMO_STAFF_BOOTSTRAP_TOKEN"]},
-    )
-    staff_capability = staff_headers.get("X-Demo-Staff-Capability")
-    require(bool(staff_capability), "normal scenario staff capability missing")
-    ingested, _ = http(
-        "POST",
-        f"/api/v1/demo/sessions/{session_id}/scenarios/FIN_MGMT_AB_001/ingest",
-        headers={
-            "X-Demo-Capability": customer_capability,
-            IDEMPOTENCY_HEADER: "rehearsal-normal-ingest-v1",
-        },
-    )
-    run_id = ingested["data"]["demoRunId"]
-    alert_id = ingested["data"]["alertId"]
-    customer_headers = {
-        "X-Demo-Capability": customer_capability,
-        "X-Demo-Run-Id": run_id,
-        IDEMPOTENCY_HEADER: "rehearsal-normal-context-v1",
-    }
-    applied, _ = http(
-        "POST",
-        f"/api/v1/demo/sessions/{session_id}/alerts/{alert_id}/context",
-        {"responseCode": "KNOWN_AND_INTENTIONAL", "demoBranchCode": "FIN_MGMT_A_NORMAL_CONTEXT"},
-        customer_headers,
-    )
-    require(applied["data"]["currentState"] == "CLOSED_NORMAL", "normal scenario did not close")
-    require(
-        applied["data"]["t1ContextEvidence"]["structuralEvidenceMatched"],
-        "normal scenario structural evidence did not match",
-    )
-    staff_request_headers = {
-        "X-Demo-Capability": staff_capability,
-        "X-Demo-Run-Id": run_id,
-    }
-    cases, _ = http(
-        "GET",
-        f"/api/v1/demo/sessions/{session_id}/staff/cases",
-        headers=staff_request_headers,
-    )
-    require(not cases["data"]["items"], "normal scenario created a staff case")
-    http(
-        "DELETE",
-        f"/api/v1/demo/sessions/{session_id}",
-        headers={"X-Demo-Capability": customer_capability},
-    )
-    return {
-        "currentState": "CLOSED_NORMAL",
-        "structuralEvidenceMatched": True,
-        "staffCaseCreated": False,
-    }
-
-
-def run_demo_copilot() -> dict[str, Any]:
+def create_rehearsal_session() -> RehearsalSession:
     created, response_headers = http("POST", "/api/v1/demo/sessions")
     session_id = created["data"]["sessionId"]
     customer_capability = response_headers.get("X-Demo-Customer-Capability")
@@ -426,17 +376,76 @@ def run_demo_copilot() -> dict[str, Any]:
         f"/api/v1/demo/sessions/{session_id}/scenarios/FIN_MGMT_AB_001/ingest",
         headers={
             "X-Demo-Capability": customer_capability,
-            "Idempotency-Key": SCENARIO_COMMAND_ID,
+            IDEMPOTENCY_HEADER: SCENARIO_COMMAND_ID,
         },
     )
-    run_id = ingested["data"]["demoRunId"]
+    return RehearsalSession(
+        session_id=session_id,
+        customer_capability=customer_capability,
+        staff_capability=staff_capability,
+        run_id=ingested["data"]["demoRunId"],
+        alert_id=ingested["data"]["alertId"],
+    )
+
+
+def reset_rehearsal_session(session: RehearsalSession, idempotency_key: str) -> RehearsalSession:
+    reset, _ = http(
+        "POST",
+        f"/api/v1/demo/sessions/{session.session_id}/reset",
+        headers={
+            "X-Demo-Capability": session.customer_capability,
+            "X-Demo-Run-Id": session.run_id,
+            IDEMPOTENCY_HEADER: idempotency_key,
+        },
+    )
+    require(reset["data"]["previousDemoRunId"] == session.run_id, "previous run mismatch")
+    return RehearsalSession(
+        session_id=session.session_id,
+        customer_capability=session.customer_capability,
+        staff_capability=session.staff_capability,
+        run_id=reset["data"]["demoRunId"],
+        alert_id=reset["data"]["alertId"],
+    )
+
+
+def run_normal_scenario(session: RehearsalSession) -> dict[str, Any]:
     customer_headers = {
-        "X-Demo-Capability": customer_capability,
-        "X-Demo-Run-Id": run_id,
+        "X-Demo-Capability": session.customer_capability,
+        "X-Demo-Run-Id": session.run_id,
+        IDEMPOTENCY_HEADER: "rehearsal-normal-context-v1",
+    }
+    applied, _ = http(
+        "POST",
+        f"/api/v1/demo/sessions/{session.session_id}/alerts/{session.alert_id}/context",
+        {"responseCode": "KNOWN_AND_INTENTIONAL", "demoBranchCode": "FIN_MGMT_A_NORMAL_CONTEXT"},
+        customer_headers,
+    )
+    require(applied["data"]["currentState"] == "CLOSED_NORMAL", "normal scenario did not close")
+    require(
+        applied["data"]["t1ContextEvidence"]["structuralEvidenceMatched"],
+        "normal scenario structural evidence did not match",
+    )
+    case_count = psql(
+        "select count(*) from protection_case "
+        f"where demo_session_id='{session.session_id}'::uuid "
+        f"and demo_run_id='{session.run_id}'::uuid;"
+    )
+    require(case_count == "0", "normal scenario created a staff case")
+    return {
+        "currentState": "CLOSED_NORMAL",
+        "structuralEvidenceMatched": True,
+        "staffCaseCreated": False,
+    }
+
+
+def run_demo_copilot(session: RehearsalSession) -> dict[str, Any]:
+    customer_headers = {
+        "X-Demo-Capability": session.customer_capability,
+        "X-Demo-Run-Id": session.run_id,
     }
     alerts, _ = http(
         "GET",
-        f"/api/v1/demo/sessions/{session_id}/customers/SYN_CUSTOMER_FIN_MGMT_001/alerts",
+        f"/api/v1/demo/sessions/{session.session_id}/customers/SYN_CUSTOMER_FIN_MGMT_001/alerts",
         headers=customer_headers,
     )
     alert_id = alerts["data"]["items"][0]["alertId"]
@@ -444,23 +453,23 @@ def run_demo_copilot() -> dict[str, Any]:
     context_headers["Idempotency-Key"] = "copilot-rag-e2e-context-v1"
     http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/alerts/{alert_id}/context",
+        f"/api/v1/demo/sessions/{session.session_id}/alerts/{alert_id}/context",
         {"responseCode": "UNABLE_TO_CONFIRM", "demoBranchCode": "FIN_MGMT_B_NO_CONTEXT"},
         context_headers,
     )
     staff_request_headers = {
-        "X-Demo-Capability": staff_capability,
-        "X-Demo-Run-Id": run_id,
+        "X-Demo-Capability": session.staff_capability,
+        "X-Demo-Run-Id": session.run_id,
     }
     cases, _ = http(
         "GET",
-        f"/api/v1/demo/sessions/{session_id}/staff/cases",
+        f"/api/v1/demo/sessions/{session.session_id}/staff/cases",
         headers=staff_request_headers,
     )
     case_id = cases["data"]["items"][0]["caseId"]
     grounded, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/copilot-drafts",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}/copilot-drafts",
         {"draftType": "CONSULTATION_NOTE"},
         staff_request_headers,
     )
@@ -478,7 +487,7 @@ def run_demo_copilot() -> dict[str, Any]:
     compose("--profile", "ai", "stop", "ai-service")
     fallback, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/copilot-drafts",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}/copilot-drafts",
         {"draftType": "CONSULTATION_NOTE"},
         staff_request_headers,
     )
@@ -491,7 +500,7 @@ def run_demo_copilot() -> dict[str, Any]:
     review_headers[IDEMPOTENCY_HEADER] = "rehearsal-caution-review-v1"
     reviewed, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/review",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}/review",
         {
             "action": "START_REVIEW",
             "caseVersion": 1,
@@ -505,7 +514,7 @@ def run_demo_copilot() -> dict[str, Any]:
     guidance_headers[IDEMPOTENCY_HEADER] = "rehearsal-caution-guidance-v1"
     guidance, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/guidance-plan",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}/guidance-plan",
         {
             "caseVersion": 2,
             "decision": "APPROVE_GUIDANCE_PLAN",
@@ -520,14 +529,6 @@ def run_demo_copilot() -> dict[str, Any]:
     )
     require(not guidance["data"]["externalExecutionCreated"], "caution scenario created external execution")
 
-    try:
-        http(
-            "DELETE",
-            f"/api/v1/demo/sessions/{session_id}",
-            headers={"X-Demo-Capability": customer_capability},
-        )
-    except RuntimeError:
-        pass
     return {
         "documentId": DOCUMENT_ID,
         "ingestionMode": "POSTGRES",
@@ -542,36 +543,15 @@ def run_demo_copilot() -> dict[str, Any]:
     }
 
 
-def run_false_positive_scenario() -> dict[str, Any]:
-    created, response_headers = http("POST", "/api/v1/demo/sessions")
-    session_id = created["data"]["sessionId"]
-    customer_capability = response_headers.get("X-Demo-Customer-Capability")
-    require(bool(customer_capability), "false-positive customer capability missing")
-    _, staff_headers = http(
-        "POST",
-        f"/api/v1/demo/staff/sessions/{session_id}/capability",
-        headers={"Authorization": "Bearer " + ENVIRONMENT["DEMO_STAFF_BOOTSTRAP_TOKEN"]},
-    )
-    staff_capability = staff_headers.get("X-Demo-Staff-Capability")
-    require(bool(staff_capability), "false-positive staff capability missing")
-    ingested, _ = http(
-        "POST",
-        f"/api/v1/demo/sessions/{session_id}/scenarios/FIN_MGMT_AB_001/ingest",
-        headers={
-            "X-Demo-Capability": customer_capability,
-            IDEMPOTENCY_HEADER: "rehearsal-false-positive-ingest-v1",
-        },
-    )
-    run_id = ingested["data"]["demoRunId"]
-    alert_id = ingested["data"]["alertId"]
+def run_false_positive_scenario(session: RehearsalSession) -> dict[str, Any]:
     customer_headers = {
-        "X-Demo-Capability": customer_capability,
-        "X-Demo-Run-Id": run_id,
+        "X-Demo-Capability": session.customer_capability,
+        "X-Demo-Run-Id": session.run_id,
         IDEMPOTENCY_HEADER: "rehearsal-false-positive-context-v1",
     }
     escalated, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/alerts/{alert_id}/context",
+        f"/api/v1/demo/sessions/{session.session_id}/alerts/{session.alert_id}/context",
         {"responseCode": "UNABLE_TO_CONFIRM", "demoBranchCode": "FIN_MGMT_B_NO_CONTEXT"},
         customer_headers,
     )
@@ -580,18 +560,18 @@ def run_false_positive_scenario() -> dict[str, Any]:
         "false-positive scenario was not escalated before human review",
     )
     staff_request_headers = {
-        "X-Demo-Capability": staff_capability,
-        "X-Demo-Run-Id": run_id,
+        "X-Demo-Capability": session.staff_capability,
+        "X-Demo-Run-Id": session.run_id,
     }
     cases, _ = http(
         "GET",
-        f"/api/v1/demo/sessions/{session_id}/staff/cases",
+        f"/api/v1/demo/sessions/{session.session_id}/staff/cases",
         headers=staff_request_headers,
     )
     case_id = cases["data"]["items"][0]["caseId"]
     detail, _ = http(
         "GET",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}",
         headers=staff_request_headers,
     )
     close_action = next(
@@ -603,7 +583,7 @@ def run_false_positive_scenario() -> dict[str, Any]:
     review_headers[IDEMPOTENCY_HEADER] = "rehearsal-false-positive-review-v1"
     reviewed, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/review",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}/review",
         {
             "action": "START_REVIEW",
             "caseVersion": 1,
@@ -617,7 +597,7 @@ def run_false_positive_scenario() -> dict[str, Any]:
     close_headers[IDEMPOTENCY_HEADER] = "rehearsal-false-positive-close-v1"
     closed, _ = http(
         "POST",
-        f"/api/v1/demo/sessions/{session_id}/cases/{case_id}/review",
+        f"/api/v1/demo/sessions/{session.session_id}/cases/{case_id}/review",
         {
             "action": "CLOSE_FALSE_POSITIVE",
             "caseVersion": 2,
@@ -631,11 +611,6 @@ def run_false_positive_scenario() -> dict[str, Any]:
         "false-positive scenario did not close",
     )
     require(not closed["data"]["externalExecutionCreated"], "false-positive scenario created external execution")
-    http(
-        "DELETE",
-        f"/api/v1/demo/sessions/{session_id}",
-        headers={"X-Demo-Capability": customer_capability},
-    )
     return {
         "currentState": "CLOSED_FALSE_POSITIVE",
         "humanReviewRequired": True,
@@ -877,9 +852,28 @@ def main() -> int:
             if LOAD_TEST_ENABLED
             else None
         )
-        normal_scenario = run_normal_scenario()
-        evidence = run_demo_copilot()
-        false_positive_scenario = run_false_positive_scenario()
+        rehearsal_session = create_rehearsal_session()
+        try:
+            normal_scenario = run_normal_scenario(rehearsal_session)
+            rehearsal_session = reset_rehearsal_session(
+                rehearsal_session,
+                "rehearsal-normal-to-caution-reset-v1",
+            )
+            evidence = run_demo_copilot(rehearsal_session)
+            rehearsal_session = reset_rehearsal_session(
+                rehearsal_session,
+                "rehearsal-caution-to-false-positive-reset-v1",
+            )
+            false_positive_scenario = run_false_positive_scenario(rehearsal_session)
+        finally:
+            try:
+                http(
+                    "DELETE",
+                    f"/api/v1/demo/sessions/{rehearsal_session.session_id}",
+                    headers={"X-Demo-Capability": rehearsal_session.customer_capability},
+                )
+            except RuntimeError:
+                pass
         evidence["scenarios"] = {
             "normal": normal_scenario,
             "caution": {"currentState": evidence["currentState"]},
