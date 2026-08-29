@@ -19,6 +19,14 @@ cd ../frontend && npm test
 cd ../ai-service && uv run pytest
 ```
 
+발표 전 정상·주의·오탐 3개 흐름과 AI citation·장애 폴백을 한 번에 확인한다.
+
+```bash
+python3 scripts/run_demo_rehearsal.py
+```
+
+상세 체크포인트는 [`docs/DEMO_REHEARSAL.md`](./docs/DEMO_REHEARSAL.md)를 따른다.
+
 AWS 구성은 [`docs/AWS_BACKEND_DEPLOYMENT.md`](./docs/AWS_BACKEND_DEPLOYMENT.md)를 따른다. 실제 고객정보·외부 금융사 호출·자동 거래차단·가족 통지는 금지한다.
 
 ## 현행 문서
@@ -34,6 +42,7 @@ AWS 구성은 [`docs/AWS_BACKEND_DEPLOYMENT.md`](./docs/AWS_BACKEND_DEPLOYMENT.m
 7. GitFlow·커밋·PR 규칙: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 8. AWS 배포 기준: [`docs/AWS_BACKEND_DEPLOYMENT.md`](./docs/AWS_BACKEND_DEPLOYMENT.md)
 9. AI ingestion·검색: [`ai-service/README.md`](./ai-service/README.md)
+10. 발표용 전체 리허설: [`docs/DEMO_REHEARSAL.md`](./docs/DEMO_REHEARSAL.md)
 
 충돌 시 `최신 대회 공식 공지 → 최종 SSOT → 최종 API 명세 → 실제 구현과 테스트` 순서로 판단하고, 차이가 생기면 문서와 구현을 같은 변경에서 함께 갱신한다.
 

@@ -210,6 +210,31 @@ export async function startStaffCaseReview(
   };
 }
 
+export async function closeStaffCaseAsFalsePositive(
+  context: StaffCaseContext,
+  caseId: string,
+  staffCapability: string,
+  caseVersion: number,
+  note: string,
+): Promise<MutationResult> {
+  const response = await apiRequest<MutationData>(`${casePath(context.sessionId, caseId)}/review`, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "CLOSE_FALSE_POSITIVE",
+      caseVersion,
+      note,
+      followUpAt: null,
+    }),
+    staffCapability,
+    demoRunId: context.demoRunId,
+    idempotencyKey: crypto.randomUUID(),
+  });
+  return {
+    message: response.body.message,
+    data: requireData(response.body, "오탐 종결 응답을 확인할 수 없습니다."),
+  };
+}
+
 export async function approveStaffGuidancePlan(
   context: StaffCaseContext,
   caseId: string,

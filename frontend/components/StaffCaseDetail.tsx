@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { readDemoContext } from "../lib/demo-session";
+import { findRehearsalScenario, type DemoRehearsalScenario } from "../lib/demo-rehearsal";
 import {
   approveStaffGuidancePlan,
+  closeStaffCaseAsFalsePositive,
   generateStaffCopilotDraft,
   issueStaffCapability,
   loadStaffCase,
@@ -13,7 +15,7 @@ import {
   type StaffCaseContext,
 } from "../lib/staff-case-workflow";
 
-type BusyAction = "loading" | "copilot" | "review" | "guidance" | null;
+type BusyAction = "loading" | "copilot" | "review" | "guidance" | "false-positive" | null;
 
 const STATE_LABELS: Record<string, string> = {
   PENDING_BANK_REVIEW: "행원 검토 대기",
@@ -36,6 +38,8 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
   const [copilot, setCopilot] = useState<CopilotDraftResult | null>(null);
   const [selectedActionCodes, setSelectedActionCodes] = useState<string[]>([]);
   const [staffNote, setStaffNote] = useState("공식 적용조건을 확인한 뒤 고객에게 안내할 계획입니다.");
+  const [falsePositiveNote, setFalsePositiveNote] = useState("거래 처리 지연과 고객의 실제 이체 내역을 대조해 정상 활동임을 확인했습니다.");
+  const [rehearsalScenario, setRehearsalScenario] = useState<DemoRehearsalScenario>();
   const [busy, setBusy] = useState<BusyAction>("loading");
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
@@ -48,6 +52,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
       return;
     }
     const activeContext = { sessionId: demo.sessionId, demoRunId: demo.demoRunId };
+    setRehearsalScenario(demo.rehearsalScenario);
     let cancelled = false;
     void (async () => {
       try {
@@ -118,6 +123,28 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
     } finally { setBusy(null); }
   }
 
+  async function closeFalsePositive() {
+    if (!context || !staffCapability || !bundle) return;
+    if (!falsePositiveNote.trim()) {
+      setError("오탐으로 판단한 사실확인 근거를 입력해 주세요.");
+      return;
+    }
+    setBusy("false-positive"); setError(""); setResult("");
+    try {
+      const mutation = await closeStaffCaseAsFalsePositive(
+        context,
+        caseId,
+        staffCapability,
+        bundle.detail.caseVersion,
+        falsePositiveNote.trim(),
+      );
+      setResult(mutation.message);
+      await refreshCase();
+    } catch (reason) {
+      setError(messageOf(reason, "오탐 사건을 종결하지 못했습니다."));
+    } finally { setBusy(null); }
+  }
+
   if (busy === "loading") {
     return <section className="panel"><div className="list-skeleton">사건 상세와 근거를 불러오는 중입니다.</div></section>;
   }
@@ -128,9 +155,14 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
   const { detail, evidence } = bundle;
   const canStartReview = isActionEnabled(detail.allowedActions, "START_REVIEW");
   const canApproveGuidance = isActionEnabled(detail.allowedActions, "APPROVE_GUIDANCE_PLAN");
+  const canCloseFalsePositive = isActionEnabled(detail.allowedActions, "CLOSE_FALSE_POSITIVE");
   const guidanceApproved = detail.guidancePlan.status === "APPROVED";
+  const falsePositiveClosed = detail.state === "CLOSED_FALSE_POSITIVE";
+  const rehearsal = findRehearsalScenario(rehearsalScenario);
+  const rehearsingFalsePositive = rehearsalScenario === "false-positive";
 
   return <div className="staff-case-detail">
+    {rehearsal && <section className="rehearsal-cue staff-rehearsal-cue" role="note" data-rehearsal-scenario={rehearsal.id}><strong>{rehearsal.label} 리허설</strong><span>{rehearsal.title}</span><small>목표 상태 {rehearsal.expectedState}</small></section>}
     <section className="case-summary-grid">
       <article className="panel case-identity">
         <div><p className="label">사건 상태</p><h2>{stateLabel(detail.state)}</h2></div>
@@ -174,7 +206,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
 
     <section className="panel copilot-section">
       <div className="section-heading"><div><p className="label">근거 기반 AI 지원</p><h2>행원 검토 초안</h2></div><button className="secondary-button" onClick={() => void generateCopilot()} disabled={busy !== null}>{busy === "copilot" ? "생성 중…" : copilot ? "초안 다시 생성" : "AI 검토 초안 생성"}</button></div>
-      {!copilot ? <div className="empty-block">행원이 요청할 때만 승인된 근거를 검색해 초안을 만듭니다.</div> : <div className="copilot-result">
+      {!copilot ? <div className="empty-block">행원이 요청할 때만 승인된 근거를 검색해 초안을 만듭니다.</div> : <div className="copilot-result" data-copilot-mode={copilot.draft.fallbackUsed ? "fallback" : "grounded"}>
         <div className="copilot-meta"><span>{copilot.draft.generatedBy}</span><span>검색: {copilot.draft.retrievalMode}</span><span>{copilot.draft.fallbackUsed ? "안전 폴백 사용" : "승인 근거 연결"}</span></div>
         <p className="copilot-summary">{copilot.draft.summary}</p>
         <div className="copilot-columns"><div><h3>추천 질문</h3><ul className="plain-list">{copilot.draft.suggestedQuestions.map((question) => <li key={question}>{question}</li>)}</ul></div><div><h3>확인 체크리스트</h3><ul className="plain-list">{copilot.draft.checklist.map((item) => <li key={item}>{item}</li>)}</ul></div></div>
@@ -184,12 +216,13 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
         }) : <p className="muted">검색 근거가 없어 결정론적 안전 템플릿으로 생성했습니다.</p>}</div>
         <p className="human-review-notice">사람 검토 필수 · 모델 직접 판단 {copilot.draft.modelInvoked ? "사용" : "미사용"} · 외부 전송 {copilot.draft.externalEgressAttempted ? "발생" : "없음"}</p>
       </div>}
+      {rehearsal && <div className="rehearsal-ai-checks"><span className={copilot && !copilot.draft.fallbackUsed && copilot.draft.citations.length ? "verified" : ""}>AI 정상: 승인 근거 citation 1개 이상</span><span className={copilot?.draft.fallbackUsed && !copilot.draft.citations.length ? "verified" : ""}>AI 장애: 결정론적 폴백·citation 0개</span></div>}
     </section>
 
     <section className="panel decision-section">
       <div className="section-heading"><div><p className="label">행원 최종 통제</p><h2>검토와 안내계획</h2></div><span className="status-chip">{stateLabel(detail.state)}</span></div>
       <div className="decision-step"><div><span className="step-number">1</span><div><h3>사실확인 검토 시작</h3><p>고객 응답과 불변 근거를 확인한 뒤 검토 상태를 시작합니다.</p></div></div><button className="primary-button" disabled={!canStartReview || busy !== null} onClick={() => void startReview()}>{busy === "review" ? "처리 중…" : canStartReview ? "검토 시작" : "검토 시작 완료"}</button></div>
-      <div className="decision-step guidance-step"><div><span className="step-number">2</span><div><h3>안내할 보호수단 선택</h3><p>아래 선택은 상담 안내계획일 뿐 실제 금융조치를 실행하지 않습니다.</p></div></div></div>
+      {rehearsingFalsePositive ? <><div className="decision-step guidance-step"><div><span className="step-number">2</span><div><h3>오탐 판단 근거 기록</h3><p>고객 응답만으로 자동 해제하지 않고 행원이 확인한 사실을 기록합니다.</p></div></div></div><label className="staff-note false-positive-note"><span>오탐 종결 근거</span><textarea value={falsePositiveNote} maxLength={500} disabled={!canCloseFalsePositive || falsePositiveClosed || busy !== null} onChange={(event) => setFalsePositiveNote(event.target.value)} /></label><div className="approval-row false-positive-row"><p>종결 후에도 외부 연락이나 금융 실행은 생성되지 않습니다.</p><button className="false-positive-button" disabled={!canCloseFalsePositive || falsePositiveClosed || !falsePositiveNote.trim() || busy !== null} onClick={() => void closeFalsePositive()}>{busy === "false-positive" ? "종결 중…" : falsePositiveClosed ? "오탐 종결 완료" : "오탐으로 종결"}</button></div></> : <><div className="decision-step guidance-step"><div><span className="step-number">2</span><div><h3>안내할 보호수단 선택</h3><p>아래 선택은 상담 안내계획일 뿐 실제 금융조치를 실행하지 않습니다.</p></div></div></div>
       <div className="protection-list">{detail.protectionCandidates.map((candidate) => {
         const checked = selectedActionCodes.includes(candidate.actionCode);
         const sourceUrl = safeHttpsUrl(candidate.source.url);
@@ -197,6 +230,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
       })}</div>
       <label className="staff-note"><span>행원 내부 메모</span><textarea value={staffNote} maxLength={500} disabled={!canApproveGuidance || guidanceApproved || busy !== null} onChange={(event) => setStaffNote(event.target.value)} /></label>
       <div className="approval-row"><p>승인 후에도 <strong>guidanceDelivered=false</strong>이며 외부 실행은 생성되지 않습니다.</p><button className="primary-button" disabled={!canApproveGuidance || guidanceApproved || !selectedActionCodes.length || !staffNote.trim() || busy !== null} onClick={() => void approveGuidance()}>{busy === "guidance" ? "승인 중…" : guidanceApproved ? "안내계획 승인 완료" : "안내계획 승인"}</button></div>
+      </>}
     </section>
 
     {result && <p className="workflow-result" role="status">{result}</p>}
