@@ -48,12 +48,13 @@ function requestSignal(signal: AbortSignal | null | undefined, timeoutMs: number
   const timeout = AbortSignal.timeout(timeoutMs);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
-export async function apiRequest<T>(path: string, options: RequestInit & { capability?: string; demoRunId?: string; idempotencyKey?: string; timeoutMs?: number } = {}) {
-  const { capability, demoRunId, idempotencyKey, timeoutMs = 10_000, headers, signal, ...requestOptions } = options;
+export async function apiRequest<T>(path: string, options: RequestInit & { capability?: string; staffCapability?: string; demoRunId?: string; idempotencyKey?: string; timeoutMs?: number } = {}) {
+  const { capability, staffCapability, demoRunId, idempotencyKey, timeoutMs = 10_000, headers, signal, ...requestOptions } = options;
   let response: Response;
   try {
     response = await fetch(resolveApiUrl(path), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
       "Content-Type": "application/json", ...(capability ? { "X-Demo-Capability": capability } : {}),
+      ...(staffCapability ? { "X-Demo-Staff-Capability": staffCapability } : {}),
       ...(demoRunId ? { "X-Demo-Run-Id": demoRunId } : {}), ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}), ...headers,
     } });
   } catch (error) {

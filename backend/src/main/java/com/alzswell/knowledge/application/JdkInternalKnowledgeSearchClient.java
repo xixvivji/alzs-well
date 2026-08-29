@@ -15,6 +15,7 @@ public class JdkInternalKnowledgeSearchClient implements InternalKnowledgeSearch
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final URI searchUri;
+    private final URI healthUri;
     private final String token;
     private final Duration requestTimeout;
 
@@ -25,11 +26,34 @@ public class JdkInternalKnowledgeSearchClient implements InternalKnowledgeSearch
             @Value("${app.ai-retrieval.request-timeout-ms:1500}") long requestTimeoutMs) {
         this.objectMapper=objectMapper;
         this.searchUri=searchUri(baseUrl);
+        this.healthUri=endpointUri(baseUrl,"/health");
         this.token=token;
         this.requestTimeout=positiveDuration(requestTimeoutMs,"request timeout");
         this.httpClient=HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(positiveDuration(connectTimeoutMs,"connect timeout"))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
+    }
+
+    @Override
+    public AiHealthResponse health() {
+        try {
+            HttpRequest request=HttpRequest.newBuilder(healthUri).timeout(requestTimeout)
+                    .header("Accept","application/json").GET().build();
+            HttpResponse<InputStream> response=httpClient.send(request,HttpResponse.BodyHandlers.ofInputStream());
+            try(InputStream input=response.body()) {
+                if(response.statusCode()!=200)
+                    throw new AiRetrievalException("AI health returned HTTP "+response.statusCode());
+                byte[] responseBody=input.readNBytes(MAX_RESPONSE_BYTES+1);
+                if(responseBody.length>MAX_RESPONSE_BYTES)
+                    throw new AiRetrievalException("AI health response is too large");
+                return objectMapper.readValue(responseBody,AiHealthResponse.class);
+            }
+        } catch(InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AiRetrievalException("AI health request was interrupted",exception);
+        } catch(IOException|IllegalArgumentException exception) {
+            throw new AiRetrievalException("AI health request failed",exception);
+        }
     }
 
     @Override
@@ -59,13 +83,17 @@ public class JdkInternalKnowledgeSearchClient implements InternalKnowledgeSearch
     }
 
     private static URI searchUri(String baseUrl) {
+        return endpointUri(baseUrl,"/internal/v1/search");
+    }
+
+    private static URI endpointUri(String baseUrl,String path) {
         try {
             URI base=URI.create(baseUrl);
             if(!("http".equals(base.getScheme())||"https".equals(base.getScheme()))||base.getHost()==null
                     ||base.getUserInfo()!=null||base.getQuery()!=null||base.getFragment()!=null)
                 throw new IllegalArgumentException("invalid AI retrieval base URL");
             String prefix=base.toString().replaceAll("/+$","");
-            return URI.create(prefix+"/internal/v1/search");
+            return URI.create(prefix+path);
         } catch(IllegalArgumentException exception) {
             throw new IllegalStateException("Invalid AI retrieval base URL",exception);
         }

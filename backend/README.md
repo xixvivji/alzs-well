@@ -200,4 +200,6 @@ SYNTHETIC_SEED_VERIFY_DETECTION=false
 
 ## AWS 백엔드 데모 배포
 
-AI 모델이 아직 없어도 현재 P0는 결정론적 규칙·템플릿으로 완주하므로, 백엔드 staging을 먼저 배포해 CORS·HTTPS·프론트 계약·재시작·데이터 정리를 검증하는 편이 좋다. 구체적인 안전 설정과 순서는 [`../docs/AWS_BACKEND_DEPLOYMENT.md`](../docs/AWS_BACKEND_DEPLOYMENT.md)를 따른다. 공개 운영 또는 실제 고객데이터 사용 승인을 뜻하지 않으며, 현재는 완전 합성데이터 데모에만 사용한다.
+AI 없는 최소 staging은 업무 EC2 한 대로 실행할 수 있다. AI 통합 공모전 staging의 최종 기준은 `업무 EC2(Nginx+Spring) + AI EC2(FastAPI+Arctic-ko) + Private RDS PostgreSQL/pgvector`다. `compose.aws-app.yaml`과 `compose.aws-ai.yaml`을 각 인스턴스에서 분리 실행한다.
+
+AWS 업무 환경은 `AI_RETRIEVAL_STRICT_READINESS=true`로 FastAPI health의 `STAGED_APPROVED`, revision, 모델·골든셋 SHA-256, index version, `AWS_STAGING`을 재검증한다. 불일치하면 target 등록을 거부한다. 로컬 기본값은 strict가 아니어서 AI 장애 시 결정론적 템플릿 폴백을 유지한다. 구체적인 보안그룹, RDS TLS, SSM ingestion과 장애 복구는 [`../docs/AWS_BACKEND_DEPLOYMENT.md`](../docs/AWS_BACKEND_DEPLOYMENT.md)를 따른다. 현재 배포는 완전 합성데이터 데모 전용이다.

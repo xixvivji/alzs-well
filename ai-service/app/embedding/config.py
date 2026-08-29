@@ -54,6 +54,7 @@ class EmbeddingConfig:
     staged_approval_verified: bool = False
     model_catalog_path: Path | None = None
     golden_set_path: Path | None = None
+    golden_set_sha256: str | None = None
 
     @classmethod
     def from_environment(
@@ -211,6 +212,11 @@ class EmbeddingConfig:
             staged_approval_verified=staged_verified,
             model_catalog_path=selected_catalog_path,
             golden_set_path=golden_set_path,
+            golden_set_sha256=(
+                selected.approval.golden_set.sha256
+                if selected.approval is not None
+                else None
+            ),
         )
         _validate_promotion(config)
         return config

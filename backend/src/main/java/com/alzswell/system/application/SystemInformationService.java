@@ -19,6 +19,7 @@ public class SystemInformationService {
     private static final List<String> SUPPORTED_SCENARIO_IDS = List.of("FIN_MGMT_AB_001");
 
     private final JdbcTemplate jdbcTemplate;
+    private final AiDeploymentReadiness aiDeploymentReadiness;
     private final String serviceName;
     private final String applicationVersion;
     private final boolean syntheticDataOnly;
@@ -38,6 +39,7 @@ public class SystemInformationService {
 
     public SystemInformationService(
             JdbcTemplate jdbcTemplate,
+            AiDeploymentReadiness aiDeploymentReadiness,
             @Value("${spring.application.name}") String serviceName,
             @Value("${spring.application.version:0.0.1-SNAPSHOT}") String applicationVersion,
             @Value("${app.guardrails.synthetic-data-only:true}") boolean syntheticDataOnly,
@@ -56,6 +58,7 @@ public class SystemInformationService {
             @Value("${app.versions.source-catalog-checked-at:2026-08-14}") LocalDate sourceCatalogCheckedAt
     ) {
         this.jdbcTemplate = jdbcTemplate;
+        this.aiDeploymentReadiness = aiDeploymentReadiness;
         this.serviceName = serviceName;
         this.applicationVersion = applicationVersion;
         this.syntheticDataOnly = syntheticDataOnly;
@@ -146,9 +149,11 @@ public class SystemInformationService {
         checks.put("policyCatalog", upOrDown(policyReady));
         checks.put("detectionPolicy", upOrDown(detectionPolicyReady));
         checks.put("safeGuardrails", upOrDown(safeGuardrails));
+        AiDeploymentReadiness.Result aiReadiness = aiDeploymentReadiness.verify();
+        checks.put("aiRetrieval", aiReadiness.status());
 
         boolean ready = databaseReady && flywayReady && fixtureReady && policyReady
-                && detectionPolicyReady && safeGuardrails;
+                && detectionPolicyReady && safeGuardrails && aiReadiness.ready();
         return new SystemReadinessResponse(ready, ready ? "READY" : "NOT_READY", checks);
     }
 

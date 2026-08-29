@@ -2,11 +2,14 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { isApiProxyPath, proxyApiRequest } from "./api-proxy";
+import { isStaffCapabilityPath, issueStaffCapability } from "./staff-capability";
 
 interface Env {
   ASSETS: Fetcher;
   BACKEND_API_ORIGIN?: string;
   BACKEND_PROXY_SHARED_SECRET?: string;
+  DEMO_STAFF_BOOTSTRAP_TOKEN?: string;
+  STAFF_ALLOWED_USER_IDS?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -57,6 +60,16 @@ function withSecurityHeaders(response: Response, request: Request): Response {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (isStaffCapabilityPath(url.pathname)) {
+      return withSecurityHeaders(await issueStaffCapability(request, {
+        backendOrigin: env.BACKEND_API_ORIGIN,
+        proxySharedSecret: env.BACKEND_PROXY_SHARED_SECRET,
+        bootstrapToken: env.DEMO_STAFF_BOOTSTRAP_TOKEN,
+        allowedUserIds: env.STAFF_ALLOWED_USER_IDS,
+        trustedClientAddress: request.headers.get("CF-Connecting-IP"),
+      }), request);
+    }
 
     if (isApiProxyPath(url.pathname)) {
       return withSecurityHeaders(await proxyApiRequest(request, env.BACKEND_API_ORIGIN, {
