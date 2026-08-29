@@ -53,8 +53,8 @@ export async function apiRequest<T>(path: string, options: RequestInit & { capab
   let response: Response;
   try {
     response = await fetch(resolveApiUrl(path), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
-      "Content-Type": "application/json", ...(capability ? { "X-Demo-Capability": capability } : {}),
-      ...(staffCapability ? { "X-Demo-Staff-Capability": staffCapability } : {}),
+      "Content-Type": "application/json",
+      ...((staffCapability ?? capability) ? { "X-Demo-Capability": staffCapability ?? capability } : {}),
       ...(demoRunId ? { "X-Demo-Run-Id": demoRunId } : {}), ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}), ...headers,
     } });
   } catch (error) {

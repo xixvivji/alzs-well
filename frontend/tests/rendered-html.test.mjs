@@ -35,9 +35,10 @@ test("server-renders the ALZ's well landing page", async () => {
 });
 
 test("keeps the safety boundary visible in product source", async () => {
-  const [page, layout] = await Promise.all([
+  const [page, layout, staffCaseDetail] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /실제 금융 실행이나 외부 연락을 수행하지 않습니다/);
@@ -46,6 +47,9 @@ test("keeps the safety boundary visible in product source", async () => {
   assert.match(page, /카카오뱅크/);
   assert.match(page, /KB증권/);
   assert.match(layout, /ALZ's well \| 금융생활 변화 조기알림/);
+  assert.match(staffCaseDetail, /AI는 검토 초안과 승인된 근거를 제시할 뿐/);
+  assert.match(staffCaseDetail, /사람 검토 필수/);
+  assert.match(staffCaseDetail, /guidanceDelivered=false/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview|Building your site/i);
 });
 
