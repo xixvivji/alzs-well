@@ -8,6 +8,7 @@ import "./intro-film.css";
 import "./senior-customer.css";
 import "./staff-case-detail.css";
 import "./ai-financial-assistant.css";
+import "./financial-portal.css";
 
 function metadataOrigin(): URL {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
@@ -45,6 +46,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko"><body>{children}</body></html>
+    <html lang="ko" data-scroll-behavior="smooth"><body>{children}</body></html>
   );
 }

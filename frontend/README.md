@@ -17,11 +17,27 @@
 
 공개 행원 시연은 임의 방문자에게 직원 토큰을 바로 발급하지 않습니다. 고객 화면에서 생성된 현재 합성 세션 capability를 서버가 AWS에 검증한 후에만 단기 직원 capability를 발급합니다.
 
+## 화면과 API 연결
+
+- `/demo`: 합성 세션 생성과 정상·주의·오탐 리허설 시작
+- `/demo/finance`: 통합자산, 계좌, 거래, 기준선, 동의, 보호 안내
+- `/demo/ai-assistant`: AI 금융생활 의향서, 장기 변화, 쉬운말·음성
+- `/demo/alerts`: 고객 변화 확인과 맥락 응답
+- `/demo/services`: 고객 금융서비스 전체 계약과 연결 상태
+- `/staff/cases`: 합성 사건 큐와 행원 검토 폐루프
+- `/staff/operations`: 행원 업무 API 계약
+- `/staff/control-center`: 감사·준법·정책·운영 API 계약
+
+`scripts/generate-api-catalog.mjs`는 최종 API 명세 278개와 Spring Controller 234개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 233개, 코드 전용 직원 capability 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다.
+
+생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 다만 공개 Vercel 화면이 운영용 Bearer API를 임의로 호출하지는 않습니다. 운영 IdP·MFA·RBAC가 연결되기 전까지 직원·관리자 API는 화면에 `인증 필요`로 표시되고, `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
+
 ## 로컬 실행
 
 ```bash
 npm ci
 npm run dev
+npm run catalog:check
 npm run lint
 npm test
 ```

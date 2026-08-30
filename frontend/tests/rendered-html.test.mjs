@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링한다", async () => {
   const html = await readFile(new URL("../.next/server/app/index.html", import.meta.url), "utf8");
-  assert.match(html, /<html lang="ko">/i);
+  assert.match(html, /<html lang="ko"(?:\s[^>]*)?>/i);
   assert.match(html, /ALZ(?:&#x27;|')s well/);
   assert.match(html, /금융생활의 작은 변화/);
   assert.match(html, /2026 금융 AI Challenge 참가 프로젝트/);
@@ -25,6 +25,25 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   assert.match(config, /Permissions-Policy/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
+  for (const route of ["/demo/finance/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page"]) {
+    assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
+  }
+});
+
+test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링된다", async () => {
+  const [services, operations, control] = await Promise.all([
+    readFile(new URL("../.next/server/app/demo/services.html", import.meta.url), "utf8"),
+    readFile(new URL("../.next/server/app/staff/operations.html", import.meta.url), "utf8"),
+    readFile(new URL("../.next/server/app/staff/control-center.html", import.meta.url), "utf8"),
+  ]);
+  assert.match(services, /필요한 금융생활을 한곳에서/);
+  assert.match(services, /전체 계약/);
+  assert.match(services, /외부 참고/);
+  assert.match(operations, /보호업무 운영 포털/);
+  assert.match(control, /통제와 운영을 한 화면에서/);
+  for (const html of [services, operations, control]) {
+    assert.match(html, /사설 인증 필요|인증 필요/);
+  }
 });
 
 test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 남는다", async () => {
