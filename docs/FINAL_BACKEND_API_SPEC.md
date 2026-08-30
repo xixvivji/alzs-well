@@ -1531,7 +1531,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 
 `CUSTOMER_DEMO` capability는 세션 조회·적재·Reset, 금융생활 읽기, 알림 조회와 맥락 제출에만 사용할 수 있다. `DEMO_STAFF` capability는 행원 사건큐·상세·검토·안내계획과 필요한 감사조회에만 사용할 수 있다. 역할 범위를 벗어난 유효 토큰은 `403 DEMO_CAPABILITY_SCOPE_FORBIDDEN`을 반환한다. 두 토큰을 하나로 합치거나 고객 화면에 staff 토큰을 전달하지 않는다.
 
-현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 opaque bootstrap Bearer 토큰으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, bootstrap 토큰은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
+현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 opaque bootstrap Bearer 토큰으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급한다. 공모전 공개 시연의 Vercel BFF는 브라우저가 보낸 현재 고객 capability로 같은 합성 세션을 먼저 조회·검증한 뒤에만 서버 전용 bootstrap 토큰을 사용하며, 이 토큰은 프론트 번들에 넣지 않는다. 두 역할 capability는 분리하고 고객 capability로 사건 API를 호출할 수 없다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
 
 시나리오가 적재되면 서버는 `demoRunId`를 발급한다. alert·context·audit·case와 시나리오 파생 금융생활 조회는 `{sessionId, demoRunId}` 복합범위에 귀속된다. Reset 뒤 이전 run ID로 변경 요청을 보내면 `409 DEMO_RUN_STALE`을 반환하고 이전 run의 감사이력은 읽기 전용으로만 보존한다.
 
@@ -1713,7 +1713,7 @@ Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability
 }
 ```
 
-고객 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. 고객 프론트는 브라우저 메모리에만 보관하고 URL, `localStorage`, `sessionStorage`, 쿠키에는 저장하지 않는다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
+고객 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. Vercel 공개 배포에서는 BFF가 생성 응답의 capability 헤더를 제거하고 `Secure`·`HttpOnly`·`SameSite=Strict` host cookie로 전환한다. 자바스크립트와 URL, `localStorage`, `sessionStorage`에는 원문을 저장하지 않고, BFF가 AWS 요청 시에만 `X-Demo-Capability` 헤더로 변환한다. 로컬에서 백엔드를 직접 호출하는 개발 모드는 capability를 모듈 메모리에만 보관한다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
 
 #### 5.2.1-A 직원 capability 발급
 

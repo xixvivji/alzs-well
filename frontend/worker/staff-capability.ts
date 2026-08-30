@@ -4,6 +4,7 @@ const PATH = /^\/api\/internal\/staff-capability\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5]
 
 type Options = { backendOrigin?: string; proxySharedSecret?: string; bootstrapToken?: string;
   allowedUserIds?: string; trustedClientAddress?: string | null;
+  publicDemo?: boolean;
   fetchImpl?: (request: Request) => Promise<Response> };
 
 export function isStaffCapabilityPath(pathname: string): boolean { return PATH.test(pathname); }
@@ -14,10 +15,30 @@ export async function issueStaffCapability(request: Request, options: Options): 
   if (request.method !== "POST" || !match) return error(404, "NOT_FOUND", "요청 경로를 찾을 수 없습니다.", traceId);
   const userId = request.headers.get("oai-authenticated-user-id");
   const allowed = new Set((options.allowedUserIds ?? "").split(",").map((value) => value.trim()).filter(Boolean));
-  if (!options.bootstrapToken || options.bootstrapToken.length < 64 || allowed.size === 0) {
+  if (!options.bootstrapToken || options.bootstrapToken.length < 64) {
     return error(503, "STAFF_ACCESS_CONFIGURATION_INVALID", "직원 접근 설정을 확인할 수 없습니다.", traceId);
   }
-  if (!userId || !allowed.has(userId)) return error(403, "STAFF_ACCESS_DENIED", "직원 화면 접근 권한이 없습니다.", traceId);
+  const platformIdentityAllowed = Boolean(userId && allowed.has(userId));
+  if (!platformIdentityAllowed) {
+    const customerCapability = request.headers.get("x-demo-capability");
+    if (!options.publicDemo || !customerCapability || customerCapability.length < 32) {
+      return error(403, "STAFF_ACCESS_DENIED", "직원 화면 접근 권한이 없습니다.", traceId);
+    }
+    const verificationUrl = new URL(`/api/v1/demo/sessions/${match[1]}`, request.url);
+    const verification = await proxyApiRequest(new Request(verificationUrl, {
+      method: "GET",
+      headers: { "X-Demo-Capability": customerCapability },
+    }), options.backendOrigin, {
+      proxySharedSecret: options.proxySharedSecret,
+      trustedClientAddress: options.trustedClientAddress,
+      fetchImpl: options.fetchImpl,
+    });
+    if (!verification.ok) {
+      await verification.body?.cancel().catch(() => undefined);
+      return error(403, "STAFF_ACCESS_DENIED", "현재 데모 세션을 확인할 수 없습니다.", traceId);
+    }
+    await verification.body?.cancel().catch(() => undefined);
+  }
   const upstreamRequest = new Request(new URL(`/api/v1/demo/staff/sessions/${match[1]}/capability`, request.url), {
     method: "POST", headers: { Authorization: `Bearer ${options.bootstrapToken}` },
   });

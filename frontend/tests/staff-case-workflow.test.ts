@@ -21,7 +21,9 @@ test("issues staff capability without exposing the bootstrap token to the browse
   t.mock.method(globalThis, "fetch", async (input, init) => {
     calledUrl = String(input);
     assert.equal(init?.method, "POST");
-    assert.equal(new Headers(init?.headers).get("Authorization"), null);
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("Authorization"), null);
+    assert.equal(headers.get("X-Demo-Capability"), null);
     return new Response(envelope(null), {
       headers: { "content-type": "application/json", "X-Demo-Staff-Capability": "staff-secret" },
     });

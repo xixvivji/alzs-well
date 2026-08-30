@@ -34,7 +34,7 @@ Dependabot은 매주 월요일 다음 생태계를 `develop` 대상으로 확인
 
 - Gitleaks는 PR, `develop`·`main` push, 매주 정기 실행에서 전체 Git 이력을 검사한다.
 - SpotBugs/FindSecBugs는 기존 네 개의 필수 상태검사 중 `Backend test and coverage` 안에서 실행되며, 검토된 내부 상수 SQL 조립 등 오탐만 `backend/config/spotbugs-exclude.xml`에 좁게 기록한다.
-- npm audit은 high 이상이면 프론트 필수 상태검사를 실패시킨다. 현재 남은 moderate 항목은 배포 런타임이 아닌 Drizzle 개발 도구의 구형 esbuild 경로이며, 무리한 major downgrade 대신 상위 패치를 추적한다.
+- npm audit은 high 이상이면 프론트 필수 상태검사를 실패시킨다. 프론트를 Vercel Next.js로 전환하면서 사용하지 않던 Drizzle·Cloudflare 개발 도구를 제거했고, 현재 잠금 의존성 감사 결과는 취약점 0건이다.
 - `uv audit --locked`는 Linux Python 3.12 기준으로 model-runtime 그룹까지 검사한다. 이어서 `Dockerfile.model-runtime`을 실제 빌드하고 Trivy가 이미지의 OS·Python high/critical 취약점을 차단한다.
 - CodeQL은 Java와 JavaScript/TypeScript를 대상으로 실행하며 저장소 변수 `CODEQL_ENABLED=true`로 활성화했다.
 - `knowledge/official-source/**`는 RAG 근거 보존용 제3자 공개 원문 사본이며 애플리케이션에서 제공하거나 실행하지 않으므로 JavaScript CodeQL 분석 대상에서 제외한다. 애플리케이션·프록시·테스트 코드는 제외하지 않는다.
