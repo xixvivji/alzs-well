@@ -112,6 +112,8 @@ app:
     expected-golden-set-sha256: ${AI_EXPECTED_GOLDEN_SET_SHA256:}
     expected-index-version: ${AI_EXPECTED_INDEX_VERSION:}
     expected-deployment-environment: ${AI_EXPECTED_DEPLOYMENT_ENVIRONMENT:}
+  ai-assistance:
+    enabled: ${AI_ASSISTANCE_ENABLED:${AI_RETRIEVAL_ENABLED:false}}
   copilot:
     rag-enabled: ${COPILOT_RAG_ENABLED:false}
   synthetic-seed:
@@ -135,7 +137,7 @@ app:
     cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "72"
+    schema: "73"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

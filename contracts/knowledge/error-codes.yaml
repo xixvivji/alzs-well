@@ -190,3 +190,8 @@ errors:
     httpStatus: 409
     cliExitCode: 6
     retryable: false
+  - code: AI_ASSISTANCE_REQUEST_INVALID
+    category: AI_ASSISTANCE
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false

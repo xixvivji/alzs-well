@@ -8,10 +8,10 @@
 ## 1. 시작 전에 알아야 할 결론
 
 - 현재 구조는 MSA가 아니라 도메인 패키지로 나눈 모듈형 모놀리스다.
-- API 카탈로그는 272개이며 구현된 업무 API는 227개다. 직원 capability 발급 경로까지 포함한 전체 코드 operation은 228개다.
-- 나머지 45개는 P2·참조 카탈로그이며 코드 전용 직원 capability 1개는 272개 업무 카탈로그에 포함하지 않는다.
+- API 카탈로그는 278개이며 구현된 업무 API는 233개다. 직원 capability 발급 경로까지 포함한 전체 코드 operation은 234개다.
+- 나머지 45개는 P2·참조 카탈로그이며 코드 전용 직원 capability 1개는 278개 업무 카탈로그에 포함하지 않는다.
 - 공개 데모는 완전 합성데이터만 사용한다. 실제 금융기관, 마이데이터, 가족 연락, 송금, 주문, 차단, 외부 LLM을 호출하지 않는다.
-- 기존 Flyway V1~V72는 수정하지 않는다. 다음 스키마 변경은 반드시 V73부터 추가한다.
+- 기존 Flyway V1~V73은 수정하지 않는다. 다음 스키마 변경은 반드시 V74부터 추가한다.
 - V48은 직원 접근 목적·scope 매트릭스, 만료·거부 감사, 고객 변경 멱등 명령, 복합 소유권 FK를 추가했고 V49는 목적별 수임 역할, grant 핵심필드 불변성, 사건 배정 snapshot, 완료 멱등 응답 불변성, 탐지정책 DB 상태전이를 강화한다.
 - V50은 기존 계좌·부채 원장에 연결된 예금·대출·투자 보유 읽기 projection을 추가하며 모든 원본은 합성 데이터이고 외부 금융기관 호출·주문·상환을 실행하지 않는다.
 - V51은 안심은행 합성 예금·대출 상품, 금리, 만기 선택지 snapshot과 실행 없는 결정론적 이자·상환 모의계산을 추가한다.
@@ -30,6 +30,7 @@
 - V71은 문서 목록·상세·passage·내부 citation·결정론적 폴백을 current `APPROVED/ACTIVE` governance와 `AI_DB_SNAPSHOT_V1` import proof에 묶는다. V28 legacy 문서는 검증 import 전까지 노출하지 않으며, fallback은 제목·본문의 `simple` stored `tsvector` GIN과 별도 keyword GIN에서 parameter-bound query로 최대 200개 DB 후보만 조회한다. 안내 후보와 보호수단 상세의 citation은 고정 passage UUID가 아니라 `actionCode → documentId` 매핑에서 같은 verified-current ACL을 통과한 최신 stable passage를 선택하며 근거가 없으면 빈 목록/후보로 fail-closed한다. 두 우회조회는 각각 `GUIDANCE_CITATION`, `PROTECTION_ACTION_CITATION`으로 calling permission·action code·기준일·반환 passage와 결과를 감사한다.
 - V70은 계좌 표시·거래 범주/노트·관심종목 변경에 실제 Bearer principal·session·고객·actor type snapshot을 보존하고 관심종목 이벤트를 통합 감사 조회에 포함한다. 관심종목 신규 해시는 `ACTOR_SNAPSHOT_V2`, 기존 이력은 `LEGACY_V1`로 구분하며 rolling 배포 중에는 legacy `actor_id`와 신규 `actor_principal_id`를 동시 기록한다.
 - V72는 AI ingestion 역할의 `chunk`, `chunk_embedding` UPDATE 권한을 전부 회수하고 `chunk_embedding` 직접 DELETE도 회수한다. 임베딩 정리는 부모 chunk cascade로만 수행한다. AI ingestion과 Spring publish/import는 같은 문서 단위 advisory lock을 사용한다. 검증 import 전에는 기존 chunk와 cascade embedding을 삭제한 뒤 완전한 파생 snapshot을 INSERT-only로 교체하지만, `AI_DB_SNAPSHOT_V1` proof가 만들어진 문서·버전의 chunk·`document_snapshot`과 proof가 참조하는 terminal `ingestion_run`은 DB trigger가 이후 변경을 모두 거부한다. UPDATE 시 OLD와 NEW 키를 모두 검사하므로 검증 행을 다른 키로 옮길 수도 없다. 이후 내용 변경은 새 `versionLabel`로 적재해야 한다. 미검증·신규 버전의 `document_snapshot` upsert에 필요한 UPDATE 권한과 검색 runtime의 두 파생 테이블 SELECT는 유지한다.
+- V73은 익명 합성 데모의 고객 확인형 금융생활 의향 초안·승인 상태를 세션과 run에 귀속해 저장한다. 의향은 법적 효력이 없고 금융 실행·건강 추론에 사용하지 않으며 세션 폐기 시 함께 삭제된다. 내부 FastAPI는 구조화 초안, EWMA·CUSUM 장기 변화, 제한된 쉬운말 생성을 담당하고 Spring이 capability·버전·승인·폴백 경계를 소유한다.
 - 감사 해시에 시각을 포함할 때는 반드시 `AuditTimestamp.canonical`로 UTC·PostgreSQL 마이크로초 정밀도를 먼저 고정하고, 그 동일 객체를 해시와 `timestamptz` INSERT에 사용한다. 나노초나 원래 offset 문자열을 직접 해시에 넣으면 DB 재조회 후 검증할 수 없다.
 - V64는 검증된 AI ingestion import와 `chunkId ↔ passageId` 추가 전용 binding을 추가한다. Spring만 문서 권위·ACL·효력기간을 판정하며 AI 계정은 권위 테이블을 수정하지 않는다.
 - V65는 `local-hash-ngram-ko-v1` 384차원 임베딩과 pgvector HNSW 인덱스를 추가하고, 내부 FastAPI가 전문검색과 cosine 유사도를 결합한 하이브리드 검색을 제공한다. 외부 모델 다운로드와 LLM 호출은 없다.
@@ -131,6 +132,7 @@ PostgreSQL은 먼저 실행되어 있어야 한다. development 기본 DB 접속
 | 감사·컴플라이언스 조회 | 4 | 최종 명세 3.3.21 |
 | 감사자료 내부 승인 요청 | 1 | 최종 명세 3.3.21 |
 | 금융생활 준비·의향 | 7 | 최종 명세 3.3.3-A |
+| 데모 AI 금융생활 지원 | 6 | 최종 명세 3.3.3-B·6.10 |
 | 저장 이체 양식 | 3 | 최종 명세 3.3.9 |
 | 예금·대출 상품 조회·모의계산 | 8 | 최종 명세 3.3.11·3.3.12 |
 | 투자 주문이력·합성 시세·관심종목 | 5 | 최종 명세 3.3.13 |
@@ -280,7 +282,7 @@ SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 �
 ## 12. 추천 다음 작업
 
 1. capability의 `sessionStorage` 불일치 해소
-2. 구현된 227개 operation의 도메인별 summary·개별 오류 예시를 지속적으로 구체화
+2. 구현된 233개 operation의 도메인별 summary·개별 오류 예시를 지속적으로 구체화
 3. 운영형 인앱 알림함 API의 프론트 연동과 사용성 검증
 4. Compose 스모크 증적의 보존기간·실패 로그를 운영 기준에 맞게 확장
 

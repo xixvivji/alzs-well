@@ -32,6 +32,21 @@ public enum DemoErrorCode implements ErrorCode {
             "SYNTHETIC_FIXTURE_NOT_READY",
             "합성 시나리오를 먼저 적재해 주세요."
     ),
+    AI_INTENT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "DEMO_AI_INTENT_NOT_FOUND",
+            "이 데모 실행에서 저장한 금융생활 의향이 없습니다."
+    ),
+    AI_INTENT_VERSION_CONFLICT(
+            HttpStatus.CONFLICT,
+            "DEMO_AI_INTENT_VERSION_CONFLICT",
+            "금융생활 의향이 다른 화면에서 변경되었습니다. 다시 확인해 주세요."
+    ),
+    AI_INTENT_INVALID_STATE(
+            HttpStatus.CONFLICT,
+            "DEMO_AI_INTENT_INVALID_STATE",
+            "현재 상태에서는 금융생활 의향을 변경할 수 없습니다."
+    ),
     SCENARIO_NOT_SUPPORTED(
             HttpStatus.BAD_REQUEST,
             "DEMO_SCENARIO_NOT_SUPPORTED",
