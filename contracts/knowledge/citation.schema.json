@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alzs-well.local/contracts/knowledge/citation.schema.json",
+  "title": "ALZ's well knowledge citation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "documentId",
+    "versionLabel",
+    "chunkId",
+    "chunkOrder",
+    "title",
+    "issuer",
+    "heading",
+    "sectionPath",
+    "page",
+    "citationLabel",
+    "sourceUrl",
+    "sourceHash",
+    "textHash",
+    "retrievedAsOf",
+    "retrievalMethod",
+    "indexVersion"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1.0.0"
+    },
+    "documentId": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)*$",
+      "maxLength": 80
+    },
+    "versionLabel": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$"
+    },
+    "chunkId": {
+      "type": "string",
+      "pattern": "^chk_[0-9a-f]{64}$"
+    },
+    "chunkOrder": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "heading": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "sectionPath": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240
+      }
+    },
+    "page": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "citationLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400
+    },
+    "sourceUrl": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "maxLength": 1000
+    },
+    "sourceHash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "textHash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "retrievedAsOf": {
+      "type": "string",
+      "format": "date"
+    },
+    "retrievalMethod": {
+      "enum": ["KEYWORD", "VECTOR", "HYBRID", "DETERMINISTIC_FALLBACK"]
+    },
+    "indexVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

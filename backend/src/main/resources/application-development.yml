@@ -1,4 +1,15 @@
+server:
+  address: 127.0.0.1
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/alzs_well}
+    username: ${DB_USERNAME:alzswell}
+    password: ${DB_PASSWORD:alzs_well_local_password}
+
 app:
+  deployment:
+    public-exposure: false
   features:
     local-auth-api-enabled: ${LOCAL_AUTH_API_ENABLED:true}
   cors:
@@ -6,5 +17,4 @@ app:
     staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS:http://localhost:4173}
     require-https: false
   demo:
-    staff-bootstrap-username: ${DEMO_STAFF_USERNAME:demo-staff}
-    staff-bootstrap-password: ${DEMO_STAFF_PASSWORD:local-demo-staff-password-change-me-1234567890}
+    staff-bootstrap-token: ${DEMO_STAFF_BOOTSTRAP_TOKEN}

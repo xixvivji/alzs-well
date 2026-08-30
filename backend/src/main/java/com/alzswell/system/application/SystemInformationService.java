@@ -19,6 +19,7 @@ public class SystemInformationService {
     private static final List<String> SUPPORTED_SCENARIO_IDS = List.of("FIN_MGMT_AB_001");
 
     private final JdbcTemplate jdbcTemplate;
+    private final AiDeploymentReadiness aiDeploymentReadiness;
     private final String serviceName;
     private final String applicationVersion;
     private final boolean syntheticDataOnly;
@@ -38,6 +39,7 @@ public class SystemInformationService {
 
     public SystemInformationService(
             JdbcTemplate jdbcTemplate,
+            AiDeploymentReadiness aiDeploymentReadiness,
             @Value("${spring.application.name}") String serviceName,
             @Value("${spring.application.version:0.0.1-SNAPSHOT}") String applicationVersion,
             @Value("${app.guardrails.synthetic-data-only:true}") boolean syntheticDataOnly,
@@ -49,13 +51,14 @@ public class SystemInformationService {
             @Value("${app.demo.session-ttl-seconds:7200}") long sessionTtlSeconds,
             @Value("${app.demo.default-locale:ko-KR}") String defaultLocale,
             @Value("${app.versions.api:v1}") String apiVersion,
-            @Value("${app.versions.schema:7}") String schemaVersion,
+            @Value("${app.versions.schema}") String schemaVersion,
             @Value("${app.versions.fixture:fin-mgmt-ab-v2.0.0}") String fixtureVersion,
             @Value("${app.versions.algorithm:baseline-rules-v2.0.0}") String algorithmVersion,
             @Value("${app.versions.policy:context-policy-v1.0.0}") String policyVersion,
             @Value("${app.versions.source-catalog-checked-at:2026-08-14}") LocalDate sourceCatalogCheckedAt
     ) {
         this.jdbcTemplate = jdbcTemplate;
+        this.aiDeploymentReadiness = aiDeploymentReadiness;
         this.serviceName = serviceName;
         this.applicationVersion = applicationVersion;
         this.syntheticDataOnly = syntheticDataOnly;
@@ -84,11 +87,22 @@ public class SystemInformationService {
         boolean flywayReady;
         try {
             databaseReady = Integer.valueOf(1).equals(jdbcTemplate.queryForObject("select 1", Integer.class));
-            Integer migrationCount = jdbcTemplate.queryForObject(
-                    "select count(*) from flyway_schema_history where success = true",
+            String latestSuccessfulVersion = jdbcTemplate.queryForObject(
+                    """
+                    select version
+                      from flyway_schema_history
+                     where success = true and version is not null
+                     order by installed_rank desc
+                     limit 1
+                    """,
+                    String.class
+            );
+            Integer failedMigrationCount = jdbcTemplate.queryForObject(
+                    "select count(*) from flyway_schema_history where success = false",
                     Integer.class
             );
-            flywayReady = migrationCount != null && migrationCount >= expectedSchemaVersion();
+            flywayReady = schemaVersion.equals(latestSuccessfulVersion)
+                    && Integer.valueOf(0).equals(failedMigrationCount);
         } catch (DataAccessException exception) {
             databaseReady = false;
             flywayReady = false;
@@ -96,6 +110,7 @@ public class SystemInformationService {
 
         boolean fixtureReady = false;
         boolean policyReady = false;
+        boolean detectionPolicyReady = false;
         boolean safeGuardrails = syntheticDataOnly
                 && !externalActionsEnabled
                 && "AIR_GAPPED_DEMO".equals(networkMode)
@@ -116,20 +131,29 @@ public class SystemInformationService {
                         select count(*) from protection_action_catalog
                          where execution_type = 'GUIDANCE_ONLY' and checked_at is not null
                         """, Integer.class);
+                Integer activeDetectionPolicyCount = jdbcTemplate.queryForObject(
+                        "select count(*) from detection_policy_version where status = 'ACTIVE'",
+                        Integer.class);
                 fixtureReady = Integer.valueOf(1).equals(fixtureCount);
                 policyReady = policyCount != null && policyCount >= 2 && !policyVersion.isBlank();
+                detectionPolicyReady = Integer.valueOf(1).equals(activeDetectionPolicyCount);
             } catch (DataAccessException exception) {
                 fixtureReady = false;
                 policyReady = false;
+                detectionPolicyReady = false;
             }
         }
         checks.put("database", upOrDown(databaseReady));
         checks.put("flyway", upOrDown(flywayReady));
         checks.put("syntheticFixtures", upOrDown(fixtureReady));
         checks.put("policyCatalog", upOrDown(policyReady));
+        checks.put("detectionPolicy", upOrDown(detectionPolicyReady));
         checks.put("safeGuardrails", upOrDown(safeGuardrails));
+        AiDeploymentReadiness.Result aiReadiness = aiDeploymentReadiness.verify();
+        checks.put("aiRetrieval", aiReadiness.status());
 
-        boolean ready = databaseReady && flywayReady && fixtureReady && policyReady && safeGuardrails;
+        boolean ready = databaseReady && flywayReady && fixtureReady && policyReady
+                && detectionPolicyReady && safeGuardrails && aiReadiness.ready();
         return new SystemReadinessResponse(ready, ready ? "READY" : "NOT_READY", checks);
     }
 
@@ -166,11 +190,4 @@ public class SystemInformationService {
         return ready ? "UP" : "DOWN";
     }
 
-    private int expectedSchemaVersion() {
-        try {
-            return Integer.parseInt(schemaVersion);
-        } catch (NumberFormatException exception) {
-            return Integer.MAX_VALUE;
-        }
-    }
 }

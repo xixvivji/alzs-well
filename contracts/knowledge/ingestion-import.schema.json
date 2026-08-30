@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alzs-well.local/contracts/knowledge/ingestion-import.schema.json",
+  "title": "ALZ's well verified ingestion import bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion", "ingestionRunId", "documentId", "versionLabel", "sourceHash",
+    "asOf", "extractorVersion", "chunkerVersion", "chunks"
+  ],
+  "properties": {
+    "contractVersion": {"const": "1.0.0"},
+    "ingestionRunId": {"type": "string", "format": "uuid"},
+    "documentId": {"type": "string", "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*$", "maxLength": 80},
+    "versionLabel": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$"},
+    "sourceHash": {"$ref": "#/$defs/hash"},
+    "asOf": {"type": "string", "format": "date"},
+    "extractorVersion": {"$ref": "#/$defs/implementationVersion"},
+    "chunkerVersion": {"enum": ["structure-ko-v1", "pdf-structure-ko-v1"]},
+    "chunks": {
+      "type": "array", "minItems": 1, "maxItems": 500,
+      "items": {"$ref": "#/$defs/chunk"}
+    }
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "implementationVersion": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$", "maxLength": 80},
+    "nullablePage": {"type": ["integer", "null"], "minimum": 1},
+    "chunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chunkId", "chunkOrder", "heading", "sectionPath", "page", "pageStart", "pageEnd",
+        "text", "textHash", "sourceHash", "extractorVersion", "chunkerVersion"
+      ],
+      "properties": {
+        "chunkId": {"type": "string", "pattern": "^chk_[0-9a-f]{64}$"},
+        "chunkOrder": {"type": "integer", "minimum": 1},
+        "heading": {"type": "string", "minLength": 1, "maxLength": 240},
+        "sectionPath": {
+          "type": "array", "maxItems": 16,
+          "items": {"type": "string", "minLength": 1, "maxLength": 240, "pattern": "^[^\\u001f]+$"}
+        },
+        "page": {"$ref": "#/$defs/nullablePage"},
+        "pageStart": {"$ref": "#/$defs/nullablePage"},
+        "pageEnd": {"$ref": "#/$defs/nullablePage"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 1200},
+        "textHash": {"$ref": "#/$defs/hash"},
+        "sourceHash": {"$ref": "#/$defs/hash"},
+        "extractorVersion": {"$ref": "#/$defs/implementationVersion"},
+        "chunkerVersion": {"enum": ["structure-ko-v1", "pdf-structure-ko-v1"]}
+      }
+    }
+  }
+}

@@ -1,3 +1,6 @@
+server:
+  address: 0.0.0.0
+
 app:
   features:
     local-auth-api-enabled: false
@@ -8,8 +11,7 @@ app:
   deployment:
     public-exposure: ${PUBLIC_DEPLOYMENT:true}
   demo:
-    staff-bootstrap-username: ${DEMO_STAFF_USERNAME}
-    staff-bootstrap-password: ${DEMO_STAFF_PASSWORD}
+    staff-bootstrap-token: ${DEMO_STAFF_BOOTSTRAP_TOKEN}
 
 management:
   endpoints:

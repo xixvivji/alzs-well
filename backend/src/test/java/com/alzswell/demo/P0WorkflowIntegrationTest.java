@@ -38,7 +38,7 @@ class P0WorkflowIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new com.alzswell.test.PgVectorPostgreSqlContainer();
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -177,6 +177,53 @@ class P0WorkflowIntegrationTest {
     }
 
     @Test
+    void closesFalsePositiveOnlyAfterStaffReviewWithDocumentedReason() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p0-false-positive-ingest-0001");
+        applyBranchB(session, "p0-false-positive-context-0001");
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}", session.sessionId(), CASE), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allowedActions[2].action").value("CLOSE_FALSE_POSITIVE"))
+                .andExpect(jsonPath("$.data.allowedActions[2].enabled").value(false))
+                .andExpect(jsonPath("$.data.allowedActions[2].disabledReasonCode")
+                        .value("REVIEW_NOT_STARTED"));
+
+        read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p0-false-positive-start-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "action":"START_REVIEW",
+                          "caseVersion":1,
+                          "note":"고객 응답과 합성 근거를 확인합니다.",
+                          "followUpAt":null
+                        }
+                        """), session));
+
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}", session.sessionId(), CASE), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allowedActions[2].action").value("CLOSE_FALSE_POSITIVE"))
+                .andExpect(jsonPath("$.data.allowedActions[2].enabled").value(true));
+
+        JsonNode closed = read(client.staff(post(
+                        "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)
+                .header("Idempotency-Key", "p0-false-positive-close-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {
+                          "action":"CLOSE_FALSE_POSITIVE",
+                          "caseVersion":2,
+                          "note":"거래 처리 지연과 실제 이체 내역을 대조해 정상 활동임을 확인했습니다.",
+                          "followUpAt":null
+                        }
+                        """), session));
+        assertThat(closed.at("/data/currentState").asText()).isEqualTo("CLOSED_FALSE_POSITIVE");
+        assertThat(closed.at("/data/caseVersion").asLong()).isEqualTo(3);
+        assertThat(closed.at("/data/externalExecutionCreated").asBoolean()).isFalse();
+    }
+
+    @Test
     void preventsUnsafeDowngradeAndRejectsCaseVersionAndIdempotencyConflicts() throws Exception {
         DemoTestClient.Session unsafe = client.ingest(client.create(), "p0-unsafe-ingest-0001");
         jdbcTemplate.update(
@@ -253,6 +300,12 @@ class P0WorkflowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.demoRunId").value(current.demoRunId().toString()));
 
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/staff/cases",
+                        current.sessionId()), current))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("CASE_QUEUE_RETRIEVED"));
+
         Integer isolatedRuns = jdbcTemplate.queryForObject(
                 "select count(distinct demo_run_id) from alert_incident where demo_session_id = ?",
                 Integer.class, current.sessionId()
@@ -306,6 +359,8 @@ class P0WorkflowIntegrationTest {
                 .andExpect(jsonPath("$.data.draft.generatedBy").value("DETERMINISTIC_TEMPLATE"))
                 .andExpect(jsonPath("$.data.draft.modelInvoked").value(false))
                 .andExpect(jsonPath("$.data.draft.externalEgressAttempted").value(false))
+                .andExpect(jsonPath("$.data.draft.retrievalMode").value("NONE"))
+                .andExpect(jsonPath("$.data.draft.citations.length()").value(0))
                 .andExpect(jsonPath("$.data.safety.containsDirectIdentifiers").value(false))
                 .andExpect(jsonPath("$.data.safety.externalActionCreated").value(false))
                 .andExpect(jsonPath("$.data.safety.humanReviewRequired").value(true));
@@ -448,7 +503,7 @@ class P0WorkflowIntegrationTest {
                   "scheduledAt":"%s",
                   "reason":"정기납부 처리 상태를 다시 확인합니다."
                 }
-                """.formatted(OffsetDateTime.now().plusDays(5));
+                """.replace("%s",OffsetDateTime.now().plusDays(5).toString());
         JsonNode created = read(client.staff(post(
                         "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
                 .header("Idempotency-Key", "p1-follow-up-0001")
@@ -527,7 +582,7 @@ class P0WorkflowIntegrationTest {
                   "scheduledAt":"%s",
                   "reason":"두 번째 내부 확인 일정을 등록합니다."
                 }
-                """.formatted(OffsetDateTime.now().plusDays(6));
+                """.replace("%s",OffsetDateTime.now().plusDays(6).toString());
         JsonNode next = read(client.staff(post(
                         "/api/v1/demo/sessions/{s}/cases/{c}/follow-ups", session.sessionId(), CASE)
                 .header("Idempotency-Key", "p1-follow-up-0002")
@@ -583,9 +638,14 @@ class P0WorkflowIntegrationTest {
                           "note":"내부에서 처리 상태를 다시 확인합니다.",
                           "followUpAt":"%s"
                         }
-                        """.formatted(OffsetDateTime.now().plusDays(4))), session));
+                        """.replace("%s",OffsetDateTime.now().plusDays(4).toString())), session));
         UUID followUpId = UUID.fromString(scheduled.at("/data/followUpId").asText());
         assertThat(scheduled.at("/data/currentState").asText()).isEqualTo("FOLLOW_UP_REQUIRED");
+        mockMvc.perform(client.staff(get(
+                        "/api/v1/demo/sessions/{s}/cases/{c}", session.sessionId(), CASE), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allowedActions[2].action").value("CLOSE_FALSE_POSITIVE"))
+                .andExpect(jsonPath("$.data.allowedActions[2].enabled").value(true));
 
         JsonNode resumed = read(client.staff(post(
                         "/api/v1/demo/sessions/{s}/cases/{c}/review", session.sessionId(), CASE)

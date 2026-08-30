@@ -1,0 +1,391 @@
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Judicial Information for Foreigners and Immigrants</title>
+  <link rel="stylesheet" href="/foreigner/ko/css/base.css" type="text/css">
+  <link href="/foreigner/ko/css/jquery.bxslider.css" rel="stylesheet">
+  <link rel="stylesheet" href="/foreigner/ko/css/style.css" type="text/css">
+  <link rel="stylesheet" href="/foreigner/ko/css/mobile.css" type="text/css">
+
+  <script type="text/javascript" src="/foreigner/ko/js/jquery-1.12.4.min.js"></script>
+  <script type="text/javascript" src="/foreigner/ko/js/jquery-1.9.0.min.js"></script>
+  <script type="text/javascript" src="/foreigner/ko/js/jquery.bxslider.min.js"></script>
+
+
+  <script type="text/javascript">
+    $(document).ready(function(){
+
+      $('#header').load("/foreigner/ko/inc/head.jsp");
+      $('#footer').load("/foreigner/ko/inc/foot.jsp");
+
+      $('#down_imgbox').css({"background":"url(/foreigner/en/images/sub/img_down_lang.png)"});
+      
+    });
+  </script>
+<script type="text/javascript" src="/foreigner/ch/js/print.js"></script>
+<script type="text/javascript">
+
+<!--
+
+function goName(min_gubun,lang){
+
+    document.searchForm.min_gubun.value=min_gubun;
+
+    document.searchForm.method = "get";
+    // 2022-06-14 양우정 프레임은 두고 하단 내용만 변경되도록 보완
+    document.searchForm.action = "/foreigner/doc/KoFgnDocListAction.work";
+/*
+    if(lang==12){
+
+    	document.searchForm.action = "/foreigner/doc/ChFgnDocListAction.work";
+
+    }else if(lang==13){
+
+        document.searchForm.action = "/foreigner/doc/FgnDocListAction.work";
+
+    }else{
+
+    	document.searchForm.action = "/foreigner/doc/KoFgnDocListAction.work";
+
+    }
+*/
+    document.searchForm.submit();
+
+}
+
+function doSubmit(num){
+
+    document.pagingForm.action = "/foreigner/doc/KoFgnDocListAction.work?min_gubun=&gubun=&sName=";
+    document.pagingForm.pageIndex.value = num;
+    document.pagingForm.submit();
+
+}
+
+function search(value1,value2){
+
+    var a=encodeURI(value1,"UTF-8");
+
+    var b=encodeURI(value1,"UTF-8");
+
+    location.href='https://file.scourt.go.kr/AttachDownload?path=004&file='+a+'&downFile='+b+'&seqnum=';
+
+}
+
+//-->
+
+</script>
+</head>
+<style media="screen">
+.sidesub{display: block;}
+</style>
+<body>
+
+  <div id="wrap">
+
+    <!-- header -->
+    <div id="header"></div>
+
+    <!-- content -->
+    <div id="content">
+      <div class="locationbox">
+        <div class="container">
+          <ul class="location">
+            <li><img src="/foreigner/ko/images/sub/home_i.png" alt="" class="subi"> 자료실</li>
+            <li class="colef6"><img src="/foreigner/ko/images/sub/sT_on.png" alt="" class="subi"> 자료실</li>
+            <li class="print"><a href="#print" onclick="printAreaAction(); return false;" onkeypress="this.onclick();"><img src="/foreigner/ko/images/sub/sTicon.png" alt="인쇄하기"></a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="container both s_cont">
+        <div id="subwrap">
+           <div class="taC"><h2>자료실</h2></div>
+           <ul class="sidelist">
+             <li class="snbli snbli_on">
+               <a id="aside_3_1" href="/foreigner/doc/KoFgnDocListAction.work?min_gubun=9&gubun=81&sName=18">자료실</a>
+             </li>
+
+            </ul>
+        </div>
+        <div class="contents">
+          <h3 class="stitleh3">자료실</h3>
+          <div class="d_wrap judiciary">
+            <div class="sfBoxWrap">
+            <form name="pagingForm" method="post" action="" onsubmit="return doSubmit(97);" style="visibility:none">
+            <input type="hidden" name="pageIndex" value="97"/>
+            <input type="hidden" name="pageSize" value="5"/>
+            </form>
+            <form name="searchForm" method="get" action="">
+            <input type="hidden" name="min_gubun" />
+            <input type="hidden" name="gubun" value='' />
+            <div class="sfBox">
+                <p>Language</p>
+                <select name="sName" id="sName">
+                  <option value="18" >한국어</option>
+                  <option value="11" >ខ្មែរ</option>
+                  <option value="12" >中國語</option>
+                  <option value="13" >English</option>
+                  <option value="14" >Filipino</option>
+                  <option value="15" >français</option>
+                  <option value="16" >Deutsch</option>
+                  <option value="25" >Indonesia</option>
+                  <option value="17" >日本語</option>                        
+                  <option value="19" >Монгол хэл</option>
+                  <option value="20" >Pусский язык</option>
+                  <option value="21" >español</option>
+                  <option value="22" >ภาษาไทย</option>
+                  <option value="23" >Ўзбекча</option>
+                  <option value="24" >Việt</option>
+                  <option value="26" >বাংলা</option>
+                  <option value="27" >اردو</option>                         
+				  <option value="28" >لعربية</option>
+				  <option value="29" >नेपाली</option>
+				  <option value="30" >සිංහල</option>
+				  <option value="31" >Bahasa Melayu</option>
+                </select>                       
+                <input type="button" value="move" class="btn_move" onclick="goName('',$('#sName').val())">
+            </div>
+            </form>
+            </div>
+            
+            <div class="down_imgbox" id="down_imgbox"></div>
+            
+            <div class="tbox">
+              <ul class="subbox" id="downloadul">
+
+				<li><a style="background:none;" href="javascript:goName('9')"><img src="/foreigner/en/images/doc/download_lang_01sel.png"></a></li>
+				<li><a style="background:none;" href="javascript:goName('99')"><img src="/foreigner/en/images/doc/download_lang_02.png"></a></li>
+				<li><a style="background:none;" href="javascript:goName('98')"><img src="/foreigner/en/images/doc/download_lang_03.png"></a></li>
+				<li><a style="background:none;" href="javascript:goName('97')"><img src="/foreigner/en/images/doc/download_lang_04.png"></a></li>
+				<li><a style="background:none;" href="javascript:goName('96')"><img src="/foreigner/en/images/doc/download_lang_05.png"></a></li>
+              </ul>
+            </div>
+
+            <table class="board_table">
+
+              <colgroup><col width="15%;"><col width="60%;"><col width="25%;"></colgroup>
+                <thead>
+                  <tr>
+                    <th>번호</th>
+                    <th>제목</th>
+                    <th>파일</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    
+                      <td>961</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="회생채권조사확정재판 안내 및 신청서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671067343131_102223.hwp','회생채권조사확정재판 안내 및 신청서.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>962</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="회생채권조사확정재판 안내 및 신청서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671521315691_162835.hwp','회생채권조사확정재판 안내 및 신청서.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>963</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="회생채권조사확정재판 취하서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671068690060_104450.hwp','회생채권조사확정재판 취하서.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>964</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="회생채권조사확정재판 취하서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671521354452_162914.hwp','회생채권조사확정재판 취하서.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>965</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="후견감독사무보고서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671596560859_132240.hwp','232_7. C2606 후견감독사무보고서.(완료3).hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>966</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="후견계약 등기신청서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671776868645_152748.hwp','후견계약 등기신청서.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>967</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="후견계약종료허가 심판청구" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671596593693_132313.hwp','233_C2861-4 후견계약종료허가 심판청구(검토3).hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>968</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="후견등기전산정보자료 이용승인 신청서" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671776885497_152805.hwp','후견등기전산정보자료 이용승인 신청서.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr>
+                    
+                      <td>969</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="후견등기전산정보자료 이용심사 결과표" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1672120785375_145945.hwp','후견등기전산정보자료 이용심사 결과표.hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  <tr class="bB0">
+                    
+                      <td>970</td>
+                      <td  class="taL"><img src="https://file.scourt.go.kr/doc//" alt="후견사무보고서(미성년후견)" /></td>
+                    
+                    
+                      <td>
+                          
+                          
+                             &nbsp;&nbsp;<a href="javascript:search('1671596672355_132432.hwp','234_C2605-1 후견사무보고서(완료3)hwp .hwp');"><img src="/foreigner/ch/images/sub/doc.png" alt="워드파일 이미지" /></a>&nbsp;&nbsp;
+                          
+                          
+                          
+                          
+                          
+                      </td>
+                  
+                  
+                  
+                </tbody>
+            </table>
+            
+            <div class="pagination">
+              <ul>
+                <li><a href="?pageIndex=1" onclick="doSubmit(1);return false; " title="처음 페이지"><img src="/nm/images/sub/arrow_first.png" alt=""></a></li><li><a href="?pageIndex=95" onclick="doSubmit(95);return false; " title="이전 페이지"><img src="/nm/images/sub/arrow_prev.png" alt=""></a></li><li><a href="?pageIndex=96" onclick="doSubmit(96);return false; ">96</a></li><li><a class="on" href="#" title="현재페이지">97</a></li><li><a href="?pageIndex=98" onclick="doSubmit(98);return false; ">98</a></li><li><a href="?pageIndex=98" onclick="doSubmit(98);return false; " title="다음 페이지"><img src="/nm/images/sub/arrow_next.png" alt=""></a></li><li class="bR0"><a href="?pageIndex=98" onclick="doSubmit(98);return false; " title="마지막 페이지"><img src="/nm/images/sub/arrow_last.png" alt=""></a></li>
+
+              </ul>
+            </div>
+            
+
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- footer -->
+    <div id="footer"></div>
+
+  </div>
+
+</body>
+</html>

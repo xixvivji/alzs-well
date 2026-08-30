@@ -2,7 +2,6 @@ package com.alzswell.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -12,11 +11,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.alzswell.common.security.DemoCapabilityService;
+import com.alzswell.demo.application.DemoAuditWriter;
 import com.alzswell.demo.application.DemoSessionCleanupService;
 import com.alzswell.demo.application.DemoSessionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.OffsetDateTime;
+import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +30,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -38,12 +44,13 @@ class DemoSessionIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17.11-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new com.alzswell.test.PgVectorPostgreSqlContainer();
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired DemoSessionCleanupService cleanupService;
+    @Autowired DemoAuditWriter auditWriter;
 
     private DemoTestClient client;
 
@@ -116,6 +123,48 @@ class DemoSessionIntegrationTest {
 
         DemoTestClient.Session ingested = client.ingest(session, "ingest-after-reset-0001");
         assertThat(ingested.demoRunId()).isNotNull();
+    }
+
+    @Test
+    void decisionAuditHashCanBeRecomputedFromThePersistedTimestamp() throws Exception {
+        DemoTestClient.Session session = client.create();
+        OffsetDateTime nanosecondTimestamp = OffsetDateTime.parse("2026-08-27T12:34:56.123456789+09:00");
+        String eventType = "TIMESTAMP_CANONICALIZATION_TEST";
+
+        auditWriter.write(session.sessionId(), eventType, Map.of(), nanosecondTimestamp);
+
+        Map<String, Object> event = jdbcTemplate.queryForMap("""
+                select audit_id,demo_session_id,demo_run_id,trace_id,event_type,actor_type,actor_id,
+                       target_type,target_id,before_state,after_state,policy_version,algorithm_version,
+                       schema_version,event_payload::text,previous_event_hash,event_hash
+                  from decision_audit where demo_session_id=? and event_type=?
+                """, session.sessionId(), eventType);
+        OffsetDateTime persisted = jdbcTemplate.queryForObject("""
+                select occurred_at from decision_audit where demo_session_id=? and event_type=?
+                """, (rs, row) -> rs.getObject("occurred_at", OffsetDateTime.class),
+                session.sessionId(), eventType);
+        assertThat(persisted.getNano() % 1_000).isZero();
+        assertThat(persisted).isEqualTo(OffsetDateTime.parse("2026-08-27T03:34:56.123456Z"));
+
+        String recalculated = sha256(String.join("\n",
+                String.valueOf(event.get("previous_event_hash")),
+                event.get("audit_id").toString(),
+                event.get("demo_session_id").toString(),
+                event.get("demo_run_id") == null ? "" : event.get("demo_run_id").toString(),
+                event.get("trace_id").toString(),
+                event.get("event_type").toString(),
+                event.get("actor_type").toString(),
+                event.get("actor_id") == null ? "" : event.get("actor_id").toString(),
+                event.get("target_type").toString(),
+                event.get("target_id").toString(),
+                event.get("before_state") == null ? "" : event.get("before_state").toString(),
+                event.get("after_state") == null ? "" : event.get("after_state").toString(),
+                event.get("policy_version").toString(),
+                event.get("algorithm_version").toString(),
+                event.get("schema_version").toString(),
+                event.get("event_payload").toString(),
+                persisted.toInstant().toString()));
+        assertThat(event.get("event_hash")).isEqualTo(recalculated);
     }
 
     @Test
@@ -268,11 +317,15 @@ class DemoSessionIntegrationTest {
         mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
-                        .with(httpBasic(DemoTestClient.STAFF_USERNAME, "wrong-password")))
+                        .header(HttpHeaders.AUTHORIZATION, "Basic ZGVtby1zdGFmZjpkZW1vLXBhc3N3b3Jk"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + "b".repeat(64)))
                 .andExpect(status().isUnauthorized());
         MvcResult staffIssuance = mockMvc.perform(post(
                         "/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
-                        .with(httpBasic(DemoTestClient.STAFF_USERNAME, DemoTestClient.STAFF_PASSWORD)))
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + DemoTestClient.STAFF_BOOTSTRAP_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn();
         assertThat(staffIssuance.getResponse().getHeader(DemoCapabilityService.STAFF_RESPONSE_HEADER)).isNotBlank();
@@ -338,5 +391,10 @@ class DemoSessionIntegrationTest {
         );
         assertThat(remainingSessions).isZero();
         assertThat(purgeAuditCount).isEqualTo(1);
+    }
+
+    private String sha256(String value) throws Exception {
+        return "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8)));
     }
 }

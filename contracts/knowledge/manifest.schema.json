@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alzs-well.local/contracts/knowledge/manifest.schema.json",
+  "title": "ALZ's well knowledge manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "documentId",
+    "versionLabel",
+    "title",
+    "issuer",
+    "sourceType",
+    "sourcePath",
+    "sourceUrl",
+    "sourceHash",
+    "sourceTransformations",
+    "documentType",
+    "classification",
+    "audience",
+    "allowedRoles",
+    "effectiveFrom",
+    "effectiveTo",
+    "checkedAt",
+    "usageRights",
+    "approvalStatus",
+    "lifecycleStatus",
+    "approvedBy",
+    "approvedAt",
+    "supersedes"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1.0.0"
+    },
+    "documentId": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 80,
+      "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)*$"
+    },
+    "versionLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "sourceType": {
+      "enum": [
+        "OFFICIAL_EXTERNAL",
+        "INTERNAL_POLICY",
+        "SYNTHETIC_FIXTURE"
+      ]
+    },
+    "sourcePath": {
+      "description": "POSIX relative path resolved from an explicitly supplied repository root; never from the process current working directory",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[A-Za-z0-9._/-]+$",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "^/"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(^|/)\\.\\.(/|$)"
+          }
+        }
+      ]
+    },
+    "sourceUrl": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "maxLength": 1000
+    },
+    "sourceHash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "sourceTransformations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourceTransformation"
+      },
+      "uniqueItems": true
+    },
+    "documentType": {
+      "enum": [
+        "LAW",
+        "REGULATION",
+        "PUBLIC_GUIDE",
+        "PUBLIC_NOTICE",
+        "FORM",
+        "INTERNAL_POLICY",
+        "SYNTHETIC_FIXTURE"
+      ]
+    },
+    "classification": {
+      "enum": [
+        "PUBLIC_OFFICIAL",
+        "INTERNAL",
+        "CONFIDENTIAL"
+      ]
+    },
+    "audience": {
+      "enum": ["CUSTOMER", "STAFF", "BOTH"]
+    },
+    "allowedRoles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "CUSTOMER",
+          "PROTECTION_STAFF",
+          "DETECTION_ADMIN",
+          "COMPLIANCE_REVIEWER",
+          "KNOWLEDGE_ADMIN",
+          "SECURITY_ADMIN"
+        ]
+      }
+    },
+    "effectiveFrom": {
+      "type": "string",
+      "format": "date"
+    },
+    "effectiveTo": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checkedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "usageRights": {
+      "enum": [
+        "REVIEW_REQUIRED",
+        "INTERNAL_USE_APPROVED",
+        "PUBLIC_REUSE_ALLOWED",
+        "SYNTHETIC_UNRESTRICTED"
+      ]
+    },
+    "approvalStatus": {
+      "enum": ["DRAFT", "IN_REVIEW", "APPROVED", "REJECTED"]
+    },
+    "lifecycleStatus": {
+      "enum": [
+        "PENDING_ACTIVATION",
+        "ACTIVE",
+        "SUPERSEDED",
+        "EXPIRED",
+        "RETIRED"
+      ]
+    },
+    "approvedBy": {
+      "type": ["string", "null"],
+      "maxLength": 120
+    },
+    "approvedAt": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "supersedes": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/documentVersionReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "approvalStatus": {
+            "const": "APPROVED"
+          }
+        },
+        "required": ["approvalStatus"]
+      },
+      "then": {
+        "properties": {
+          "approvedBy": {
+            "type": "string",
+            "minLength": 1
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "approvedBy": {
+            "type": "null"
+          },
+          "approvedAt": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "lifecycleStatus": {
+            "enum": ["ACTIVE", "SUPERSEDED", "EXPIRED", "RETIRED"]
+          }
+        },
+        "required": ["lifecycleStatus"]
+      },
+      "then": {
+        "properties": {
+          "approvalStatus": {
+            "const": "APPROVED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "usageRights": {
+            "const": "REVIEW_REQUIRED"
+          }
+        },
+        "required": ["usageRights"]
+      },
+      "then": {
+        "properties": {
+          "approvalStatus": {
+            "enum": ["DRAFT", "IN_REVIEW", "REJECTED"]
+          },
+          "lifecycleStatus": {
+            "const": "PENDING_ACTIVATION"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sourceType": {
+            "const": "OFFICIAL_EXTERNAL"
+          }
+        },
+        "required": ["sourceType"]
+      },
+      "then": {
+        "properties": {
+          "sourcePath": {
+            "pattern": "^knowledge/official-source/"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sourceType": {
+            "const": "INTERNAL_POLICY"
+          }
+        },
+        "required": ["sourceType"]
+      },
+      "then": {
+        "properties": {
+          "sourcePath": {
+            "pattern": "^knowledge/internal-policy/"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sourceType": {
+            "const": "SYNTHETIC_FIXTURE"
+          }
+        },
+        "required": ["sourceType"]
+      },
+      "then": {
+        "properties": {
+          "sourcePath": {
+            "pattern": "^contracts/knowledge/fixtures/"
+          },
+          "sourceUrl": {
+            "type": "null"
+          },
+          "usageRights": {
+            "const": "SYNTHETIC_UNRESTRICTED"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sourceTransformation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "ruleId", "replacement"],
+      "properties": {
+        "type": {
+          "enum": ["CREDENTIAL_REDACTION"]
+        },
+        "ruleId": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]+(?:_[A-Z0-9]+)*$",
+          "maxLength": 100
+        },
+        "replacement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "documentVersionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId", "versionLabel"],
+      "properties": {
+        "documentId": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)*$",
+          "maxLength": 80
+        },
+        "versionLabel": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$"
+        }
+      }
+    }
+  }
+}

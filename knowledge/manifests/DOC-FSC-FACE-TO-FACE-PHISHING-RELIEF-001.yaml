@@ -1,0 +1,28 @@
+contractVersion: "1.0.0"
+documentId: DOC-FSC-FACE-TO-FACE-PHISHING-RELIEF-001
+versionLabel: "2023-11-16"
+title: 대면편취형 보이스피싱 피해구제 안내
+issuer: 금융위원회
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/14_public-response-guides/FSC_2023_face_to_face_voice_phishing_relief_source.html
+sourceUrl: https://www.fsc.go.kr/po010101/81090
+sourceHash: sha256:8f6e07b04ca7ca9565383bb365835468633afae9d487742c70055ffb01ef8f86
+sourceTransformations:
+  - type: CREDENTIAL_REDACTION
+    ruleId: PUBLIC_WEB_CREDENTIAL_REDACTION_V1
+    replacement: REDACTED_SOURCE_CREDENTIAL
+documentType: PUBLIC_NOTICE
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2023-11-17"
+effectiveTo: null
+checkedAt: "2026-08-26"
+usageRights: REVIEW_REQUIRED
+approvalStatus: IN_REVIEW
+lifecycleStatus: PENDING_ACTIVATION
+approvedBy: null
+approvedAt: null
+supersedes: null

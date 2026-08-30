@@ -100,9 +100,14 @@ public class DemoCapabilityFilter extends OncePerRequestFilter {
 
         if (requiresCurrentRun(tailSegments)) {
             UUID requestedRunId;
+            String runHeader = request.getHeader(DemoCapabilityService.RUN_HEADER);
+            if (runHeader == null) {
+                errorWriter.write(response, DemoErrorCode.RUN_STALE);
+                return;
+            }
             try {
-                requestedRunId = UUID.fromString(request.getHeader(DemoCapabilityService.RUN_HEADER));
-            } catch (IllegalArgumentException | NullPointerException exception) {
+                requestedRunId = UUID.fromString(runHeader);
+            } catch (IllegalArgumentException exception) {
                 errorWriter.write(response, DemoErrorCode.RUN_STALE);
                 return;
             }

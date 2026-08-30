@@ -4,12 +4,14 @@
 .idea/
 .vscode/
 *.iml
+/.worktrees/
 
 # Local credentials and keys
 .env
 .env.*
 !.env.example
 !**/.env.example
+!**/.env.*.example
 *.pem
 *.key
 *.p12
@@ -29,16 +31,26 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
 
 # Generated reports, renders, caches, bundled fonts, and local models
 /tmp/
 /output/
+/outputs/
 /analysis/
 /archive/
+/artifacts/
 /models/
 *.safetensors
 *.onnx
 *.pt
+
+# RAG extraction, chunking, embeddings, indexes, and runtime evidence
+/knowledge/derived/
+/ai-service/data/derived/
 
 # Superseded project documents kept only in the local archive
 /Ansim_Rhythm_Project_Final_Direction.md

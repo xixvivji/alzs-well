@@ -1,0 +1,21 @@
+server:
+  address: 127.0.0.1
+
+spring:
+  datasource:
+    username: test
+    password: test-only-password
+
+app:
+  staff-access:
+    expiration-scheduling-enabled: false
+  deployment:
+    public-exposure: false
+  features:
+    local-auth-api-enabled: true
+  cors:
+    customer-allowed-origins: http://localhost:5173
+    staff-allowed-origins: http://localhost:4173
+    require-https: false
+  demo:
+    staff-bootstrap-token: test-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

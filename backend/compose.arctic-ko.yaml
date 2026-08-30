@@ -1,0 +1,37 @@
+services:
+  ai-ingestion:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile.model-runtime
+    environment: &arctic-environment
+      ALZS_EMBEDDING_BACKEND: local-arctic-ko
+      ALZS_ARCTIC_ROLLOUT_ENABLED: "true"
+      ALZS_DEPLOYMENT_ENVIRONMENT: ${ALZS_DEPLOYMENT_ENVIRONMENT:-LOCAL}
+      ALZS_MODEL_STAGED_APPROVAL_ENABLED: ${ALZS_MODEL_STAGED_APPROVAL_ENABLED:-false}
+      ALZS_MODEL_CATALOG_PATH: /opt/ai-service/evaluation/model-artifacts-v1.json
+      ALZS_MODEL_GOLDEN_SET_PATH: /opt/ai-service/evaluation/datasets/official-operational-golden-v1.jsonl
+      ALZS_EMBEDDING_MODEL_ROOT: /opt/alzs-well/models
+      ALZS_EMBEDDING_MODEL_PATH: snowflake-arctic-embed-l-v2.0-ko
+      ALZS_EMBEDDING_MODEL_REVISION: 55ec6e9358a56d56af759bc8372e970caf8c305f
+      ALZS_EMBEDDING_MODEL_SHA256: sha256:0b874517f0fd02dd9510fa2733aacaad1def6086387c88d1a21f4041351e15b0
+      ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
+      ALZS_EMBEDDING_EXECUTION_CONTEXT: STAGING
+      ALZS_EMBEDDING_ALLOW_EVALUATION_MODEL: "false"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      TOKENIZERS_PARALLELISM: "false"
+    volumes:
+      - ${AI_MODEL_HOST_ROOT:?AI_MODEL_HOST_ROOT must point to the local models directory}:/opt/alzs-well/models:ro
+    mem_limit: 3g
+    cpus: 2.00
+
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile.model-runtime
+    environment: *arctic-environment
+    volumes:
+      - ${AI_MODEL_HOST_ROOT:?AI_MODEL_HOST_ROOT must point to the local models directory}:/opt/alzs-well/models:ro
+    mem_limit: 3g
+    cpus: 2.00

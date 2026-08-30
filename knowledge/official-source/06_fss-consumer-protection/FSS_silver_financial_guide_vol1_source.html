@@ -1,0 +1,3278 @@
+<!-- static 개발 주소 작업 -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title> |  금융감독원 e-금융교육센터</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="format-detection" content="telephone=no">
+	<link rel="stylesheet" href="/static/edu/pub/resources/user/css/style.css">
+
+	<link rel="stylesheet" href="/static/edu/pub/resources/_common/css/font-real.css">
+		<!-- JavaScript -->
+	<script src="/static/edu/pub/resources/_common/js/jquery-1.12.4.min.js"></script>
+	<script src="/static/edu/pub/resources/_common/plugins/slick/slick.min.js"></script>
+	<script src="/static/edu/pub/resources/_common/js/datepicker.js"></script>
+	<script src="/static/edu/pub/resources/_common/js/ui-common.js"></script>
+	<script src="/static/jslibrary/makePCookie.js"></script>
+</head>
+<body>
+	<nav id="skip">
+		<ul>
+			<li><a href="#content" title="본문 바로가기">본문 바로가기</a></li>
+			<li><a href="#footer" title="푸터 바로가기">푸터 바로가기</a></li>
+		</ul>
+	</nav>
+
+	<div class="wrapper ">
+		<!-- header -->
+		<header id="header">
+		<div class="container util-container">
+			<h1 id="logo">
+				<a href="/edu/main/main.do">
+					<img src="/static/edu/pub/resources/_common/images/logo.png" alt="금융감독원 e-금융교육센터" class="d-up-lg">
+					<img src="/static/edu/pub/resources/_common/images/logo@2x.png" alt="금융감독원 e-금융교육센터" class="d-down-md">
+				</a>
+			</h1>
+
+			<button type="button" class="btn-mobile-search" title="검색 레이어 열기"><span class="sr-only">검색 레이어 열기</span></button>
+			<div class="search-close"><button type="button" title="검색 레이어 닫기"></button></div>
+
+			<div class="top-search ">
+				<form id="topSearchForm" name="searchForm" action="/edu/search/eduSearch/list.do" method="post" target="_blank">
+				<div class="top-search-input">
+					<div>
+						<label for="totalSearch" class="sr-only">검색어 입력</label>
+						<input type="text" id="totalSearch" name="query" placeholder="금융교육 정보를 검색해보세요" title="검색어 입력" oninput="javascript:schLayerOpen();"/>
+						<button type="submit" aria-label="검색"><span class="sr-only">검색</span></button>
+					</div>
+				</div>
+				</form>
+			</div>
+			<div class="searchwrap">
+				<div class="search-layer">
+					<div class="search-layer__body">
+						<form name="searchForm" id="searchForm" action="/edu/search/eduSearch/list.do" target="_blank" class="sh-main" method="post">
+						<div class="box-search">
+							<select class="box-search__select" id="collection" name="collection" title="통합검색어 조건">
+								<option value="ALL">통합검색</option>
+								<option value="edu_menu">메뉴검색</option>
+								<option value="edu_data">본문검색</option>
+								<option value="edu_file">첨부파일</option>
+								<option value="edu_webpage">웹페이지</option>
+								<option value="edu_video">동영상</option>
+							</select>
+							<input class="box-search__input" type="text" title="통합검색어" id="query" name="query" placeholder="검색어를 입력하세요." autocomplete="off">
+							<div class="search-layer__quick">
+								<div class="s-quick">
+									<div class="s-quick__left">
+										<div class="s-quick__board">
+											<div class="sq-board__content" id="searchDataCont">
+												<h2><strong>본문검색</strong> (총 <strong class="search-count">00</strong>건)</h2>
+												<ul><li>검색결과가 없습니다.</li></ul>
+												<a href="javascript:;" class="s-seemore searchBtn" data-collection="edu_data"><span class="sr-only">본문검색 검색결과 전체보기</span></a>
+											</div>
+											<div class="sq-board__menu" id="searchMenuCont">
+												<h2><strong>메뉴검색</strong> (총 <strong class="search-count">00</strong>건)</h2>
+												<ul><li>검색결과가 없습니다.</li></ul>
+												<a href="javascript:;" class="s-seemore searchBtn" data-collection="edu_menu"><span class="sr-only">메뉴검색 결과 전체보기</span></a></div>
+											</div>
+										</div>
+										<div class="s-quick__right">
+											<h2>자동완성</h2>
+											<ul id="searchAutowordCont">
+												<li>일치하는 단어가 없습니다.</li>
+											</ul>
+										</div>
+									</div>
+									<button type="button" class="s-quick__close" aria-label="자동완성 닫기"></button>
+								</div>
+							</div>
+							<button type="button" class="s-button searchBtn"><span>검색</span></button>
+						</form>
+					</div>
+				</div>
+			</div>
+			<script>
+				$(function(){
+					$('.box-search__input').on('focus', function(){
+						$('.search-layer__quick').addClass('on')
+					})
+					$('.s-quick__close').on('click', function(){
+						$('.search-layer__quick').removeClass('on')
+					})
+				})
+			</script>
+			<!-- //통합검색 레이어 -->
+
+			<ul class="util-menu d-up-lg">
+					<li><a href="/edu/member/login/forLogin.do?menuNo=300108">학생 · 강사 · 담당자 로그인</a></li>
+				</ul>
+			</div>
+		<div class="container nav-container">
+			<nav id="gnb" class="d-up-lg">
+				<ul class="gnb-list">
+					<!-- 							전체열기시 데이터 넣기 -->
+							<li class="">
+									<a href="/edu/fem/eduProgram/list.do?menuNo=300003" ><span>교육프로그램 한 눈에</span></a>
+									<div class="lnb-area lnb1">
+										<div class="container">
+											<div class="lnb-title">
+												<p class="title">교육프로그램 한 눈에</p>
+												</div>
+
+											<ul class="lnb-list">
+													<!-- depth02 -->
+													<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fem/eduProgram/list.do?menuNo=300003" >교육 프로그램 검색/신청</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fem/eduProgram/view.do?programSlno=1&amp;menuNo=300020" >금융감독원 교육 프로그램</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=1&amp;menuNo=300020" >온라인 금융교육</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=2&amp;menuNo=300160" >1사1교 금융교육</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/visitAply/forInsert.do?menuNo=300031" >방문교육</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=78&amp;menuNo=300191" >교사 금융연수</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=83&amp;menuNo=300163" >FSS 어린이 금융스쿨</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=84&amp;menuNo=300194" >자유학기제 금융교육</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=6&amp;menuNo=300195" >사회진출 전 금융소양 교육(고3 특강)</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/academyLecture/listUser.do?menuNo=300047" >FSS 금융 아카데미</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/collegeUtilityCourse/list.do?menuNo=300035" >대학 실용금융</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=85&amp;menuNo=300200" >FSS 투자탐험대</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=93&amp;menuNo=300225" >1:1 비대면 재무설계 신청하기</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fem/eduProgram/aplyList.do?menuNo=300009" >교육 신청내역 확인</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fem/expeHall/main.do?menuNo=300010" >체험형 교육지도</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fem/seominEduContents/list.do?menuNo=300197" >서민금융진흥원 금융교육 조회</a>
+															</li>
+														</ul>
+											</div>
+									</div>
+								</li>
+							<!-- 							전체열기시 데이터 넣기 -->
+							<li class="">
+									<a href="/edu/fec/contMng/contSearch.do?menuNo=300016" ><span>콘텐츠 한 눈에</span></a>
+									<div class="lnb-area lnb2">
+										<div class="container">
+											<div class="lnb-title">
+												<p class="title">콘텐츠 한 눈에</p>
+												</div>
+
+											<ul class="lnb-list">
+													<!-- depth02 -->
+													<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fec/contMng/contSearch.do?menuNo=300016" >콘텐츠 검색</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fec/contMng/contUserList.do?check=2&amp;menuNo=300230" >제작유형별</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=2&amp;menuNo=300230" >도서(단행본/시리즈물)</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=5&amp;menuNo=300233" >체험형 교구</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=7&amp;menuNo=300234" >웹진/잡지/신문</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=1&amp;menuNo=300235" >영상/애니메이션</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=3&amp;menuNo=300236" >웹툰/만화</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=6&amp;menuNo=300243" >카드뉴스</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contUserList.do?check=8&amp;menuNo=300244" >오디오북/점역자료</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=P&amp;menuNo=300237" >교육대상별</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=P&amp;menuNo=300237" >아동기</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=H&amp;menuNo=300238" >청소년기</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=Y&amp;menuNo=300239" >청년기</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=A&amp;menuNo=300240" >중장년기</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=R&amp;menuNo=300241" >노년기</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=D&amp;eduTrgtCode=M&amp;eduTrgtCode=N&amp;eduTrgtCode=C&amp;eduTrgtCode=AM&amp;eduTrgtCode=U&amp;eduTrgtCode=TA&amp;eduTrgtCode=SP&amp;eduTrgtCode=FS&amp;menuNo=300242" >기타(장애인, 다문화 등)</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300205" >금융과 경제생활 한 눈에</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/main/contents.do?menuNo=300205" >과목 소개</a>
+																				</li>
+																			<li>
+																					<a href="/edu/main/contents.do?menuNo=300207" >교사 대상 설명회 다시보기</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=87&amp;menuNo=300212" >금융과목 특강</a>
+																				</li>
+																			<li>
+																					<a href="/edu/fem/eduProgram/view.do?programSlno=88&amp;menuNo=300209" >교사 연수 프로그램 </a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300217" >재무설계 한눈에</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000418/list.do?menuNo=300210" >재무상담 사례</a>
+															</li>
+														</ul>
+											</div>
+									</div>
+								</li>
+							<!-- 							전체열기시 데이터 넣기 -->
+							<li class="">
+									<a href="/edu/lpm/lecturerEngn/list.do?menuNo=300023" ><span>강사 한 눈에</span></a>
+									<div class="lnb-area lnb3">
+										<div class="container">
+											<div class="lnb-title">
+												<p class="title">강사 한 눈에</p>
+												</div>
+
+											<ul class="lnb-list">
+													<!-- depth02 -->
+													<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/lpm/lecturerEngn/list.do?menuNo=300023" >강사 검색</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000415/list.do?menuNo=300170" >강사 모집 공고</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300089" >금융감독원 강사 지원</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/main/contents.do?menuNo=300089" >전문강사 인증제</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000278/list.do?menuNo=300094" >대학 실용금융 교수</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000281/list.do?menuNo=300119" >강사용 교육자료 공유</a>
+																				</li>
+																			</ul>
+																</li>
+														</ul>
+											</div>
+									</div>
+								</li>
+							<!-- 							전체열기시 데이터 넣기 -->
+							<li class="">
+									<a href="/edu/main/contents.do?menuNo=300065" ><span>교육소식 한 눈에</span></a>
+									<div class="lnb-area lnb4">
+										<div class="container">
+											<div class="lnb-title">
+												<p class="title">교육소식 한 눈에</p>
+												</div>
+
+											<ul class="lnb-list">
+													<!-- depth02 -->
+													<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300065" >금융감독원 금융교육</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/main/contents.do?menuNo=300065" >금융감독원 금융교육 소개</a>
+																				</li>
+																			<li>
+																					<a href="/edu/pam/contest/index.do?menuNo=300069" >금융공모전</a>
+																				</li>
+																			<li>
+																					<a href="/edu/main/contents.do?menuNo=300077" >대학생 금융교육봉사단</a>
+																				</li>
+																			<li>
+																					<a href="/edu/qestnar/qustnr/list.do?pSiteId=edu&amp;menuNo=300068" >교육 만족도 설문조사</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000272/list.do?menuNo=300053" >금융교육 소식</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000273/list.do?menuNo=300054" >공모전 등 교육&middot;행사 일정</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000414/list.do?menuNo=300173" >금융&middot;경제 교육기관</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/bbs/B0000414/list.do?menuNo=300173" >금융&middot;경제 교육기관 및 단체</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000413/list.do?menuNo=300174" >금융&middot;경제 교육 사이트 모음</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000269/list.do?menuNo=300062" >공지사항</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/bbs/B0000405/list.do?menuNo=300172" >보도자료</a>
+															</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300056" >금융교육 연구자료</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/main/contents.do?menuNo=300056" >금융교육 통계</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000275/list.do?menuNo=300057" >금융교육 연구자료</a>
+																				</li>
+																			<li>
+																					<a href="/edu/main/contents.do?menuNo=300123" >전국민 금융이해력 조사</a>
+																				</li>
+																			</ul>
+																</li>
+														</ul>
+											</div>
+									</div>
+								</li>
+							<!-- 							전체열기시 데이터 넣기 -->
+							<li class="">
+									<a href="/edu/main/contents.do?menuNo=300150" ><span>Open API</span></a>
+									<div class="lnb-area lnb5">
+										<div class="container">
+											<div class="lnb-title">
+												<p class="title">Open API</p>
+												</div>
+
+											<ul class="lnb-list">
+													<!-- depth02 -->
+													<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300150" >Open API 개요</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/main/contents.do?menuNo=300150" >Open API 개요</a>
+																				</li>
+																			<li>
+																					<a href="/edu/main/contents.do?menuNo=300151" >사용방법</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000409/list.do?menuNo=300152" >FAQ</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/api/openApiKey/forInsert.do?menuNo=300153" >인증키 신청/관리</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/api/openApiKey/forInsert.do?menuNo=300153" >인증키 신청</a>
+																				</li>
+																			<li>
+																					<a href="/edu/api/openApiKey/forResult.do?menuNo=300154" >신청결과 확인</a>
+																				</li>
+																			<li>
+																					<a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=AP&amp;menuNo=300176" >인증키 재 전송 신청</a>
+																				</li>
+																			<li>
+																					<a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=EM&amp;menuNo=300177" >인증키 관리</a>
+																				</li>
+																			</ul>
+																</li>
+														<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/api/openApiEduProgram/view.do?menuNo=300156" >개발 가이드</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/api/openApiEduProgram/view.do?menuNo=300156" >교육 프로그램</a>
+																				</li>
+																			<li>
+																					<a href="/edu/api/openApiEduContents/view.do?menuNo=300157" >교육 컨텐츠</a>
+																				</li>
+																			</ul>
+																</li>
+														</ul>
+											</div>
+									</div>
+								</li>
+							<!-- 							전체열기시 데이터 넣기 -->
+							<li class="">
+									<a href="/edu/main/contents.do?menuNo=300061" ><span>e-금융교육센터 소개</span></a>
+									<div class="lnb-area lnb6">
+										<div class="container">
+											<div class="lnb-title">
+												<p class="title">e-금융교육센터 소개</p>
+												</div>
+
+											<ul class="lnb-list">
+													<!-- depth02 -->
+													<!-- 금융감동권 교육프로그램 안보이게 처리 작업 -->
+														<li> <a href="/edu/main/contents.do?menuNo=300061" >e-금융교육센터 소개</a>
+															<ul>
+	<!-- 																	depth03 -->
+																		<li>
+																					<a href="/edu/main/contents.do?menuNo=300061" >e-금융교육센터</a>
+																				</li>
+																			<li>
+																					<a href="/edu/main/contents.do?menuNo=300202" >e-금융교육센터 따라하기 동영상</a>
+																				</li>
+																			<li>
+																					<a href="/edu/main/contents.do?menuNo=300122" >캐릭터 소개</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000270/list.do?menuNo=300063" >자주 묻는 질문</a>
+																				</li>
+																			<li>
+																					<a href="/edu/bbs/B0000271/list.do?menuNo=300064" >e-홍보관</a>
+																				</li>
+																			</ul>
+																</li>
+														</ul>
+											</div>
+									</div>
+								</li>
+							</ul>
+			</nav>
+			<a href="#;" class="btn btn-allmenu-open" role="button">
+				<span class="sr-only">전체메뉴</span>
+				<i class="ico ico-allmenu"></i>
+			</a>
+			<nav id="allmenu">
+				<!-- PC 전체메뉴 -->
+				<div class="modal-popup modal-xl hide" id="desktop-allmenu">
+					<div class="dimed"></div>
+					<div class="popup-inner">
+						<h2 class="sr-only">전체메뉴</h2>
+						<div class="popup-body">
+							<div class="allmenu-area">
+								<ul class="allmenu-lnb">
+
+									<!-- 전체열기시 데이터 넣기 -->
+											<li>
+														<a href="/edu/fem/eduProgram/list.do?menuNo=300003" ><span>교육프로그램 한 눈에</span></a>
+														<ul>
+																<!-- depth02 -->
+																<li> <a href="/edu/fem/eduProgram/list.do?menuNo=300003" >교육 프로그램 검색/신청</a>
+																		</li>
+																	<li> <a href="/edu/fem/eduProgram/aplyList.do?menuNo=300009" >교육 신청내역 확인</a>
+																		</li>
+																	<li> <a href="/edu/fem/expeHall/main.do?menuNo=300010" >체험형 교육지도</a>
+																		</li>
+																	<li> <a href="/edu/fem/seominEduContents/list.do?menuNo=300197" >서민금융진흥원 금융교육 조회</a>
+																		</li>
+																	</ul>
+															</li>
+											<!-- 전체열기시 데이터 넣기 -->
+											<li>
+														<a href="/edu/fec/contMng/contSearch.do?menuNo=300016" ><span>콘텐츠 한 눈에</span></a>
+														<ul>
+																<!-- depth02 -->
+																<li> <a href="/edu/fec/contMng/contSearch.do?menuNo=300016" >콘텐츠 검색</a>
+																		</li>
+																	<li> <a href="/edu/fec/contMng/contUserList.do?check=2&amp;menuNo=300230" >제작유형별</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=2&amp;menuNo=300230" >도서(단행본/시리즈물)</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=5&amp;menuNo=300233" >체험형 교구</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=7&amp;menuNo=300234" >웹진/잡지/신문</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=1&amp;menuNo=300235" >영상/애니메이션</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=3&amp;menuNo=300236" >웹툰/만화</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=6&amp;menuNo=300243" >카드뉴스</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contUserList.do?check=8&amp;menuNo=300244" >오디오북/점역자료</a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=P&amp;menuNo=300237" >교육대상별</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=P&amp;menuNo=300237" >아동기</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=H&amp;menuNo=300238" >청소년기</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=Y&amp;menuNo=300239" >청년기</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=A&amp;menuNo=300240" >중장년기</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=R&amp;menuNo=300241" >노년기</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=D&amp;eduTrgtCode=M&amp;eduTrgtCode=N&amp;eduTrgtCode=C&amp;eduTrgtCode=AM&amp;eduTrgtCode=U&amp;eduTrgtCode=TA&amp;eduTrgtCode=SP&amp;eduTrgtCode=FS&amp;menuNo=300242" >기타(장애인, 다문화 등)</a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/main/contents.do?menuNo=300205" >금융과 경제생활 한 눈에</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/main/contents.do?menuNo=300205" >과목 소개</a>
+																							</li>
+																						<li>
+																								<a href="/edu/main/contents.do?menuNo=300207" >교사 대상 설명회 다시보기</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fem/eduProgram/view.do?programSlno=87&amp;menuNo=300212" >금융과목 특강</a>
+																							</li>
+																						<li>
+																								<a href="/edu/fem/eduProgram/view.do?programSlno=88&amp;menuNo=300209" >교사 연수 프로그램 </a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/main/contents.do?menuNo=300217" >재무설계 한눈에</a>
+																		</li>
+																	<li> <a href="/edu/bbs/B0000418/list.do?menuNo=300210" >재무상담 사례</a>
+																		</li>
+																	</ul>
+															</li>
+											<!-- 전체열기시 데이터 넣기 -->
+											<li>
+														<a href="/edu/lpm/lecturerEngn/list.do?menuNo=300023" ><span>강사 한 눈에</span></a>
+														<ul>
+																<!-- depth02 -->
+																<li> <a href="/edu/lpm/lecturerEngn/list.do?menuNo=300023" >강사 검색</a>
+																		</li>
+																	<li> <a href="/edu/bbs/B0000415/list.do?menuNo=300170" >강사 모집 공고</a>
+																		</li>
+																	<li> <a href="/edu/main/contents.do?menuNo=300089" >금융감독원 강사 지원</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/main/contents.do?menuNo=300089" >전문강사 인증제</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000278/list.do?menuNo=300094" >대학 실용금융 교수</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000281/list.do?menuNo=300119" >강사용 교육자료 공유</a>
+																							</li>
+																						</ul>
+																			</li>
+																	</ul>
+															</li>
+											<!-- 전체열기시 데이터 넣기 -->
+											<li>
+														<a href="/edu/main/contents.do?menuNo=300065" ><span>교육소식 한 눈에</span></a>
+														<ul>
+																<!-- depth02 -->
+																<li> <a href="/edu/main/contents.do?menuNo=300065" >금융감독원 금융교육</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/main/contents.do?menuNo=300065" >금융감독원 금융교육 소개</a>
+																							</li>
+																						<li>
+																								<a href="/edu/pam/contest/index.do?menuNo=300069" >금융공모전</a>
+																							</li>
+																						<li>
+																								<a href="/edu/main/contents.do?menuNo=300077" >대학생 금융교육봉사단</a>
+																							</li>
+																						<li>
+																								<a href="/edu/qestnar/qustnr/list.do?pSiteId=edu&amp;menuNo=300068" >교육 만족도 설문조사</a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/bbs/B0000272/list.do?menuNo=300053" >금융교육 소식</a>
+																		</li>
+																	<li> <a href="/edu/bbs/B0000273/list.do?menuNo=300054" >공모전 등 교육&middot;행사 일정</a>
+																		</li>
+																	<li> <a href="/edu/bbs/B0000414/list.do?menuNo=300173" >금융&middot;경제 교육기관</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/bbs/B0000414/list.do?menuNo=300173" >금융&middot;경제 교육기관 및 단체</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000413/list.do?menuNo=300174" >금융&middot;경제 교육 사이트 모음</a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/bbs/B0000269/list.do?menuNo=300062" >공지사항</a>
+																		</li>
+																	<li> <a href="/edu/bbs/B0000405/list.do?menuNo=300172" >보도자료</a>
+																		</li>
+																	<li> <a href="/edu/main/contents.do?menuNo=300056" >금융교육 연구자료</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/main/contents.do?menuNo=300056" >금융교육 통계</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000275/list.do?menuNo=300057" >금융교육 연구자료</a>
+																							</li>
+																						<li>
+																								<a href="/edu/main/contents.do?menuNo=300123" >전국민 금융이해력 조사</a>
+																							</li>
+																						</ul>
+																			</li>
+																	</ul>
+															</li>
+											<!-- 전체열기시 데이터 넣기 -->
+											<li>
+														<a href="/edu/main/contents.do?menuNo=300150" ><span>Open API</span></a>
+														<ul>
+																<!-- depth02 -->
+																<li> <a href="/edu/main/contents.do?menuNo=300150" >Open API 개요</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/main/contents.do?menuNo=300150" >Open API 개요</a>
+																							</li>
+																						<li>
+																								<a href="/edu/main/contents.do?menuNo=300151" >사용방법</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000409/list.do?menuNo=300152" >FAQ</a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/api/openApiKey/forInsert.do?menuNo=300153" >인증키 신청/관리</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/api/openApiKey/forInsert.do?menuNo=300153" >인증키 신청</a>
+																							</li>
+																						<li>
+																								<a href="/edu/api/openApiKey/forResult.do?menuNo=300154" >신청결과 확인</a>
+																							</li>
+																						<li>
+																								<a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=AP&amp;menuNo=300176" >인증키 재 전송 신청</a>
+																							</li>
+																						<li>
+																								<a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=EM&amp;menuNo=300177" >인증키 관리</a>
+																							</li>
+																						</ul>
+																			</li>
+																	<li> <a href="/edu/api/openApiEduProgram/view.do?menuNo=300156" >개발 가이드</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/api/openApiEduProgram/view.do?menuNo=300156" >교육 프로그램</a>
+																							</li>
+																						<li>
+																								<a href="/edu/api/openApiEduContents/view.do?menuNo=300157" >교육 컨텐츠</a>
+																							</li>
+																						</ul>
+																			</li>
+																	</ul>
+															</li>
+											<!-- 전체열기시 데이터 넣기 -->
+											<li>
+														<a href="/edu/main/contents.do?menuNo=300061" ><span>e-금융교육센터 소개</span></a>
+														<ul>
+																<!-- depth02 -->
+																<li> <a href="/edu/main/contents.do?menuNo=300061" >e-금융교육센터 소개</a>
+																		<ul>
+																					<!-- depth03 -->
+																					<li>
+																								<a href="/edu/main/contents.do?menuNo=300061" >e-금융교육센터</a>
+																							</li>
+																						<li>
+																								<a href="/edu/main/contents.do?menuNo=300202" >e-금융교육센터 따라하기 동영상</a>
+																							</li>
+																						<li>
+																								<a href="/edu/main/contents.do?menuNo=300122" >캐릭터 소개</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000270/list.do?menuNo=300063" >자주 묻는 질문</a>
+																							</li>
+																						<li>
+																								<a href="/edu/bbs/B0000271/list.do?menuNo=300064" >e-홍보관</a>
+																							</li>
+																						</ul>
+																			</li>
+																	</ul>
+															</li>
+											</ul>
+							</div>
+						</div>
+						<button type="button" class="btn btn-close-popup">
+							<i class="ico ico-times-white"></i>
+							<span class="sr-only">닫기</span>
+						</button>
+					</div>
+				</div>
+
+
+				<!-- 모바일 전체메뉴 -->
+				<div id="mobile-allmenu">
+					<div class="allmenu-inner">
+						<div class="allmenu-header">
+							<h2 class="allmenu-title">전체메뉴</h2>
+						</div>
+						<div class="allmenu-util">
+							<!-- 로그인 전 -->
+							<a href="/edu/member/login/forLogin.do?menuNo=300108" class="btn btn-login">
+									<i class="ico ico-login"></i>
+									<span class="text">강사 로그인</span>
+								</a>
+								<a href="/edu/member/join/joinAgre.do?menuNo=300110" class="btn btn-join">
+									<i class="ico ico-join"></i>
+									<span class="text">회원가입</span>
+								</a>
+							<!-- 로그인 후 -->
+							</div>
+
+						<ul class="allmenu-lnb">
+							<!-- 전체열기시 데이터 넣기 -->
+									<li>
+										<a href="javascript:void(0);" ><span>교육프로그램 한 눈에</span></a>
+										<ul class="lnb-list">
+												<!-- depth02 -->
+												<li> <a href="/edu/fem/eduProgram/list.do?menuNo=300003" >교육 프로그램 검색/신청</a>
+														</li>
+													<li> <a href="javascript:void(0);" >금융감독원 교육 프로그램</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="javascript:void(0);" >
+																						온라인 금융교육</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/onlineStudy/list.do?menuNo=300039" >학습하기</a></li>
+																					<li class=""> <a href="/edu/fem/onlineStudy/certOtpt.do?menuNo=300040" >수료증 출력</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300041" >나의 금융지식 수준은</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						1사1교 금융교육</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=2&amp;menuNo=300160" >1사 1교 금융교육이란?</a></li>
+																					<li class=""> <a href="/edu/fem/ocosAply/list.do?menuNo=300161" >1사 1교 결연</a></li>
+																					<li class=""> <a href="/edu/fem/ocosAply/forInsert.do?menuNo=300042" >결연신청</a></li>
+																					<li class=""> <a href="/edu/fem/ocosEduAply/forInsert.do?menuNo=300045" >1사1교 금융교육 신청</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300044" >금융회사 담당자 연락처</a></li>
+																					<li class=""> <a href="/edu/fem/ocosEduAply/listUser.do?menuNo=300046" >신청현황 조회</a></li>
+																					<li class=""> <a href="/edu/fem/ocosTeacher/forInsert.do?menuNo=300227" >담당교사 현황 및 변경 관리</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="/edu/fem/visitAply/forInsert.do?menuNo=300031" >
+																						방문교육</a>
+																			</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						교사 금융연수</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=78&amp;menuNo=300191" >교사 금융연수란?</a></li>
+																					<li class=""> <a href="/edu/fem/teacherTrainingCourse/list.do?menuNo=300192" >교사 금융연수 신청</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						FSS 어린이 금융스쿨</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=83&amp;menuNo=300163" >FSS 어린이 금융스쿨이란?</a></li>
+																					<li class=""> <a href="/edu/fem/juniorSchoolCourse/list.do?menuNo=300134" >프로그램 신청하기</a></li>
+																					<li class=""> <a href="/edu/fem/juniorSchoolEduMng/eduMain.do?menuNo=300189" target="_blank">학습하기</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						자유학기제 금융교육</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=84&amp;menuNo=300194" >자유학기제 금융교육이란?</a></li>
+																					<li class=""> <a href="/edu/fem/freeSmstrSchoolCourse/list.do?menuNo=300193" >자유학기제 금융교육 신청</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						사회진출 전 금융소양 교육(고3 특강)</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=6&amp;menuNo=300195" >사회진출 전 금융소양 교육(고3 특강)이란?</a></li>
+																					<li class=""> <a href="/edu/fem/highThreeSchoolCourse/list.do?menuNo=300196" >사회진출 전 금융소양 교육(고3 특강) 신청하기</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						FSS 금융 아카데미</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/academyLecture/listUser.do?menuNo=300047" >교육일정</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000292/list.do?menuNo=300048" >강의자료(일반과정)</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000293/list.do?menuNo=300117" >강의자료(심화과정)</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300049" >수료증 발급(일반과정)</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300050" >수료증 발급(심화과정)</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="/edu/fem/collegeUtilityCourse/list.do?menuNo=300035" >
+																						대학 실용금융</a>
+																			</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						FSS 투자탐험대</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=85&amp;menuNo=300200" >FSS 투자탐험대란?</a></li>
+																					<li class=""> <a href="/edu/fem/investmentExplorersCourse/list.do?menuNo=300199" >FSS 투자탐험대 신청하기</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						1:1 비대면 재무설계 신청하기</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=93&amp;menuNo=300225" >1:1 비대면 재무설계란?</a></li>
+																					<li class=""> <a href="/edu/fem/srPrepareYgmnCourse/list.do?menuNo=300226" >1:1 비대면 재무설계 신청하기</a></li>
+																					</ul>
+																				</li>
+																		</ul>
+															</li>
+													<li> <a href="/edu/fem/eduProgram/aplyList.do?menuNo=300009" >교육 신청내역 확인</a>
+														</li>
+													<li> <a href="/edu/fem/expeHall/main.do?menuNo=300010" >체험형 교육지도</a>
+														</li>
+													<li> <a href="/edu/fem/seominEduContents/list.do?menuNo=300197" >서민금융진흥원 금융교육 조회</a>
+														</li>
+													</ul>
+										</li>
+								<!-- 전체열기시 데이터 넣기 -->
+									<li>
+										<a href="javascript:void(0);" ><span>콘텐츠 한 눈에</span></a>
+										<ul class="lnb-list">
+												<!-- depth02 -->
+												<li> <a href="/edu/fec/contMng/contSearch.do?menuNo=300016" >콘텐츠 검색</a>
+														</li>
+													<li> <a href="javascript:void(0);" >제작유형별</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=2&amp;menuNo=300230" >
+																						도서(단행본/시리즈물)</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=5&amp;menuNo=300233" >
+																						체험형 교구</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=7&amp;menuNo=300234" >
+																						웹진/잡지/신문</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=1&amp;menuNo=300235" >
+																						영상/애니메이션</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=3&amp;menuNo=300236" >
+																						웹툰/만화</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=6&amp;menuNo=300243" >
+																						카드뉴스</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contUserList.do?check=8&amp;menuNo=300244" >
+																						오디오북/점역자료</a>
+																			</li>
+																		</ul>
+															</li>
+													<li> <a href="javascript:void(0);" >교육대상별</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=P&amp;menuNo=300237" >
+																						아동기</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=H&amp;menuNo=300238" >
+																						청소년기</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=Y&amp;menuNo=300239" >
+																						청년기</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=A&amp;menuNo=300240" >
+																						중장년기</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=R&amp;menuNo=300241" >
+																						노년기</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/fec/contMng/contSearch.do?eduTrgtCode=D&amp;eduTrgtCode=M&amp;eduTrgtCode=N&amp;eduTrgtCode=C&amp;eduTrgtCode=AM&amp;eduTrgtCode=U&amp;eduTrgtCode=TA&amp;eduTrgtCode=SP&amp;eduTrgtCode=FS&amp;menuNo=300242" >
+																						기타(장애인, 다문화 등)</a>
+																			</li>
+																		</ul>
+															</li>
+													<li> <a href="javascript:void(0);" >금융과 경제생활 한 눈에</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="javascript:void(0);" >
+																						과목 소개</a>
+																			<ul>
+																				<li class=""> <a href="/edu/main/contents.do?menuNo=300205" >과목소개 영상</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300206" >과목소개 e-팜플렛</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300207" >
+																						교사 대상 설명회 다시보기</a>
+																			</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						금융과목 특강</a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=87&amp;menuNo=300212" >금융과목 특강이란?</a></li>
+																					<li class=""> <a href="/edu/fem/finEconCourse/list.do?menuNo=300211" >금융과목 특강 신청하기</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300216" >금융과목 특강 영상</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						교사 연수 프로그램 </a>
+																			<ul>
+																				<li class=""> <a href="/edu/fem/eduProgram/view.do?programSlno=88&amp;menuNo=300209" >교사 연수 프로그램이란?</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300222" >교사 연수 주요 강의 다시보기</a></li>
+																					</ul>
+																				</li>
+																		</ul>
+															</li>
+													<li> <a href="/edu/main/contents.do?menuNo=300217" >재무설계 한눈에</a>
+														</li>
+													<li> <a href="/edu/bbs/B0000418/list.do?menuNo=300210" >재무상담 사례</a>
+														</li>
+													</ul>
+										</li>
+								<!-- 전체열기시 데이터 넣기 -->
+									<li>
+										<a href="javascript:void(0);" ><span>강사 한 눈에</span></a>
+										<ul class="lnb-list">
+												<!-- depth02 -->
+												<li> <a href="/edu/lpm/lecturerEngn/list.do?menuNo=300023" >강사 검색</a>
+														</li>
+													<li> <a href="/edu/bbs/B0000415/list.do?menuNo=300170" >강사 모집 공고</a>
+														</li>
+													<li> <a href="javascript:void(0);" >금융감독원 강사 지원</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="javascript:void(0);" >
+																						전문강사 인증제</a>
+																			<ul>
+																				<li class=""> <a href="/edu/main/contents.do?menuNo=300089" >전문강사 인증제 안내</a></li>
+																					<li class=""> <a href="/edu/is/lecCertTraCou/list.do?menuNo=300090" >전문강사 양성연수 신청</a></li>
+																					<li class=""> <a href="/edu/is/lecCertAuditCou/list.do?menuNo=300091" >전문강사 인증신청</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300092" >보수교육 신청</a></li>
+																					<li class=""> <a href="/edu/is/lectAplyList/list.do?menuNo=300093" >신청내역 및 인증 조회</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						대학 실용금융 교수</a>
+																			<ul>
+																				<li class=""> <a href="/edu/bbs/B0000278/list.do?menuNo=300094" >교수 공지사항</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000279/list.do?menuNo=300095" >교수 자료 지원</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000280/list.do?menuNo=300096" >교수 간 노하우 공유</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						강사용 교육자료 공유</a>
+																			<ul>
+																				<li class=""> <a href="/edu/bbs/B0000281/list.do?menuNo=300119" >교육자료 활용방</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000282/list.do?menuNo=300120" >동영상 자료방</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000325/list.do?menuNo=300175" >금융 체험활동</a></li>
+																					</ul>
+																				</li>
+																		</ul>
+															</li>
+													</ul>
+										</li>
+								<!-- 전체열기시 데이터 넣기 -->
+									<li>
+										<a href="javascript:void(0);" ><span>교육소식 한 눈에</span></a>
+										<ul class="lnb-list">
+												<!-- depth02 -->
+												<li> <a href="javascript:void(0);" >금융감독원 금융교육</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300065" >
+																						금융감독원 금융교육 소개</a>
+																			</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						금융공모전</a>
+																			<ul>
+																				<li class=""> <a href="/edu/pam/contest/index.do?menuNo=300069" >공모전 안내</a></li>
+																					<li class=""> <a href="/edu/main/contents.do?menuNo=300073" >작품 접수</a></li>
+																					<li class=""> <a href="/edu/pam/contestRecp/list.do?menuNo=300071" >접수 확인</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000289/list.do?menuNo=300072" >공모전 수상작</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						대학생 금융교육봉사단</a>
+																			<ul>
+																				<li class=""> <a href="/edu/main/contents.do?menuNo=300077" >봉사단 안내</a></li>
+																					<li class=""> <a href="/edu/pam/serviceGroupAply/step01.do?menuNo=300078" >봉사단 지원</a></li>
+																					<li class=""> <a href="/edu/pam/serviceGroupAply/viewUser.do?menuNo=300079" >지원 확인</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000288/list.do?menuNo=300080" >봉사단 행사 안내</a></li>
+																					<li class=""> <a href="/edu/pam/serviceRegular/listUser.do?menuNo=300083" >봉사활동 신청/확인</a></li>
+																					<li class=""> <a href="/edu/bbs/B0000277/list.do?menuNo=300082" >봉사활동 Q&A</a></li>
+																					</ul>
+																				</li>
+																		<li class="">
+																					<a href="/edu/qestnar/qustnr/list.do?pSiteId=edu&amp;menuNo=300068" >
+																						교육 만족도 설문조사</a>
+																			</li>
+																		</ul>
+															</li>
+													<li> <a href="/edu/bbs/B0000272/list.do?menuNo=300053" >금융교육 소식</a>
+														</li>
+													<li> <a href="/edu/bbs/B0000273/list.do?menuNo=300054" >공모전 등 교육&middot;행사 일정</a>
+														</li>
+													<li> <a href="javascript:void(0);" >금융&middot;경제 교육기관</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/bbs/B0000414/list.do?menuNo=300173" >
+																						금융&middot;경제 교육기관 및 단체</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/bbs/B0000413/list.do?menuNo=300174" >
+																						금융&middot;경제 교육 사이트 모음</a>
+																			</li>
+																		</ul>
+															</li>
+													<li> <a href="/edu/bbs/B0000269/list.do?menuNo=300062" >공지사항</a>
+														</li>
+													<li> <a href="/edu/bbs/B0000405/list.do?menuNo=300172" >보도자료</a>
+														</li>
+													<li> <a href="javascript:void(0);" >금융교육 연구자료</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300056" >
+																						금융교육 통계</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/bbs/B0000275/list.do?menuNo=300057" >
+																						금융교육 연구자료</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300123" >
+																						전국민 금융이해력 조사</a>
+																			</li>
+																		</ul>
+															</li>
+													</ul>
+										</li>
+								<!-- 전체열기시 데이터 넣기 -->
+									<li>
+										<a href="javascript:void(0);" ><span>Open API</span></a>
+										<ul class="lnb-list">
+												<!-- depth02 -->
+												<li> <a href="javascript:void(0);" >Open API 개요</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300150" >
+																						Open API 개요</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300151" >
+																						사용방법</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/bbs/B0000409/list.do?menuNo=300152" >
+																						FAQ</a>
+																			</li>
+																		</ul>
+															</li>
+													<li> <a href="javascript:void(0);" >인증키 신청/관리</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/api/openApiKey/forInsert.do?menuNo=300153" >
+																						인증키 신청</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/api/openApiKey/forResult.do?menuNo=300154" >
+																						신청결과 확인</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=AP&amp;menuNo=300176" >
+																						인증키 재 전송 신청</a>
+																			</li>
+																		<li class="">
+																					<a href="javascript:void(0);" >
+																						인증키 관리</a>
+																			<ul>
+																				<li class=""> <a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=EM&amp;menuNo=300177" >이메일 변경 신청</a></li>
+																					<li class=""> <a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=DC&amp;menuNo=300178" >인증키 폐기 신청</a></li>
+																					<li class=""> <a href="/edu/api/openApiKey/forRequest.do?apiDmndCodeSe=IP&amp;menuNo=300179" >요청IP 변경 신청(법인용)</a></li>
+																					</ul>
+																				</li>
+																		</ul>
+															</li>
+													<li> <a href="javascript:void(0);" >개발 가이드</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/api/openApiEduProgram/view.do?menuNo=300156" >
+																						교육 프로그램</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/api/openApiEduContents/view.do?menuNo=300157" >
+																						교육 컨텐츠</a>
+																			</li>
+																		</ul>
+															</li>
+													</ul>
+										</li>
+								<!-- 전체열기시 데이터 넣기 -->
+									<li>
+										<a href="javascript:void(0);" ><span>e-금융교육센터 소개</span></a>
+										<ul class="lnb-list">
+												<!-- depth02 -->
+												<li> <a href="javascript:void(0);" >e-금융교육센터 소개</a>
+														<ul>
+																	<!-- depth03 -->
+																	<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300061" >
+																						e-금융교육센터</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300202" >
+																						e-금융교육센터 따라하기 동영상</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/main/contents.do?menuNo=300122" >
+																						캐릭터 소개</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/bbs/B0000270/list.do?menuNo=300063" >
+																						자주 묻는 질문</a>
+																			</li>
+																		<li class="">
+																					<a href="/edu/bbs/B0000271/list.do?menuNo=300064" >
+																						e-홍보관</a>
+																			</li>
+																		</ul>
+															</li>
+													</ul>
+										</li>
+								</ul>
+
+
+						<ul class="util-menu">
+							<li>
+								<a href="/edu/main/contents.do?menuNo=300061">
+									<i class="ico ico-util1-white"></i>
+									<span class="text">e-금융교육센터</span>
+								</a>
+							</li>
+							<li>
+								<a href="/edu/fem/eduProgram/list.do?menuNo=300003&mainToMobile=true">
+									<i class="ico ico-util2-white"></i>
+									<span class="text">금융감독원<br> 교육프로그램</span>
+								</a>
+							</li>
+							<li>
+								<a href="/edu/fec/contMng/contSearch.do?menuNo=300016&check=&AllmakeTypeCode=on&AlleduTrgtCode=&AlleduCntntLrgClsfcCode=on&fncEngnCode=1&AllcertYn=&searchWrd=&search=title">
+									<i class="ico ico-util3-white"></i>
+									<span class="text">금융감독원<br> 교육콘텐츠</span>
+								</a>
+							</li>
+						</ul>
+						<button type="button" class="btn btn-allmenu-close">
+							<i class="ico ico-times-white"></i>
+							<span class="sr-only">전체메뉴 닫기</span>
+						</button>
+					</div>
+				</div>
+
+			</nav>
+		</div>
+	</header>
+	<!-- //header -->
+	<!-- navigation -->
+	<aside id="breadcrumb" class="d-down-md">
+			<div class="container">
+				<ol class="breadcrumb-list">
+					<li>
+						<i class="ico ico-home-white"></i>
+						<span class="sr-only">홈</span>
+					</li>
+					<li></li></ol>
+			</div>
+		</aside>
+	<script>
+		$(".searchwrap").delegate(".searchBtn","click",function() {
+			let collection = $(this).attr("data-collection");
+			if (collection === undefined) {
+				collection = "ALL";
+			}
+			$("#collection").val(collection);
+			$("#searchForm").submit();
+			return false;
+		});
+
+		$("#totalSearch").keyup(function() {
+			$("#query").val($(this).val());
+			// 자동완성, 본문검색, 메뉴검색 가져오기
+			fnGetAutowordCont();
+			fnGetDataCont();
+			fnGetMenuCont();
+		});
+
+		function fnSearch(query,collection) {
+			$("#query").val(query);
+			$("#collection").val(collection);
+			$("#searchForm").submit();
+		}
+
+		function fnGetAutowordCont() {
+			let url = "/edu/search/eduSearch/listAutowordCont.do";
+			let params = $("#searchForm").serialize();
+			$.post(url, params, function(data) {
+				$("#searchAutowordCont").html(data);
+			},"html");
+		}
+
+		function fnGetDataCont() {
+			let url = "/edu/search/eduSearch/listDataCont.do";
+			let params = $("#searchForm").serialize();
+			$.post(url, params, function(data) {
+				$("#searchDataCont").html(data);
+			},"html");
+		}
+
+		function fnGetMenuCont() {
+			let url = "/edu/search/eduSearch/listMenuCont.do";
+			let params = $("#searchForm").serialize();
+			$.post(url, params, function(data) {
+				$("#searchMenuCont").html(data);
+			},"html");
+		}
+		</script>
+	<!-- //navigation --><!-- //header -->
+		<div id="container">
+			<aside id="sidebar">
+				<h2 class="sidebar-title"></h2>
+				</aside>
+			<script>
+				$('.lnb nav>ul>li>a').on('click', function(e){
+					if($(this).parent().has('ul').length > 0){
+						e.preventDefault();
+						$(this)
+							.parent().addClass('active')
+							.siblings().removeClass('active');
+					}
+				});
+			</script>
+
+			<article id="content" tabindex="-1">
+				<div class="content-header">
+					<h2 class="content-title"></h2>
+					<ol class="breadcrumb-list d-up-lg">
+						<li>
+							<i class="ico ico-home-gray"></i>
+							<span class="sr-only">홈</span>
+						</li>
+						<li></li></ol>
+				</div>
+				<div class="content-body">
+
+					
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+
+<script>
+function check(obj){
+	$.post(
+		"./sessionJson.ujson?menuNo=300018",
+		function(data){
+			var resultCode = data.resultCode;
+			if(resultCode == "success"){
+				checkAplyCnt(data.name)
+			}else{
+				openModal('#layer-certify', obj);
+			}
+		}
+	);
+}
+
+function checkAplyCnt(aplyName) {
+	$.ajax({
+		type: "GET" ,
+		url:"/edu/fec/bookAply/listJson.ujson",
+		dataType:"json",
+		success:function(data){
+			console.debug(data.reqCnt.totalCnt);
+			if(data.reqCnt.totalCnt >= 2) {
+				alert("모든 종류의 교재 합은 최대 2권으로 제한되어있어 신청이 제한됩니다.");
+			} else {
+				$('#sName').val(aplyName);
+				openModal('#layer-apply', obj);
+			}
+		}
+	});
+}
+
+function openVodModal(obj){
+
+	
+		
+		
+			
+		
+	
+}
+
+$(document).ready(function () {
+
+	var eng = 'N';
+
+	console.log(eng);
+
+	$('.box-content .btn-more').click(function () {
+		$(this).closest('.box-content').toggleClass('on');
+
+		var text = "";
+		if(eng != 'Y'){
+		    text += "주요내용 더보기";
+			text += $(this).closest('.box-content').hasClass( 'on' ) != true ? ' 열기' : ' 닫기';
+		}else{
+
+			text += $(this).closest('.box-content').hasClass( 'on' ) != true ? 'More Details' : 'Close Details';
+		}
+		$(this).find( "span" ).text( text );
+	});
+
+});
+
+$(document).on('click','.btn-close-popup .videohistory' ,function() {
+	if($(this).hasClass("videohistory")){
+		$('#video').setCurrentTime(0);
+	}
+	history.go(-1);
+});
+
+function fnList() {
+	document.frmList.submit();
+	return false;
+}
+
+</script>
+<!-- 본문 영역 -->
+<form name="frmList" id="frmList" method="post" action="contUserList.do" >
+		<input type="hidden" name="menuNo" id="menuNo" value="300017">
+		<input type="hidden" name="check" id="check"  value="" >
+		
+		
+		
+		
+</form>
+<div class="container">
+	<div class="search-row">
+		<div class="inner">
+			<div class="left col-item">
+				<div class="search-detail">
+					
+					
+						<div class="content-wrap">
+					
+						<div class="item">
+							
+								<span class="mark">
+									<img src="/static/edu/pub/resources/user/images/content/img-mark.png" alt="금융교육 우수콘텐츠">
+								</span>
+							
+							<div class="thumb">
+								
+									<span class="badge"><span class="sr-only">인증</span></span>
+								
+								
+									
+										<img src="/cmmn/file/imageSrc.do?fileStreCours=67033f09777aafac5663c8fbb698f0c04d42864d83e7ead1028d8a18646c8cd0&amp;streFileNm=2852952c177a880ff29f7361b4a8f45e67845cd3ff2ffc457bc68a14ad71cb0a27cb8e10d83e5105ffbe8f21639b87fe" alt="(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계" style="object-fit: fill;">
+									
+								
+									
+								
+							</div>
+							<span class="subject">(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계</span>
+							<ul class="content-info">
+								<li><span class="title">제작</span>금융감독원</li>
+								<li><span class="title">조회수</span>44457 회</li>
+							</ul>
+							<p class="content">고령층 금융교육교재 3종중 제 1권</p>
+							<div class="tag-wrap" >
+								
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+											
+											
+												<span class="tag tag-secondary">노년기</span>
+											
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+								
+								
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+											
+											
+												<span class="tag tag-tertiary">생애재무설계</span>
+											
+										
+									
+										
+									
+										
+									
+								
+							</div>
+						</div>
+					</div>
+
+					<div class="content-ctrl">
+						
+						
+						
+						<div class="item">
+							<!-- 동영상 -->
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+								<a href="https://vod.fss.or.kr/vod/edu/contMng/(반짝반짝 은빛 노후를 위한 금융가이드) 탄탄한 노후를 위한 금융생활설계.pdf" class="btn btn-md btn-outline-primary" title="다운로드">
+									<i class="ico ico-down-gray"></i>
+									<span class="text">다운로드</span>
+								</a>
+							
+							
+							
+							
+							
+						</div>
+						
+							
+						
+						
+					</div>
+
+					<h3 class="title-donut">주요내용</h3>
+					<div class="box box-content b-none">
+						<div class="content">
+							<!-- 내용 영역 -->
+							<p>반짝반짝 은빛 노후를 위한 금융가이드 제1권입니다.</p>
+<p><br></p>
+<p>목차</p>
+<p><br></p>
+<p>01. 은퇴후 생활꾸리기</p>
+<p>제1장 노후준비와 은퇴후 소득활동</p>
+<p>제2장 연금의 모든것&nbsp;</p>
+<p>02. 노후자금 관리를 위한 금융상품 활용법</p>
+<p>제1장 저축상품</p>
+<p>제2장 금융투자</p>
+<p>제3장&nbsp;대출과 신용</p>
+<p>제4장 보험상품</p>
+<p>&nbsp;</p>
+
+							<!-- // 내용 영역 -->
+						</div>
+						<div class="btn-group text-center">
+							<button id="btnAdd" type="button" class="btn btn-md btn-outline-default btn-more">
+								<span class="text">주요내용 더보기 열기</span>
+								<i class="ico ico-chevron-down-gray"></i>
+							</button>
+						</div>
+					</div>
+
+					<h3 class="title-donut mt-lg-9">콘텐츠 소개</h3>
+					<div class="box box-content">
+						<!-- 내용 영역 -->
+						<ul class="list list1 type2">
+							<li>
+								<span class="title">고유번호</span>
+								금감원-도서(단행본/시리즈물)-514
+							</li>
+							<li>
+								<span class="title">개발연도</span>
+								2022
+							</li>
+							<li>
+								<span class="title">교육대상</span>
+								
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+											
+											
+												
+											
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+								
+								노년기
+							</li>
+							<li>
+								<span class="title">교육내용</span>
+								
+									
+											
+									
+											
+									
+											
+									
+											
+									
+											
+									
+											
+												
+													
+												
+											
+									
+											
+									
+											
+									
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+									
+										
+											
+												
+											
+										
+									
+										
+									
+									
+									
+										
+									
+									
+									
+								
+								생애재무설계  > 노후준비  
+							</li>
+							<li>
+								<span class="title">첨부파일</span>
+								<ul class="file-list">
+									
+
+
+
+
+
+<ul style="list-style-type:none;" class="filelist"  id="atchFile_ul">
+	
+		
+		
+			
+		
+		
+		
+	
+		
+		
+			
+		
+		
+			
+			
+				
+				
+				
+				
+				
+					
+				
+				
+				
+				
+				
+			
+			<li>
+				
+				
+					
+					
+						<i class="ico ico-file-pdf"></i>
+						<a href="/edu/cmmn/file/fileDown.do?menuNo=300017&atchFileId=fdec65f3068a46d8ad65c51bbe36288d&fileSn=2&bbsId=" class="file-down" title="파일 다운로드">
+							고령층 금융교재(제1권)_개정판.pdf [byte]
+							
+						</a>
+					
+				
+			</li>
+		
+		
+	
+</ul>
+
+<div id="loading" style="display: none"><p><img src="/static/commons/img/ajax-loader.gif" alt="loading">이미지변환중입니다.</p></div>
+								</ul>
+							</li>
+						</ul>
+						<!-- // 내용 영역 -->
+					</div>
+						
+					<div class="box box-content mt-4">
+							
+								
+							
+								
+							
+								
+							
+								
+									
+						동 자료는 무료로 다운받으실 수 있으며, 출처를 표시하여 자유롭게 이용 가능합니다. 상업적으로 이용 및 재판매, 사전 협의 없는 변형 등 2차적 저작물 작성은 금지됩니다.
+									
+									
+								
+							
+								
+							
+					</div>
+						
+
+					<div class="btn-group text-center mt-lg-5">
+						<a href="contUserList.do?menuNo=300017&check=2" onclick="return fnList();" class="btn btn-lg btn-primary" title="목록으로 이동"><span>목록으로 이동</span></a>
+					</div>
+				</div>
+			</div>
+			<div class="right col-item-fit d-up-lg">
+				
+				
+					<dl class="latest-content mt-4">
+				
+					<dt class="title">인기 도서(단행본/시리즈물) 콘텐츠</dt>
+					<dd class="content">
+						<ul class="list">
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=688&check=2" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=05f573e8c37b3f13519a4f706d1ceac8e68a00df604159bb8b580692e122f5b6&amp;streFileNm=a55d5865010ef239973fbfc6a039f1a6713a9cf01c2b19eeadbf21bf924967af54ef47f17be083a72adbfab973dda727" alt="대학생을 위한 실용금융(제4판)" style="object-fit: fill;">
+										</div>
+										<span class="subject">대학생을 위한 실용금융(제4판)</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>542876</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=188&check=5" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=67033f09777aafac5663c8fbb698f0c00047fc13973b9cb28511a423ba67765e&amp;streFileNm=1751a7513cefad27c997855052524dfb4922fb8ef0b7c2fb64b0f6762d69b58813e27cc0df58d0800d2b142a2917067e" alt="금융레벨업 카드게임(어린이용)" style="object-fit: fill;">
+										</div>
+										<span class="subject">금융레벨업 카드게임(어린이용)</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>388173</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=513&check=2" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=67033f09777aafac5663c8fbb698f0c04d42864d83e7ead1028d8a18646c8cd0&amp;streFileNm=c112d558bbb45a96374845359e96089507f311c55167c604f01b7c4b794ee44221af809163172b338dc19e1d476df79b" alt="초등학교 슬기로운 생활금융" style="object-fit: fill;">
+										</div>
+										<span class="subject">초등학교 슬기로운 생활금융</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>326619</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=138&check=2" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=2ff64a00df051ca95b5cb5aaeddee391db83ee5f370e79c761027be999c6c150&amp;streFileNm=7b025d89a13fc68dcfd6a1378ecb16c9427bbdbc189aa619b665f40b62afade413e27cc0df58d0800d2b142a2917067e" alt="생애주기별 금융생활 가이드북 1권_사회초년기" style="object-fit: fill;">
+										</div>
+										<span class="subject">생애주기별 금융생활 가이드북 1권_사회초년기</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>319967</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=149&check=2" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=44de46bce00b64b50d1777b8d82a1c7ea78d105fb48774dc605ed608ef34fe5d&amp;streFileNm=e54b63318e23c18b637a20c11c3ccab1d03d5ca7f5c81427b862ee0f879b5b9613e27cc0df58d0800d2b142a2917067e" alt="금감이와 함께하는 금융생활 스티커북" style="object-fit: fill;">
+										</div>
+										<span class="subject">금감이와 함께하는 금융생활 스티커북</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>291536</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+						</ul>
+					</dd>
+				</dl>
+
+				
+				
+					<dl class="latest-content mt-4">
+				
+					<dt class="title">신규 도서(단행본/시리즈물) 콘텐츠</dt>
+					<dd class="content">
+						<ul class="list">
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=1156&check=1" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=2ff64a00df051ca95b5cb5aaeddee391997da90151b0ac653759c43ab1f23176&amp;streFileNm=087a4af5be391bbfb074fd8995bbdf69c028ae90661382a04d72ed175cdceb254073fd4f92e851eea459a9f3446a8f6e" alt="[김짠부 협업] 레버리지 투자의 개념 및 유의사항" style="object-fit: fill;">
+										</div>
+										<span class="subject">[김짠부 협업] 레버리지 투자의 개념 및 유의사항</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>2445</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=1155&check=8" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=2ff64a00df051ca95b5cb5aaeddee391997da90151b0ac653759c43ab1f23176&amp;streFileNm=834f7189f4f82b13c2b484f1b32c4f2c91dfe29b351238857e2b8d425ba5229227cb8e10d83e5105ffbe8f21639b87fe" alt="(오디오북) 사기예방 백과사전" style="object-fit: fill;">
+										</div>
+										<span class="subject">(오디오북) 사기예방 백과사전</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>1465</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=1154&check=2" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=2ff64a00df051ca95b5cb5aaeddee391997da90151b0ac653759c43ab1f23176&amp;streFileNm=223f9d41f7dc498f667636df3da23958fa6936f39c65c51e7f88d5469020ebce27cb8e10d83e5105ffbe8f21639b87fe" alt="안전한 금융생활을 위한 「사기 예방 백과사전」" style="object-fit: fill;">
+										</div>
+										<span class="subject">안전한 금융생활을 위한 「사기 예방 백과사전」</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>1646</li>
+											<li>금융감독원</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=1153&check=1" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=aa0b5cbce76e29a53bc06455aa5f550d97af3c2040a8ad183a8df13b3e59976d&amp;streFileNm=df09c62da20003d960446c674a70099707318279995c93f7b73ea486e3d03c8954ef47f17be083a72adbfab973dda727" alt="주식, ETF, 펀드 투자 전에 이것부터ㅣ금융투자 HOWTO" style="object-fit: fill;">
+										</div>
+										<span class="subject">주식, ETF, 펀드 투자 전에 이것부터ㅣ금융투자 HOWTO</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>1042</li>
+											<li>투자자교육협의회</li>
+										</ul>
+									</a>
+								</li>
+							
+								<li>
+									<a href="view.do?menuNo=300017&contentsSlno=1152&check=1" title="상세페이지 이동">
+										<div class="thumb">
+											<img src="/cmmn/file/imageSrc.do?fileStreCours=aa0b5cbce76e29a53bc06455aa5f550d97af3c2040a8ad183a8df13b3e59976d&amp;streFileNm=b18b59757bb1489ba80929defe17b83b43955c33bc8da7af9abdd230fcb49d2154ef47f17be083a72adbfab973dda727" alt="투자 계좌 속 내 자산, 팔지 않고 옮기는 방법은?ㅣ금융투자 HOWTO" style="object-fit: fill;">
+										</div>
+										<span class="subject">투자 계좌 속 내 자산, 팔지 않고 옮기는 방법은?ㅣ금융투자 HOWTO</span>
+										<ul class="info-area">
+											<li><i class="ico ico-view-gray"></i><span class="sr-only">조회수</span>1096</li>
+											<li>투자자교육협의회</li>
+										</ul>
+									</a>
+								</li>
+							
+						</ul>
+					</dd>
+				</dl>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal Popup : 동영상 보기 -->
+<div class="modal-popup modal-sm hide" id="layer-video">
+	<div class="dimed"></div>
+	<div class="popup-inner">
+		<div class="popup-body">
+			<div class="scroll-inner">
+				<script src="/tgplayer/conponentRoot.js"></script>
+				<script src="/tgplayer/player_init.js"></script>
+
+				<h3 class="title-donut mt-0">(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계</h3>
+				<div id="videoEl" >
+				</div>
+				<div class="box box-content b-none" tabindex="0" style="overflow-y: auto;height: 300px;">
+                    <div class="content">
+                        <!-- 내용 영역 -->
+                        <p>반짝반짝 은빛 노후를 위한 금융가이드 제1권입니다.</p>
+<p><br></p>
+<p>목차</p>
+<p><br></p>
+<p>01. 은퇴후 생활꾸리기</p>
+<p>제1장 노후준비와 은퇴후 소득활동</p>
+<p>제2장 연금의 모든것&nbsp;</p>
+<p>02. 노후자금 관리를 위한 금융상품 활용법</p>
+<p>제1장 저축상품</p>
+<p>제2장 금융투자</p>
+<p>제3장&nbsp;대출과 신용</p>
+<p>제4장 보험상품</p>
+<p>&nbsp;</p>
+
+                        <!-- // 내용 영역 -->
+					</div>
+				</div>
+
+				<script>
+				$('#videoEl').createVideo({ //플레이어 생성 영역 DIV의 아이디
+					id: 'video' //생성될 비디오 태그 아이디 *필수값
+					,src: [ //영상  size: 영상 Quality, src: 영상 주소 *필수값
+			 			{ src: '', type: 'video/mp4', size: 480 } //https://nvod.fss.or.kr:1935/upload/encoding/video/2021/12/02ad42f788454cc4ad75cbba9c957d3a_media_1280x720.mp4/index.m3u8
+					]
+					,thumb: '' //썸네일 주소
+					,subtitle: [
+						// { kind: 'captions', label: 'Korea', srclang: 'ko', src: '/tgplayer/sample/subtitle/sample_ko.vtt', default: true }
+						// , { kind: 'captions', label: 'English', srclang: 'en', src: '/tgplayer/sample/subtitle/sample_en.vtt' }
+					]
+					,speed: [ 0.8, 1, 1.2, 1.4, 1.6 ]
+					// ,watermark: [//워터마크 pos:워터마크 위치 0: 좌상, 1: 좌하, 2: 우상, 3: 우하, url: 워터마크 주소
+					// 	{ enabled: false, pos: 1, url: '/static/fss/img/common/logo.png' , alt :'' }
+					// ]
+					,autoPlay: false
+					,startTime: 0 //영상 재생 시작 시간
+					,seeking: true // false : 현재 재생시간 이후는 프로그레스 바가 선택 되지 않도록
+					,progress: true // false : 프로그레스바 컨트롤 되지 않도록
+					/* e.g. 연수 기능 구현시  progress 를 false 로 지정할 경우, 무조건 프로그레스바가 제어 불가능.
+						seeking = false 이고 progress = true 일 경우 시청한 구간에 대해서만 프로그레스 바 조작가능  */
+					,pip: false
+			 		,preview: [
+						{ enabled: false }
+			 	    ]
+					,loop: [
+						{ enable: false, start: 10, end: 15 }
+					]
+					,capture: [
+						{ enable: false, type: 'download'  } // 로컬에 저장
+						//{ enable: true, type: 'upload', url: 'http://movie/saveCapture.do'  } // 서버로 전송
+						/* * 전송 받는 java단 처리 sample
+							- 첨부된 라이브러리 import : /tgplayer/plugin/js/capture/rt.jar
+							HttpServletRequest request = ServletActionContext.getRequest();
+							String imageData = request.getParameter("imageData");
+							byte[] decodedBytes = DatatypeConverter.parseBase64Binary(imageData );
+							BufferedImage bfi = ImageIO.read(new ByteArrayInputStream(decodedBytes));
+							File outputfile = new File(업로드 파일 경로 + 업로드 파일 명);
+							ImageIO.write(bfi , "png", outputfile);
+							bfi.flush();
+						*/
+					]
+					,fullscreen:[
+						{ enabled: true, fallback: true, iosNative: false, container: null }
+					]
+				});
+
+				$('#videoEl #container').hide();
+
+			</script>
+		</div>
+		<button type="button" class="btn btn-close-popup videohistory" >
+			<i class="ico ico-times-white"></i>
+			닫기
+		</button>
+	</div>
+</div>
+
+<!-- Modal Popup : 본인인증 -->
+<div class="modal-popup modal-lg hide" id="layer-certify">
+	<div class="dimed"></div>
+	<div class="popup-inner">
+		
+
+
+
+
+
+
+
+<script src="/static/bos/js/eduCommon.js"></script>
+<script src="/static/jslibrary/miya_validator.js"></script>
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<link rel="stylesheet" href="/esign/oacx-ux.css">
+
+<style>
+#oacxEmbededContents .tab-content {display: block;}
+</style>
+<div class="popup-header">
+<h2 class="popup-title">본인인증</h2>
+</div>
+<div class="popup-body">
+	<div class="scroll-inner">
+		<div class="box box-point box-image">
+			<div class="inner">
+				<div class="img-wrap">
+					<i class="ico ico-join-certify"></i>
+				</div>
+				<dl class="content">
+					<dt>실명인증 안내</dt>
+					<dd>
+						금융교육센터에서는 깨끗하고 안전한 인터넷 서비스 이용을 위해 실명 인증을 받고 있습니다.<br>
+						입력하신 개인정보는 회원님의 동의없이 제 3자에게 제공되지 않으며, 개인정보처리 방침에 따라 보호되고 있습니다.
+					</dd>
+				</dl>
+			</div>
+		</div>
+
+		<h3 class="title1">본인인증 수단 선택</h3>
+		<div class="guide-wrap">
+			<div class="guide-header">
+				<p class="title">본인 인증 수단을 선택해 주세요</p>
+				<p class="content">타인의 명의를 도용한 불법적인 민원 제기 등을 방지하기 위하여 민원 신청 시 본인인증이 필요하므로, 다음 방법 중 하나를 선택하여 본인인증을
+					해주시기
+					바랍니다.<br> 입력하신 정보는 본인인증 기관을 통해 인증되며, 별도로 저장되거나 사용되지 않습니다.</p>
+			</div>
+			<div class="guide-content">
+				<ul class="certify-list">
+					<li>
+						<a href="#;" id="simpleBtn" title="새창열림">
+							<i class="ico ico-certify4"></i>
+							<span class="text">간편인증</span>
+						</a>
+					</li>
+					<li>
+						<a href="#;" onclick="fnTransfer('X');return false;" title="새창열림">
+							<i class="ico ico-certify1"></i>
+							<span class="text">공인인증서</span>
+						</a>
+					</li>
+					<li>
+						<a href="#;" onclick="fnTransfer('M');return false;" title="새창열림">
+							<i class="ico ico-certify2"></i>
+							<span class="text">휴대폰</span>
+						</a>
+					</li>
+					<li>
+						<a href="#;" onclick="fnTransfer('I');return false;" title="새창열림">
+							<i class="ico ico-certify3"></i>
+							<span class="text">아이핀</span>
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+		<ul class="mt-lg-5 mt-md-3 text-sm">
+			<li class="text-gray">※ 귀하의 주민등록번호는 도용 등을 방지하기 위한 실명확인 용도로만 사용됩니다.</li>
+			<li class="mt-md-1 text-gray">※ 타인의 정보 및 주민등록번호를 부정하게 사용하는 경우 <span class="text-orange">3년 이하의 징역
+					또는 1천만원 이하의 벌금</span>에 처해지게 됩니다.</li>
+		</ul>
+	</div>
+</div>
+<div class="popup-footer">
+	<div class="btn-group text-center">
+		<button type="button" class="btn btn-md btn-default"
+			onclick="closeModal('#layer-certify');">취소</button>
+	</div>
+</div>
+<button type="button" class="btn btn-close-popup">닫기</button>
+
+<script>
+
+function fnDuplCheck() {
+    $.ajax({
+		type: "GET" ,
+		url:"/edu/fec/bookAply/listJson.ujson",
+		dataType:"json",
+		success:function(data){
+			console.debug(data);
+			if(data.reqCnt.totalCnt > 2) {
+				alert("모든 종류의 교재 합은 최대 2권으로 제한되어있어 신청이 제한됩니다.");
+				closeModal('#layer-certify');
+			} else {
+				closeModal('#layer-certify');
+				openModal('#layer-apply');
+			}
+		}
+	});
+}
+
+function fnTransfer(gubn) {
+	if (gubn == "M"){
+		window.open('/edu/cmmn/eduUnityCrtfc/niceUrlRequest.do?svcType=M', 'hpPop', 'width=500, height=550, top=100, left=100, fullscreen=no, menubar=no, status=no, toolbar=no, titlebar=yes, location=no, scrollbar=no');
+	} else if (gubn == "X"){
+		window.open('/edu/cmmn/eduUnityCrtfc/niceUrlRequest.do?svcType=U', 'hpPop', 'width=500, height=550, top=100, left=100, fullscreen=no, menubar=no, status=no, toolbar=no, titlebar=yes, location=no, scrollbar=no');
+	}else{
+		window.open('/edu/cmmn/eduUnityCrtfc/niceUrlRequest.do?svcType=I', 'hpPop', 'width=500, height=550, top=100, left=100, fullscreen=no, menubar=no, status=no, toolbar=no, titlebar=yes, location=no, scrollbar=no');
+	}
+	return false;
+}
+
+window.fnTransferResult = function(result, sName, sBirthDate) {
+	//alert('');
+	if (result == 'success') {
+		$('#sName').val(sName);
+		alert('본인인증 확인이 되었습니다.');
+		fnDuplCheck();
+
+	} else {
+		alert('본인인증 실패하였습니다.');
+	}
+}
+
+window.fnIpinResult = function(result, sName, sBirthDate){
+	if (result == 'success') {
+		$('#sName').val(sName);
+		alert('본인인증 확인이 되었습니다.');
+		fnDuplCheck();
+	} else {
+		alert('본인인증 실패하였습니다.');
+	}
+}
+</script>
+<!-- // 본문 영역 -->
+
+<div id="oacxDiv"></div>
+
+<script src="/esign/oacx-vendor.js"></script>
+<script src="/esign/oacx-ux.js"></script>
+<script type="text/javascript">
+
+    /* 간편인증 */
+    $("#simpleBtn").on('click', function(e){
+     $("html").addClass("oacxHtml");
+     var json = {
+         contentInfo: {
+             signType: "GOV_SIMPLE_AUTH"
+         },
+            userInfo: {
+             name:"",       //이름 (ex 홍길동)
+             phone1:"",     //휴대폰번호 앞자리 3자리 (ex 010)
+             phone2:"",     //휴대폰번호 뒷자리 7,8자리 (ex 12345678)
+             telcoTycd: "", //통신사 (ex S,K,L)
+             ssn1: "",      //주민등록번호 앞자리 (ex 900101)
+             ssn2: "",      //주민등록번호 뒷자리 (ex 1999999)
+             birthday:""    //생년월일 (ex 19900101)
+            },
+            compareCI: false,
+			isBirth: true,
+         isOkuActive: true
+     }
+        OACX.options.callback.ajax.success.getToken = function(){
+            // alert("Success - Get Token")
+        }
+        OACX.options.callback.ajax.success.providerList = function(){
+            // alert("Success - Get Provider List")
+        }
+        OACX.options.callback.ajax.success.authRequest = function(){
+            // alert("Success - Request")
+        }
+        OACX.options.callback.ajax.success.authComplete = function(){
+            // alert("Success - Complete")
+        }
+        OACX.options.callback.ajax.fail.getToken = function(){
+            // alert("Fail - Get Token")
+        }
+        OACX.options.callback.ajax.fail.providerList = function(){
+            // alert("Fail - Get Provider List")
+        }
+        OACX.options.callback.ajax.fail.authRequestAlertConfirm = function(){
+            // alert("Fail - Request Error AlertConfirm Event")
+        }
+        OACX.options.callback.ajax.fail.authCompleteAlertConfirm = function(){
+            // alert("Fail - Complete Error AlertConfirm Event")
+        }
+        OACX.options.callback.ajax.fail.authRequest = function(){
+            // alert("Fail - Request")
+        }
+        OACX.options.callback.ajax.fail.authComplete = function(){
+            // alert("Fail - Complete")
+        }
+        OACX.options.callback.event.close = function(){
+            // alert("Event Close")
+        	$("html").removeClass("oacxHtml");
+        }
+        OACX.options.callback.loaded = function(){
+            // alert("Loaded")
+        }
+        OACX.LOAD_MODULE("/esign/config/config.auth.json",json, function(res){
+            //Success handler
+            var jsonData = JSON.parse(res);
+            $.post("/edu/cmmn/eduUnityCrtfc/easySuccess.ujson", {token : jsonData.token},function(data) {
+            	if (data.resultCode == "success") {
+            		$('#sName').val(data.name);
+            		alert('본인인증 확인이 되었습니다.');
+            		fnDuplCheck();
+            	}
+            	else {
+            		alert('본인인증이 실패하였습니다.');
+            	}
+            },"json");
+
+        })
+    });
+
+  //간편인증 닫기이벤트
+    $(document).on("click", ".popup-close", function() {
+		$(oacxClickId).focus();
+    });
+
+</script>
+
+
+
+
+	</div>
+</div>
+<!-- Modal Popup : 금융교육 교재신청 -->
+<div class="modal-popup modal-lg hide" id="layer-apply">
+	<div class="dimed"></div>
+	<div class="popup-inner">
+		
+
+
+
+
+
+
+
+<script src="/static/bos/js/eduCommon.js"></script>
+<script src="/static/jslibrary/miya_validator.js"></script>
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+
+
+<script>
+//저장
+var date = [
+			'telno1Cd'
+			,'cpno1Cd'
+			,'emad1'
+			,'bookAplyQnty'
+			,'bookAplcntCode'
+			,'zpcd'
+			,'adrs1'
+			,'adrs2'
+			,'aplyRsnCntnt'
+			];
+//데이터 검증 컬럼 패턴(컬럼과 갯수는 같아야함)
+var datePattern = [
+				'{"span": 3 , "glue": "-" , "option": "phone" , "message" : "[전화번호] 형식이 올바르지 않습니다. 예)02-000-0000" }'
+				,'{"required": true , "span": 3 , "glue": "-" , "option": "handphone" , "message" : "[휴대폰번호] 반드시 입력하셔야 하는 사항입니다. 예)010-0000-0000" }'
+				,'{"required": true , "span": 2 , "glue": "@" , "option": "email" }'
+				,'{"required": true , "max": 1 , "option": "number" }'
+				,'{"required": true }'
+				,'{"required": true }'
+				,'{"required": true }'
+				,'{"required": true }'
+				,'{"required": true }'
+				];
+var callBack = function (){
+	var frm = $("#frmReg")[0];
+
+	if($('#telno1Cd').val() != ''){
+		frm.telno.value = $('#telno1Cd').val() + '-' + $('#telno2').val() + '-' + $('#telno3').val();
+	}
+	frm.hpNo.value = $('#cpno1Cd').val() + '-' + $('#hpNo2').val() + '-' + $('#hpNo3').val();
+	frm.emlads.value = $('#emad1').val() + '@' +  $('#emad2').val();
+
+	
+	if( getByteB(frm.emlads.value ) > 50 ) {
+		alert( "이메일은 최대 50바이트 이내로 입력해주세요." );
+		$("#emad1").focus();
+		return;
+	}
+	//개인정보 수집ㆍ이용 동의
+	if ($("input:radio[name=indvlInfrmtClctUtilAgreYn]").is(":checked") == false || $("input:radio[name=indvlInfrmtClctUtilAgreYn]:checked").val() == "N") {
+		alert("개인정보 수집에 동의하지 동의하지 않는 경우 회원 가입에 제한됩니다.");
+		$("input:radio[name=indvlInfrmtClctUtilAgreYn]")[0].focus();
+		return false;
+	}
+
+	$("#indvlInfrmtClctUtilAgreYn").val($("input:radio[name=indvlInfrmtClctUtilAgreYn]:checked").val());
+
+	if (!confirm("등록하시겠습니까?")) {
+		return;
+	}
+
+	$("#loadingDiv").show();
+	frm.submit();
+}
+
+function checkForm() {
+	var frm = $("#frmReg")[0];
+	var v = new MiyaValidator(frm);
+
+	//신청수량
+	v.add("bookAplcntCode", {
+		required: true
+		, max: 1
+		, option: "number"
+	});
+
+	//전화번호
+	v.add("telno1Cd", {
+		span: 3
+		,glue: "-"
+		,option: "phone"
+		,message : "[전화번호] 형식이 올바르지 않습니다. 예)02-000-0000"
+	});
+	if($('#telno1Cd').val() != ''){
+		frm.telno.value = $('#telno1Cd').val() + '-' + $('#telno2').val() + '-' + $('#telno3').val();
+	}
+	//휴대폰번호
+	v.add("cpno1Cd", {
+		required: true
+		,span: 3
+		,glue: "-"
+		,option: "handphone"
+		,message : "[휴대폰번호] 반드시 입력하셔야 하는 사항입니다. 예)010-0000-0000"
+	});
+	//이메일
+	v.add("emad1", {
+		required: true
+		,span: 2
+		,glue: "@"
+		,option: "email"
+	});
+	frm.emlads.value = $('#emad1').val() + '@' +  $('#emad2').val();
+
+	
+	if( getByteB(frm.emlads.value ) > 50 ) {
+		alert( "이메일은 최대 50바이트 이내로 입력해주세요." );
+		$("#emad1").focus();
+		return;
+	}
+
+	var result = v.validate();
+	if (!result) {
+		alert(v.getErrorMessage());
+		v.getErrorElement().focus();
+		return;
+	}
+
+	//개인정보 수집ㆍ이용 동의
+	if ($("input:radio[name=indvlInfrmtClctUtilAgreYn]").is(":checked") == false || $("input:radio[name=indvlInfrmtClctUtilAgreYn]:checked").val() == "N") {
+		alert("개인정보 수집에 동의하지 동의하지 않는 경우 회원 가입에 제한됩니다.");
+		$("input:radio[name=indvlInfrmtClctUtilAgreYn]")[0].focus();
+		return false;
+	}
+
+	$("#indvlInfrmtClctUtilAgreYn").val($("input:radio[name=indvlInfrmtClctUtilAgreYn]:checked").val());
+
+	if (!confirm("등록하시겠습니까?")) {
+		return;
+	}
+
+	frm.submit();
+}
+
+//다음 우편번호 찾기
+function daumPostcodeSearch() {
+	new daum.Postcode({
+		oncomplete : function(data) {
+			// 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분.
+
+			// 도로명 주소의 노출 규칙에 따라 주소를 조합한다.
+			// 내려오는 변수가 값이 없는 경우엔 공백('')값을 가지므로, 이를 참고하여 분기 한다.
+			var fullRoadAddr = data.roadAddress; // 도로명 주소 변수
+			var extraRoadAddr = ''; // 도로명 조합형 주소 변수
+
+			// 법정동명이 있을 경우 추가한다. (법정리는 제외)
+			// 법정동의 경우 마지막 문자가 "동/로/가"로 끝난다.
+			if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+				extraRoadAddr += data.bname;
+			}
+			// 건물명이 있고, 공동주택일 경우 추가한다.
+			if (data.buildingName !== '' && data.apartment === 'Y') {
+				extraRoadAddr += (extraRoadAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+			}
+			// 도로명, 지번 조합형 주소가 있을 경우, 괄호까지 추가한 최종 문자열을 만든다.
+			if (extraRoadAddr !== '') {
+				extraRoadAddr = ' (' + extraRoadAddr + ')';
+			}
+			// 도로명, 지번 주소의 유무에 따라 해당 조합형 주소를 추가한다.
+			if (fullRoadAddr !== '') {
+				fullRoadAddr += extraRoadAddr;
+			}
+
+            // 우편번호와 주소 정보를 해당 필드에 넣는다.
+            document.getElementById('zpcd').value = data.zonecode; //5자리 새우편번호 사용
+            document.getElementById('adrs1').value = fullRoadAddr;
+		}
+	}).open();
+}
+</script>
+
+<form id="frmReg" name="frmReg" method="post" enctype="multipart/form-data" action="/edu/fec/bookAply/insert.do">
+	<input title="menuNo" type="hidden" name="menuNo" value="300017" />
+	<input title="eduAplyStCode2" type="hidden" name="eduAplyStCode2" value="1" />
+	<input title="contentsSlno" type="hidden" name="contentsSlno" value="518" />
+	<input title="check" type="hidden" name="check" value="2" />
+	<input title="emlads" type="hidden" name="emlads" />
+	<input title="telno" type="hidden" name="telno" />
+	<input title="hpNo" type="hidden" name="hpNo" />
+
+		<div class="popup-header">
+			<h2 class="popup-title">금융교육 교재 및 체험형 교구 신청</h2>
+		</div>
+		<div class="popup-body">
+			<div class="scroll-inner">
+				<div class="box box-point box-image">
+					<div class="inner">
+						<div class="img-wrap">
+							<i class="ico ico-box-textbook"></i>
+						</div>
+						<dl class="content">
+							<dt>금융감독원 금융교육 교재 신청 이용 안내</dt>
+							<dd>
+								① 수량 제한 <br/> 금융감독원에서는 최대한 많은 분들께 교육자료를 제공해드리기 위해 1인당 1회에 신청하여 수령할 수 있는 교재의 수량을 총 2권으로 제한하고 있습니다. 더 많은 금융교육 교재 신청을 원하시는 경우, 기존에 신청한 교재(총 2권 이내)를 수령받으신 후 추가 신청이 가능하니 이 점 참고하시기 바랍니다. <br/><br/>
+								② 교재 배송 관련 <br/> 홈페이지를 통해 신청하신 금융감독원의 금융교육 교재는 순차적으로 발송처리 됩니다. 평균적으로 2-4주 소요되며, 다만, 교재 신청 건수 폭증으로 인한 교재 재고 조기 소진, 택배사 사정 등에 따라 일부 교재의 경우 지연되는 경우가 있으니 양해 부탁드립니다. <br/><br/>
+								※ 참고 <br> 신청해주신 금융교육 교재의 경우 언제든지 다운로드 받으실 수 있는 PDF 파일을 제공해드리고 있으니 이를 활용해주시면 감사드리겠습니다. * PDF파일 다운로드 경로 콘텐츠 한 눈에 → 콘텐츠 검색 → 해당 교재명으로 검색 → 상세보기 클릭 → 다운로드 혹은 콘텐츠 한 눈에 → 교재 → 해당 교재를 찾아 상세보기 클릭 → 다운로드
+							</dd>
+						</dl>
+					</div>
+				</div>
+
+				<h3 class="title1">개인정보 수집 및 이용 동의</h3>
+				<div class="terms-area">
+					<div class="box-terms" tabindex="0">
+						<h4>개인정보의 수집·이용 목적</h4>
+						<p>금융교육 교재 신청 및 발송 관리</p>
+						<br>
+						<h4>수집·이용하는 개인정보의 항목</h4>
+						<ul>
+							<li>가. 수집정보
+								<p><em>성명, 전화번호(휴대폰, 유선), 이메일주소, 구분(직업), 주소(직장 또는 학교)</em></p>
+							</li>
+							<br>
+							<li>나. 기타정보
+								<p>서비스 이용과정에서 아래와 같은 정보들이 자동으로 생성되어 수집될 수 있습니다.</p>
+								<p>※ IP Address, 쿠키, 방문일시, 서비스 이용 및 제공 기록 등</p>
+							</li>
+						</ul>
+						<br>
+						<h4>개인정보의 보유 및 이용기간</h4>
+						<p class="text-primary text-lg"><em>5년</em></p>
+						<br>
+						<p>※ 원칙적으로 개인정보 <span style="text-decoration: underline;">보존기간이 경과</span>하거나, <span style="text-decoration: underline;">처리목적이 달성</span>된 경우에는 지체 없이 개인정보를 <span style="text-decoration: underline;">파기</span>합니다. 다만, 다른 법령에 따라 보존하여야 하는 경우에는 그러하지 않을
+							수 있습니다.</p>
+						<br>
+						<p>귀하는 개인정보 수집 및 이용 <span style="text-decoration: underline; text-decoration-color: black; color: red">동의를 거부</span>하실 수 있습니다. 다만, 개인정보 수집·이용에 대한 동의를 <span style="text-decoration: underline;">거부</span>하실 경우 <span style="text-decoration: underline; text-decoration-color: black; color: red">금융교육 교재 신청이 제한</span>될 수 있습니다.</p>
+					</div>
+					<div class="terms-agree">
+						<span class="check-item">
+							<input type="radio" name="indvlInfrmtClctUtilAgreYn" id="inputRadio1_1" value="Y">
+							<label for="inputRadio1_1">동의합니다</label>
+						</span>
+						<span class="check-item">
+							<input type="radio" name="indvlInfrmtClctUtilAgreYn" id="inputRadio1_2" value="N">
+							<label for="inputRadio1_2">동의하지 않습니다</label>
+						</span>
+					</div>
+				</div>
+
+				<h3 class="title1">신청자 정보 입력</h3>
+				<div class="table table-form">
+					<table>
+						<caption class="sr-only">신청자 정보 입력폼이며 수량, 유선 전화번호, 휴대폰번호, 이메일, 신청자 구분, 주소, 신청사유 정보 입력
+						</caption>
+						<colgroup>
+							<col style="width: 180px;">
+							<col>
+						</colgroup>
+						<tbody>
+							<tr>
+								<th scope="row">교육자료</th>
+								<td>(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="bookAplyQnty">수량</label>
+								</th>
+								<td>
+									<div class="form-row">
+										<div class="input-item" style="max-width: 85px;">
+											<input type="text" id="bookAplyQnty" name="bookAplyQnty" class="form-control fnNumberOnly" maxlength="1">
+										</div>
+										<div class="input-item ml-lg-2">
+											<p class="text-orange text-sm">* 1인당 1회 2권까지 신청가능</p>
+										</div>
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">성명</th>
+								<!-- 셋션통해서 받기 -->
+								<td ><input type="text" id="sName" name="sName" class="form-control" title="sName" readonly></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="telno1Cd">유선 전화번호</label>
+								</th>
+								<td>
+									<div class="form-row">
+										<div class="input-item" style="width: 120px;">
+											
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+		
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+	
+		<select name="telno1Cd" id="telno1Cd" class="form-control"  style=""
+			
+				title="전화번호 앞자리 선택 상자"
+			 >
+
+			<option value="" label="선택" />
+				
+					
+					
+					
+						<option value="02" >02</option>
+					
+				
+					
+					
+					
+						<option value="070" >070</option>
+					
+				
+					
+					
+					
+						<option value="050" >050</option>
+					
+				
+					
+					
+					
+						<option value="051" >051</option>
+					
+				
+					
+					
+					
+						<option value="053" >053</option>
+					
+				
+					
+					
+					
+						<option value="032" >032</option>
+					
+				
+					
+					
+					
+						<option value="062" >062</option>
+					
+				
+					
+					
+					
+						<option value="042" >042</option>
+					
+				
+					
+					
+					
+						<option value="052" >052</option>
+					
+				
+					
+					
+					
+						<option value="044" >044</option>
+					
+				
+					
+					
+					
+						<option value="031" >031</option>
+					
+				
+					
+					
+					
+						<option value="033" >033</option>
+					
+				
+					
+					
+					
+						<option value="043" >043</option>
+					
+				
+					
+					
+					
+						<option value="041" >041</option>
+					
+				
+					
+					
+					
+						<option value="063" >063</option>
+					
+				
+					
+					
+					
+						<option value="061" >061</option>
+					
+				
+					
+					
+					
+						<option value="054" >054</option>
+					
+				
+					
+					
+					
+						<option value="055" >055</option>
+					
+				
+					
+					
+					
+						<option value="064" >064</option>
+					
+				
+		</select>
+	
+<!-- 		<dl> -->
+<!-- 			<dt><span class="req"><span class="sr-only">필수입력</span></span> -->
+<!-- 			        <label for="cl1CdValue"> 선택</label> -->
+<!-- 			</dt> -->
+<!-- 			<dd> -->
+<!-- 	      		<select name="cl1CdValue" id="cl1CdValue"> -->
+<!-- 	    	  		  <option value='' label="선택하세요" /> -->
+
+
+
+<!-- 	      		</select> -->
+<!-- 			</dd> -->
+<!-- 		</dl> -->
+
+										</div>
+										<div class="input-item" style="width: 160px;">
+											<input type="text" name="telno2" id="telno2" class="form-control fnNumberOnly" title="전화번호 가운데자리" maxlength="4">
+										</div>
+										<div class="input-item" style="width: 160px;">
+											<input type="text" name="telno3" id="telno3" class="form-control fnNumberOnly" title="전화번호 마지막자리" maxlength="4">
+										</div>
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="cpno1Cd">휴대폰번호
+										<span class="req">*<span class="sr-only">필수입력</span></span>
+									</label>
+								</th>
+								<td>
+									<div class="form-row">
+										<div class="input-item" style="width: 120px;">
+											
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+		
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+	
+		<select name="cpno1Cd" id="cpno1Cd" class="form-control"  style=""
+			
+				title="휴대폰번호 앞자리 선택 상자"
+			 >
+
+			<option value="" label="선택" />
+				
+					
+					
+					
+						<option value="010" >010</option>
+					
+				
+					
+					
+					
+						<option value="011" >011</option>
+					
+				
+					
+					
+					
+						<option value="016" >016</option>
+					
+				
+					
+					
+					
+						<option value="017" >017</option>
+					
+				
+					
+					
+					
+						<option value="018" >018</option>
+					
+				
+					
+					
+					
+						<option value="019" >019</option>
+					
+				
+		</select>
+	
+<!-- 		<dl> -->
+<!-- 			<dt><span class="req"><span class="sr-only">필수입력</span></span> -->
+<!-- 			        <label for="cl1CdValue"> 선택</label> -->
+<!-- 			</dt> -->
+<!-- 			<dd> -->
+<!-- 	      		<select name="cl1CdValue" id="cl1CdValue"> -->
+<!-- 	    	  		  <option value='' label="선택하세요" /> -->
+
+
+
+<!-- 	      		</select> -->
+<!-- 			</dd> -->
+<!-- 		</dl> -->
+
+										</div>
+										<div class="input-item" style="width: 160px;">
+											<input type="text"  id="hpNo2" name="hpNo2" class="form-control fnNumberOnly" title="휴대폰 가운데 네자리" maxlength="4">
+										</div>
+										<div class="input-item" style="width: 160px;">
+											<input type="text"  id="hpNo3" name="hpNo3" class="form-control fnNumberOnly" title="휴대폰 마지막 네자리" maxlength="4">
+										</div>
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="emlads">이메일
+										<span class="req">*<span class="sr-only">필수입력</span></span>
+									</label>
+								</th>
+								<td>
+									<div class="form-row">
+										<div class="input-item" style="width: 160px;">
+											<input type="text" id="emad1" name="emad1" class="form-control" title="이메일 아이디">
+										</div>
+										<div class="text-item">@</div>
+										<div class="input-item" style="width: 160px;">
+											<input type="text" id="emad2" name="emad2" class="form-control emailDomainForm" title="이메일 도메인">
+										</div>
+										<div class="input-item md-full" style="width: 230px;">
+											<select id="sr_email_more" name="" class="input_select select_email_js form-control" title="직접입력 선택시 자동활성화&amp;포커스 이동">
+												<option value="">선택</option>
+												
+												<option value="naver.com"  >naver.com</option>
+												
+												<option value="hanmail.net"  >hanmail.net</option>
+												
+												<option value="gmail.com"  >gmail.com</option>
+												
+												<option value="yahoo.com"  >yahoo.com</option>
+												
+												<option value="nate.com"  >nate.com</option>
+												
+												<option value="hotmail.com"  >hotmail.com</option>
+												
+												<option value="param.com"  >param.com</option>
+												
+												<option value="empas.com"  >empas.com</option>
+												
+												<option value="korea.com"  >korea.com</option>
+												
+												<option value="emaildomain_false">직접입력</option>
+											</select>
+										</div>
+										<script>
+										jQuery(function(){
+											jQuery('select.select_email_js').on('change',function() {
+												if (jQuery(this).val()=='emaildomain_false') {
+													jQuery('.emailDomainForm:text[name=emad2]').val('');
+													jQuery('.emailDomainForm').attr('readonly',false).focus();
+												}else{
+													jQuery('.emailDomainForm:text[name=emad2]').val('');
+													jQuery('.emailDomainForm:text[name=emad2]').val(jQuery(this).val());
+													jQuery('.emailDomainForm').attr('readonly',true)
+												}
+											});
+										});
+										</script>
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="bookAplcntCode">신청자 구분
+										<span class="req">*<span class="sr-only">필수입력</span></span>
+									</label>
+								</th>
+								<td>
+									<div class="form-row">
+										<div class="input-item" style="width: 160px;">
+											
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+	
+		<select name="bookAplcntCode" id="bookAplcntCode" class="form-control"  style=""
+			 >
+
+			<option value="" label="선택" />
+				
+					
+					
+					
+						<option value="1" >학생</option>
+					
+				
+					
+					
+					
+						<option value="2" >교사</option>
+					
+				
+					
+					
+					
+						<option value="3" >학부모/기타</option>
+					
+				
+		</select>
+	
+<!-- 		<dl> -->
+<!-- 			<dt><span class="req"><span class="sr-only">필수입력</span></span> -->
+<!-- 			        <label for="cl1CdValue"> 선택</label> -->
+<!-- 			</dt> -->
+<!-- 			<dd> -->
+<!-- 	      		<select name="cl1CdValue" id="cl1CdValue"> -->
+<!-- 	    	  		  <option value='' label="선택하세요" /> -->
+
+
+
+<!-- 	      		</select> -->
+<!-- 			</dd> -->
+<!-- 		</dl> -->
+
+										</div>
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="zpcd">주소
+										<span class="req">*<span class="sr-only">필수입력</span></span>
+									</label>
+								</th>
+								<td>
+									<div class="input-group" style="max-width:380px;">
+										<input type="text" name="zpcd" id="zpcd" class="form-control" title="우편번호" readonly>
+										<span class="input-addon">
+											<a title="새창열림" href="javaScript:daumPostcodeSearch();" title="새창" class="btn btn-md btn-default">우편번호 검색</a>
+										</span>
+									</div>
+									<div class="mt-2">
+										<input type="text" id="adrs1" name="adrs1" class="form-control" title="기본주소" style="width: 100%;" maxlength="48">
+									</div>
+									<div class="mt-2">
+										<input type="text" id="adrs2" name="adrs2" class="form-control" title="상세주소" style="width: 100%;" placeholder="상세주소" maxlength="48">
+									</div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="aplyRsnCntnt">신청사유
+										<span class="req">*<span class="sr-only">필수입력</span></span>
+									</label>
+								</th>
+								<td>
+									<textarea class="form-control full" rows="2" name="aplyRsnCntnt" id="aplyRsnCntnt" maxlength="1998"></textarea>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+</form>
+
+<div class="popup-footer">
+	<div class="btn-group text-center">
+		<button type="button" class="btn btn-md btn-default" onclick="closeModal('#layer-apply');">취소</button>
+		<button type="button" onclick="fnCheckForm(date, datePattern,'등록',callBack);" class="btn btn-md btn-primary">신청하기</button>
+	</div>
+</div>
+
+<button type="button" class="btn btn-close-popup">닫기</button>
+
+
+
+	</div>
+</div>
+<!-- Modal Popup : 웹툰∙만화 보기 -->
+<div class="modal-popup modal-lg hide" id="layer-webtoon">
+	<div class="dimed"></div>
+	<div class="popup-inner">
+		<div class="popup-header">
+			<h2 class="popup-title">웹툰∙만화 보기</h2>
+		</div>
+		<div class="popup-body">
+			<h3 class="webtoon-title"><span>(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계</span></h3>
+			<div class="webtoon-area" tabindex="0">
+				
+					
+				
+					
+						<img src="/cmmn/file/imageSrc.do?fileStreCours=67033f09777aafac5663c8fbb698f0c04d42864d83e7ead1028d8a18646c8cd0&amp;streFileNm=41a10d78e4c8eb250b5089910a521ddaffa80648857f71e6eddbab334e183dbd1e0fe82915a18750eff178efa1053f26" alt="(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계">
+					
+				
+			</div>
+		</div>
+		<button type="button" class="btn btn-close-popup">닫기</button>
+	</div>
+</div>
+<!-- Modal Popup : 카드뉴스 보기 -->
+<div class="modal-popup modal-lg hide" id="layer-cardNews">
+	<div class="dimed"></div>
+	<div class="popup-inner">
+		<div class="popup-header">
+			<h2 class="popup-title">카드뉴스 보기</h2>
+		</div>
+		<div class="popup-body">
+			<h3 class="webtoon-title"><span>(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계</span></h3>
+			<div class="webtoon-area" tabindex="0">
+				
+					
+				
+					
+						<img src="/cmmn/file/imageSrc.do?fileStreCours=67033f09777aafac5663c8fbb698f0c04d42864d83e7ead1028d8a18646c8cd0&amp;streFileNm=41a10d78e4c8eb250b5089910a521ddaffa80648857f71e6eddbab334e183dbd1e0fe82915a18750eff178efa1053f26" alt="(반짝반짝 은빛 노후를 위한 금융가이드)탄탄한 노후를 위한 금융생활설계">
+					
+				
+			</div>
+		</div>
+		<button type="button" class="btn btn-close-popup">닫기</button>
+	</div>
+</div>
+
+<!-- // 본문 영역 --></div>
+
+				</article>
+		</div>
+		<!-- //Container -->
+		<!-- footer -->
+		<footer id="footer">
+			<a href="#;" id="btn-totop">
+				<i class="ico ico-top"></i>
+				<span class="sr-only">맨위로</span>
+			</a>
+			<div class="container">
+				<div>
+					<p class="logo-bottom d-up-lg">
+						<a href="#;">
+							<img src="/static/edu/pub/resources/_common/images/logo-gray.png" alt="금융감독원" class="d-up-lg">
+						</a>
+					</p>
+					<ul class="policy-list">
+						<li class="text-bold"><a target="_blank" title="새창열림" href="https://www.fss.or.kr/fss/main/contents.do?menuNo=200705">개인정보처리방침</a></li>
+						<li><a href="/edu/main/contents.do?menuNo=300112">이용약관</a></li>
+						<li><a href="/edu/main/contents.do?menuNo=300113">저작권정책</a></li>
+						<li><a href="/edu/main/contents.do?menuNo=300114">이메일무단수집거부</a></li>
+						<li><a target="_blank" title="새창열림"  href="https://www.fss.or.kr/fss/main/contents.do?menuNo=200248">찾아오시는 길</a></li>
+						<!-- <li class="d-up-lg"><a href="mailto:educenter@fss.or.kr">Contact US</a></li> -->
+					</ul>
+					<div class="address">
+						<ul>
+							<li>서울 영등포구 여의대로 38(우 : 07321)</li>
+							<li>
+								<i class="ico ico-tel-gray"></i>민원상담전화 : 금감원콜센터1332
+							</li>
+							<li>
+								<i class="ico ico-tel-gray"></i> 대표전화 : 02-3145-5114</li>
+						</ul>
+						Copyright financial supervisory service. All rights reserved.</div>
+				</div>
+				<div class="wa-logo-wrap">
+					<a class="wa-logo" target="_blank" title="새창열림" href="http://www.wa.or.kr/board/list.asp?BoardID=0006">
+						<img src="/static/commons/img/wa_logo.png" alt="(사)한국장애인단체총연합회 한국웹접근성인증평가원 웹 접근성 우수사이트 인증마크(WA인증마크)">
+					</a>
+				</div>
+			</div>
+			
+
+
+</footer>
+
+<!-- //footer -->
+	</div>
+	<!-- 로그기록  -->
+	<script>
+	document.writeln("<span class='sr-only'><img src='/edu/singl/siteConectStats/rcord.do?menuNo=300017&amp;conectUrlad=/edu/fec/contMng/view.do' alt=''></span>");
+	</script>
+	<!-- 로그기록 END  -->
+	<!-- loading -->
+	<div class="loading" id="loadingDiv" style="display:none">
+		<div class="set">
+			<i></i>
+			<p>
+				<strong>데이터를 불러오고 있습니다.</strong>
+				잠시만 기다려 주시기 바랍니다.
+			</p>
+		</div>
+	</div>
+	<!-- loading END -->
+
+	<script src="/static/fss/js/common.js"></script>
+	<script src="/static/fss/js/fss.js"></script>
+	<script src="/static/jslibrary/tablesummary.js"></script>
+</body>
+</html>

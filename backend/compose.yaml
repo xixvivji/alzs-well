@@ -5,15 +5,19 @@ services:
     ports:
       - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
     environment:
-      NGINX_ENVSUBST_FILTER: TRUSTED_PROXY_CIDR
+      NGINX_ENVSUBST_FILTER: TRUSTED_PROXY_CIDR|FRONTEND_PROXY_SHARED_SECRET
       TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:-127.0.0.1/32}
+      FRONTEND_PROXY_SHARED_SECRET: ${FRONTEND_PROXY_SHARED_SECRET:?FRONTEND_PROXY_SHARED_SECRET must be set}
+    entrypoint: ["/bin/sh", "/opt/alzs-well/validate-gateway-env.sh"]
+    command: ["nginx", "-g", "daemon off;"]
     volumes:
       - ./docker/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./docker/validate-gateway-env.sh:/opt/alzs-well/validate-gateway-env.sh:ro
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/api/v1/system/readiness | grep -q '\"ready\":true'"]
       interval: 15s
       timeout: 3s
       retries: 5
@@ -54,8 +58,7 @@ services:
       PUBLIC_DEPLOYMENT: "true"
       CORS_CUSTOMER_ALLOWED_ORIGINS: ${CORS_CUSTOMER_ALLOWED_ORIGINS:?CORS_CUSTOMER_ALLOWED_ORIGINS must be set}
       CORS_STAFF_ALLOWED_ORIGINS: ${CORS_STAFF_ALLOWED_ORIGINS:?CORS_STAFF_ALLOWED_ORIGINS must be set}
-      DEMO_STAFF_USERNAME: ${DEMO_STAFF_USERNAME:?DEMO_STAFF_USERNAME must be set}
-      DEMO_STAFF_PASSWORD: ${DEMO_STAFF_PASSWORD:?DEMO_STAFF_PASSWORD must be set}
+      DEMO_STAFF_BOOTSTRAP_TOKEN: ${DEMO_STAFF_BOOTSTRAP_TOKEN:?DEMO_STAFF_BOOTSTRAP_TOKEN must be set}
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-alzs_well}
       DB_USERNAME: alzswell_app
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set in .env}
@@ -64,11 +67,23 @@ services:
       NETWORK_MODE: AIR_GAPPED_DEMO
       EXTERNAL_EGRESS_ENABLED: "false"
       REMOTE_MODEL_ENABLED: "false"
+      AI_RETRIEVAL_ENABLED: ${AI_RETRIEVAL_ENABLED:-false}
+      AI_RETRIEVAL_BASE_URL: http://ai-service:8000
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+      AI_RETRIEVAL_CONNECT_TIMEOUT_MS: ${AI_RETRIEVAL_CONNECT_TIMEOUT_MS:-500}
+      AI_RETRIEVAL_REQUEST_TIMEOUT_MS: ${AI_RETRIEVAL_REQUEST_TIMEOUT_MS:-1500}
+      COPILOT_RAG_ENABLED: ${COPILOT_RAG_ENABLED:-false}
       DEMO_MAX_ACTIVE_SESSIONS: ${DEMO_MAX_ACTIVE_SESSIONS:-1000}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
     depends_on:
       db-bootstrap:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/api/v1/system/readiness | grep -q '\"ready\":true'"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     networks:
       - alzs-well-app
       - alzs-well-data
@@ -88,8 +103,58 @@ services:
         max-size: 10m
         max-file: "3"
 
+  synthetic-seed:
+    profiles: ["synthetic-tools"]
+    build:
+      context: .
+    restart: "no"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-production}
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PUBLIC_DEPLOYMENT: "true"
+      CORS_CUSTOMER_ALLOWED_ORIGINS: ${CORS_CUSTOMER_ALLOWED_ORIGINS:?CORS_CUSTOMER_ALLOWED_ORIGINS must be set}
+      CORS_STAFF_ALLOWED_ORIGINS: ${CORS_STAFF_ALLOWED_ORIGINS:?CORS_STAFF_ALLOWED_ORIGINS must be set}
+      DEMO_STAFF_BOOTSTRAP_TOKEN: ${DEMO_STAFF_BOOTSTRAP_TOKEN:?DEMO_STAFF_BOOTSTRAP_TOKEN must be set}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-alzs_well}
+      DB_USERNAME: alzswell_migrator
+      DB_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+      SPRING_FLYWAY_USER: alzswell_migrator
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+      SYNTHETIC_SEED_ENABLED: "true"
+      SYNTHETIC_SEED_PROFILE: ${SYNTHETIC_SEED_PROFILE:-SMOKE}
+      SYNTHETIC_SEED_FIXTURE_VERSION: ${SYNTHETIC_SEED_FIXTURE_VERSION:-synthetic-v3.0.0}
+      SYNTHETIC_SEED_VALUE: ${SYNTHETIC_SEED_VALUE:-20260825}
+      SYNTHETIC_SEED_BATCH_SIZE: ${SYNTHETIC_SEED_BATCH_SIZE:-10}
+      SYNTHETIC_SEED_RESUME: ${SYNTHETIC_SEED_RESUME:-false}
+      SYNTHETIC_SEED_VERIFY_DETECTION: ${SYNTHETIC_SEED_VERIFY_DETECTION:-false}
+      SYNTHETIC_DATA_ONLY: "true"
+      SYNTHETIC_PROVIDER_ONLY: "true"
+      EXTERNAL_ACTIONS_ENABLED: "false"
+      NETWORK_MODE: AIR_GAPPED_DEMO
+      EXTERNAL_EGRESS_ENABLED: "false"
+      REMOTE_MODEL_ENABLED: "false"
+    depends_on:
+      db-bootstrap:
+        condition: service_completed_successfully
+    networks:
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
   db-bootstrap:
-    image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg17}
     restart: "no"
     user: postgres
     entrypoint: ["/bin/bash", "/bootstrap/create-database-roles.sh"]
@@ -100,6 +165,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be set in .env}
       POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD must be set in .env}
+      POSTGRES_AI_PASSWORD: ${POSTGRES_AI_PASSWORD:?POSTGRES_AI_PASSWORD must be set in .env}
+      POSTGRES_AI_RUNTIME_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:?POSTGRES_AI_RUNTIME_PASSWORD must be set in .env}
     volumes:
       - ./docker/create-database-roles.sh:/bootstrap/create-database-roles.sh:ro
     depends_on:
@@ -118,7 +185,7 @@ services:
     cpus: 0.25
 
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:17.11-alpine}
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg17}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-alzs_well}
@@ -137,6 +204,89 @@ services:
     mem_limit: 512m
     cpus: 1.00
     stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  ai-ingestion:
+    profiles: ["ai-tools"]
+    build:
+      context: ../ai-service
+    environment:
+      ALZS_AI_DB_HOST: postgres
+      ALZS_AI_DB_PORT: "5432"
+      ALZS_AI_DB_NAME: ${POSTGRES_DB:-alzs_well}
+      ALZS_AI_DB_USER: alzswell_ai_ingestor
+      ALZS_AI_DB_PASSWORD: ${POSTGRES_AI_PASSWORD:?POSTGRES_AI_PASSWORD must be set in .env}
+      ALZS_AI_DB_SSLMODE: disable
+      ALZS_AI_DB_CONNECT_TIMEOUT: "5"
+      ALZS_EMBEDDING_BACKEND: hash
+      ALZS_EMBEDDING_EXECUTION_CONTEXT: PRODUCTION
+      ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
+    volumes:
+      - ../knowledge:/workspace/knowledge:ro
+      - ../contracts:/workspace/contracts:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  ai-service:
+    profiles: ["ai"]
+    build:
+      context: ../ai-service
+    entrypoint: ["uvicorn", "app.main:app"]
+    command: ["--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    environment:
+      ALZS_AI_DB_HOST: postgres
+      ALZS_AI_DB_PORT: "5432"
+      ALZS_AI_DB_NAME: ${POSTGRES_DB:-alzs_well}
+      ALZS_AI_DB_USER: alzswell_ai_runtime
+      ALZS_AI_DB_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:?POSTGRES_AI_RUNTIME_PASSWORD must be set in .env}
+      ALZS_AI_DB_SSLMODE: disable
+      ALZS_AI_DB_CONNECT_TIMEOUT: "5"
+      ALZS_AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN must be set in .env}
+      ALZS_EMBEDDING_BACKEND: hash
+      ALZS_EMBEDDING_EXECUTION_CONTEXT: PRODUCTION
+      ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - alzs-well-app
+      - alzs-well-data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    mem_limit: 768m
+    cpus: 1.00
     logging:
       driver: json-file
       options:

@@ -1,12 +1,11 @@
 package com.alzswell.demo;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
-
 import com.alzswell.common.security.DemoCapabilityService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -14,8 +13,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 final class DemoTestClient {
 
-    static final String STAFF_USERNAME = "demo-staff";
-    static final String STAFF_PASSWORD = "local-demo-staff-password-change-me-1234567890";
+    static final String STAFF_BOOTSTRAP_TOKEN =
+            "test-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;
@@ -33,7 +32,7 @@ final class DemoTestClient {
         UUID sessionId = UUID.fromString(body.at("/data/sessionId").asText());
         MvcResult staffResult = mockMvc.perform(MockMvcRequestBuilders.post(
                         "/api/v1/demo/staff/sessions/{sessionId}/capability", sessionId)
-                        .with(httpBasic(STAFF_USERNAME, STAFF_PASSWORD)))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + STAFF_BOOTSTRAP_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn();
         return new Session(

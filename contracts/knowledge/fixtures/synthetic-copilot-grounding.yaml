@@ -1,0 +1,25 @@
+contractVersion: "1.0.0"
+documentId: DOC-SYN-COPILOT-001
+versionLabel: "1.0.0"
+title: 합성 금융생활 변화 상담 안내
+issuer: ALZ's well 테스트
+sourceType: SYNTHETIC_FIXTURE
+sourcePath: contracts/knowledge/fixtures/synthetic-copilot-grounding.html
+sourceUrl: null
+sourceHash: sha256:19f4ed930d266d28ab682eede71c28db99cdd5b1f0ec7efb5fe0bfc38f7927fb
+sourceTransformations: []
+documentType: SYNTHETIC_FIXTURE
+classification: INTERNAL
+audience: STAFF
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2026-08-21"
+effectiveTo: null
+checkedAt: "2026-08-21"
+usageRights: SYNTHETIC_UNRESTRICTED
+approvalStatus: APPROVED
+lifecycleStatus: ACTIVE
+approvedBy: synthetic-copilot-reviewer
+approvedAt: "2026-08-21T00:00:00Z"
+supersedes: null

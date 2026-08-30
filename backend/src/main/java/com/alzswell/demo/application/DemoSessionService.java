@@ -86,8 +86,11 @@ public class DemoSessionService {
     }
 
     @Transactional
-    public synchronized DemoSessionCreatedResponse createSession(String customerCapabilityHash) {
+    public DemoSessionCreatedResponse createSession(String customerCapabilityHash) {
         OffsetDateTime now = OffsetDateTime.now(clock);
+        jdbcTemplate.execute(
+                "select pg_advisory_xact_lock(hashtextextended('alzs-well-demo-session-capacity', 0))"
+        );
         if (sessionRepository.countByExpiresAtAfter(now) >= maxActiveSessions) {
             throw new BusinessException(DemoErrorCode.SESSION_RATE_LIMITED);
         }
@@ -230,14 +233,14 @@ public class DemoSessionService {
     }
 
     @Transactional
-    public synchronized DemoScenarioIngestedResponse ingest(
+    public DemoScenarioIngestedResponse ingest(
             UUID sessionId,
             String scenarioId,
             String idempotencyKey
     ) {
         validateIdempotencyKey(idempotencyKey);
         validateScenarioId(scenarioId);
-        DemoSession session = requireActiveSession(sessionId);
+        DemoSession session = requireActiveSessionForUpdate(sessionId);
         String operationKey = "INGEST:" + sessionId;
         String requestHash = hashRequest("scenarioId=" + scenarioId);
         String idempotencyKeyHash = hashRequest(idempotencyKey);
@@ -301,13 +304,13 @@ public class DemoSessionService {
     }
 
     @Transactional
-    public synchronized DemoSessionResetResponse reset(
+    public DemoSessionResetResponse reset(
             UUID sessionId,
             UUID requestedDemoRunId,
             String idempotencyKey
     ) {
         validateIdempotencyKey(idempotencyKey);
-        DemoSession session = requireActiveSession(sessionId);
+        DemoSession session = requireActiveSessionForUpdate(sessionId);
         String requestedRunScope = requestedDemoRunId == null ? "DRAFT" : requestedDemoRunId.toString();
         String operationKey = "RESET:" + sessionId + ":" + requestedRunScope;
         String requestHash = hashRequest("RESET:" + requestedRunScope);
@@ -385,6 +388,15 @@ public class DemoSessionService {
         DemoSession session = loadSession(sessionId);
         if (session.isExpiredAt(OffsetDateTime.now(clock))) {
             // 만료 여부 자체도 세션 존재 정보이므로 공개 API에서는 찾을 수 없음으로 통일한다.
+            throw new BusinessException(DemoErrorCode.SESSION_NOT_FOUND);
+        }
+        return session;
+    }
+
+    private DemoSession requireActiveSessionForUpdate(UUID sessionId) {
+        DemoSession session = sessionRepository.findByIdForUpdate(sessionId)
+                .orElseThrow(() -> new BusinessException(DemoErrorCode.SESSION_NOT_FOUND));
+        if (session.isExpiredAt(OffsetDateTime.now(clock))) {
             throw new BusinessException(DemoErrorCode.SESSION_NOT_FOUND);
         }
         return session;
@@ -499,7 +511,8 @@ public class DemoSessionService {
     }
 
     private void requireSameRequest(DemoIdempotencyRecord existing, String requestHash) {
-        if (!requestHash.equals(existing.getRequestHash())) {
+        if (!MessageDigest.isEqual(requestHash.getBytes(StandardCharsets.UTF_8),
+                existing.getRequestHash().getBytes(StandardCharsets.UTF_8))) {
             throw new BusinessException(DemoErrorCode.IDEMPOTENCY_CONFLICT);
         }
     }

@@ -1,0 +1,27 @@
+contractVersion: "1.0.0"
+documentId: DOC-LAW-TELECOM-FRAUD-REFUND-ACT-001
+versionLabel: "21320-2026-08-04"
+title: 전기통신금융사기 피해 방지 및 피해금 환급에 관한 특별법
+issuer: 대한민국
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/13_common-legal-and-protection/TELECOMMUNICATION_FINANCIAL_FRAUD_REFUND_ACT_current.pdf
+sourceUrl: https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=283199
+sourceHash: sha256:6ef4ea88328315a18c6d708801eaaa875703e4a16cb35f6f433848bed43126b7
+sourceTransformations: []
+documentType: LAW
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+  - COMPLIANCE_REVIEWER
+  - KNOWLEDGE_ADMIN
+effectiveFrom: "2026-08-04"
+effectiveTo: "2026-09-30"
+checkedAt: "2026-08-28"
+usageRights: INTERNAL_USE_APPROVED
+approvalStatus: APPROVED
+lifecycleStatus: ACTIVE
+approvedBy: kjw3568@naver.com
+approvedAt: "2026-08-28T00:31:28Z"
+supersedes: null

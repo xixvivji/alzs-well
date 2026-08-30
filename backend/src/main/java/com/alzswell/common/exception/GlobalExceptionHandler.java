@@ -15,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -80,6 +81,15 @@ public class GlobalExceptionHandler {
         return ApiResponses.error(
                 CommonErrorCode.INVALID_INPUT,
                 "경로 변수 '" + exception.getName() + "'의 형식을 확인해 주세요."
+        );
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingRequestHeader(MissingRequestHeaderException exception) {
+        return ApiResponses.error(
+                CommonErrorCode.INVALID_INPUT,
+                CommonErrorCode.INVALID_INPUT.message(),
+                List.of(new FieldViolation(exception.getHeaderName(), "필수 요청 헤더입니다."))
         );
     }
 

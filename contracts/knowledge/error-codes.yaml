@@ -1,0 +1,192 @@
+contractVersion: "1.0.0"
+errors:
+  - code: CONTRACT_VERSION_UNSUPPORTED
+    category: CONTRACT
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: MANIFEST_SCHEMA_INVALID
+    category: MANIFEST
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: MANIFEST_DUPLICATE_KEY
+    category: MANIFEST
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: MANIFEST_ALIAS_FORBIDDEN
+    category: MANIFEST
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: DOCUMENT_NOT_APPROVED
+    category: GOVERNANCE
+    httpStatus: 409
+    cliExitCode: 3
+    retryable: false
+  - code: DOCUMENT_NOT_ACTIVE
+    category: GOVERNANCE
+    httpStatus: 409
+    cliExitCode: 3
+    retryable: false
+  - code: DOCUMENT_NOT_EFFECTIVE
+    category: GOVERNANCE
+    httpStatus: 409
+    cliExitCode: 3
+    retryable: false
+  - code: KNOWLEDGE_ROLE_DENIED
+    category: AUTHORIZATION
+    httpStatus: 403
+    cliExitCode: 3
+    retryable: false
+  - code: KNOWLEDGE_AUDIENCE_DENIED
+    category: AUTHORIZATION
+    httpStatus: 403
+    cliExitCode: 3
+    retryable: false
+  - code: REPOSITORY_ROOT_REQUIRED
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
+  - code: DATABASE_CONFIGURATION_INVALID
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
+  - code: SOURCE_PATH_OUTSIDE_CORPUS
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_SYMLINK_FORBIDDEN
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_NOT_FOUND
+    category: SOURCE
+    httpStatus: 404
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_TOO_LARGE
+    category: SOURCE_SECURITY
+    httpStatus: 413
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_ENCODING_INVALID
+    category: SOURCE
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_TYPE_UNSUPPORTED
+    category: SOURCE
+    httpStatus: 415
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_HASH_MISMATCH
+    category: SOURCE_SECURITY
+    httpStatus: 409
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_TRANSFORMATION_UNSUPPORTED
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_STRUCTURE_INVALID
+    category: SOURCE
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_ENCRYPTED_UNSUPPORTED
+    category: SOURCE_SECURITY
+    httpStatus: 415
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_PAGE_LIMIT_EXCEEDED
+    category: SOURCE_SECURITY
+    httpStatus: 413
+    cliExitCode: 4
+    retryable: false
+  - code: SOURCE_ACTIVE_CONTENT_FORBIDDEN
+    category: SOURCE_SECURITY
+    httpStatus: 422
+    cliExitCode: 4
+    retryable: false
+  - code: EXTRACTION_FAILED
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: NO_EXTRACTABLE_CONTENT
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: OCR_REQUIRED
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: CHUNK_VALIDATION_FAILED
+    category: INGESTION
+    httpStatus: 422
+    cliExitCode: 5
+    retryable: false
+  - code: OUTPUT_WRITE_FAILED
+    category: STORAGE
+    httpStatus: 500
+    cliExitCode: 6
+    retryable: true
+  - code: STORAGE_UNAVAILABLE
+    category: STORAGE
+    httpStatus: 503
+    cliExitCode: 6
+    retryable: true
+  - code: STORAGE_CONFLICT
+    category: STORAGE
+    httpStatus: 409
+    cliExitCode: 6
+    retryable: false
+  - code: API_CONFIGURATION_INVALID
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
+  - code: EMBEDDING_CONFIGURATION_INVALID
+    category: CONFIGURATION
+    httpStatus: 500
+    cliExitCode: 2
+    retryable: false
+  - code: EMBEDDING_MODEL_UNAVAILABLE
+    category: AI_MODEL
+    httpStatus: 503
+    cliExitCode: 6
+    retryable: true
+  - code: EMBEDDING_VECTOR_INVALID
+    category: AI_MODEL
+    httpStatus: 503
+    cliExitCode: 5
+    retryable: false
+  - code: INTERNAL_AUTHENTICATION_FAILED
+    category: AUTHENTICATION
+    httpStatus: 401
+    cliExitCode: 3
+    retryable: false
+  - code: KNOWLEDGE_PERMISSION_DENIED
+    category: AUTHORIZATION
+    httpStatus: 403
+    cliExitCode: 3
+    retryable: false
+  - code: SEARCH_REQUEST_INVALID
+    category: RETRIEVAL
+    httpStatus: 422
+    cliExitCode: 2
+    retryable: false
+  - code: SEARCH_REQUEST_CONFLICT
+    category: RETRIEVAL
+    httpStatus: 409
+    cliExitCode: 6
+    retryable: false

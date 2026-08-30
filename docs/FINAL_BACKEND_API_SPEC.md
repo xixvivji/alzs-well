@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.5.1**
+> 문서 버전: **1.30.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-17 (Asia/Seoul)**
+> 기준일: **2026-08-25 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **248개** |
-| API 도메인 | **25개** |
+| 전체 API operation | **272개** |
+| API 도메인 | **26개** |
 | P0-A 기존 핵심 데모 | **12개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **23개** |
-| P1 제품 핵심 백로그 | **147개** |
-| P2 은행·증권 확장 백로그 | **78개** |
-| ALZ's well 소유 `OWNED` | **156개** |
-| 외부 연동 `EXTERNAL_INTEGRATION` | **68개** |
+| P1 제품 핵심 백로그 | **170개** |
+| P2 은행·증권 확장 백로그 | **79개** |
+| ALZ's well 소유 `OWNED` | **183개** |
+| 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 248개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 272개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 48개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 업무 API 227개 + staging 보안 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
-| 카탈로그·백로그 | 200개 |
+| 카탈로그·백로그 | 45개 |
 
-업무 `IMPLEMENTED` 48개는 P0 23개, P1 데모 세션·사건 기능 9개, P1 고객 프로필·환경설정 7개, P1 로컬 합성 인증 5개, P1 합성 금융기관·연결 조회 4개다. 인증 API는 `IdentityProviderPort` 뒤의 로컬 어댑터와 PostgreSQL 회전형 opaque Bearer 세션으로 구현했으며 토큰 원문을 저장하지 않는다. development에서는 고객 프로필 API를 제외한 OpenAPI 42개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 49개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개와 외환 읽기·모의계산 5개를 포함해 227개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 221개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 228개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
 
-여기서 API 248개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 272개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -44,7 +44,17 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 3. `REFERENCE_ONLY`는 Spring Controller나 실행 버튼을 생성하지 않는다.
 4. 실제 이체·주문·대출·계좌개설·지급정지·한도변경·외부 연락은 공개 데모에서 실행하지 않는다.
 5. API 수가 많아도 현재 구조는 MSA가 아니라 도메인 패키지로 분리한 모듈형 모놀리스다.
-6. P0 요청·응답 계약은 본 문서에 통합하고 Spring 코드에서 OpenAPI 3.1로 자동 생성한다. `/v3/api-docs`는 프론트 타입 생성용이며 Swagger UI의 요청 실행 기능은 비활성화한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
+6. P0 요청·응답 계약은 본 문서에 통합하고 Spring 코드에서 OpenAPI 3.1로 자동 생성한다. `/v3/api-docs`는 프론트 타입 생성용이며 Swagger UI의 요청 실행 기능은 비활성화한다. 구현된 모든 operation은 설명, 권한, 데이터 분류, 런타임 경계, 외부 실행 여부와 표준 오류 예시를 포함해야 하며 계약 테스트가 누락을 차단한다. 보관된 구 명세는 구현 근거로 사용하지 않는다.
+
+OpenAPI 확장 필드는 다음 의미로 고정한다.
+
+| 필드 | 의미 |
+|---|---|
+| `x-alzs-authority-mode` | `PUBLIC`, `DEMO_CAPABILITY`, `STAFF_BOOTSTRAP`, `BEARER`, `BEARER_AUTHORITY` 중 인증 방식 |
+| `x-alzs-required-authorities` | 호출에 필요한 세부 권한 또는 capability 역할 |
+| `x-alzs-data-classification` | 현재 구현은 항상 `SYNTHETIC_ONLY` |
+| `x-alzs-runtime-boundary` | 내부 소유 구현 또는 합성 외부기관 adapter 경계 |
+| `x-alzs-external-action` | 현재 구현은 항상 `NEVER`; 실제 금융 실행·외부 연락 없음 |
 
 ## AIR_GAPPED_DEMO 네트워크 격리 결정
 
@@ -57,6 +67,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
     → 최소 Nginx gateway
         → Spring Boot REST API
         → PostgreSQL
+        → 선택적 내부 FastAPI AI/RAG
         → 결정론적 규칙·템플릿·공식 근거 카탈로그
 ```
 
@@ -64,7 +75,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 |---|---|---|
 | 브라우저 | 로컬 정적 자산, 공개 gateway의 Spring API 경로 | Spring·PostgreSQL 직접 접근, 외부 API·CDN·분석/오류수집 SDK |
 | Nginx gateway | 내부 Spring API | PostgreSQL·외부 업무 API |
-| Spring Boot | PostgreSQL, 내장 규칙·템플릿·카탈로그 | 외부 LLM, 금융사, 마이데이터, 원격 텔레메트리 |
+| Spring Boot | PostgreSQL, 내부 FastAPI, 내장 규칙·템플릿·카탈로그 | 외부 LLM, 금융사, 마이데이터, 원격 텔레메트리 |
 | PostgreSQL | 응답 없음 | 인터넷·외부 DB |
 | 배치·관리 작업 | 승인된 오프라인 반입 디렉터리 | 런타임 웹 다운로드·스크래핑 |
 
@@ -72,13 +83,14 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 1. 런타임 프로필은 `AIR_GAPPED_DEMO`이며 `externalEgressEnabled=false`, `remoteModelEnabled=false`, `syntheticProviderOnly=true`를 고정한다.
 2. Docker Compose는 gateway↔Spring용 `alzs-well-app`과 Spring↔PostgreSQL용 `alzs-well-data`를 각각 `internal: true`로 분리한다. gateway는 `alzs-well-app`만, Spring은 `alzs-well-app`과 `alzs-well-data`, PostgreSQL은 `alzs-well-data`에만 연결한다. gateway와 PostgreSQL은 어떤 네트워크도 공유하지 않는다.
-3. Host port는 최소 Nginx gateway만 게시한다. P0에서는 별도 FastAPI를 기동하지 않으며, P1 이후 도입할 경우에도 외부 port 없이 승인된 별도 내부망으로만 Spring과 연결한다.
+3. Host port는 최소 Nginx gateway만 게시한다. FastAPI는 `ai` 프로필에서만 기동하고 외부 port 없이 Docker 내부망으로만 Spring과 연결한다.
 4. Vue/React 번들·폰트·아이콘은 로컬에서 제공하고 Content Security Policy를 최소 `default-src 'self'; connect-src 'self'`로 제한한다. 외부 CDN, Google Fonts, 지도, 분석 SDK, 원격 오류수집 SDK, 제3자 스크립트를 런타임에 사용하지 않는다.
 5. Hugging Face 모델, 토크나이저, 임베딩, 공식문서는 빌드 전 통제된 절차로 내려받고 버전·라이선스·SHA-256을 고정한다. 실행 중 자동 다운로드를 금지한다.
 6. 공식문서 갱신은 관리자 업로드 → allowlist 확인 → 악성 콘텐츠 검사 → 체크섬 생성 → 승인·게시의 오프라인 절차를 사용한다.
 7. `EXTERNAL_INTEGRATION` 카탈로그는 설계 계약만 유지한다. P0에서는 `SYNTHETIC_PROVIDER` 외의 어댑터 bean을 기동하지 않는다.
 8. 원격 오류수집, 사용량 분석, prompt tracing, 자동 업데이트 등 outbound telemetry를 비활성화한다.
 9. 외부 목적지 연결 시도는 `EGRESS_ATTEMPT_BLOCKED` 감사이벤트를 남기되 URL query, prompt, 계좌·거래 원문은 기록하지 않는다.
+   일반 요청 본문은 32KiB이며 관리자 ingestion import 단일 경로만 최대 500개 chunk를 위해 4MiB와 연결 동시성 2를 적용한다.
 10. 로컬 AI가 실패하거나 기동되지 않아도 Spring 템플릿 폴백으로 P0 전체 흐름을 완주한다.
 11. 이 구조를 실제 금융권 보안성 심사·망분리 규정 준수 완료로 표현하지 않는다. 실도입 전 금융회사 정보보호·준법·신용정보 부서의 검토가 필요하다.
 
@@ -128,7 +140,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 25개 도메인·248개 API 마스터 카탈로그
+3. 26개 도메인·272개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 12개 상세 계약
 6. P0-B 11개 상세 계약
@@ -351,7 +363,8 @@ T0는 경보 생성 시점의 불변 원시거래·기준선·특징·사유코�
 | `gateEvaluated` | 이번 명령에서 연락 정책을 평가했는지 |
 | `consentSnapshotId` | 평가에 사용한 불변 동의 snapshot |
 | `consentStatus` | `GRANTED`, `NOT_GRANTED`, `REVOKED`, `EXPIRED` |
-| `recipientAccepted` | 지정 연락인이 초대·연락처 처리에 동의했는지 |
+| `recipientAccepted` | 수신자 인증을 거친 수락 여부. 현재 외부 초대 기능 전에는 항상 `false` |
+| `acceptanceStatus` | 현재 `PENDING_ACCEPTANCE` 또는 `UNVERIFIED`; 고객 요청만으로 수락 처리 금지 |
 | `triggerMatched` | 고객이 동의한 발동조건에 해당하는지 |
 | `fieldScopeMatched` | 보내려는 최소정보가 동의 범위 안인지 |
 | `validityMatched` | 동의 기간·철회 상태가 유효한지 |
@@ -598,7 +611,7 @@ OPEN
 7. LLM은 상태, 우선순위, 연락권한, 사유코드와 실행코드를 변경하지 못한다.
 8. 외부 LLM에는 비식별 구조화 요약만 보내고 prompt·completion 원문 로그는 기본 비활성화한다.
 9. 공식 보호수단은 출처, 기준일과 적용조건 없이 반환하지 않는다.
-10. 세션 생성을 제외한 모든 변경 명령은 `Idempotency-Key`와 서버 계산 `requestHash`를 사용하고 직원 사건 변경은 `caseVersion`으로 동시수정을 방지한다. 세션 생성은 비멱등·rate-limited다.
+10. 상태 변경 명령 중 본 명세가 `Idempotency-Key`를 표시한 API는 서버 계산 `requestHash`와 함께 중복 실행을 방지하고, 직원 사건 변경은 `caseVersion`으로 동시수정을 막는다. 조회·검색·평가와 인증 세션 명령은 각 API에 명시된 별도 중복 호출 정책을 따르며 데모 세션 생성은 비멱등·rate-limited다.
 11. actor는 요청 본문이 아니라 인증·세션 주체에서 결정한다.
 12. T0 경보 근거와 T1 맥락 근거는 별도 snapshot으로 저장하며 T1을 T0 탐지 근거로 소급 사용하지 않는다.
 13. Reset은 같은 T0 snapshot을 복원하되 새 `demoRunId`를 발급하고 이전 run의 T1·상태·감사이력을 덮어쓰지 않는다.
@@ -841,16 +854,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **248** |
+| 전체 | **272** |
 | P0-A 기존 핵심 데모 | **12** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **147** |
-| P2 은행·증권 확장 | **78** |
-| OWNED | **156** |
-| EXTERNAL_INTEGRATION | **68** |
+| P1 제품 핵심 | **170** |
+| P2 은행·증권 확장 | **79** |
+| OWNED | **183** |
+| EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 P0 23개, P1 데모 세션·사건 기능 9개, 기본 비활성화된 P1 고객 프로필·환경설정 7개, development 전용 로컬 합성 인증 5개, 합성 금융기관·연결 조회 4개로 총 48개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 49개 operation이다. development 기본 OpenAPI에는 고객 프로필 기능을 제외한 42개가 노출된다. 나머지 200개는 P1·P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 실제 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개를 포함해 총 227개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 228개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 221개가 노출된다. 나머지 45개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -914,23 +927,26 @@ REFERENCE_ONLY 작업에는 OpenAPI 확장 속성 x-public-demo-enabled: false�
 
 P0-B의 session 범위 읽기 API는 반드시 올바른 역할의 `X-Demo-Capability`, sessionId와 만료를 먼저 검증한다. 시나리오 파생 금융생활 읽기는 활성 `demoRunId`도 검증한다. sessionId 자체는 소유권 증명이 아니며, 같은 customerId나 accountId라도 다른 익명 세션·run에서 조회할 수 없어야 한다. 세션 생성 전 목록인 `/api/v1/demo/scenarios`는 session 범위가 아니다.
 
-#### 3.3.2 인증·세션·권한 — 9개
+#### 3.3.2 인증·세션·권한 — 10개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P1 | POST | /api/v1/auth/login | 기업 SSO 또는 인증 공급자 로그인 | EXTERNAL_INTEGRATION |
 | P1 | POST | /api/v1/auth/token/refresh | 애플리케이션 토큰 갱신 | OWNED |
 | P1 | POST | /api/v1/auth/logout | 현재 세션 종료 | OWNED |
+| P1 | POST | /api/v1/auth/logout-all | 현재 사용자의 모든 인증 세션 종료 | OWNED |
 | P1 | GET | /api/v1/auth/me | 현재 사용자·직원 정보 | OWNED |
 | P1 | GET | /api/v1/auth/me/permissions | 역할·세부 권한 조회 | OWNED |
-| P2 | GET | /api/v1/auth/sessions | 로그인 세션 목록 | OWNED |
-| P2 | DELETE | /api/v1/auth/sessions/{authSessionId} | 선택한 로그인 세션 폐기 | OWNED |
+| P2 | GET | /api/v1/auth/sessions | 로그인 세션 목록 (`IMPLEMENTED`) | OWNED |
+| P2 | DELETE | /api/v1/auth/sessions/{authSessionId} | 선택한 로그인 세션 폐기 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/auth/step-up/challenges | 중요화면 추가인증 시작 | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/auth/step-up/challenges/{challengeId}/verify | 추가인증 검증 | EXTERNAL_INTEGRATION |
 
 KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 기존 체계의 책임이다.
 
-앞의 P1 5개는 Flyway V15의 인증 주체·역할·권한·세션 테이블과 함께 구현했다. Access/Refresh token은 256-bit 불투명 난수이며 원문은 응답에서 한 번만 제공하고 DB에는 SHA-256 hash만 저장한다. Refresh는 두 token을 모두 회전하고 이전 token을 즉시 무효화하며, logout은 현재 세션을 폐기한다. 로컬 합성 인증은 development 전용이고 공개 production에서는 기동 가드와 기능 플래그로 노출을 거부한다. 실제 기업 SSO/IdP 연동은 `IdentityProviderPort`의 후속 어댑터 작업이다.
+앞의 P1 6개는 Flyway V15의 인증 주체·역할·권한·세션 테이블과 V17의 refresh token 계열 이력·절대 만료·로그인 감사 테이블로 구현했다. Access/Refresh token은 256-bit 불투명 난수이며 원문은 응답에서 한 번만 제공하고 DB에는 SHA-256 hash만 저장한다. Refresh는 두 token을 모두 회전하며 이전 token 재사용 시 계열 전체를 폐기한다. 세션은 절대 만료와 사용자별 활성 상한을 적용하고, logout과 logout-all로 현재 또는 전체 세션을 폐기한다. 존재하지 않는 계정도 BCrypt dummy hash를 검증하며 반복 실패는 DB 기반으로 제한한다. V40부터 로그인 제한은 짧은 트랜잭션에서 `PENDING` 시도 슬롯을 원자적으로 예약한 뒤 DB 연결을 놓고 자격증명을 검증하며, `RATE_LIMITED` 감사이벤트 자체는 다음 제한 계산에 포함하지 않는다. 로컬 합성 인증은 development 전용이고 공개 production에서는 기동 가드와 기능 플래그로 노출을 거부한다. 실제 기업 SSO/IdP 연동은 `IdentityProviderPort`의 후속 어댑터 작업이다.
+
+V57의 P2 세션 관리 2개는 현재 Bearer token의 principal과 session ID를 서버에서 복원한다. 목록은 본인의 세션을 활성 상태 우선, 그다음 `createdAt DESC, sessionId DESC`로 최대 50개 반환하고 `ACTIVE/EXPIRED/REVOKED`, 현재 세션 여부, token 만료시각만 제공한다. 최대 5개인 활성 세션은 종료 이력 수와 관계없이 목록에 모두 포함된다. token hash·family ID·IP·User-Agent는 반환하지 않는다. 선택 폐기는 URL의 session ID와 인증 principal 소유권을 함께 잠근 뒤 session과 미사용 refresh token을 원자적으로 폐기한다. 동일한 본인 세션의 재호출은 `alreadyEnded=true`로 성공하며 다른 principal 또는 존재하지 않는 ID는 모두 `404 AUTH_SESSION_NOT_FOUND`다. 결과는 `auth_session_event`에 추가 전용으로 감사한다.
 
 #### 3.3.3 고객 프로필·접근성 — 8개
 
@@ -946,6 +962,23 @@ KYC·실명확인 API는 포함하지 않는다. 해당 절차는 금융회사 �
 | P2 | POST | /api/v1/customers/{customerId}/data-export-requests | 고객 데이터 사본 요청 | OWNED |
 
 P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expectedVersion` 낙관적 잠금, V15 Bearer 인증 주체와 customerId 소유권·읽기/쓰기 권한 검증 및 계약 테스트까지 구현했다. `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이므로 공개 합성데모에는 노출하지 않는다. 실제 공개 노출은 기업 IdP 어댑터 구현과 보안 검증 후에만 허용한다. P2 데이터 사본 요청은 구현 전이다.
+
+#### 3.3.3-A 금융생활 준비·의향 — 7개
+
+| 우선순위 | Method | Path | 용도 | 경계 |
+|---|---|---|---|---|
+| P1 | GET | /api/v1/customers/{customerId}/continuity-preparation | 준비상태와 최신 승인 의향 조회 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/financial-intents/drafts | 고객 확인 전 구조화 초안 생성 | OWNED |
+| P1 | PUT | /api/v1/customers/{customerId}/financial-intents/{intentId}/draft | 승인 전 초안 수정 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/financial-intents/{intentId}/approve | 법적 효력 제한 확인 후 고객 승인 | OWNED |
+| P1 | GET | /api/v1/customers/{customerId}/financial-intents/versions | 불변 버전 이력 조회 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/financial-intents/{intentId}/revoke | 최신 승인 의향 철회 | OWNED |
+| P1 | GET | /api/v1/staff/customers/{customerId}/financial-intent-summary | 동의한 항목만 행원 요약 조회 | OWNED |
+
+Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 구현한다. 초안은 고객 승인 전 효력이 없고,
+승인은 법적 후견·유언·대리권을 만들지 않는다는 고정 면책 확인이 필수다. 행원 응답은 `shareScopes`에
+포함된 항목만 반환하며 철회된 의향은 조회하지 않는다. 모든 응답은 `legallyBinding=false`,
+`healthInferenceUsed=false`이며 의향은 건강상태·위험도·사건 우선순위 산정에 사용하지 않는다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -993,8 +1026,12 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P1 | GET | /api/v1/accounts/{accountId}/statements | 거래명세서 목록 | EXTERNAL_INTEGRATION |
 | P1 | GET | /api/v1/accounts/{accountId}/statements/{statementId} | 거래명세서 상세 | EXTERNAL_INTEGRATION |
 | P1 | GET | /api/v1/accounts/{accountId}/recurring-counterparties | 반복 거래 상대 분석 | OWNED |
-| P1 | PATCH | /api/v1/accounts/{accountId}/display-settings | 계좌 별칭·노출 순서 변경 | OWNED |
+| P1 | PATCH | /api/v1/accounts/{accountId}/display-settings | `Idempotency-Key` 기반 계좌 별칭·노출 순서 변경 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/account-groups | 고객 지정 계좌 그룹 | OWNED |
+
+P1 11개 전체가 구현됐다. 앞의 조회 8개는 Flyway V42의 `customer_account_snapshot`, `customer_account_balance_snapshot`, `customer_account_restriction_snapshot`, `customer_account_statement_snapshot`으로 `IMPLEMENTED-SYNTHETIC-READ-ONLY`다. V43은 반복 상대·계좌 그룹을 불변 합성 snapshot으로 추가하고, 별칭·노출 순서·숨김 여부만 `account_display_setting`에서 변경하도록 원천 계좌 데이터와 분리했다. `ACCOUNT_READ|WRITE` 권한과 고객 소유권을 Controller·서비스 양쪽에서 확인하며 `{accountId}` 단독 경로와 `{statementId}` 상세도 다른 고객의 식별자를 사용하면 404를 반환한다. 계좌번호는 마스킹 형식만 DB 제약으로 허용하고 원문 번호·거래 원문은 저장하지 않는다.
+
+잔액 추세의 `from`, `to`는 `YYYY-MM-DD`이며 생략 시 기준일을 끝으로 최근 약 3개월을 반환하고 최대 366일로 제한한다. 잘못된 기간은 `400 ACCOUNT_BALANCE_DATE_RANGE_INVALID`, 계좌 없음·소유권 불일치는 `404 ACCOUNT_NOT_FOUND`, 명세서 없음은 `404 ACCOUNT_STATEMENT_NOT_FOUND`다. 표시 설정 PATCH는 `alias`, `displayOrder`, `hidden` 중 하나 이상과 `expectedVersion`을 받고 변경 이력을 추가 전용으로 기록한다. 변경 이벤트에는 고객 ID뿐 아니라 실제 Bearer `principalId`, `sessionId`, `actorType` snapshot을 보존하며 V70 이전 이력은 `LEGACY`로 구분한다. 버전 충돌은 `409 ACCOUNT_DISPLAY_VERSION_CONFLICT`, 표시 순서 충돌은 `409 ACCOUNT_DISPLAY_ORDER_CONFLICT`다. 계좌 목록·상세의 요약 객체는 `providerMode=SYNTHETIC_PROVIDER`, `syntheticData=true`, `externalExecutionAvailable=false`를 유지한다. 상세의 `transferAvailable=false`, `closureAvailable=false`, 명세의 `fileAvailable=false`, `externalDownloadAvailable=false`를 고정하며 실제 은행 API·이체·출금·계좌해지·명세 다운로드를 실행하지 않는다.
 
 #### 3.3.6 통합자산·현금흐름 — 8개
 
@@ -1011,6 +1048,10 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 
 정확한 원천 잔액과 거래는 외부 연결이 제공하되, 통합·정규화·현금흐름 계산 결과는 ALZ's well이 소유한다. 데이터가 오래됐거나 일부 기관 연결이 끊긴 경우 반드시 data-freshness를 함께 표시한다.
 
+8개 모두 Flyway V45와 기존 V41·V42·V44 합성 read model을 결합해 구현됐다. `FINANCIAL_OVERVIEW_READ`와 고객 본인 소유권을 요구하며 자산·현금흐름 기간은 최대 366일, 통합 일정은 최대 93일로 제한한다. 자산·거래 집계는 불변 계좌·거래 snapshot을 사용하고, 부채와 급여·이자·만기 일정은 `customer_liability_snapshot`, `customer_asset_calendar_snapshot`에 추가 전용으로 저장한다.
+
+부채 참조값은 마스킹하며 `repaymentAvailable=false`, 일정은 `externalActionAvailable=false`, 전체 요약은 `syntheticData=true`, `externalExecutionAvailable=false`를 반환한다. 최신성 API는 기관별 `lastSyncedAt`, `dataAsOf`, 계좌·거래 건수, 연결 상태와 `FRESH|STALE|INCOMPLETE` 판정을 명시한다. 실제 대출·카드 결제·상환·외부 동기화는 수행하지 않는다.
+
 #### 3.3.7 거래내역·검색 — 10개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1022,9 +1063,13 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P1 | GET | /api/v1/customers/{customerId}/counterparties | 거래 상대 목록·신규성 | OWNED |
 | P1 | GET | /api/v1/counterparties/{counterpartyId}/transaction-history | 상대별 거래 추세 | OWNED |
 | P1 | GET | /api/v1/transactions/{transactionId}/enrichment | 범주·정규화·분석 부가정보 | OWNED |
-| P1 | PUT | /api/v1/transactions/{transactionId}/category | 고객 지정 범주 보정 | OWNED |
-| P1 | PUT | /api/v1/transactions/{transactionId}/note | 금융 기억노트 작성 | OWNED |
+| P1 | PUT | /api/v1/transactions/{transactionId}/category | `Idempotency-Key` 기반 고객 지정 범주 보정 | OWNED |
+| P1 | PUT | /api/v1/transactions/{transactionId}/note | `Idempotency-Key` 기반 금융 기억노트 작성 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/transaction-export-requests | 거래내역 파일 생성 요청 | OWNED |
+
+앞의 P1 9개는 Flyway V44의 `financial_transaction_snapshot`, `transaction_enrichment_snapshot`, `customer_transaction_preference`, `customer_transaction_preference_event`로 구현됐다. 원천 거래와 enrichment는 추가 전용 불변 snapshot이며 `TRANSACTION_READ`와 고객 소유권을 서비스 계층에서도 확인한다. 목록·검색은 `occurredAt DESC, transactionId DESC` 복합 정렬과 UUID cursor를 사용하고 기간은 최대 366일, limit은 최대 100으로 제한한다. 검색어는 최대 80자이며 민감정보 정책을 통과한 마스킹 설명·상대방 이름만 검색한다. `q` 원문이 URI access log에 남지 않도록 거래 검색 경로의 Nginx access log는 비활성화한다.
+
+범주·노트 PUT은 `TRANSACTION_WRITE`, `Idempotency-Key`, `expectedVersion`을 요구한다. 고객 보정 범주는 고정 enum만 허용하고, 기억노트는 최대 120자이며 식별정보·계좌번호·연락처·질병 표현을 거부한다. 변경은 원천 거래를 수정하지 않고 별도 preference만 갱신하며 추가 전용 이벤트에 실제 Bearer `principalId`, `sessionId`, 고객 ID와 `actorType`을 함께 남긴다. 버전 충돌은 `409 TRANSACTION_PREFERENCE_VERSION_CONFLICT`, 잘못된 cursor는 `400 TRANSACTION_CURSOR_INVALID`, 기간·금액 범위 오류는 각각 `400 TRANSACTION_DATE_RANGE_INVALID`, `400 TRANSACTION_AMOUNT_RANGE_INVALID`다. 응답은 `syntheticData=true`, `externalActionAvailable=false`, `externalActionExecuted=false`를 유지하며 실제 취소·정정·이체·export를 실행하지 않는다.
 
 #### 3.3.8 정기납부·구독·청구 — 8개
 
@@ -1036,8 +1081,12 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P1 | GET | /api/v1/customers/{customerId}/recurring-payments/missed | 미발생 정기납부 후보 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/recurring-payments/duplicates | 중복 구독·납부 후보 | OWNED |
 | P1 | GET | /api/v1/recurring-payments/{recurringPaymentId}/occurrences | 과거·예상 발생 내역 | OWNED |
-| P1 | PUT | /api/v1/recurring-payments/{recurringPaymentId}/reminder-settings | 납부 확인 알림 설정 | OWNED |
+| P1 | PUT | /api/v1/recurring-payments/{recurringPaymentId}/reminder-settings | `Idempotency-Key` 기반 납부 확인 알림 설정 | OWNED |
 | P2 | POST | /api/v1/recurring-payments/{recurringPaymentId}/cancellation-guidance | 해지 방법 안내만 생성 | REFERENCE_ONLY |
+
+앞의 P1 7개는 Flyway V41의 `recurring_payment`, 추가 전용 `recurring_payment_occurrence`, `recurring_payment_reminder_event`와 함께 `IMPLEMENTED-SYNTHETIC-READ-MODEL`이다. 고객 본인의 Bearer 주체와 `RECURRING_PAYMENT_READ|WRITE` 권한을 함께 검사하며 `{recurringPaymentId}` 단독 경로도 서비스 계층에서 소유권을 다시 확인해 교차 고객 IDOR에는 404를 반환한다. 목록·상세·달력·미발생·중복 후보·발생 이력은 기준일 `2026-08-14`의 `SYNTHETIC_PROVIDER` snapshot만 읽는다. 달력 조회는 `from`, `to`를 `YYYY-MM-DD`로 받고 생략하면 기준일이 속한 달부터 두 달 범위를 사용하며 최대 93일로 제한한다.
+
+알림 설정 PUT 본문은 `enabled`, `leadDays(0..30)`, `expectedVersion`을 요구한다. 갱신은 `row_version` 낙관적 잠금으로 수행하고 충돌 시 `409 RECURRING_PAYMENT_VERSION_CONFLICT`, 잘못된 기간은 `400 RECURRING_PAYMENT_DATE_RANGE_INVALID`, 존재하지 않거나 다른 고객 소유인 자원은 `404 RECURRING_PAYMENT_NOT_FOUND`를 반환한다. 알림 채널은 `IN_APP`만 제공하며 `externalDeliveryEnabled=false`, `externalExecutionAvailable=false`, `cancellationAvailable=false`, `externalActionExecuted=false`를 고정한다. 실제 자동이체·결제·해지·SMS·푸시 외부 전송은 생성하지 않는다.
 
 #### 3.3.9 이체·지급 — 10개
 
@@ -1047,14 +1096,22 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P1 | GET | /api/v1/customers/{customerId}/transfer-limits | 금융회사 이체한도 조회 | EXTERNAL_INTEGRATION |
 | P1 | POST | /api/v1/transfer-simulations | 합성 이체 결과·수수료 모의계산 | OWNED |
 | P1 | POST | /api/v1/transfer-validations | 형식·정책 사전검사, 실행 없음 | OWNED |
-| P2 | GET | /api/v1/customers/{customerId}/transfer-templates | 고객 저장 이체 양식 | OWNED |
-| P2 | POST | /api/v1/customers/{customerId}/transfer-templates | 이체 양식 저장 | OWNED |
-| P2 | DELETE | /api/v1/customers/{customerId}/transfer-templates/{templateId} | 이체 양식 삭제 | OWNED |
+| P2 | GET | /api/v1/customers/{customerId}/transfer-templates | 고객 저장 이체 양식 (`IMPLEMENTED`) | OWNED |
+| P2 | POST | /api/v1/customers/{customerId}/transfer-templates | 이체 양식 저장 (`IMPLEMENTED`) | OWNED |
+| P2 | DELETE | /api/v1/customers/{customerId}/transfer-templates/{templateId} | 이체 양식 삭제 (`IMPLEMENTED`) | OWNED |
 | P2 | POST | /api/v1/transfers | 실제 이체 접수 기능 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/transfers/{transferId}/confirm | 실제 이체 승인 기능 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/transfers/{transferId}/cancel | 이체 취소 기능 참조 | REFERENCE_ONLY |
 
 마지막 3개는 공개 데모와 ALZ 핵심 백엔드에서 구현하지 않는다.
+
+앞의 P1 4개는 Flyway V46의 마스킹된 `customer_beneficiary_snapshot`, 추가 전용 `customer_transfer_limit_snapshot`과 기존 V42 계좌 snapshot을 결합한 `IMPLEMENTED-SYNTHETIC-PREVIEW`다. 수취인·한도 조회는 `TRANSFER_PREVIEW_READ`, 모의계산·사전검증은 `TRANSFER_PREVIEW_EVALUATE`와 정확한 고객 소유권을 요구한다. 요청은 서버가 보유한 합성 `sourceAccountId`, `beneficiaryId`만 받으며 원문 계좌번호 입력은 허용하지 않는다. 금액은 1원 이상 1억원 이하 KRW로 제한하고 가용잔액·건별한도·일일 잔여한도·수취인 활성상태를 결정론적으로 확인한다.
+
+모의계산과 사전검증은 상태를 쓰지 않는 읽기 전용 평가다. 응답은 `externalProviderCalled=false`, `transferCreated=false`, `authorizationCreated=false`를 고정하며 실제 이체 접수·OTP/MFA 승인·한도 변경·외부 금융사 호출을 생성하지 않는다. 실제 이체 관련 마지막 3개 API는 계속 `REFERENCE_ONLY`다.
+
+V59의 저장 이체 양식 3개는 `TRANSFER_TEMPLATE_READ|WRITE`와 고객 본인 소유권을 요구한다. 생성은 `Idempotency-Key`를 필수로 받고 활성 합성 출금계좌와 같은 고객의 활성 마스킹 수취인만 참조한다. 양식명은 50자 이하이며 민감정보 정책을 통과해야 하고, 금액은 생략하거나 1원 이상 1억원 이하 KRW로 제한한다. 목적은 고정 코드만 허용하고 고객당 활성 양식은 트랜잭션 advisory lock 아래 최대 20개로 제한한다.
+
+목록은 `templateName, createdAt, templateId` 순서로 활성 양식만 반환한다. 삭제는 물리 삭제가 아니라 `ACTIVE → DELETED` 단방향 전이이며 동일 멱등키는 최초 응답을 그대로 재생하고 이미 삭제된 본인 양식에 새 키로 재요청하면 `alreadyDeleted=true`를 반환한다. 다른 고객 또는 존재하지 않는 ID는 `404 TRANSFER_TEMPLATE_NOT_FOUND`로 숨긴다. 핵심 필드는 DB trigger로 불변이며 생성·삭제 snapshot은 `customer_transfer_template_event`에 추가 전용으로 보존하고 통합 감사 API에도 노출한다. 모든 응답은 `externalActionAvailable=false`, `externalActionExecuted=false`이며 실제 이체·승인·외부 금융사 호출을 생성하지 않는다.
 
 #### 3.3.10 카드 — 10개
 
@@ -1071,6 +1128,10 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P2 | POST | /api/v1/cards/{cardId}/unlock | 카드 정지해제 기능 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/cards/{cardId}/replacement-requests | 재발급 기능 참조 | REFERENCE_ONLY |
 
+앞의 P1 6개는 Flyway V47의 `customer_card_snapshot`, `card_transaction_snapshot`, `card_statement_snapshot`을 사용하는 `IMPLEMENTED-SYNTHETIC-READ-MODEL`이다. 고객 Bearer 주체와 `CARD_READ`를 요구하고 `{cardId}` 단독 경로도 서비스 계층에서 고객 소유권을 다시 확인해 교차 고객 자원은 `404 CARD_NOT_FOUND`로 숨긴다. 카드번호는 마지막 네 자리 외 전부 마스킹하고 가맹점명은 허용된 합성 이름만 저장한다. 이용내역은 최대 366일, 최대 100건, `(occurredAt, cardTransactionId)` 복합 정렬을 보존하는 UUID cursor로 조회한다.
+
+카드 상세·청구·결제예정·한도 응답은 모두 조회만 제공한다. 카드 잠금·해제·재발급, 결제·출금, 한도 변경, 청구서 파일 생성, 외부 금융사 호출은 실행하지 않으며 `externalActionExecuted=false`와 각 실행 가능 플래그 `false`를 반환한다. 마지막 P2 3개는 계속 `REFERENCE_ONLY`다.
+
 #### 3.3.11 예금·적금 — 8개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1084,6 +1145,8 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P2 | GET | /api/v1/deposit-holdings/{holdingId}/maturity-options | 만기 처리 선택지 조회 | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/deposit-applications | 계좌개설 기능 참조 | REFERENCE_ONLY |
 
+앞의 상품 목록·상세·금리표·이자 모의계산과 만기 선택지 5개는 Flyway V51의 추가 전용 합성 snapshot으로 구현한다. `FINANCIAL_PRODUCT_READ|SIMULATE` 권한을 분리하고, 만기 선택지는 Bearer 고객과 보유 예금의 소유권을 다시 확인한다. 정기예금은 일시예치 단리, 적금은 월 적립금별 잔여월 단리로 계산하며 세금은 합성 추정치다. 가입·만기선택·해지·외부 금융사 호출은 실행하지 않는다.
+
 #### 3.3.12 대출·신용 — 8개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1096,6 +1159,8 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P1 | GET | /api/v1/loan-holdings/{loanId}/repayment-schedule | 원리금 상환 일정 | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/loan-applications | 대출 신청 기능 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/loan-applications/{applicationId}/submit | 대출 심사 제출 기능 참조 | REFERENCE_ONLY |
+
+앞의 대출상품 목록·상세·상환 모의계산 3개도 V51 합성 snapshot으로 구현한다. 모의계산은 상품 허용 금액·기간·금리 범위를 검증하고 `EQUAL_PRINCIPAL_ESTIMATE_V1` 원금균등 계산만 수행한다. 고객의 신호·경보·건강·보호업무 데이터는 입력이나 가격결정에 사용하지 않으며 신용조회·심사·신청·외부 호출은 모두 실행하지 않는다.
 
 신호·경보 데이터는 대출 심사나 가격결정에 절대 재사용하지 않는다.
 
@@ -1114,6 +1179,10 @@ P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expe
 | P2 | POST | /api/v1/investment-orders | 실제 매매 주문 기능 참조 | REFERENCE_ONLY |
 | P2 | DELETE | /api/v1/investment-orders/{orderId} | 주문 취소 기능 참조 | REFERENCE_ONLY |
 
+P1 예금·대출·투자 보유 조회 8개는 Flyway V50과 `FinancialHoldingController`로 구현한다. 기존 V42 계좌와 V45 부채 snapshot을 원장으로 재사용하며, 상품 상세·상환일정·투자 포지션 projection은 고객 ID와 원장 ID의 복합 외래키로 소유권을 강제한다. 권한은 본인의 `FINANCIAL_OVERVIEW_READ`로 제한하고 모든 신규 snapshot은 append-only 및 runtime DML 회수를 적용한다. 기관은 `안심은행`, `안심증권` 합성 기관만 사용하고 응답의 외부 호출·만기처리·상환·주문 실행 가능 여부는 항상 `false`다.
+
+앞의 P2 주문이력·시세·차트·관심종목 5개는 Flyway V52와 `InvestmentMarketController`로 구현한다. 주문이력은 합성 snapshot을 최대 100건까지 반환하고, 시세는 지연된 고정 snapshot만 제공하며, 차트 조회기간은 최대 366일이다. 관심종목은 최대 20개를 전체 교체하고 `Idempotency-Key`와 `expectedVersion`으로 중복 요청과 충돌을 제어한다. V70부터 변경 이벤트는 요청을 수행한 실제 Bearer principal·session·고객·actor type을 append-only snapshot으로 남기며 `WATCHLIST` source로 통합 감사 목록·상세·내보내기에 포함한다. 신규 이벤트의 `ACTOR_SNAPSHOT_V2` 무결성 해시는 event ID·고객·버전·종목 순서·발생시각과 전체 actor snapshot을 함께 결속하며, V70 이전 이벤트는 `LEGACY_V1`로 명시한다. 실제 시세망 호출·투자 추천·주문·취소는 실행하지 않으며 주문 생성·취소 2개 API는 계속 `REFERENCE_ONLY`다.
+
 ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다.
 
 #### 3.3.14 연금·신탁·보호수단 — 10개
@@ -1131,6 +1200,10 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P2 | POST | /api/v1/protection-enrollments | 실제 보호수단 신청 참조 | REFERENCE_ONLY |
 | P2 | DELETE | /api/v1/protection-enrollments/{enrollmentId} | 실제 해지 기능 참조 | REFERENCE_ONLY |
 
+앞의 P1 4개는 Flyway V29와 함께 구현했다. 카탈로그와 상세는 공식 출처·확인일을 반환하고, 근거 citation은 `actionCode → documentId` 정책 매핑에서 현재 `APPROVED/ACTIVE` governance·역할 ACL·효력일·verified binding·`AI_DB_SNAPSHOT_V1` proof를 통과한 첫 passage를 동적으로 선택한다. 고정 V28 passage UUID를 반환하지 않으며 검증된 현재 근거가 없으면 citation 목록을 비워 fail-closed한다. 새 문서 버전 import 뒤에는 동일 document의 새 stable passage ID를 반환한다. citation resolution은 `PROTECTION_ACTION_CITATION` 접근감사에 호출 permission, action code, 기준일, 반환 passage ID, `ALLOWED/NOT_FOUND`를 남긴다. 안내 가능성 평가는 고정 정책 버전과 reason code만 사용하는 결정론적 결과다. 가입상태는 `안심은행` 합성 snapshot만 읽으며 `externalProviderCalled=false`를 명시한다. 모든 응답에서 신청 endpoint와 외부 실행은 제공하지 않고, 실제 신청·해지 API는 계속 `REFERENCE_ONLY`다.
+
+연금 보유목록과 연금 전망, 신탁 보유목록·상세 4개는 Flyway V53과 `FinancialHoldingController`로 구현한다. 모든 원본은 `안심은행` 합성 snapshot이며 고객 소유권과 `FINANCIAL_OVERVIEW_READ`를 함께 검사한다. 연금 전망은 보장·추천이 아닌 두 개의 고정 가정 시나리오로만 제공하고, 신탁은 수익자 수만 반환하며 수익자 식별정보를 저장하거나 노출하지 않는다. 가입·변경·해지·지급 등 외부 실행 기능은 모두 `false`이며 snapshot은 append-only다.
+
 #### 3.3.15 동의·신뢰연락인·정보제공 — 12개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
@@ -1145,8 +1218,10 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P1 | POST | /api/v1/customers/{customerId}/trusted-contacts | 신뢰연락인 지정 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 동의 범위·유효기간 조회 | OWNED |
 | P1 | PATCH | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 최소정보 범위 수정 | OWNED |
-| P1 | DELETE | /api/v1/customers/{customerId}/trusted-contacts/{contactId} | 지정 철회 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/revoke | JSON 본문으로 지정 철회 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/trusted-contacts/{contactId}/contact-attempts | 실제 외부 연락 기능 참조 | REFERENCE_ONLY |
+
+앞의 동의·정보제공 평가 P1 6개는 Flyway V30의 목적별 동의와 scope로 구현했고, V32에서 목적별 허용 scope 매트릭스와 조회·평가 감사이력, 생성 멱등성을 보강했다. 신뢰연락인 P1 5개는 Flyway V31의 지정·최소 scope·변경이력에 V32 보안 강화를 적용했다. V33은 동의 목적의 불변성, 연락처 마스킹 정규화, 신뢰연락인 조회 감사와 기존 운영 이벤트의 인증 principal 식별을 추가로 강제한다. 동의와 신뢰연락인 생성은 원문 키가 아닌 hash를 저장하고 `INSERT ... ON CONFLICT DO NOTHING`으로 동시 동일키 요청도 한 행만 만든다. 생성과 변경 시 잠근 유효 동의를 확인하며 동의 철회 시 관련 지정을 `REVOKED_BY_CONSENT`로 함께 비활성화한다. 연락처는 서버가 허용된 형식으로 정규화한 마스킹 값만 저장하고, 별도 수신자 인증 API가 없으므로 `recipientAccepted=false`, `acceptanceStatus=PENDING_ACCEPTANCE`, `authorizedToAct=false`, `externalContactEnabled=false`, `externalContactExecuted=false`를 유지한다. 생성 API는 `Idempotency-Key`가 필수이며 철회 사유는 URL이 아닌 JSON 본문으로 전달한다. 실제 연락 시도 API는 계속 `REFERENCE_ONLY`다.
 
 마지막 API는 공개 데모에서 호출하지 않는다. 데모에서는 정책 평가 결과 BLOCKED_BY_CONSENT만 감사로그에 남긴다.
 
@@ -1173,13 +1248,22 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P0-A | POST | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context | 기존 데모 맥락 응답·재평가 | OWNED |
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit | 기존 데모 판단·동의 감사이력 | OWNED |
 
-#### 3.3.17 행원 사건·코파일럿·후속관리 — 18개
+경보 이의신청은 Flyway V54부터 구현한다. 고객 본인의 경보와 `ALERT_APPEAL` 권한, `expectedVersion`, `Idempotency-Key`를 모두 검사하고 민감정보 검사를 통과한 사유만 추가 전용으로 저장한다. 허용 상태의 경보를 `BANK_REVIEW`로 전환하고 사람의 검토 사건을 한 건 생성하지만 금융 차단·이체·외부 알림은 실행하지 않는다. 동일 경보의 이의신청은 한 건으로 제한하고 통합 감사 API에 사유코드와 사건 ID를 남긴다.
+
+#### 3.3.17 행원 사건·코파일럿·후속관리 — 25개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P1 | GET | /api/v1/staff/cases | 운영 행원 사건큐 | OWNED |
 | P1 | GET | /api/v1/staff/cases/{caseId} | 운영 사건 상세 | OWNED |
 | P1 | PUT | /api/v1/staff/cases/{caseId}/assignment | 담당자·팀 배정 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/timeline | 운영 사건·경보·검토 통합 타임라인 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/evidence | 운영 사건의 불변 합성 근거 묶음 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/notes | 운영 사건 추가 전용 내부 메모 목록 | OWNED |
+| P1 | POST | /api/v1/staff/cases/{caseId}/notes | 운영 사건 내부 메모 등록 | OWNED |
+| P1 | GET | /api/v1/staff/cases/{caseId}/follow-ups | 운영 사건 후속 일정 목록 | OWNED |
+| P1 | POST | /api/v1/staff/cases/{caseId}/follow-ups | 외부 연락 없는 운영 후속 일정 등록 | OWNED |
+| P1 | PATCH | /api/v1/staff/follow-ups/{followUpId} | 운영 후속 일정·결과 상태 변경 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/timeline | 사건·신호·맥락·감사 타임라인 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/evidence | 합성 근거 거래·신호·공식 출처 묶음 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/cases/{caseId}/notes | 행원 내부 메모 목록 | OWNED |
@@ -1198,20 +1282,34 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 
 follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발송 기능이 아니다.
 
+직원 정책 재검토는 Flyway V54부터 구현한다. `PROTECTION_STAFF`의 `STAFF_CASE_OVERRIDE` 권한, 고객별 `PROTECTION_CASE_MANAGEMENT/CASE_OVERRIDE` grant, 사건 담당자 일치를 모두 요구한다. 구조화된 사유와 민감정보 검사를 통과한 근거를 불변 이벤트로 남기고 `GUIDANCE_APPROVED` 또는 `COMPLETED` 사건만 `IN_REVIEW`로 되돌린다. 기존 안내계획을 변조하거나 새 정책 결과·금융조치·고객 연락을 자동 실행하지 않는다.
+
 #### 3.3.18 고객별 행원 접근권한 — 6개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P1 | GET | /api/v1/customers/{customerId}/staff-access-grants | 고객 데이터에 접근 가능한 행원 권한 목록 | OWNED |
-| P1 | POST | /api/v1/customers/{customerId}/staff-access-grants | 목적·범위·만료를 지정한 권한 생성과 은행 IAM 연결 | EXTERNAL_INTEGRATION |
+| P1 | POST | /api/v1/customers/{customerId}/staff-access-grants | 목적·범위·만료를 지정한 내부 접근권 생성 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/staff-access-grants/{grantId} | 단일 접근권한 상세 | OWNED |
 | P1 | POST | /api/v1/customers/{customerId}/staff-access-grants/{grantId}/revoke | 접근권한 철회 | OWNED |
 | P1 | POST | /api/v1/staff-access-policy/evaluations | 행원·고객·목적·범위별 접근 가능성 평가 | OWNED |
 | P1 | GET | /api/v1/customers/{customerId}/staff-access-grants/{grantId}/audit | 생성·사용·만료·철회 감사이력 | OWNED |
 
-모든 grant에는 grantId, customerId, staffSubjectId, purpose, scopes, grantedAt, expiresAt, revokedAt을 저장한다. purpose와 scopes가 요청 자원에 맞지 않거나 expiresAt이 지났거나 revokedAt이 존재하면 접근을 거절한다. POST 생성의 은행 IAM 주체 확인은 외부 연동이지만 권한 목적·범위·만료·감사 상태는 ALZ's well이 보존한다.
+V48부터 직원 접근권 판정은 `staffPrincipalId + customerId + purposeCode + scope + expiresAt`을 모두 결합한다. 목적별 scope 매트릭스는 동의, 신뢰연락인, 금융의향, 사건, 개인정보 요청, 경보, 보호가입 조회를 서로 분리하며 `*_ALL` 권한도 고객별 grant를 우회하지 않는다. 만료된 grant는 `EXPIRED`로 원자 전환하고 재발급을 허용하며, 허용·거부 판정 모두 `staff_access_decision_audit_event`에 추가 전용으로 보존한다. 자유입력 철회 사유와 탐지 근거 설명은 저장 전에 공통 민감정보 정책을 통과해야 한다.
 
-#### 3.3.19 공식 근거·지식 카탈로그 — 8개
+V48의 `customer_mutation_command`는 계좌 표시, 거래 범주·노트, 정기납부 알림 변경의 원문 멱등키 대신 SHA-256만 저장한다. 동일 scope·동일 키·동일 요청은 최초 업무 결과를 재사용하고, 다른 요청에 같은 키를 사용하면 각 도메인의 `*_IDEMPOTENCY_CONFLICT`를 반환한다.
+
+V49는 고객 표시·환경·접근성 설정, 경보 연기, 사건 배정·안내승인, 동의·신뢰연락인·직원 접근권 변경까지 같은 저장소를 확장한다. 재생 대상은 상태코드·업무 코드·메시지·data로 구성된 업무 결과이며, `traceId`와 응답 `timestamp`는 현재 HTTP 재요청을 추적하기 위해 새로 발급한다. 완료된 `result_payload`는 DB trigger로 다시 쓰거나 NULL로 되돌릴 수 없다.
+
+V49부터 경보 접근권은 `DETECTION_ADMIN`, 그 밖의 보호업무 접근권은 `PROTECTION_STAFF`에게만 발급할 수 있다. 거부 감사는 업무 트랜잭션이 연결을 반환한 뒤 별도 단일 트랜잭션으로 기록해 풀 크기 1에서도 403을 유지한다. grant의 고객·직원·목적·scope·기간·hash는 생성 후 불변이며 사건 배정 감사는 이벤트 당시 상태 snapshot만 반환한다.
+
+모든 grant에는 grantId, customerId, staffSubjectId, purpose, scopes, grantedAt, expiresAt, revokedAt을 저장한다. purpose와 scopes가 요청 자원에 맞지 않거나 expiresAt이 지났거나 revokedAt이 존재하면 접근을 거절한다. 현재는 내부 `auth_principal`의 활성 `PROTECTION_STAFF`만 주체로 허용하고 외부 은행 IAM을 호출하지 않는다. 실제 도입 시 기업 IdP/IAM adapter가 주체를 검증하더라도 권한 목적·범위·만료·감사 상태는 ALZ's well이 보존한다.
+
+이 절의 6개 operation은 `IMPLEMENTED-PRIVATE`다. Flyway V40의 `staff_access_grant`와 추가 전용 event 이력으로 고객·직원 principal·목적·scope·만료를 결합하며, 동의·신뢰연락인·금융의향·사건·개인정보 대행 API가 기존 `*_ALL` 권한만으로 고객 경계를 넘지 못하도록 서비스 계층에서 다시 검사한다. 접근권 생성·평가·사용·철회는 모두 감사이력에 남고 실제 은행 IAM이나 외부 시스템은 호출하지 않는다.
+
+V40 보안 강화에서는 사건 배정 대상을 활성 `PROTECTION_STAFF` UUID로 고정하고, 검토·안내승인·메모·후속처리 주체가 배정 principal과 일치하는지 확인한다. 사건 메모·검토사유·후속 목적·결과는 식별정보·계좌·연락처·질병 표현 검사를 통과해야 한다. 금융의향 command는 고객 ID가 포함된 scope와 SHA-256 멱등키만 저장하고, 기존 승인 의향과 새 승인이 충돌하면 명시적 `409`를 반환한다. 통합 감사와 인앱 알림 cursor는 PostgreSQL 마이크로초를 보존하는 v2 형식이며 기존 밀리초 cursor는 읽기 호환만 유지한다. 감사 무결성 해시에 포함되는 시각은 UTC·마이크로초로 먼저 정규화하고 같은 값을 `timestamptz`에 저장해 DB 재조회 후 동일 해시를 재계산할 수 있게 한다.
+
+#### 3.3.19 공식 근거·지식 카탈로그 — 9개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
@@ -1221,8 +1319,17 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P1 | POST | /api/v1/knowledge/search | 권한·효력기간을 적용한 검색 | OWNED |
 | P1 | GET | /api/v1/knowledge/passages/{passageId} | 인용 가능한 조항·페이지 | OWNED |
 | P1 | GET | /api/v1/guidance-candidates | 정책이 고른 보호수단 후보 | OWNED |
-| P2 | POST | /api/v1/admin/knowledge/documents | 공식 자료 등록 | OWNED |
-| P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 | OWNED |
+| P2 | POST | /api/v1/admin/knowledge/documents | 공식 자료 검토등록 (`IMPLEMENTED`) | OWNED |
+| P2 | POST | /api/v1/admin/knowledge/documents/{documentId}/publish | 검수 완료 버전 게시 (`IMPLEMENTED`) | OWNED |
+| P2 | POST | /api/v1/admin/knowledge/ingestion-imports | 검증된 AI chunk를 Spring 권위 passage로 반영 (`IMPLEMENTED`) | OWNED |
+
+앞의 P1 6개는 Flyway V28의 문서·불변 버전·인용 passage 구조를 기반으로 구현하되, V28 seed 자체는 검증된 AI import가 없는 legacy 자료이므로 조회·검색에 노출하지 않는다. `asOf`와 audience로 승인·효력기간을 제한하며, AI 기능 플래그가 꺼졌거나 내부 서비스가 실패하면 검증된 현재 passage의 결정론적 키워드 일치만 사용한다. V65부터 내부 FastAPI가 활성화된 경우 외부 다운로드가 없는 384차원 로컬 임베딩과 PostgreSQL 전문검색 점수를 pgvector에서 결합한다. AI 적재 snapshot은 import 전 `PENDING_ACTIVATION`이므로 내부 FastAPI는 `APPROVED`이면서 `PENDING_ACTIVATION|ACTIVE`인 chunk를 후보로 반환할 수 있지만, Spring이 current `APPROVED/ACTIVE` governance·proof·ACL·효력을 최종 검증하기 전에는 외부 응답에 포함하지 않는다. keyword/vector 가중치는 각각 `0.35/0.65`이며 vector 후보 임계값 `0.15`, 최종 결합 점수 임계값 `0.35` 미만은 무응답 처리한다. 이 설정은 합성 평가 데이터셋의 Recall@3·Recall@5·MRR·무응답 오탐률과 정책 위반 수를 CI 품질 게이트로 검증한다. 안내 후보는 기존 `protection_action_catalog`와 정책 허용 reason code를 결합하되, 현재 로그인 역할로 직접 조회 가능한 검증 passage가 있는 후보만 반환하며 `externalExecutionCreated=false`를 강제한다. 각 resolution은 `GUIDANCE_CITATION` 접근감사에 호출 permission, action code, 기준일, 반환 passage ID와 결과를 남긴다. 실제 은행 내부문서, 외부 검색 API, 외부 모델과 LLM 호출은 포함하지 않는다.
+
+V55·V64·V69의 관리자 3개 API는 공용 manifest/import 계약과 동일한 문서 ID·버전·체크섬·ACL·효력 메타데이터만 저장한다. 등록 상태는 `IN_REVIEW/PENDING_ACTIVATION`이며 `KNOWLEDGE_ADMIN_WRITE`, `Idempotency-Key`, 명시적 게시 승인과 낙관적 버전을 통과하면 `APPROVED/PENDING_ACTIVATION`이 된다. 게시 응답은 `ingestionReady=true`, `searchable=false`이고 기존 `ACTIVE` head는 계속 검색된다. import는 같은 PostgreSQL의 정확한 `SUCCEEDED` ingestion run과 전체 chunk를 statement snapshot으로 대조하며, DB trigger가 proof 값을 직접 생성하고 커밋 시 binding·passage가 모든 AI chunk와 1:1인지 다시 강제한다. 실행이나 chunk가 없거나 본문·순서·페이지·해시·버전이 다르면 fail-closed 처리한다. 검증을 통과한 트랜잭션에서만 target governance `ACTIVE`, 이전 governance `SUPERSEDED`, 새 version·passage, `currentVersion` 전환, 이전 version `supersededAt`을 함께 반영하므로 어느 단계든 실패하면 기존 `ACTIVE` head가 유지된다. V28 legacy head도 새 governance의 supersedes가 현재 document/version과 정확히 일치할 때만 이 경로로 대체한다. import 전 오승인·영구 실패 pending은 같은 catalog head를 기준으로 등록한 후속 버전을 명시적으로 publish할 때 `RETIRED` 감사 이벤트와 제한된 replacement reference를 남기고 교체한다. 별도 자유입력 사유는 받지 않으며 verified import가 생긴 후보에는 이 경로를 허용하지 않는다. AI 계정은 Spring 권위 테이블을 직접 수정하지 않는다. 모든 등록·게시·활성화·대체·import는 불변 감사이력에 보존된다.
+
+AI 검색 장애 시뿐 아니라 내부 AI가 반환한 citation을 Spring이 전부 거부한 경우에도 결정론적 폴백을 사용하고 거부 건수를 감사에 보존한다. 폴백은 Spring catalog 조건만 신뢰하지 않는다. 현재 version과 동일한 `APPROVED/ACTIVE` governance, 역할 ACL, audience, 효력일, source hash가 일치하는 AI binding과 `AI_DB_SNAPSHOT_V1` import proof를 모두 요구한다. V71의 제목·본문 `pg_catalog.simple` stored `tsvector` GIN과 별도 keyword GIN에서 사용자 입력을 `plainto_tsquery`·배열 포함 조건의 바인딩 값으로만 조회하고, 요청 limit에 비례하되 DB 후보를 최대 200개로 제한해 DB에서 일치 개수와 순서를 결정한다. 따라서 SQL 문법을 사용자 문자열로 조립하지 않고, superseded·legacy·미검증 자료를 재노출하지 않으며 전체 corpus DB/메모리 scan도 수행하지 않는다.
+
+V56·V71부터 지식 목록·상세·버전·passage·검색은 permission만으로 허용하지 않는다. 실제 로그인 역할과 current version governance의 `allowedRoles` 교집합, 역할에서 계산한 requester audience, 문서 audience, catalog와 governance 양쪽의 `APPROVED/ACTIVE`, 효력일, source hash가 일치하는 binding, `AI_DB_SNAPSHOT_V1` import proof를 모두 만족해야 한다. 클라이언트 audience는 권한을 넓히지 않고 허용 범위 안에서만 좁히며, `asOf`가 없으면 Spring이 `Asia/Seoul` 현재 날짜를 고정한다. 직접 ID 조회도 같은 필터를 적용해 접근 불가능하거나 legacy·미검증인 문서를 `404`로 숨긴다. 모든 직접 조회·검색과 안내/보호수단의 citation 우회조회는 추가 전용 `knowledge_access_audit_event`에 호출 permission, 역할, audience, action code 또는 필터, 반환 ID와 결과를 기록하되 검색 원문은 저장하지 않고 SHA-256만 보존한다. 검색은 `KnowledgeRetrievalPort` 뒤에서 V65 내부 FastAPI 하이브리드 어댑터와 결정론적 폴백을 선택하고, Spring이 반환 citation을 동일한 proof와 권위 DB에 다시 대조한다.
 
 #### 3.3.20 인앱 알림·고객지원 — 10개
 
@@ -1234,10 +1341,14 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P1 | GET | /api/v1/customers/{customerId}/notification-preferences | 채널별 알림 설정 | OWNED |
 | P1 | PUT | /api/v1/customers/{customerId}/notification-preferences | 알림 설정 변경 | OWNED |
 | P1 | POST | /api/v1/notification-previews | 외부 발송 없는 문구 미리보기 | OWNED |
-| P2 | GET | /api/v1/support/faqs | 자주 묻는 질문 | OWNED |
-| P2 | GET | /api/v1/support/notices | 금융사 공지 조회 | EXTERNAL_INTEGRATION |
+| P2 | GET | /api/v1/support/faqs | 자주 묻는 질문 (`IMPLEMENTED`) | OWNED |
+| P2 | GET | /api/v1/support/notices | 금융사 공지 조회 (`IMPLEMENTED`) | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/support/inquiries | 실제 문의 접수 기능 참조 | REFERENCE_ONLY |
 | P2 | GET | /api/v1/support/inquiries/{inquiryId} | 실제 문의 진행상태 참조 | REFERENCE_ONLY |
+
+앞의 P1 6개는 Flyway V27의 `customer_inbox_message`, `customer_notification_preference`와 함께 구현했다. 목록은 `(createdAt, messageId)` 복합 커서를 사용하고 읽음 처리와 설정 변경은 `expectedVersion` 낙관적 잠금을 적용한다. 고객은 자신의 알림만 조회·변경할 수 있으며 미리보기는 `NOTIFICATION_PREVIEW` 권한과 승인 템플릿 코드만 허용한다. 모든 응답은 `externalDeliveryExecuted=false` 또는 `externalDeliveryEnabled=false`를 명시하며 문자·푸시·전화·외부 예약을 실행하지 않는다.
+
+V60의 고객지원 조회 2개는 Bearer 인증과 `SUPPORT_CONTENT_READ`를 요구한다. FAQ는 `GENERAL|SECURITY|ALERTS|PRIVACY|ACCESSIBILITY` 범주와 최대 100건 제한을, 공지는 `SERVICE|SECURITY|MAINTENANCE|PRODUCT` 범주·게시일 범위·최대 100건 제한을 적용한다. 양쪽 원본은 추가 전용 snapshot이며 공지는 중요 여부, 게시시각, ID의 고정 정렬로 반환한다. FAQ는 내부 합성 콘텐츠이고 공지는 안심은행 `SYNTHETIC_PROVIDER` 자료이므로 `syntheticData=true`, `externalProviderCalled=false`, `externalActionExecuted=false`를 고정한다. 문의 접수·상태 API는 계속 `REFERENCE_ONLY`이며 외부 고객센터를 호출하지 않는다.
 
 #### 3.3.21 감사·컴플라이언스·정보권리 — 8개
 
@@ -1251,6 +1362,28 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P2 | GET | /api/v1/compliance/retention-policies | 보존·파기 정책 조회 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/privacy/deletion-requests | 삭제 요청과 법적 예외 기록 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/privacy/correction-requests | 데이터 정정 요청 | OWNED |
+
+앞의 P1 감사·컴플라이언스 조회 4개는 Flyway V36의 전용 최소권한과 함께 구현한다. 감사 검색은
+`decision_audit`, 경보·사건·동의·신뢰연락인·정책·기능 플래그의 append-only 이력을 통합하되
+원본을 수정하지 않는다. `(occurredAt,eventId)` 불투명 cursor와 source/event/customer/기간 필터를
+사용한다. 판단 추적은 정책·알고리즘·상태·무결성 hash를 반환하고, 데이터 출처 조회는
+`DETECTION_RUN`, `SIGNAL`, `ALERT`, `CASE`, `POLICY`의 합성 lineage만 제공한다. 응답은 항상
+`externalProviderCalled=false`, `externalActionExecuted=false`다. `AUDIT_READ_ALL`과
+`COMPLIANCE_TRACE_READ`는 기존 역할에 자동 부여하지 않고 별도 승인된 주체에만 할당한다.
+
+P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37의
+`compliance_retention_policy`, `customer_privacy_request`, 추가 전용
+`customer_privacy_request_event`와 함께 구현했다. 삭제 요청은 데이터를 즉시 파기하지 않고
+`LEGAL_HOLD_REVIEW` 상태와 `RETENTION_POLICY_REVIEW_REQUIRED` 예외를 기록한다. 정정 요청도
+원본을 직접 덮어쓰지 않고 검토 요청만 생성한다. 두 생성 API는 고객·요청유형·`Idempotency-Key`를
+범위로 원자적 멱등성을 보장하며 다른 payload 재사용은 `409 IDEMPOTENCY_CONFLICT`로 거절한다.
+응답은 항상 `deletionExecuted=false`, `externalActionExecuted=false`이고 외부 기관이나 모델을 호출하지 않는다.
+
+감사자료 내보내기 요청은 Flyway V38의 `audit_export_request`와 추가 전용
+`audit_export_request_event`로 구현했다. 이 API는 승인 대기 작업만 만들며 파일, 다운로드 URL,
+외부 전송을 생성하지 않는다. `AUDIT_EXPORT_REQUEST`는 기존 역할에 자동 부여하지 않는다.
+요청 기간은 과거의 정상 범위여야 하고, 주체·`Idempotency-Key` 범위의 원자적 멱등 처리를 적용한다.
+응답은 `artifactCreated=false`, `downloadEnabled=false`, `externalTransferExecuted=false`를 강제한다.
 
 #### 3.3.22 관리자 규칙·정책·모델 — 10개
 
@@ -1267,13 +1400,32 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | P1 | GET | /api/v1/admin/feature-flags | 환경별 기능 플래그 | OWNED |
 | P2 | PUT | /api/v1/admin/feature-flags/{flagKey} | 승인된 기능 플래그 변경 | OWNED |
 
-#### 3.3.23 운영·배치·연동 상태 — 8개
+앞의 관리자 규칙·정책 버전 P1/P2 8개는 Flyway V34의 `detection_policy_version`과 append-only
+`detection_policy_event`로 구현한다. 규칙 묶음은 `DRAFT → ACTIVE → RETIRED`로 전이하며 활성 버전은
+항상 하나만 허용한다. 수정은 `expectedVersion` 낙관적 잠금을 사용하고, rollback은 과거 행을 다시
+활성화하지 않고 동일 규칙의 새 ACTIVE 버전을 생성한다. 탐지 실행은 당시의 `policyVersion`과
+`policySnapshotHash`를 `synthetic_detection_run`에 고정해 이후 정책 변경과 무관하게 재현할 수 있다.
+알고리즘 버전 조회는 `advisoryAiUsed=false`, `externalProviderCalled=false`를 명시한다.
+기능 플래그 2개는 Flyway V35의 승인 희망값과 append-only 변경이력으로 구현한다. API는 Spring
+런타임 설정을 동적으로 바꾸지 않으며 `desiredEnabled`, `runtimeEnabled`, `appliedToRuntime`,
+`restartRequired`를 분리해 반환한다. 외부 실행·외부 송신·외부 모델 가드레일은 API 변경 불가이고,
+사설 기능 활성화도 공개 배포에서는 거부한다. 실제 적용은 승인된 배포 환경변수와 재기동을 거쳐야 한다.
+
+#### 3.3.23 운영·배치·합성 탐지·연동 상태 — 16개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P2 | GET | /api/v1/internal/ops/jobs | 기준선·탐지·정리 작업 목록 | OWNED |
 | P2 | GET | /api/v1/internal/ops/jobs/{jobId} | 작업 실행상태·오류 | OWNED |
 | P2 | POST | /api/v1/internal/ops/jobs/{jobId}/retry | 실패 작업 안전 재시도 | OWNED |
+| P1 | POST | /api/v1/admin/synthetic-datasets | 합성 특징·근거 데이터셋 초안 등록 | OWNED |
+| P1 | GET | /api/v1/admin/synthetic-datasets/{datasetId} | 합성 데이터셋·검증상태 조회 | OWNED |
+| P1 | POST | /api/v1/admin/synthetic-datasets/{datasetId}/validate | 합성 데이터셋 의미 검증 | OWNED |
+| P1 | POST | /api/v1/admin/synthetic-datasets/{datasetId}/ingest | 검증된 합성 데이터셋 불변 적재 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/detection-runs | 합성 데이터셋 결정론적 탐지 실행 | OWNED |
+| P1 | GET | /api/v1/detection-runs/{detectionRunId} | 합성 탐지 실행 결과 조회 | OWNED |
+| P1 | POST | /api/v1/detection-runs/{detectionRunId}/promotion | 탐지 결과를 운영형 신호·경보로 단일 승격 | OWNED |
+| P1 | GET | /api/v1/detection-runs/{detectionRunId}/promotion | 탐지 실행 승격 결과 조회 | OWNED |
 | P1 | GET | /api/v1/internal/ops/audit-integrity | 감사 체인·누락 검사 | OWNED |
 | P1 | GET | /api/v1/internal/integrations/providers | 외부 공급자 상태 목록 | EXTERNAL_INTEGRATION |
 | P1 | GET | /api/v1/internal/integrations/providers/{providerId}/health | 공급자 연결상태 | EXTERNAL_INTEGRATION |
@@ -1284,14 +1436,16 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
-| P1 | GET | /api/v1/fx/rates | 금융사 제공 환율표 | EXTERNAL_INTEGRATION |
-| P1 | GET | /api/v1/fx/rates/{currency} | 통화별 환율 상세 | EXTERNAL_INTEGRATION |
-| P2 | GET | /api/v1/customers/{customerId}/foreign-currency-accounts | 외화계좌 현황 | EXTERNAL_INTEGRATION |
-| P2 | POST | /api/v1/fx/exchange-simulations | 외화 환전 모의계산 | OWNED |
-| P2 | GET | /api/v1/customers/{customerId}/overseas-remittance-history | 해외송금 이력 조회 | EXTERNAL_INTEGRATION |
+| P1 | GET | /api/v1/fx/rates | 금융사 제공 환율표 (`IMPLEMENTED`) | EXTERNAL_INTEGRATION |
+| P1 | GET | /api/v1/fx/rates/{currency} | 통화별 환율 상세 (`IMPLEMENTED`) | EXTERNAL_INTEGRATION |
+| P2 | GET | /api/v1/customers/{customerId}/foreign-currency-accounts | 외화계좌 현황 (`IMPLEMENTED`) | EXTERNAL_INTEGRATION |
+| P2 | POST | /api/v1/fx/exchange-simulations | 외화 환전 모의계산 (`IMPLEMENTED`) | OWNED |
+| P2 | GET | /api/v1/customers/{customerId}/overseas-remittance-history | 해외송금 이력 조회 (`IMPLEMENTED`) | EXTERNAL_INTEGRATION |
 | P2 | POST | /api/v1/fx/exchanges | 실제 환전 기능 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/overseas-remittances | 실제 해외송금 접수 참조 | REFERENCE_ONLY |
 | P2 | POST | /api/v1/overseas-remittances/{remittanceId}/confirm | 실제 해외송금 승인 참조 | REFERENCE_ONLY |
+
+V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환율·외화계좌·합성 해외송금 이력은 `FX_READ`, 실행 없는 환전 계산은 `FX_SIMULATE`를 요구하며 고객 경로는 본인 소유권을 검사한다. 계좌번호는 마스킹 값만, 해외 수취인은 합성 별칭만 저장하고 모든 snapshot은 추가 전용이다. 실제 환전·송금·승인·외부 호출은 생성하지 않으며 마지막 실행 3개 API는 계속 `REFERENCE_ONLY`다.
 
 #### 3.3.25 보험·방카슈랑스 — 8개
 
@@ -1325,9 +1479,9 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 | Wave 1 | P0-A 핵심 A/B 데모 | 12 |
 | Wave 2 | P0-B 세션 격리 뱅킹 셸 | 23 |
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
-| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 248 |
+| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
 
-발표에서는 “248개 API 카탈로그를 설계했고 공모전 구현 목표는 안전한 P0 23개”라고 표현한다. 248개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “272개 API 카탈로그를 설계했고 228개 코드 operation을 구현했다”고 표현한다. 272개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -1346,11 +1500,11 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 |---|---:|---|
 | `Content-Type: application/json` | JSON 본문 사용 시 | 문자 인코딩은 UTF-8 |
 | `X-Trace-Id` | 선택 | 8~64자의 영문·숫자·`.`·`_`·`-`; 없거나 형식이 틀리면 서버가 생성 |
-| `Idempotency-Key` | 세션 생성을 제외한 변경 API에서 필수 | 8~64자의 고유 키; 동일 소유범위·경로·`requestHash` 재요청만 최초 결과를 재사용 |
+| `Idempotency-Key` | 명세에 멱등 명령으로 표시된 상태 변경 API에서 필수 | 8~100자의 고유 키; 동일 소유범위·경로·`requestHash` 재요청만 최초 업무 결과를 재사용 |
 | `X-Demo-Capability` | 모든 세션 범위 API에서 필수 | 고객 세션 생성 또는 인증된 직원 발급 경로에서 받은 256-bit 이상의 불투명 소유권 토큰; URL·본문·로그에 기록 금지 |
 | `X-Demo-Run-Id` | 시나리오 적재 후 run 파생 API에서 필수 | Reset 전후 실행을 구분하는 서버 발급 ID; 오래된 탭의 상태 혼합 방지 |
 | `Authorization: Bearer {token}` | PoC/운영 행원 API | 공개 합성데모에서는 생략; 운영에서는 RBAC 적용 |
-| `Authorization: Basic {credentials}` | staging 직원 capability 발급 API | 신뢰된 운영자 전용 임시 경계; 브라우저 번들에 자격증명을 넣지 않으며 실제 운영 전 기업 IdP·MFA로 교체 |
+| `Authorization: Bearer {bootstrap-token}` | staging 직원 capability 발급 API | 신뢰된 운영자 전용 opaque 임시 토큰; 브라우저 번들에 넣지 않으며 실제 운영 전 기업 IdP·MFA로 교체 |
 
 모든 응답은 `X-Trace-Id` 헤더를 반환하며 본문의 `traceId`와 같아야 한다.
 
@@ -1364,7 +1518,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 `CUSTOMER_DEMO` capability는 세션 조회·적재·Reset, 금융생활 읽기, 알림 조회와 맥락 제출에만 사용할 수 있다. `DEMO_STAFF` capability는 행원 사건큐·상세·검토·안내계획과 필요한 감사조회에만 사용할 수 있다. 역할 범위를 벗어난 유효 토큰은 `403 DEMO_CAPABILITY_SCOPE_FORBIDDEN`을 반환한다. 두 토큰을 하나로 합치거나 고객 화면에 staff 토큰을 전달하지 않는다.
 
-현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 HTTP Basic으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, 자격증명은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
+현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 opaque bootstrap Bearer 토큰으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, bootstrap 토큰은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
 
 시나리오가 적재되면 서버는 `demoRunId`를 발급한다. alert·context·audit·case와 시나리오 파생 금융생활 조회는 `{sessionId, demoRunId}` 복합범위에 귀속된다. Reset 뒤 이전 run ID로 변경 요청을 보내면 `409 DEMO_RUN_STALE`을 반환하고 이전 run의 감사이력은 읽기 전용으로만 보존한다.
 
@@ -1372,7 +1526,7 @@ follow-ups는 일정과 업무상태만 관리한다. 전화·문자·푸시 발
 
 `POST /api/v1/demo/sessions`는 멱등 API가 아니다. 이 API에서 클라이언트 제공 `Idempotency-Key`를 받거나 전역 namespace로 재사용하지 않는다. Gateway 초기 제한값은 세션 생성 IP당 분당 10회, 전체 조회 IP·capability 각각 분당 120회, 상태변경 IP·capability 각각 분당 30회, 요청 본문 32KiB다. 신뢰 프록시는 환경별 CIDR allowlist로 한정하며 초과 시 `429`와 `Retry-After`를 반환한다. 애플리케이션의 동시 활성 세션 quota 초과는 `429 DEMO_SESSION_RATE_LIMITED`를 반환한다.
 
-그 밖의 변경 API에서 서버는 `HTTP method + 정규화 path + 정규화 query + content-type + canonical JSON body`의 SHA-256을 `requestHash`로 계산한다. 멱등 저장키는 `{sessionId, capabilityHash, capabilityRole, demoRunId, method, path, idempotencyKey}`다. Reset처럼 요청 시점의 run을 닫는 명령도 저장키에는 요청 헤더의 이전 `demoRunId`를 사용한다.
+멱등 명령으로 표시된 API에서 서버는 `HTTP method + 정규화 path + 정규화 query + content-type + canonical JSON body`의 SHA-256을 `requestHash`로 계산한다. 데모 멱등 저장키는 `{sessionId, capabilityHash, capabilityRole, demoRunId, method, path, idempotencyKey}`다. Reset처럼 요청 시점의 run을 닫는 명령도 저장키에는 요청 헤더의 이전 `demoRunId`를 사용한다.
 
 - 동일 저장키와 동일 `requestHash`: 최초 HTTP status·응답 code·resource ID를 그대로 재사용한다.
 - 동일 저장키와 다른 `requestHash`: `409 IDEMPOTENCY_CONFLICT`를 반환하며 상태를 변경하지 않는다.
@@ -1554,7 +1708,7 @@ Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability
 
 ```http
 POST /api/v1/demo/staff/sessions/{sessionId}/capability
-Authorization: Basic {staging-operator-credentials}
+Authorization: Bearer {staging-bootstrap-token}
 ```
 
 직원 origin과 인증된 staging 운영자에게만 허용한다. 발급할 때마다 기존 staff capability는 즉시 회전되어 이전 원문은 더 이상 사용할 수 없다. 자격증명을 직원 SPA 번들에 포함하면 안 되며 실제 운영 전에는 기업 IdP·MFA·RBAC로 교체한다.
@@ -2086,7 +2240,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "9",
+        "schemaVersion": "72",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2282,6 +2436,11 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
         "action": "APPROVE_GUIDANCE_PLAN",
         "enabled": false,
         "disabledReasonCode": "REVIEW_NOT_STARTED"
+      },
+      {
+        "action": "CLOSE_FALSE_POSITIVE",
+        "enabled": false,
+        "disabledReasonCode": "REVIEW_NOT_STARTED"
       }
     ]
   },
@@ -2292,6 +2451,7 @@ GET /api/v1/demo/sessions/{sessionId}/cases/{caseId}
 ```
 
 `protectionCandidates`는 공식 조건과 상담 경로만 제공한다. `executionType`은 P0에서 항상 `GUIDANCE_ONLY`다.
+`allowedActions`는 화면이 서버 상태머신을 추측하지 않도록 `START_REVIEW`, `APPROVE_GUIDANCE_PLAN`, `CLOSE_FALSE_POSITIVE`의 현재 허용 여부를 함께 반환한다. 오탐 종결은 반드시 행원이 검토를 시작한 뒤에만 활성화한다.
 
 #### 5.4.2.0 행원 내부 메모 조회
 
@@ -2354,7 +2514,9 @@ Content-Type: application/json
 {"draftType":"CONSULTATION_NOTE"}
 ```
 
-응답은 `summary`, `suggestedQuestions`, `checklist`, `basisReasonCodes`와 안전 메타데이터를 반환한다. 현재 구현은 `CopilotPort` 뒤의 `DETERMINISTIC_TEMPLATE`이며 `modelInvoked=false`, `externalEgressAttempted=false`, `humanReviewRequired=true`를 강제한다. 직접식별자를 포트 입력으로 전달하지 않고 실제 연락·거래조치·상태전이를 만들지 않는다.
+응답은 `summary`, `suggestedQuestions`, `checklist`, `basisReasonCodes`, `retrievalMode`, `citations`와 안전 메타데이터를 반환한다. `COPILOT_RAG_ENABLED=true`이고 승인·활성·ACL·효력 검증을 통과한 내부 근거가 있을 때만 `RAG_GROUNDED_TEMPLATE`을 반환한다. 근거가 없거나 내부 검색이 실패하면 `DETERMINISTIC_TEMPLATE`로 폴백한다. 두 경로 모두 `modelInvoked=false`, `externalEgressAttempted=false`, `humanReviewRequired=true`를 강제한다. 직접식별자와 미확인 항목 원문은 검색 질의로 전달하지 않으며 실제 연락·거래조치·상태전이를 만들지 않는다. 공식 원문은 검토 완료 전 임의로 `APPROVED/ACTIVE` 처리하지 않는다.
+
+CI의 `scripts/copilot_rag_e2e.py`는 합성 승인 문서만 사용해 `PostgreSQL ingestion → Spring import → INTERNAL_RAG_HYBRID → RAG_GROUNDED_TEMPLATE + citations`를 검증하고, FastAPI 중단 후 같은 사건이 `DETERMINISTIC_TEMPLATE`로 폴백하는지 확인한다. 실행 증적에는 capability·access token·원문 검색 질의를 저장하지 않는다.
 
 #### 5.4.2.5 행원 내부 메모 등록
 
@@ -2608,7 +2770,10 @@ GET /api/v1/system/readiness
       "database": "UP",
       "flyway": "UP",
       "syntheticFixtures": "UP",
-      "policyCatalog": "UP"
+      "policyCatalog": "UP",
+      "detectionPolicy": "UP",
+      "safeGuardrails": "UP",
+      "aiRetrieval": "DISABLED"
     }
   },
   "errors": [],
@@ -2617,7 +2782,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. 외부 LLM 장애는 템플릿 폴백이 가능하므로 readiness 실패 사유가 아니다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V72와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. AI가 비활성화되면 `aiRetrieval=DISABLED`, 선택 연결이면 초기 기동 순서와 결정론적 폴백을 방해하지 않도록 능동 probe 없이 `OPTIONAL`을 표시한다. AWS AI 통합 staging은 strict 모드를 사용하므로 FastAPI health의 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경이 기대값과 다르면 `MISMATCH`, 무응답이면 `DOWN`으로 readiness를 실패시킨다.
 
 #### 공개 설정
 
@@ -2670,7 +2835,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "9",
+    "schemaVersion": "72",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -2825,7 +2990,7 @@ GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/connections/consent
 }
 ```
 
-화면에는 네 참여기관 배지를 사용할 수 있지만 연결 데이터가 합성이라는 표시를 고정한다. 기관 브랜드 UI를 복제하거나 실제 연결 완료로 표현하지 않는다.
+화면에는 안심은행·안심증권 두 합성기관 배지를 사용할 수 있지만 연결 데이터가 합성이라는 표시를 고정한다. 실제 참여 기업의 브랜드 UI를 복제하거나 실제 연결 완료로 표현하지 않는다.
 
 ---
 
@@ -3138,7 +3303,7 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 수용기준:
 
 - 모든 금융생활 읽기 응답은 최상위 `provenance.syntheticData=true` 또는 `dataMode=SYNTHETIC_ONLY`를 제공하고 프론트는 이를 항상 표시한다.
-- 네 참여기관 배지는 합성 연결이며 실제 제휴·실연동으로 표현하지 않는다.
+- 안심은행·안심증권 배지는 합성 연결이며 실제 제휴·실연동으로 표현하지 않는다.
 - 같은 Reset 뒤 계좌, 거래, 기준선, 연결, 자산 요약의 snapshot hash가 동일하다.
 - 모든 session 범위 읽기는 올바른 역할의 `X-Demo-Capability`를 검증하고, 시나리오 파생 읽기는 활성 `X-Demo-Run-Id`도 검증한다.
 - 금액은 10진 문자열로 직렬화한다.
@@ -3147,6 +3312,726 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 - P0 Spring 컨테이너의 외부 HTTPS 연결은 실패하고 Docker internal 네트워크의 PostgreSQL 통신만 성공한다. FastAPI는 P1 이후 별도 내부 서비스로 도입할 때 같은 정책을 적용한다.
 - `protection-actions`의 모든 P0 항목은 `GUIDANCE_ONLY`다.
 - 계좌번호·카드번호는 마스킹하며 합성값이라도 실제 번호 형식을 그대로 노출하지 않는다.
+
+---
+
+## 6.1 P1 고객 프로필·접근성 상세 계약
+
+이 절의 7개 operation은 `IMPLEMENTED`지만 `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이다. 사설 검증 환경에서만 기능 플래그를 켜며, 모든 경로는 Bearer 인증과 customerId 소유권을 검증한다.
+
+### 공통 인증과 path
+
+```http
+Authorization: Bearer {accessToken}
+```
+
+- `customerId`: `^[A-Za-z0-9][A-Za-z0-9_:-]{2,79}$`
+- 본인 조회: 인증 주체의 `authentication.name == customerId`
+- 조회 authority: `CUSTOMER_PROFILE_READ` 또는 `CUSTOMER_PROFILE_READ_ALL`
+- 변경 authority: `CUSTOMER_PROFILE_WRITE` 또는 `CUSTOMER_PROFILE_WRITE_ALL`
+- 다른 고객의 ID를 사용하면 `403 COMMON_FORBIDDEN`
+- 존재하지 않는 고객은 `404 CUSTOMER_NOT_FOUND`
+- 변경의 `expectedVersion`이 현재 `version`과 다르면 `409 CUSTOMER_VERSION_CONFLICT`
+
+### 6.1.1 고객 요약 조회
+
+```http
+GET /api/v1/customers/{customerId}
+```
+
+성공은 `200 CUSTOMER_SUMMARY_RETRIEVED`이며 `data`는 다음 필드를 가진다.
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `customerId` | string | N | 비식별 고객 ID |
+| `displayName` | string | N | 화면 표시명 |
+| `organization` | string | N | 합성 소속 표시 |
+| `region` | string | N | 지역 코드 |
+| `status` | enum | N | `ACTIVE`, `SUSPENDED`, `CLOSED` |
+| `version` | integer(int64) | N | 낙관적 잠금 버전 |
+| `createdAt` | ISO-8601 offset datetime | N | 생성시각 |
+| `updatedAt` | ISO-8601 offset datetime | N | 최종 변경시각 |
+
+### 6.1.2 표시 프로필 변경
+
+```http
+PATCH /api/v1/customers/{customerId}/display-profile
+Content-Type: application/json
+Idempotency-Key: {8~100자의 안전한 키}
+```
+
+```json
+{
+  "expectedVersion": 0,
+  "displayName": "이용자 001"
+}
+```
+
+- `expectedVersion`: 필수, 0 이상
+- `displayName`: 필수, trim 후 빈 문자열 금지, 최대 80자
+- 성공: `200 CUSTOMER_DISPLAY_PROFILE_UPDATED`
+- 응답 `data`: `customerId`, `displayName`, 증가된 `version`, `updatedAt`
+- 같은 고객·키·요청의 재전송은 최초 업무 결과를 재사용하고, 같은 키에 다른 요청은 `409 CUSTOMER_IDEMPOTENCY_CONFLICT`다.
+
+### 6.1.3 환경설정 조회·부분변경
+
+```http
+GET   /api/v1/customers/{customerId}/preferences
+PATCH /api/v1/customers/{customerId}/preferences
+```
+
+PATCH는 `Idempotency-Key: {8~100자의 안전한 키}`를 필수로 요구한다.
+
+PATCH 요청:
+
+```json
+{
+  "expectedVersion": 0,
+  "smsNotificationEnabled": false,
+  "pushNotificationEnabled": false,
+  "inAppNotificationEnabled": true
+}
+```
+
+- `expectedVersion`은 필수다.
+- 세 boolean은 nullable이며 하나 이상을 반드시 보내야 한다.
+- `null` 또는 생략된 설정은 현재 값을 유지한다.
+- 실제 SMS·push 발송을 실행하지 않고 서비스 설정만 저장한다.
+- 조회 성공: `200 CUSTOMER_PREFERENCES_RETRIEVED`
+- 변경 성공: `200 CUSTOMER_PREFERENCES_UPDATED`
+- 응답 필드: `customerId`, 세 boolean, `version`, `updatedAt`
+
+### 6.1.4 접근성 설정 조회·전체변경
+
+```http
+GET /api/v1/customers/{customerId}/accessibility-settings
+PUT /api/v1/customers/{customerId}/accessibility-settings
+```
+
+PUT은 `Idempotency-Key: {8~100자의 안전한 키}`를 필수로 요구한다.
+
+PUT 요청:
+
+```json
+{
+  "expectedVersion": 0,
+  "largeFont": true,
+  "highContrast": false,
+  "speechGuidance": false,
+  "oneHandMode": true
+}
+```
+
+PUT은 전체 교체다. `expectedVersion`과 네 boolean은 모두 필수다.
+
+- 조회 성공: `200 CUSTOMER_ACCESSIBILITY_SETTINGS_RETRIEVED`
+- 변경 성공: `200 CUSTOMER_ACCESSIBILITY_SETTINGS_UPDATED`
+- 응답 필드: `customerId`, 네 boolean, `version`, `updatedAt`
+
+### 6.1.5 보유 데이터 요약 조회
+
+```http
+GET /api/v1/customers/{customerId}/data-summary
+```
+
+성공은 `200 CUSTOMER_DATA_SUMMARY_RETRIEVED`다.
+
+```json
+{
+  "customerId": "SYN_CUSTOMER_FIN_MGMT_001",
+  "institutions": 2,
+  "accounts": 4,
+  "transactionsSynced": 42,
+  "lastSyncAt": null,
+  "dataFreshness": {
+    "accounts": "FIXED_SNAPSHOT",
+    "transactions": "FIXED_SNAPSHOT",
+    "baseline": "CURRENT"
+  },
+  "updatedAt": "2026-08-14T00:00:00Z"
+}
+```
+
+개수는 0 이상이며 `lastSyncAt`만 nullable이다. 실제 금융회사 동기화를 시작하지 않는다.
+
+---
+
+## 6.2 P1 로컬 합성 인증 상세 계약
+
+이 절의 6개 operation은 `IMPLEMENTED-DEVELOPMENT-ONLY`다. `LOCAL_AUTH_API_ENABLED=true`일 때만 Controller가 등록되고 production에서는 강제로 비활성화된다. 실제 서비스의 기업 IdP 계약이 아니다.
+
+### 공통 token 계약
+
+- access·refresh token은 256-bit 불투명 난수이며 JWT가 아니다.
+- token 원문은 응답에서 한 번만 반환하고 DB에는 SHA-256 hash만 저장한다.
+- access 기본 TTL은 15분, refresh sliding TTL은 8시간, 세션 절대 TTL은 24시간이다.
+- refresh할 때 access·refresh token을 모두 회전한다.
+- 이미 사용한 refresh token이 다시 들어오면 탈취 신호로 보고 token family 전체를 폐기한다.
+- 사용자별 활성 세션 기본 상한은 5개이며 초과 시 가장 오래된 세션부터 폐기한다.
+- Authorization header, token, 비밀번호를 URL·로그·감사 payload에 기록하지 않는다.
+
+### 6.2.1 로그인
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "loginId": "synthetic-customer",
+  "password": "{12~200자의 로컬 합성 계정 비밀번호}"
+}
+```
+
+- 인증 불필요
+- `loginId`: 필수, 최대 80자
+- `password`: 필수, 12~200자
+- 성공: `200 AUTH_LOGIN_SUCCEEDED`
+- 실패: `401 AUTH_INVALID_CREDENTIALS`; 계정 존재 여부를 구분하지 않는다.
+- 같은 loginId hash의 반복 실패: `429 AUTH_LOGIN_RATE_LIMITED`
+
+성공 `data`:
+
+```json
+{
+  "tokenType": "Bearer",
+  "accessToken": "{opaque-token}",
+  "accessExpiresAt": "2026-08-18T01:15:00Z",
+  "refreshToken": "{opaque-refresh-token}",
+  "refreshExpiresAt": "2026-08-18T09:00:00Z"
+}
+```
+
+### 6.2.2 token 갱신
+
+```http
+POST /api/v1/auth/token/refresh
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "{40~300자의 opaque refresh token}"
+}
+```
+
+- Bearer 인증은 요구하지 않고 refresh token 자체를 검증한다.
+- 성공: `200 AUTH_TOKEN_REFRESHED`, 새로운 `TokenPair` 반환
+- token 없음·만료·폐기·절대 만료: `401 AUTH_INVALID_TOKEN`
+- 이전 token 재사용: `401 AUTH_INVALID_TOKEN`과 해당 family 전체 폐기
+- 새 `refreshExpiresAt`은 절대 만료를 넘지 않는다.
+
+### 6.2.3 현재 세션 로그아웃
+
+```http
+POST /api/v1/auth/logout
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 AUTH_LOGOUT_SUCCEEDED`, `data=null`
+- 이미 폐기되었거나 유효하지 않은 세션: `401 AUTH_INVALID_TOKEN` 또는 `AUTH_SESSION_REVOKED`
+- 현재 세션과 연결된 모든 refresh token을 폐기한다.
+
+### 6.2.4 모든 세션 로그아웃
+
+```http
+POST /api/v1/auth/logout-all
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 AUTH_LOGOUT_ALL_SUCCEEDED`, `data=null`
+- 인증 주체의 현재·다른 기기 세션과 refresh token을 모두 폐기한다.
+
+### 6.2.5 현재 사용자 조회
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer {accessToken}
+```
+
+성공은 `200 AUTH_CURRENT_USER_RETRIEVED`다.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `principalId` | UUID | 인증 주체 ID |
+| `loginId` | string | 로컬 합성 로그인 ID |
+| `customerId` | string | 연결된 비식별 고객 ID |
+| `displayName` | string | 표시명 |
+| `roles` | string[] | 정렬된 역할 목록 |
+
+### 6.2.6 권한 조회
+
+```http
+GET /api/v1/auth/me/permissions
+Authorization: Bearer {accessToken}
+```
+
+성공은 `200 AUTH_PERMISSIONS_RETRIEVED`이며 `data.permissions`는 중복 없이 정렬된 authority 문자열 배열이다.
+
+---
+
+## 6.3 P1 합성 금융기관·연결 조회 상세 계약
+
+이 절의 4개 operation은 `IMPLEMENTED-SYNTHETIC-READ-ONLY`다. 모든 데이터는 PostgreSQL 고정 snapshot이며 실제 금융기관·마이데이터 API를 호출하지 않는다.
+
+### 공통 인증
+
+- 네 endpoint 모두 Bearer 인증이 필요하다.
+- 기관 목록·상세는 유효한 인증 주체면 조회할 수 있다.
+- 고객 연결 목록·상세는 본인 `customerId + FINANCIAL_CONNECTION_READ` 또는 `FINANCIAL_CONNECTION_READ_ALL`이 필요하다.
+- `customerId`: `^[A-Za-z0-9][A-Za-z0-9_:-]{2,79}$`
+- `institutionId`: `^[A-Z][A-Z0-9_]{2,39}$`
+- `connectionId`: UUID
+
+### 공통 DTO
+
+`InstitutionSummary`:
+
+| 필드 | 타입 | 값·설명 |
+|---|---|---|
+| `institutionId` | string | `SYNTHETIC_BANK`, `SYNTHETIC_SECURITIES` |
+| `displayName` | string | 안심은행, 안심증권 |
+| `institutionType` | enum | `BANK`, `SECURITIES` |
+| `providerMode` | enum | 항상 `SYNTHETIC_PROVIDER` |
+| `connectionAvailable` | boolean | 합성 연결 가능 여부 |
+| `dataAsOf` | date | 고정 snapshot 기준일 |
+
+`Scope`:
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `scopeCode` | string | N | `ACCOUNTS`, `TRANSACTIONS`, `INVESTMENT_ACCOUNTS`, `POSITIONS` |
+| `displayName` | string | N | 화면 표시명 |
+| `readOnly` | boolean | N | 현재 항상 true |
+| `consentStatus` | enum | Y | 기관 지원범위에서는 null, 고객 연결에서는 `CONSENTED` 또는 `WITHDRAWN` |
+
+### 6.3.1 금융기관 목록
+
+```http
+GET /api/v1/financial-institutions
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 FINANCIAL_INSTITUTIONS_RETRIEVED`
+- 응답: `{ "items": InstitutionSummary[], "total": integer }`
+- 정렬: `displayName`, `institutionId` 오름차순
+- 현재 fixture의 `total`은 2다.
+
+### 6.3.2 금융기관 상세
+
+```http
+GET /api/v1/financial-institutions/{institutionId}
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 FINANCIAL_INSTITUTION_RETRIEVED`
+- 응답: `{ "institution": InstitutionSummary, "supportedScopes": Scope[] }`
+- 없음: `404 CONNECTION_INSTITUTION_NOT_FOUND`
+- `supportedScopes`는 `scopeCode` 오름차순이며 `consentStatus=null`이다.
+
+### 6.3.3 고객 연결 목록
+
+```http
+GET /api/v1/customers/{customerId}/connections
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 CUSTOMER_CONNECTIONS_RETRIEVED`
+- 응답: `{ "items": ConnectionSummary[], "total": integer }`
+- 정렬: 기관 `displayName`, `connectionId` 오름차순
+
+`ConnectionSummary` 필드:
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `connectionId` | UUID | N | 연결 ID |
+| `customerId` | string | N | 소유 고객 |
+| `institution` | InstitutionSummary | N | 합성 기관 |
+| `connectionStatus` | enum | N | `ACTIVE`, `DEGRADED`, `EXPIRED` |
+| `consentedAt` | datetime | N | 합성 동의 시작 |
+| `consentExpiresAt` | datetime | N | 합성 동의 만료 |
+| `lastSyncedAt` | datetime | Y | 마지막 snapshot 동기화 |
+| `providerMode` | enum | N | 항상 `SYNTHETIC_PROVIDER` |
+| `version` | integer(int64) | N | row version |
+
+### 6.3.4 고객 연결 상세
+
+```http
+GET /api/v1/customers/{customerId}/connections/{connectionId}
+Authorization: Bearer {accessToken}
+```
+
+- 성공: `200 CUSTOMER_CONNECTION_RETRIEVED`
+- 응답: `{ "connection": ConnectionSummary, "consentScopes": Scope[] }`
+- 같은 고객에게 해당 연결이 없음: `404 CONNECTION_NOT_FOUND`
+- 다른 고객 ID로 조회하면 소유권 단계에서 `403 COMMON_FORBIDDEN`
+- `consentScopes`는 `scopeCode` 오름차순이다.
+
+---
+
+## 6.4 P1 고객 기준선·변화신호 상세 계약
+
+이 절의 7개 operation은 `IMPLEMENTED-SYNTHETIC-SNAPSHOT`이다. 운영형 고객 API는 익명 데모의 `{sessionId, demoRunId}` 테이블을 직접 노출하지 않고 V18의 고객 소유 snapshot을 사용한다. 현재 계산은 외부 데이터 수집이나 외부 모델 실행 없이 고정 합성 snapshot을 결정론적으로 검증한다.
+
+### 공통 접근·데이터 경계
+
+- 고객 경로 조회: 본인 `customerId + DETECTION_READ` 또는 `DETECTION_READ_ALL`
+- 계산 생성: 본인 `customerId + DETECTION_CALCULATE` 또는 `DETECTION_CALCULATE_ALL`
+- `/signals/{signalId}` 경로는 `DETECTION_READ` 또는 `DETECTION_READ_ALL`이 필요하다.
+- 다른 고객의 customerId 경로는 `403 COMMON_FORBIDDEN`이다.
+- 다른 고객의 signalId는 소유관계를 감추기 위해 `404 DETECTION_SIGNAL_NOT_FOUND`다.
+- 금액은 10진 문자열로 반환하고 신호는 `BEHAVIOR_CHANGE`이며 금융기관 FDS 판정으로 표현하지 않는다.
+
+### 6.4.1 기준선 목록·상세·특징
+
+```http
+GET /api/v1/customers/{customerId}/baselines
+GET /api/v1/customers/{customerId}/baselines/{baselineId}
+GET /api/v1/customers/{customerId}/baselines/{baselineId}/features
+```
+
+- 목록 성공: `200 CUSTOMER_BASELINES_RETRIEVED`
+- 상세 성공: `200 CUSTOMER_BASELINE_RETRIEVED`
+- 특징 성공: `200 CUSTOMER_BASELINE_FEATURES_RETRIEVED`
+- 기준선 없음: `404 DETECTION_BASELINE_NOT_FOUND`
+- 목록 정렬: `featureCode`, `baselineId` 오름차순
+- 특징 정렬: `featureCode`, `featureId` 오름차순
+- `BaselineSummary`: `baselineId`, `customerId`, `featureCode`, `baselineValue`, `currentValue`, `unit`, `readiness`, `comparisonText`, `algorithmVersion`, `calculatedAt`, `version`
+- 상세 추가 필드: `baselinePeriod`, `observationPeriod`, `snapshotHash`
+- 특징 필드: `featureId`, `featureCode`, `value`, `unit`, `observedPeriod`, `sampleCount`, `snapshotHash`
+
+### 6.4.2 기준선 계산 작업 생성
+
+```http
+POST /api/v1/customers/{customerId}/baseline-calculations
+Idempotency-Key: {8~100자의 안전한 키}
+```
+
+현재 구현은 이미 적재된 합성 기준선·신호 snapshot을 해시로 검증하고 계산 작업 이력을 남긴다. 원천 금융데이터 재수집, 외부 API, 외부 LLM, 실제 금융 실행은 만들지 않는다.
+
+- 성공: `202 BASELINE_CALCULATION_COMPLETED`
+- snapshot 미준비: `422 DETECTION_SNAPSHOT_NOT_READY`
+- 응답: `calculationId`, `customerId`, `status=COMPLETED`, `algorithmVersion`, `baselinesEvaluated`, `signalsEvaluated`, `reusedCurrentSnapshot=true`, `requestedAt`, `completedAt`, `resultSnapshotHash`, `requestHash`, `idempotencyReplayed`, `externalExecutionCreated=false`
+- `Idempotency-Key`는 필수이며 같은 고객·키의 재요청은 기존 결과와 `idempotencyReplayed=true`를 반환한다.
+- 작업별 `idempotencyKeyHash`, `requestHash`, `inputSnapshotHash`, `resultSnapshotHash`를 저장하고 원문 멱등키는 저장하지 않는다.
+
+### 6.4.3 변화신호 목록·상세·근거
+
+```http
+GET /api/v1/customers/{customerId}/signals?severity=HIGH&status=OPEN
+GET /api/v1/signals/{signalId}
+GET /api/v1/signals/{signalId}/evidence
+```
+
+- 목록 성공: `200 CUSTOMER_SIGNALS_RETRIEVED`
+- 상세 성공: `200 SIGNAL_RETRIEVED`
+- 근거 성공: `200 SIGNAL_EVIDENCE_RETRIEVED`
+- `severity`: 선택, `LOW|MEDIUM|HIGH`
+- `status`: 선택, `OPEN|ACKNOWLEDGED|CLOSED`
+- 목록 정렬: `detectedAt`, `signalId` 내림차순
+- `SignalSummary`: `signalId`, `customerId`, `baselineId`, `signalType`, `severity`, `baselineValue`, `currentValue`, `unit`, `reasonCode`, `status`, `algorithmVersion`, `detectedAt`
+- 근거 필드: `evidenceId`, `evidenceType`, `sourceReference`, `occurredAt`, nullable `amount`·`currency`, `description`, `integrityHash`
+- 근거는 신호 생성시점의 불변 snapshot이며 이후 고객 맥락을 소급 병합하지 않는다.
+
+---
+
+## 6.5 P1 합성 데이터셋·탐지 실행 상세 계약
+
+이 절의 6개 operation은 `IMPLEMENTED-PRIVATE-SYNTHETIC-ONLY`다. 실제 금융거래 원문이나 파일 업로드를 받지 않고 허용된 세 가지 특징과 최소 합성 근거만 JSON으로 등록한다. 모든 경로는 사설 검증 관리자 권한이 필요하다.
+
+Flyway V63은 위 공개 operation 수를 늘리지 않고 배포용 `synthetic-v3` 생성 Job을 추가한다. 생성 Job은 `SMOKE(고객 10명·거래 600건)`, `DEMO(고객 50명·거래 12,000건)`, `LOAD(고객 250명·거래 75,000건)`, `DEV(고객 1,000명·거래 1,000,000건)` 중 하나를 선택한다. `fixtureVersion + profile + seed`가 같으면 동일 ID와 manifest hash를 재생하며, 데이터는 1~100명 단위 DB batch로 적재한다. 실행이력은 `synthetic_fixture_generation_run`, 고객별 시나리오와 기대 신호 수는 `synthetic_fixture_customer`에 보존한다.
+
+Flyway V67은 `LOAD` profile과 추가 전용 `synthetic_fixture_quality_report`를 추가한다. `SYNTHETIC_SEED_VERIFY_DETECTION=true`인 Job은 생성된 모든 고객을 현재 활성 정책과 고정 알고리즘으로 평가한다. 정책이 실행 도중 바뀌지 않고 기대·실제 신호 수가 일치하며 정상 고객 오탐과 이상 고객 미탐이 모두 0일 때만 `PASSED`다. 리포트에는 정책·알고리즘 버전, precision·recall, 64자리 report hash를 남기며 외부 실행과 advisory AI는 허용하지 않는다.
+
+Flyway V68은 AI 파생 `chunk_embedding` 테이블을 추가해 384차원과 1024차원 벡터를
+모델별로 구분한다. 각 행은 chunk, 모델 ID, 고정 모델 버전, 차원을 함께 식별하며
+Hash v1, 고정 E5-small revision, 고정 Arctic-ko revision마다 별도 HNSW 부분 인덱스를
+사용한다. 기존 `chunk.embedding`은 배포 호환성을 위해 유지하고 Hash 벡터를 신규
+테이블로 이관한다. 운영 ingestion은 Spring publish/import와 같은 문서별 advisory lock 안에서 기존 chunk와
+종속 embedding을 삭제한 뒤 현재 provider의 완전한 파생 snapshot을 INSERT-only로
+교체하며, 실행 완료와 교체를 같은 트랜잭션으로 커밋한다. 이 교체는 검증 import 전까지만
+허용되며 `AI_DB_SNAPSHOT_V1` proof 생성 후 내용 변경은 새 `versionLabel`을 사용한다. 모델 비교는 격리된 임시 DB에서
+각각 ingestion해 운영 snapshot에 서로 다른 모델 결과를 섞지 않는다.
+
+Flyway V72는 `alzswell_ai_ingestor`의 `ai_knowledge.chunk`와
+`ai_knowledge.chunk_embedding` UPDATE 권한을 테이블·컬럼 수준에서 모두 회수한다.
+ingestor는 chunk에 SELECT·INSERT·DELETE, chunk_embedding에 SELECT·INSERT만 가지며 임베딩
+삭제는 부모 chunk cascade로만 수행한다. Spring과 공유하는 문서 advisory lock 안에서 검증
+import 전까지만 삭제 후 INSERT-only로 교체한다. proof가 생성된 문서·버전의 chunk·manifest
+snapshot과 proof가 참조하는 terminal ingestion run은 SECURITY DEFINER trigger가 이후 변경을
+거부하고, UPDATE는 OLD·NEW 양쪽 키를 검사한다. 이후 내용 변경은 새 버전으로 적재한다. 미검증·신규
+버전의 권위 DB snapshot 동기화에 필요한 `ai_knowledge.document_snapshot` UPDATE와 검색 runtime의
+파생 테이블 SELECT는 유지한다.
+
+AI ingestion은 문서당 최대 500개 청크를 허용하고 지연 분할 중 501번째 청크가 생기는
+즉시 실패한다. 운영 Compose는 `PRODUCTION`, `hash`, hash fallback 비활성화를 명시한다.
+운영에서 non-hash backend에 `ALZS_EMBEDDING_ALLOW_HASH_FALLBACK=true`를 함께 설정하면
+대체 모델로 조용히 강등하지 않고 `EMBEDDING_CONFIGURATION_INVALID`로 기동을 거부한다.
+fallback은 `SYNTHETIC_TEST`에서만 선택적으로 사용할 수 있다.
+
+이 Job은 HTTP Controller를 제공하지 않는다. `alzswell_migrator` 역할과 `synthetic-tools` Compose profile에서만 실행하며 `SYNTHETIC_DATA_ONLY=true`, `SYNTHETIC_PROVIDER_ONLY=true`, `EXTERNAL_ACTIONS_ENABLED=false`가 아니면 시작 전에 실패한다. 생성된 모든 계좌·거래는 `SYNTHETIC_PROVIDER`이고 실제 금융기관 호출·송금·알림·외부 AI 실행을 만들지 않는다.
+
+### 6.5.1 권한과 상태전이
+
+- 데이터셋 4개 API: `SYNTHETIC_DATASET_ADMIN`
+- 탐지 실행 생성: `DETECTION_RUN_CREATE`
+- 탐지 실행 조회: `DETECTION_RUN_READ`
+- 상태전이: `DRAFT → VALIDATED → INGESTED`, 검증 실패는 `DRAFT → INVALID`
+- `INVALID`는 재검증할 수 있지만 적재할 수 없다.
+- payload는 JSONB와 `payloadHash`로 보존하고 INGESTED 이후 변경 API를 제공하지 않는다.
+
+### 6.5.2 데이터셋 등록·조회·검증·적재
+
+```http
+POST /api/v1/admin/synthetic-datasets
+GET  /api/v1/admin/synthetic-datasets/{datasetId}
+POST /api/v1/admin/synthetic-datasets/{datasetId}/validate
+POST /api/v1/admin/synthetic-datasets/{datasetId}/ingest
+```
+
+등록 요청은 `datasetName`, `customerId`, 1~50개의 `observations`를 받는다. observation은 다음으로 제한한다.
+
+- `featureCode`: `MISSED_RECURRING_PAYMENT`, `DUPLICATE_TRANSFER`, `REPEATED_CONFIRMATION`
+- `baselineValue`, `currentValue`: 0 이상의 10진수
+- `unit`: `COUNT`
+- observation별 evidence 1~20개
+- evidence: `TRANSACTION|INTERACTION`, 안전한 `sourceReference`, `occurredAt`, 선택적 amount·currency 쌍, 최대 300자 설명
+
+응답 코드:
+
+- `201 SYNTHETIC_DATASET_CREATED`
+- `200 SYNTHETIC_DATASET_RETRIEVED`
+- `200 SYNTHETIC_DATASET_VALIDATED`
+- `200 SYNTHETIC_DATASET_INGESTED`
+- `404 SYNTHETIC_DATASET_NOT_FOUND`
+- `409 SYNTHETIC_DATASET_STATE_CONFLICT`
+
+### 6.5.3 탐지 실행·결과 조회
+
+```http
+POST /api/v1/customers/{customerId}/detection-runs
+Idempotency-Key: {8~100자의 안전한 키}
+Content-Type: application/json
+
+{"datasetId":"{INGESTED 상태의 dataset UUID}"}
+
+GET /api/v1/detection-runs/{detectionRunId}
+```
+
+- 생성 성공: `202 DETECTION_RUN_COMPLETED`
+- 조회 성공: `200 DETECTION_RUN_RETRIEVED`
+- 없음: `404 DETECTION_RUN_NOT_FOUND`
+- 데이터셋 고객 불일치 또는 미적재: `409 SYNTHETIC_DATASET_STATE_CONFLICT`
+- 같은 고객·멱등키는 최초 run을 재생하며 원문 멱등키는 저장하지 않는다.
+- 같은 멱등키를 다른 datasetId에 재사용하면 `409 DETECTION_IDEMPOTENCY_CONFLICT`다.
+- 결과에는 `signals`, `signalCount`, 버전·입력/결과/request hash, `idempotencyReplayed`, `advisoryAiUsed=false`, `externalExecutionCreated=false`를 포함한다.
+- 현재 권위 경로는 Java 규칙이며 변경된 SSOT의 Isolation Forest 보조점수는 아직 실행하지 않는다.
+
+### 6.5.4 탐지 결과의 운영형 신호·경보 승격
+
+```http
+POST /api/v1/detection-runs/{detectionRunId}/promotion
+GET  /api/v1/detection-runs/{detectionRunId}/promotion
+```
+
+- 생성 권한은 `DETECTION_PROMOTE`, 조회 권한은 `DETECTION_PROMOTION_READ`다.
+- 완료된 run 하나에는 승격 결과가 정확히 하나만 존재한다. POST 재호출은 같은 `promotionId`를 반환하고 `idempotencyReplayed=true`로 표시한다.
+- 서버는 run 행을 잠근 뒤 하나의 DB 트랜잭션에서 `customer_detection_signal`, 불변 evidence snapshot, `operational_alert`, 최초 `ALERT_CREATED` 감사를 함께 기록한다.
+- 신호는 `(sourceDetectionRunId, reasonCode)`로 중복을 막고 경보는 신호당 하나만 허용한다.
+- 저장된 고객 기준선의 고객·특징·기준값·단위가 합성 observation과 정확히 일치해야 한다. 기준선을 임의로 덮어쓰거나 새 기준선을 자동 생성하지 않는다.
+- 기준선 불일치는 `422 DETECTION_PROMOTION_BASELINE_MISMATCH`, 원본·결과 특징 불일치는 `422 DETECTION_PROMOTION_SOURCE_INVALID`다.
+- 생성 성공은 `201 DETECTION_RUN_PROMOTED`, 조회 성공은 `200 DETECTION_RUN_PROMOTION_RETRIEVED`, 미승격 조회는 `404 DETECTION_PROMOTION_NOT_FOUND`다.
+- 결과에는 생성한 `signalIds`, `alertIds`, 입력·승격 결과 hash를 포함하며 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
+
+---
+
+## 6.6 P1 운영형 경보·생활맥락 상세 계약
+
+이 절의 6개 operation은 `IMPLEMENTED-PRIVATE-SYNTHETIC-ONLY`다. 기존 합성 변화신호를 고객이 이해할 수 있는 경보로 보여주고 생활맥락을 확인하지만, 금융거래 차단·지급정지·외부 알림·가족 연락은 실행하지 않는다.
+
+```http
+GET  /api/v1/customers/{customerId}/alerts?state=AWAITING_CONTEXT&severity=HIGH
+GET  /api/v1/alerts/{alertId}
+GET  /api/v1/alerts/{alertId}/context-options
+POST /api/v1/alerts/{alertId}/context-responses
+POST /api/v1/alerts/{alertId}/defer
+GET  /api/v1/alerts/{alertId}/audit
+```
+
+### 6.6.1 권한·소유권
+
+- 자신의 목록·상세·선택지·감사이력: `ALERT_READ`
+- 자신의 생활맥락 응답·확인 연기: `ALERT_RESPOND`
+- 사설 검증 관리자 전체 조회·응답: `ALERT_READ_ALL`, `ALERT_RESPOND_ALL`
+- 다른 고객의 경보는 존재 여부를 노출하지 않고 `404 ALERT_NOT_FOUND`로 응답한다.
+
+### 6.6.2 상태전이와 동시성
+
+- 최초 상태는 `AWAITING_CONTEXT`다.
+- `AWAITING_CONTEXT|DEFERRED → CLOSED_NORMAL`: 고객이 `EXPECTED_CHANGE`로 확인한 경우다.
+- `AWAITING_CONTEXT|DEFERRED → BANK_REVIEW`: `UNRECOGNIZED|NOT_SURE` 응답인 경우다.
+- 확인 연기는 `AWAITING_CONTEXT|DEFERRED → DEFERRED`이며 서버 현재시각보다 미래이고 최대 7일 이내여야 한다.
+- 변경 요청은 `expectedVersion`을 사용한다. 버전 또는 상태가 오래되면 `409 ALERT_STATE_CONFLICT`다.
+- 생활맥락 제출과 확인 연기는 `Idempotency-Key`가 필수다. 같은 요청은 최초 결과를 재사용하고 다른 요청에 키를 재사용하면 `409 ALERT_IDEMPOTENCY_CONFLICT`다. 원문 키는 저장하지 않는다.
+
+### 6.6.3 안전 응답과 감사
+
+- 모든 변경 응답은 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
+- 맥락 선택지는 `EXPECTED_CHANGE`, `UNRECOGNIZED`, `NOT_SURE` 세 개로 제한한다.
+- 감사이력은 `ALERT_CREATED`, `ALERT_DEFERRED`, `CONTEXT_RESPONDED` 이벤트의 이전·결과 상태, 최소 상세, 무결성 해시를 시간순으로 제공한다.
+- `CLOSED_NORMAL`은 워크플로 종결일 뿐 금융상 불이익이나 계좌조치가 아니다.
+- `BANK_REVIEW`는 검토 필요 상태이며 실제 사건 배정·금융조치가 실행됐다는 뜻이 아니다.
+
+응답 코드:
+
+- `200 CUSTOMER_ALERTS_RETRIEVED`
+- `200 ALERT_RETRIEVED`
+- `200 ALERT_CONTEXT_OPTIONS_RETRIEVED`
+- `200 ALERT_CONTEXT_APPLIED`
+- `200 ALERT_DEFERRED`
+- `200 ALERT_AUDIT_RETRIEVED`
+- `404 ALERT_NOT_FOUND`
+- `409 ALERT_STATE_CONFLICT`
+- `409 ALERT_IDEMPOTENCY_CONFLICT`
+
+---
+
+## 6.7 P1 운영형 행원 사건 상세 계약
+
+이 절의 5개 operation은 `IMPLEMENTED-PRIVATE-SYNTHETIC-ONLY`다. 고객의 `UNRECOGNIZED|NOT_SURE` 응답으로 경보가 `BANK_REVIEW`가 되는 트랜잭션 안에서 운영형 사건 하나를 생성한다. 기존 `demo_session_id` 범위의 `protection_case`와는 별도 테이블을 사용한다.
+
+```http
+GET  /api/v1/staff/cases?status=PENDING&priority=HIGH&cursor={caseId}&limit=20
+GET  /api/v1/staff/cases/{caseId}
+PUT  /api/v1/staff/cases/{caseId}/assignment
+POST /api/v1/staff/cases/{caseId}/reviews
+POST /api/v1/staff/cases/{caseId}/guidance-plans
+GET  /api/v1/staff/cases/{caseId}/evidence
+GET  /api/v1/staff/cases/{caseId}/timeline
+GET  /api/v1/staff/cases/{caseId}/notes
+POST /api/v1/staff/cases/{caseId}/notes
+GET  /api/v1/staff/cases/{caseId}/follow-ups
+POST /api/v1/staff/cases/{caseId}/follow-ups
+PATCH /api/v1/staff/follow-ups/{followUpId}
+```
+
+### 6.7.1 권한과 사건 생성
+
+- 큐·상세: `STAFF_CASE_READ`
+- 담당자 배정: `STAFF_CASE_ASSIGN`
+- 검토 상태전이: `STAFF_CASE_REVIEW`
+- 안내계획 승인: `STAFF_GUIDANCE_APPROVE`
+- `PROTECTION_STAFF` 역할은 위 권한을 가진 사설 검증용 행원 역할이다.
+- 경보당 사건은 하나만 존재하며 `operational_protection_case.alert_id` 고유 제약으로 중복을 차단한다.
+- 우선순위는 경보 severity를 그대로 사용하고 최초 업무상태는 `PENDING`이다.
+
+### 6.7.2 큐·배정·검토 상태
+
+- 큐 정렬은 `HIGH → MEDIUM → LOW`, 생성시각, `caseId` 순서다. 다음 cursor는 마지막 `caseId`이며 동일 복합 정렬 기준으로 이어진다.
+- 배정은 `assignedTeam`, `assignedTo`, `expectedVersion`을 함께 요구하며 완료 사건은 변경할 수 없다.
+- 검토 상태전이는 `PENDING → IN_REVIEW → COMPLETED`이며 안내계획 승인 후에는 `GUIDANCE_APPROVED → COMPLETED`가 가능하다.
+- 완료 사건은 `REOPEN_REVIEW`로 `IN_REVIEW`에 되돌릴 수 있다.
+- `START_REVIEW`는 담당자가 배정된 사건에만 허용한다.
+- 모든 변경은 `expectedVersion`을 사용하고 오래된 요청은 `409 STAFF_CASE_STATE_CONFLICT`다.
+- 담당자 배정은 `Idempotency-Key`가 필수이며 같은 키의 다른 요청은 `409 STAFF_CASE_ASSIGNMENT_IDEMPOTENCY_CONFLICT`다.
+- 검토 요청은 `Idempotency-Key`가 필수이며 원문 키를 저장하지 않는다. 같은 키의 다른 요청은 `409 STAFF_CASE_REVIEW_IDEMPOTENCY_CONFLICT`다.
+
+### 6.7.3 안내계획 안전경계
+
+- 허용 action은 `FDS_REVIEW`, `DELAYED_TRANSFER_GUIDANCE`, `SECURITY_SETTINGS_GUIDANCE`, `BRANCH_CONSULTATION`이다.
+- 안내계획은 배정된 `IN_REVIEW` 사건에 한 번만 승인할 수 있다.
+- 안내계획 승인은 `Idempotency-Key`가 필수이며 같은 키의 다른 요청은 `409 STAFF_GUIDANCE_IDEMPOTENCY_CONFLICT`다.
+- 응답은 `delivered=false`, `externalExecutionCreated=false`다. 실제 FDS 실행, 지연이체 신청, 설정 변경, 영업점 예약을 수행하지 않는다.
+- 사건 응답도 `financialActionExecuted=false`, `externalNotificationSent=false`를 명시한다.
+
+### 6.7.4 근거·타임라인·내부 메모
+
+- 사건 근거는 연결된 `customer_detection_signal`과 생성 당시의 `customer_signal_evidence_snapshot`만 읽으며 `syntheticData=true`를 명시한다.
+- 타임라인은 사건 생성, 경보 상태변경, 담당자 배정, 검토 상태전이, 안내계획 승인, 내부 메모 등록을 시간순으로 반환한다.
+- 내부 메모 조회는 `STAFF_CASE_READ|STAFF_CASE_NOTE`, 등록은 `STAFF_CASE_NOTE` 권한이 필요하다.
+- 메모는 수정·삭제 API가 없고 DB trigger도 update/delete를 거절하는 추가 전용 기록이다.
+- 메모 등록은 `Idempotency-Key`가 필수이며 원문 키는 저장하지 않는다. 같은 키의 다른 내용은 `409 STAFF_CASE_NOTE_IDEMPOTENCY_CONFLICT`다.
+- 타임라인에는 내부 메모의 존재와 작성자만 표시하고 메모 본문은 notes API에서만 반환한다.
+
+### 6.7.5 내부 후속 일정
+
+- 후속 일정 조회·등록·변경은 `STAFF_FOLLOW_UP` 권한이 필요하며 조회는 `STAFF_CASE_READ`로도 가능하다.
+- 유형은 `CUSTOMER_RECHECK`, `BRANCH_CONSULTATION`, `INTERNAL_REVIEW`이며 최대 90일 이내 미래 시각만 등록한다.
+- 등록은 담당자가 배정된 `IN_REVIEW|GUIDANCE_APPROVED|COMPLETED` 사건에만 가능하고 `expectedCaseVersion`으로 사건 변경과 경쟁하지 않게 한다.
+- 최초 상태는 `SCHEDULED`다. `RESCHEDULE`은 미래 시각을 요구하고, `COMPLETE|CANCEL`은 결과 사유를 요구한다.
+- 등록은 `Idempotency-Key`가 필수이며 원문 키를 저장하지 않는다. 같은 키의 다른 요청은 `409 STAFF_FOLLOW_UP_IDEMPOTENCY_CONFLICT`다.
+- 상태 변경은 `expectedVersion`을 사용하며 완료·취소된 일정은 다시 변경하지 않는다.
+- 모든 변경은 추가 전용 `operational_case_follow_up_event`에 기록되고 사건 타임라인에 합쳐진다.
+- 응답은 `externalContactExecuted=false`다. 전화·문자·푸시·영업점 예약을 실행하지 않는다.
+
+---
+
+## 6.8 P1 이체 안전 미리보기 상세 계약
+
+### 6.8.1 접근·입력
+
+- `GET /customers/{customerId}/beneficiaries`, `GET /customers/{customerId}/transfer-limits`는 본인 Bearer 주체와 `TRANSFER_PREVIEW_READ`가 모두 필요하다.
+- `POST /transfer-simulations`, `POST /transfer-validations`는 본인 `customerId`와 `TRANSFER_PREVIEW_EVALUATE`가 모두 필요하다.
+- POST 본문은 `customerId`, 합성 `sourceAccountId`, 합성 `beneficiaryId`, 정수 원화 `amount(1..100000000)`, `currency=KRW`를 받는다. 원문 계좌번호·주민번호·연락처·자유입력 수취인 정보는 받지 않는다.
+- validation은 고정 `purposeCode`와 `recipientConfirmed`를 추가로 요구한다. purpose는 설명·감사용 분류이며 상품추천·탐지점수·건강상태 판단에 사용하지 않는다.
+
+### 6.8.2 출력·판정
+
+- 수취인 이름과 계좌 참조는 서버 저장 단계부터 마스킹하고 `SYNTHETIC_PROVIDER` 기준일을 함께 반환한다.
+- 모의계산은 수수료·예상 차감 후 잔액과 `SIMULATION_ALLOWED|SIMULATION_BLOCKED`만 반환한다.
+- 사전검증은 계좌·수취인 활성상태, 통화, 가용잔액, 건별한도, 일일 잔여한도, 고객 수취인 확인을 각각 구조화된 check로 반환한다.
+- 조건 불충족은 금융 실행 실패가 아니라 `200`의 `PREVIEW_BLOCKED` 결과다. 소유 자원이 없거나 다른 고객 소유이면 `404 TRANSFER_PREVIEW_RESOURCE_NOT_FOUND`, 기준 한도가 없으면 `409 TRANSFER_PREVIEW_LIMIT_NOT_AVAILABLE`다.
+
+### 6.8.3 데이터·불변경계
+
+- V46의 두 snapshot은 update/delete trigger로 추가 전용이며 runtime 역할의 INSERT·UPDATE·DELETE를 회수한다.
+- POST 두 API도 DB 쓰기, 이체 예약, OTP/MFA 세션, 승인 token, 외부 호출을 만들지 않는다.
+- 모든 응답은 `syntheticData=true`, `externalProviderCalled=false`, `transferCreated=false`, `authorizationCreated=false`를 명시한다.
+- 실제 `/transfers`, confirm, cancel은 계속 `REFERENCE_ONLY`이며 Controller와 프런트 실행 버튼을 만들지 않는다.
+
+---
+
+## 6.9 P1 카드 읽기 전용 상세 계약
+
+### 6.9.1 접근·소유권·목록
+
+- 6개 API 모두 `CARD_READ`가 필요하다. 고객 목록 경로는 path의 `customerId`와 인증 주체가 일치해야 한다.
+- `{cardId}` 단독 경로는 인증 주체의 고객 ID를 서비스에 전달해 카드 소유권을 다시 조회한다. 다른 고객 소유 또는 존재하지 않는 카드는 모두 `404 CARD_NOT_FOUND`다.
+- 카드번호는 `안심카드 ****-****-****-마지막4자리` 형식만 DB가 허용하고 합성 가맹점명도 고정 패턴만 저장한다.
+
+### 6.9.2 이용내역·청구·한도
+
+- 이용내역 기본 범위는 고정 기준일 이전 30일이며 최대 366일, `limit`은 1~100이다.
+- 정렬은 `occurredAt DESC, cardTransactionId DESC`이고 cursor UUID가 가리키는 시각을 서버가 동일 카드 소유 범위에서 다시 확인한다. 잘못된 cursor는 `400 CARD_TRANSACTION_CURSOR_INVALID`다.
+- 청구서는 최근 24개 불변 요약만 반환하며 파일을 만들지 않는다. 결제예정액은 최신 청구 snapshot ID와 카드 기준일 금액·예정일을 함께 반환한다.
+- 한도는 합성 총한도·사용액·가용한도만 반환하며 변경 기능은 없다.
+
+### 6.9.3 실행 금지·불변성
+
+- V47의 카드·이용·청구 snapshot은 update/delete trigger가 변경을 거절하고 runtime 역할의 INSERT·UPDATE·DELETE를 회수한다. 카드의 `customerId`·기관·연결계좌는 복합 외래키로 같은 소유 snapshot임을 DB에서도 강제한다.
+- 응답은 `syntheticData=true` 또는 합성 provider 정보를 표시하고, 외부 호출·잠금·해제·재발급·결제·출금·한도 변경을 실행하지 않는다.
+- P2 잠금·해제·재발급 API는 계속 `REFERENCE_ONLY`이며 Controller나 실행 버튼을 만들지 않는다.
+
+---
+
+## 6.10 미구현 API를 CONTRACT로 승격하는 규칙
+
+현재 미구현 카탈로그·백로그 45개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
+
+| 필수 항목 | 기록 내용 |
+|---|---|
+| 식별 | 우선순위, 상태, 경계, Method, path |
+| 접근 | 호출 주체, authority, 소유권, step-up 필요 여부 |
+| 입력 | header, path, query, request DTO, validation |
+| 출력 | HTTP status, 안정적 response code, typed response DTO |
+| 실패 | endpoint별 오류 code와 발생 조건 |
+| 일관성 | 멱등키, request hash, 낙관적 잠금, 정렬·cursor |
+| 데이터 | 소유 테이블, 읽기·쓰기 set, Flyway 버전 |
+| 외부경계 | port, synthetic adapter, timeout·fallback, 외부 실행 여부 |
+| 검증 | 정상, 검증실패, 권한, 소유권, 동시성, 감사 테스트 |
+
+구현 완료 후 `IMPLEMENTED`로 바꾸고 Controller·DTO·migration·통합 테스트 위치와 OpenAPI operation을 같은 PR에서 연결한다. 세부 작업 순서는 `docs/BACKEND_DEVELOPER_HANDOFF.md`를 따른다.
 
 ---
 
@@ -3234,9 +4119,10 @@ GET /api/v1/demo/sessions/{sessionId}/protection-actions
 
 | HTTP | 코드 | 발생 조건 |
 |---:|---|---|
-| 400 | `COMMON_INVALID_INPUT` | 세션 생성을 제외한 변경 API에서 `Idempotency-Key` 누락; `errors.field=Idempotency-Key` |
+| 400 | `COMMON_INVALID_INPUT` | 멱등 명령으로 표시된 API에서 `Idempotency-Key` 누락; `errors.field=Idempotency-Key` |
 | 409 | `IDEMPOTENCY_CONFLICT` | 같은 scope·키를 다른 `requestHash`에 재사용 |
 | 429 | `DEMO_SESSION_RATE_LIMITED` | 비멱등 세션 생성 rate limit 또는 활성 세션 quota 초과 |
+| 429 | `AUTH_LOGIN_RATE_LIMITED` | 같은 로그인 ID hash의 반복 인증 실패 한도 초과 |
 | 404 | `DEMO_SESSION_NOT_FOUND` | 세션 없음 또는 capability 누락·불일치·만료 |
 | 403 | `DEMO_CAPABILITY_SCOPE_FORBIDDEN` | 유효 capability의 고객/데모행원 역할범위 위반 |
 | 409 | `DEMO_RUN_STALE` | Reset 이전 `demoRunId`로 상태 변경 요청 |

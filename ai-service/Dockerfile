@@ -1,0 +1,24 @@
+FROM ghcr.io/astral-sh/uv:0.11.30@sha256:93b61e21202b1dab861092748e46bbd6e0e41dd84f59b9174efd2353186e1b47 AS uv
+FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH=/opt/ai-service/.venv/bin:$PATH
+
+COPY --from=uv /uv /uvx /bin/
+WORKDIR /opt/ai-service
+RUN apt-get update && \
+    apt-get upgrade --yes && \
+    apt-get install --yes --no-install-recommends ca-certificates libgomp1 python3.12 && \
+    rm -rf /var/lib/apt/lists/*
+COPY pyproject.toml uv.lock README.md ./
+COPY app ./app
+RUN uv sync --python /usr/bin/python3.12 --no-managed-python --locked --no-dev --no-cache && \
+    useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin ai-ingestor
+
+USER 10001:10001
+ENTRYPOINT ["python", "-m", "app.cli"]

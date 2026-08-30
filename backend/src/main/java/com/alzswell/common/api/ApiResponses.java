@@ -23,6 +23,10 @@ public final class ApiResponses {
         return success(HttpStatus.CREATED, code, message, data);
     }
 
+    public static <T> ResponseEntity<ApiResponse<T>> accepted(String code, String message, T data) {
+        return success(HttpStatus.ACCEPTED, code, message, data);
+    }
+
     public static ResponseEntity<ApiResponse<Void>> error(ErrorCode errorCode) {
         return error(errorCode, errorCode.message(), List.of());
     }

@@ -16,6 +16,17 @@ permissions:
   pull-requests: write
 
 jobs:
+  api-contract:
+    name: API catalog contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Validate API catalog counts and uniqueness
+        run: python3 scripts/validate_api_catalog.py
+
   backend:
     name: Backend test and coverage
     runs-on: ubuntu-latest
@@ -30,7 +41,19 @@ jobs:
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
       - name: Test and enforce coverage
-        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification --no-daemon
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if ./gradlew check jacocoTestReport jacocoTestCoverageVerification --no-daemon 2>&1 | tee gradle-attempt.log; then
+              exit 0
+            fi
+            if ! grep -Eq 'status code 429|Too Many Requests' gradle-attempt.log || [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "Maven 저장소가 요청을 제한했습니다. $((attempt * 10))초 후 재시도합니다. ($attempt/3)"
+            sleep $((attempt * 10))
+          done
       - name: Upload backend reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -39,7 +62,9 @@ jobs:
           path: |
             backend/build/reports/tests/test
             backend/build/reports/jacoco/test
-          if-no-files-found: error
+            backend/build/reports/spotbugs
+          # 선행 Gradle 구성·다운로드 실패 시 원래 오류를 artifact 오류로 덮지 않는다.
+          if-no-files-found: warn
           retention-days: 14
       - name: Publish PR coverage report
         if: github.event_name == 'pull_request'
@@ -50,6 +75,78 @@ jobs:
           min-coverage-overall: 90
           min-coverage-changed-files: 80
           update-comment: true
+
+  ai-service:
+    name: AI ingestion test and coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install uv==0.11.30
+      - name: Sync locked dependencies
+        run: uv sync --locked
+      - name: Test and enforce coverage
+        run: uv run pytest --cov=app --cov-report=term-missing -p no:cacheprovider
+      - name: Enforce retrieval quality gate
+        run: |
+          uv run python -m app.evaluation.cli evaluate \
+            --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+            --dataset evaluation/datasets/retrieval-v1.jsonl \
+            --output-json data/derived/evaluation/retrieval-v1.json \
+            --output-markdown data/derived/evaluation/retrieval-v1.md \
+            --fail-on-gate
+          uv run python -m app.evaluation.cli tune \
+            --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
+            --dataset evaluation/datasets/retrieval-v1.jsonl \
+            --output-json data/derived/evaluation/tuning-v1.json
+      - name: Upload retrieval evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: retrieval-evaluation-reports
+          path: ai-service/data/derived/evaluation
+          if-no-files-found: warn
+          retention-days: 14
+
+  ai-sca:
+    name: Python and model runtime vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned uv
+        run: python -m pip install uv==0.11.30
+      - name: Audit locked Python and model dependencies
+        working-directory: ai-service
+        run: uv audit --locked --python-version 3.12 --python-platform linux
+      - name: Build the offline model runtime image
+        run: >-
+          docker build
+          --file ai-service/Dockerfile.model-runtime
+          --tag alzs-well-ai-model-runtime:ci
+          ai-service
+      - name: Scan OS and Python packages in the model runtime image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: alzs-well-ai-model-runtime:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
 
   frontend:
     name: Frontend lint, build and test
@@ -65,16 +162,49 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: Reject high-severity production or build dependency vulnerabilities
+        run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm test
 
   compose:
     name: Docker Compose validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: alzs-well-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      BACKEND_PORT: "18080"
+      GATEWAY_BIND_ADDRESS: 127.0.0.1
+      POSTGRES_DB: alzs_well_ci
+      POSTGRES_USER: alzswell_ci_admin
+      POSTGRES_PASSWORD: ci-only-admin-password-please-never-use-in-production
+      POSTGRES_MIGRATION_PASSWORD: ci-only-migration-password-never-use-in-production
+      POSTGRES_APP_PASSWORD: ci-only-runtime-password-never-use-in-production
+      POSTGRES_AI_PASSWORD: ci-only-ai-ingestion-password-never-use-in-production
+      POSTGRES_AI_RUNTIME_PASSWORD: ci-only-ai-runtime-password-never-use-in-production
+      AI_INTERNAL_TOKEN: ci-only-internal-ai-token-never-use-in-production
+      FRONTEND_PROXY_SHARED_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      CORS_CUSTOMER_ALLOWED_ORIGINS: https://customer-ci.example.invalid
+      CORS_STAFF_ALLOWED_ORIGINS: https://staff-ci.example.invalid
+      DEMO_STAFF_BOOTSTRAP_TOKEN: ci-only-demo-staff-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@v7
       - name: Validate production compose rendering
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
+      - name: Boot the isolated stack and smoke test core APIs
+        run: bash .github/scripts/compose-smoke.sh
+      - name: Verify three demo scenarios, grounded citations and fallback
+        run: python3 scripts/copilot_rag_e2e.py
+      - name: Upload Compose integration evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compose-integration-evidence
+          path: |
+            artifacts/compose-smoke
+            artifacts/copilot-rag-e2e
+          if-no-files-found: warn
+          retention-days: 14
 
   dependency-review:
     name: Dependency review
@@ -85,3 +215,43 @@ jobs:
       - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
+
+  backend-sca:
+    name: Java and container vulnerability scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build the deployable Spring Boot artifact
+        working-directory: backend
+        run: ./gradlew clean bootJar --no-daemon
+      - name: Scan Java runtime dependencies in the deployable artifact
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend/build/libs
+          scanners: vuln
+          vuln-type: library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+      - name: Build the backend runtime image
+        run: docker build --tag alzs-well-backend:ci backend
+      - name: Scan OS and Java packages in the runtime image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: alzs-well-backend:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table

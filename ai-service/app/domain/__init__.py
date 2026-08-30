@@ -1,0 +1,1 @@
+"""Knowledge ingestion domain models."""

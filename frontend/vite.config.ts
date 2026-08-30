@@ -1,7 +1,7 @@
 import { sites } from "@openai/sites-vite-plugin";
 import vinext from "vinext";
-import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
+import { defineConfig, loadEnv } from "vite";
+import hostingConfig from "./.openai/hosting.json" with { type: "json" };
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
@@ -33,7 +33,7 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ mode, command }) => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -42,6 +42,15 @@ export default defineConfig(async () => {
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
+  const applicationEnv = loadEnv(mode, process.cwd(), "");
+  const publicApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+    ?? applicationEnv.NEXT_PUBLIC_API_BASE_URL;
+  if (command === "build" && publicApiBaseUrl?.trim()) {
+    throw new Error("Hosted builds must use the same-origin /api proxy; unset NEXT_PUBLIC_API_BASE_URL");
+  }
+  const backendApiOrigin = process.env.BACKEND_API_ORIGIN ?? applicationEnv.BACKEND_API_ORIGIN;
+  const backendProxySharedSecret = process.env.BACKEND_PROXY_SHARED_SECRET
+    ?? applicationEnv.BACKEND_PROXY_SHARED_SECRET;
 
   return {
     server: isCodexSeatbeltSandbox
@@ -52,7 +61,17 @@ export default defineConfig(async () => {
       sites(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
-        config: localBindingConfig,
+        config: {
+          ...localBindingConfig,
+          vars: {
+            ...(backendApiOrigin ? { BACKEND_API_ORIGIN: backendApiOrigin } : {}),
+            // Plain vars are acceptable only in the local Miniflare process. Hosted builds
+            // receive this value from the platform secret store at runtime, never from dist.
+            ...(command === "serve" && backendProxySharedSecret
+              ? { BACKEND_PROXY_SHARED_SECRET: backendProxySharedSecret }
+              : {}),
+          },
+        },
       }),
     ],
   };

@@ -1,0 +1,25 @@
+contractVersion: "1.0.0"
+documentId: DOC-FSC-NONFACE-ACCOUNT-BLOCK-QA-001
+versionLabel: "2025-03-12"
+title: 비대면 계좌개설 안심차단 Q&A
+issuer: 금융위원회
+sourceType: OFFICIAL_EXTERNAL
+sourcePath: knowledge/official-source/14_public-response-guides/FSC_2025_non_face_to_face_account_block_QA.pdf
+sourceUrl: https://www.fsc.go.kr/po020201/84124
+sourceHash: sha256:7c6b1470f80741a441f40ca374375428e01559073a56e6340996d4caf50b1be8
+sourceTransformations: []
+documentType: PUBLIC_GUIDE
+classification: PUBLIC_OFFICIAL
+audience: BOTH
+allowedRoles:
+  - PROTECTION_STAFF
+  - DETECTION_ADMIN
+effectiveFrom: "2025-03-12"
+effectiveTo: null
+checkedAt: "2026-08-28"
+usageRights: INTERNAL_USE_APPROVED
+approvalStatus: APPROVED
+lifecycleStatus: ACTIVE
+approvedBy: kjw3568@naver.com
+approvedAt: "2026-08-28T00:31:28Z"
+supersedes: null

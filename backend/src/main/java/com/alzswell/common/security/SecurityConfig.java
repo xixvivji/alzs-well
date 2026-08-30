@@ -7,17 +7,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -34,6 +32,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     FilterRegistrationBean<BearerTokenAuthenticationFilter> bearerFilterRegistration(
             BearerTokenAuthenticationFilter filter
     ) {
@@ -48,29 +47,20 @@ public class SecurityConfig {
     }
 
     @Bean
-    UserDetailsService demoStaffUserDetailsService(
-            PasswordEncoder passwordEncoder,
-            @Value("${app.demo.staff-bootstrap-username}") String username,
-            @Value("${app.demo.staff-bootstrap-password}") String password
+    DemoStaffBootstrapTokenIntrospector demoStaffBootstrapTokenIntrospector(
+            @Value("${app.demo.staff-bootstrap-token}") String token
     ) {
-        if (username == null || !username.matches("[A-Za-z0-9._-]{4,64}")) {
-            throw new IllegalStateException("직원 데모 계정 이름은 4~64자의 안전한 형식이어야 합니다.");
-        }
-        if (password == null || password.length() < 32) {
-            throw new IllegalStateException("직원 데모 계정 비밀번호는 32자 이상이어야 합니다.");
-        }
-        return new InMemoryUserDetailsManager(User.withUsername(username)
-                .password(passwordEncoder.encode(password))
-                .authorities("DEMO_STAFF_BOOTSTRAP")
-                .build());
+        return new DemoStaffBootstrapTokenIntrospector(token);
     }
 
     @Bean
     @Order(1)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     SecurityFilterChain staffBootstrapSecurityFilterChain(
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
-            RestAccessDeniedHandler accessDeniedHandler
+            RestAccessDeniedHandler accessDeniedHandler,
+            DemoStaffBootstrapTokenIntrospector staffBootstrapTokenIntrospector
     ) throws Exception {
         http
                 .securityMatcher("/api/v1/demo/staff/**")
@@ -78,7 +68,11 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .opaqueToken(opaque -> opaque.introspector(staffBootstrapTokenIntrospector)))
                 .logout(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint)
@@ -93,6 +87,7 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
@@ -123,7 +118,6 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/actuator/health",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -135,6 +129,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     CorsConfigurationSource corsConfigurationSource(
             @Value("${app.cors.customer-allowed-origins}") String customerAllowedOrigins,
             @Value("${app.cors.staff-allowed-origins}") String staffAllowedOrigins,
@@ -189,6 +184,17 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/v1/demo/sessions", customerIssuance);
         source.registerCorsConfiguration("/api/v1/auth/**", customerApi);
+        source.registerCorsConfiguration("/api/v1/staff/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/admin/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/audit/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/compliance/decision-traces/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/compliance/data-provenance/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/detection-runs/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/detection-promotions/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/synthetic-datasets/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/signals/**", general);
+        source.registerCorsConfiguration("/api/v1/staff-access-policy/**", staffApi);
+        source.registerCorsConfiguration("/api/v1/customers/*/staff-access-grants/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/staff/sessions/*/capability", staffIssuance);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/staff/**", staffApi);
         source.registerCorsConfiguration("/api/v1/demo/sessions/*/cases/**", staffApi);
@@ -252,6 +258,15 @@ public class SecurityConfig {
         if (requireHttps && !scheme.equals("https")) {
             throw new IllegalArgumentException("운영 CORS origin은 HTTPS여야 합니다: " + origin);
         }
-        return origin;
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        int port = uri.getPort();
+        if ((scheme.equals("https") && port == 443) || (scheme.equals("http") && port == 80)) {
+            port = -1;
+        }
+        try {
+            return new URI(scheme, null, host, port, null, null, null).toASCIIString();
+        } catch (java.net.URISyntaxException exception) {
+            throw new IllegalArgumentException("유효하지 않은 CORS origin입니다: " + origin, exception);
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.alzswell.demo.application;
 
+import com.alzswell.common.audit.AuditTimestamp;
 import com.alzswell.common.web.TraceIdContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +29,7 @@ public class DemoAuditWriter {
             ObjectMapper objectMapper,
             @Value("${app.versions.policy:context-policy-v1.0.0}") String policyVersion,
             @Value("${app.versions.algorithm:baseline-rules-v2.0.0}") String algorithmVersion,
-            @Value("${app.versions.schema:7}") String schemaVersion
+            @Value("${app.versions.schema}") String schemaVersion
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -53,6 +54,7 @@ public class DemoAuditWriter {
             Map<String, Object> payload,
             OffsetDateTime occurredAt
     ) {
+        occurredAt = AuditTimestamp.canonical(occurredAt);
         String traceId = TraceIdContext.currentOrCreate();
         String payloadJson = toJson(payload);
         String actorType = stringValue(payload, "actorType", "SYSTEM");

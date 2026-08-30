@@ -2,15 +2,20 @@ package com.alzswell.customer.application;
 
 import com.alzswell.common.exception.BusinessException;
 import com.alzswell.common.exception.CommonErrorCode;
+import com.alzswell.common.idempotency.MutationIdempotencyService;
 import com.alzswell.customer.api.CustomerErrorCode;
 import com.alzswell.customer.api.CustomerRequests.AccessibilitySettingsCommand;
 import com.alzswell.customer.api.CustomerRequests.DisplayProfileCommand;
 import com.alzswell.customer.api.CustomerRequests.PreferencesCommand;
+import com.alzswell.customer.api.CustomerResponses.AccessibilitySettings;
+import com.alzswell.customer.api.CustomerResponses.CustomerSummary;
+import com.alzswell.customer.api.CustomerResponses.DataFreshness;
+import com.alzswell.customer.api.CustomerResponses.DataSummary;
+import com.alzswell.customer.api.CustomerResponses.DisplayProfile;
+import com.alzswell.customer.api.CustomerResponses.Preferences;
 import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -22,58 +27,66 @@ public class CustomerProfileService {
 
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final MutationIdempotencyService idempotency;
 
-    public CustomerProfileService(JdbcTemplate jdbcTemplate, Clock clock) {
+    public CustomerProfileService(JdbcTemplate jdbcTemplate, Clock clock,
+            MutationIdempotencyService idempotency) {
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.idempotency = idempotency;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getCustomerSummary(String customerId) {
+    public CustomerSummary getCustomerSummary(String customerId) {
         return single(jdbcTemplate.query(
                 """
                 select customer_id, display_name, organization, region, status,
                        row_version, created_at, updated_at
                   from customer_profile where customer_id = ?
                 """,
-                (rs, rowNum) -> map(
-                        "customerId", rs.getString("customer_id"),
-                        "displayName", rs.getString("display_name"),
-                        "organization", rs.getString("organization"),
-                        "region", rs.getString("region"),
-                        "status", rs.getString("status"),
-                        "version", rs.getLong("row_version"),
-                        "createdAt", rs.getObject("created_at", OffsetDateTime.class),
-                        "updatedAt", rs.getObject("updated_at", OffsetDateTime.class)
+                (rs, rowNum) -> new CustomerSummary(
+                        rs.getString("customer_id"),
+                        rs.getString("display_name"),
+                        rs.getString("organization"),
+                        rs.getString("region"),
+                        rs.getString("status"),
+                        rs.getLong("row_version"),
+                        rs.getObject("created_at", OffsetDateTime.class),
+                        rs.getObject("updated_at", OffsetDateTime.class)
                 ), customerId));
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getDisplayProfile(String customerId) {
-        Map<String, Object> summary = getCustomerSummary(customerId);
-        return map(
-                "customerId", customerId,
-                "displayName", summary.get("displayName"),
-                "version", summary.get("version"),
-                "updatedAt", summary.get("updatedAt")
+    public DisplayProfile getDisplayProfile(String customerId) {
+        CustomerSummary summary = getCustomerSummary(customerId);
+        return new DisplayProfile(
+                customerId,
+                summary.displayName(),
+                summary.version(),
+                summary.updatedAt()
         );
     }
 
     @Transactional
-    public void updateDisplayProfile(String customerId, DisplayProfileCommand request) {
-        requireCustomer(customerId);
-        requireUpdated(jdbcTemplate.update(
-                """
-                update customer_profile
-                   set display_name = ?, row_version = row_version + 1, updated_at = ?
-                 where customer_id = ? and row_version = ?
-                """,
-                request.displayName().trim(), OffsetDateTime.now(clock), customerId, request.expectedVersion()
-        ));
+    public DisplayProfile updateDisplayProfile(String customerId, DisplayProfileCommand request,
+            String idempotencyKey) {
+        return idempotency.execute("CUSTOMER_DISPLAY_PROFILE:" + customerId, idempotencyKey, request,
+                DisplayProfile.class, CustomerErrorCode.CUSTOMER_IDEMPOTENCY_CONFLICT, () -> {
+                    requireCustomer(customerId);
+                    requireUpdated(jdbcTemplate.update(
+                            """
+                            update customer_profile
+                               set display_name = ?, row_version = row_version + 1, updated_at = ?
+                             where customer_id = ? and row_version = ?
+                            """,
+                            request.displayName().trim(), OffsetDateTime.now(clock), customerId,
+                            request.expectedVersion()));
+                    return getDisplayProfile(customerId);
+                });
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getPreferences(String customerId) {
+    public Preferences getPreferences(String customerId) {
         requireCustomer(customerId);
         return single(jdbcTemplate.query(
                 """
@@ -81,41 +94,45 @@ public class CustomerProfileService {
                        in_app_notification_enabled, row_version, updated_at
                   from customer_preferences where customer_id = ?
                 """,
-                (rs, rowNum) -> map(
-                        "customerId", customerId,
-                        "smsNotificationEnabled", rs.getBoolean("sms_notification_enabled"),
-                        "pushNotificationEnabled", rs.getBoolean("push_notification_enabled"),
-                        "inAppNotificationEnabled", rs.getBoolean("in_app_notification_enabled"),
-                        "version", rs.getLong("row_version"),
-                        "updatedAt", rs.getObject("updated_at", OffsetDateTime.class)
+                (rs, rowNum) -> new Preferences(
+                        customerId,
+                        rs.getBoolean("sms_notification_enabled"),
+                        rs.getBoolean("push_notification_enabled"),
+                        rs.getBoolean("in_app_notification_enabled"),
+                        rs.getLong("row_version"),
+                        rs.getObject("updated_at", OffsetDateTime.class)
                 ), customerId));
     }
 
     @Transactional
-    public void patchPreferences(String customerId, PreferencesCommand request) {
-        requireCustomer(customerId);
-        if (request.smsNotificationEnabled() == null
-                && request.pushNotificationEnabled() == null
-                && request.inAppNotificationEnabled() == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT, "변경할 환경설정을 하나 이상 입력해 주세요.");
-        }
-        requireUpdated(jdbcTemplate.update(
-                """
-                update customer_preferences
-                   set sms_notification_enabled = coalesce(?, sms_notification_enabled),
-                       push_notification_enabled = coalesce(?, push_notification_enabled),
-                       in_app_notification_enabled = coalesce(?, in_app_notification_enabled),
-                       row_version = row_version + 1, updated_at = ?
-                 where customer_id = ? and row_version = ?
-                """,
-                request.smsNotificationEnabled(), request.pushNotificationEnabled(),
-                request.inAppNotificationEnabled(), OffsetDateTime.now(clock),
-                customerId, request.expectedVersion()
-        ));
+    public Preferences patchPreferences(String customerId, PreferencesCommand request, String idempotencyKey) {
+        return idempotency.execute("CUSTOMER_PREFERENCES:" + customerId, idempotencyKey, request,
+                Preferences.class, CustomerErrorCode.CUSTOMER_IDEMPOTENCY_CONFLICT, () -> {
+                    requireCustomer(customerId);
+                    if (request.smsNotificationEnabled() == null
+                            && request.pushNotificationEnabled() == null
+                            && request.inAppNotificationEnabled() == null) {
+                        throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                                "변경할 환경설정을 하나 이상 입력해 주세요.");
+                    }
+                    requireUpdated(jdbcTemplate.update(
+                            """
+                            update customer_preferences
+                               set sms_notification_enabled = coalesce(?, sms_notification_enabled),
+                                   push_notification_enabled = coalesce(?, push_notification_enabled),
+                                   in_app_notification_enabled = coalesce(?, in_app_notification_enabled),
+                                   row_version = row_version + 1, updated_at = ?
+                             where customer_id = ? and row_version = ?
+                            """,
+                            request.smsNotificationEnabled(), request.pushNotificationEnabled(),
+                            request.inAppNotificationEnabled(), OffsetDateTime.now(clock), customerId,
+                            request.expectedVersion()));
+                    return getPreferences(customerId);
+                });
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getAccessibilitySettings(String customerId) {
+    public AccessibilitySettings getAccessibilitySettings(String customerId) {
         requireCustomer(customerId);
         return single(jdbcTemplate.query(
                 """
@@ -123,34 +140,39 @@ public class CustomerProfileService {
                        row_version, updated_at
                   from customer_accessibility_settings where customer_id = ?
                 """,
-                (rs, rowNum) -> map(
-                        "customerId", customerId,
-                        "largeFont", rs.getBoolean("large_font"),
-                        "highContrast", rs.getBoolean("high_contrast"),
-                        "speechGuidance", rs.getBoolean("speech_guidance"),
-                        "oneHandMode", rs.getBoolean("one_hand_mode"),
-                        "version", rs.getLong("row_version"),
-                        "updatedAt", rs.getObject("updated_at", OffsetDateTime.class)
+                (rs, rowNum) -> new AccessibilitySettings(
+                        customerId,
+                        rs.getBoolean("large_font"),
+                        rs.getBoolean("high_contrast"),
+                        rs.getBoolean("speech_guidance"),
+                        rs.getBoolean("one_hand_mode"),
+                        rs.getLong("row_version"),
+                        rs.getObject("updated_at", OffsetDateTime.class)
                 ), customerId));
     }
 
     @Transactional
-    public void putAccessibilitySettings(String customerId, AccessibilitySettingsCommand request) {
-        requireCustomer(customerId);
-        requireUpdated(jdbcTemplate.update(
-                """
-                update customer_accessibility_settings
-                   set large_font = ?, high_contrast = ?, speech_guidance = ?, one_hand_mode = ?,
-                       row_version = row_version + 1, updated_at = ?
-                 where customer_id = ? and row_version = ?
-                """,
-                request.largeFont(), request.highContrast(), request.speechGuidance(), request.oneHandMode(),
-                OffsetDateTime.now(clock), customerId, request.expectedVersion()
-        ));
+    public AccessibilitySettings putAccessibilitySettings(String customerId,
+            AccessibilitySettingsCommand request, String idempotencyKey) {
+        return idempotency.execute("CUSTOMER_ACCESSIBILITY:" + customerId, idempotencyKey, request,
+                AccessibilitySettings.class, CustomerErrorCode.CUSTOMER_IDEMPOTENCY_CONFLICT, () -> {
+                    requireCustomer(customerId);
+                    requireUpdated(jdbcTemplate.update(
+                            """
+                            update customer_accessibility_settings
+                               set large_font = ?, high_contrast = ?, speech_guidance = ?, one_hand_mode = ?,
+                                   row_version = row_version + 1, updated_at = ?
+                             where customer_id = ? and row_version = ?
+                            """,
+                            request.largeFont(), request.highContrast(), request.speechGuidance(),
+                            request.oneHandMode(), OffsetDateTime.now(clock), customerId,
+                            request.expectedVersion()));
+                    return getAccessibilitySettings(customerId);
+                });
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getDataSummary(String customerId) {
+    public DataSummary getDataSummary(String customerId) {
         requireCustomer(customerId);
         return single(jdbcTemplate.query(
                 """
@@ -159,18 +181,18 @@ public class CustomerProfileService {
                        last_sync_at, updated_at
                   from customer_data_inventory where customer_id = ?
                 """,
-                (rs, rowNum) -> map(
-                        "customerId", customerId,
-                        "institutions", rs.getInt("institution_count"),
-                        "accounts", rs.getInt("account_count"),
-                        "transactionsSynced", rs.getInt("transaction_count"),
-                        "lastSyncAt", rs.getObject("last_sync_at", OffsetDateTime.class),
-                        "dataFreshness", map(
-                                "accounts", rs.getString("account_freshness"),
-                                "transactions", rs.getString("transaction_freshness"),
-                                "baseline", rs.getString("baseline_freshness")
+                (rs, rowNum) -> new DataSummary(
+                        customerId,
+                        rs.getInt("institution_count"),
+                        rs.getInt("account_count"),
+                        rs.getInt("transaction_count"),
+                        rs.getObject("last_sync_at", OffsetDateTime.class),
+                        new DataFreshness(
+                                rs.getString("account_freshness"),
+                                rs.getString("transaction_freshness"),
+                                rs.getString("baseline_freshness")
                         ),
-                        "updatedAt", rs.getObject("updated_at", OffsetDateTime.class)
+                        rs.getObject("updated_at", OffsetDateTime.class)
                 ), customerId));
     }
 
@@ -183,7 +205,7 @@ public class CustomerProfileService {
         }
     }
 
-    private Map<String, Object> single(List<Map<String, Object>> rows) {
+    private <T> T single(List<T> rows) {
         if (rows.size() != 1) {
             throw new BusinessException(CustomerErrorCode.CUSTOMER_NOT_FOUND);
         }
@@ -196,11 +218,4 @@ public class CustomerProfileService {
         }
     }
 
-    private Map<String, Object> map(Object... entries) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (int index = 0; index < entries.length; index += 2) {
-            result.put(String.valueOf(entries[index]), entries[index + 1]);
-        }
-        return result;
-    }
 }

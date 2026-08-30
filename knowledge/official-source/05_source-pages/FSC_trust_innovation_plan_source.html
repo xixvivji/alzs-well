@@ -1,0 +1,2774 @@
+<!DOCTYPE html>
+<html lang="ko" class="ko">
+<head>
+	<title>
+		중소서민정책 - 
+			정책일반 - 
+			정책마당 - 
+			금융위원회</title> 
+
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <meta name="keywords" content="금융위원회, 금융위">
+	<meta name="robots" content="index,follow" />
+	<link rel="shortcut icon" href="/humanframe/global/assets/image/icon/favicon.ico" type="image/x-icon"/>
+	<link rel="icon" href="/humanframe/global/assets/image/icon/favicon.ico" type="image/x-icon"/>
+	
+	<!-- NAVER WEBMASTER -->
+	<meta name="naver-site-verification" content="41d4a49609a8cc014169c0cbaa643150cf8d7b89" />
+	<meta name="description" content="혁신적 금융, 포용적 금융, 신뢰받는 금융, 금융위원회 입니다.">
+	<script type="application/ld+json">
+	{
+ 	"@context": "http://schema.org",
+	"@type": "WebSite",
+ 	"name": "금융위원회",
+ 	"url": "https://www.fsc.go.kr",
+ 	"sameAs": [
+   	"https://blog.naver.com/blogfsc",
+   	"https://www.youtube.com/channel/UCuJz-PXNMdWQr6TNM4htENw",
+   	"https://www.facebook.com/fsckorea",
+   	"https://twitter.com/fsckorea",
+    "https://instagram.com/fsc.go.kr"
+ 	]
+	}
+	</script>
+    
+	<!-- Vendor CSS -->
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/vendor/jquery-ui/jquery-ui.css" />
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/vendor/jquery-ui/jquery-ui.theme.css" />
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/vendor/font-awesome/css/font-awesome.min.css">
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/vendor/owl.carousel/assets/owl.carousel.min.css">
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/vendor/magnific-popup/magnific-popup.min.css">
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/css/jquery.datetimepicker.css">
+	<link rel="stylesheet" href="/humanframe/theme/fscmain/assets/plugin/swiper/swiper.css">
+	<!-- Global CSS -->
+	<link rel="stylesheet" href="/humanframe/global/assets/css/global.css?20240118">
+	
+	<!-- FSC CSS -->
+	<link type="text/css" rel="stylesheet" href="/humanframe/theme/fscmain/assets/style/common.css">
+	<link type="text/css" rel="stylesheet" href="/humanframe/theme/fscmain/assets/style/custom.css">
+	<link type="text/css" rel="stylesheet" href="/humanframe/theme/fscmain/assets/style/search.css">
+	
+	<!-- 공용 Scripts -->
+	<script src="/humanframe/global/assets/vendor/jquery/jquery-2.2.2.min.js"></script>
+	<script src="/humanframe/global/assets/vendor/jquery/jquery.ajax-cross-origin.min.js"></script>
+	<script src="/humanframe/global/assets/vendor/jquery-ui/jquery-ui.min.js"></script>
+	<script src="/humanframe/global/assets/vendor/jquery-ui/datepicker-ko.js"></script>
+	<script src="/humanframe/global/assets/vendor/loadingoverlay.min.js"></script>
+	<script src="/humanframe/global/assets/script/makePCookie.js"></script>
+	<script src="/humanframe/theme/fscmain/assets/vendor/owl.carousel/owl.carousel.min.js"></script>
+	<script src="/humanframe/theme/fscmain/assets/script/jquery.datetimepicker.js"></script>
+	<script src="/humanframe/theme/fscmain/assets/plugin/swiper/swiper.js"></script>
+	
+	<!-- FSC Scripts -->
+	<script src="/humanframe/global/assets/script/global-kor.js"></script>
+	<script type="text/javascript" src="/humanframe/theme/fscmain/assets/script/common.js"></script>
+	<script type="text/javascript" src="/humanframe/theme/fscmain/assets/script/sub.js"></script>
+	<script src="/humanframe/theme/fscmain/assets/script/search.js"></script>
+	<script src="/humanframe/theme/fscmain/assets/script/vKeyboard.js"></script>
+	
+	<!-- jQuery Validate -->
+	<script src="/humanframe/theme/fscmain/assets/vendor/jquery.validate/jquery.validate.min.js"></script>
+	<script src="/humanframe/theme/fscmain/assets/vendor/jquery.validate/localization/messages_ko.js"></script>
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		  // Find the subject element
+		  const subjectElement = document.querySelector('.board-view-wrap > .header > .subject');
+		  
+		  // Check if the subject element exists and has text content
+		  if (subjectElement && subjectElement.textContent.trim()) {
+		    // Get the current page title
+		    const currentTitle = document.title;
+		    
+		    // Get the text from subject element
+		    const subjectText = subjectElement.textContent.trim();
+		    
+		    // Update the document title by adding subject text at the beginning
+		    document.title = '상세화면' + ' - ' + currentTitle;
+		  }
+		});
+	</script>
+</head>
+<body>
+	<div class="wrapper">
+		<div id="skipNavigation" title="스킵내비게이션">
+	        <a href="#gnb-menu">주메뉴 바로가기 </a>
+	        <a href="#container">본문 내용 바로가기</a>
+	    </div>
+	
+		<!-- start:header -->
+		<script type="text/javascript">
+	$(document).ready(function(){
+		$(".search-auto-wrap").hide();
+		
+		$("#searchText").on("focus", function() {
+			$(".search-auto-wrap").show();
+		});
+		
+		$("#searchText").on("keyup", function() {
+			getAutoComplete(autoMode);
+		});
+		
+		/*
+		$(document).click(function(e){
+			var ahref = $(e.target).attr('href');
+			var aclass = $(e.target).attr('class');
+			
+			if (!$(e.target).is('#searchText') && ahref != "#none" && aclass.indexOf("hover") < 0) {
+				$(".search-auto-wrap").hide();
+			}
+		});
+		*/
+		
+		$(document).mouseup(function (e){
+			var keyboardHide = $('.search-wrap');
+			if( keyboardHide.has(e.target).length === 0){
+				$(".search-auto-wrap").hide();
+			}
+		});
+		
+		$('#frmSearch').submit(function() {
+			if($("input[name='searchText']").val() == ""){
+				alert("검색어를 입력하세요.");
+				return false;
+			}
+		});
+	});
+	
+	function searchText(srchText) {
+		$("input[name='searchText'], frmSearch").val(srchText.trim());
+		$("#frmSearch").submit();
+	}
+	
+	function closeAutoComplete() {
+		$(".search-auto-wrap").hide();
+		$('.search-btn').focus();
+	}
+</script>
+   		<header>
+			<div class="eg">
+				<p><img src="/humanframe/theme/fscmain/assets/images/common/ico_eg.png" alt="eg(전자정부)">이 누리집은 대한민국 공식 전자정부 누리집입니다.</p>
+			</div>
+			<div class="top-head">
+                <div class="logo-cont">
+                    <a href="/index" title="금융위원회 바로가기"><img src="/humanframe/theme/fscmain/assets/images/common/logo.png" alt="금융위원회"></a>
+                </div>
+                <!-- side-menu 이동 -->
+                <div class="side-menu">
+                	<ul>
+						<li><a href="/edu" target="_blank" title="금융위원회 알기쉬운 금융홈페이지 새창으로 열기" class="ext_link_none">알기쉬운 금융</a></li>
+                    	<li><a href="/eng" target="_blank" title="금융위원회 영문홈페이지 새창으로 열기">ENGLISH</a></li>
+                    	<li><a href="/kids" target="_blank" title="금융위원회 어린이 홈페이지 새창으로 열기">어린이</a></li>
+                    </ul>
+                </div>
+                
+                <!-- search form -->
+                <form name="frmSearch" id="frmSearch" method="post" action="/sc000000">
+                	<input type="hidden" id="colTarget" name="colTarget" value="TOTAL">
+                	<input type="hidden" id="lang" name="lang" value="KO">
+                    <fieldset>
+                        <legend>검색영역</legend>
+                        <div class="search-wrap">
+                            <div class="header">
+                                <label for="searchText"><span class="hd-element">검색어를 입력하세요</span></label>
+                                <input type="text" name="searchText" id="searchText" placeholder="검색어를 입력하세요." autocomplete="off" maxlength='2000'>
+                                <!-- search auto -->
+                                <div class="search-auto-wrap" style="display:none">
+                                    <div class="auto-list" style="min-height: 220px;">
+                                        <ul id="autoResult"></ul>
+                                        <div class="link"></div>
+                                    </div>
+                                    <div class="auto-word">
+                                    	<div class="left-element">
+                                            <a href="javascript:getAutoComplete('s')">첫 단어 보기</a>
+                                        	<a href="javascript:getAutoComplete('e')">끝 단어 보기</a>
+                                        </div>
+                                        <div class="right-element">
+                                            <a href="javascript:closeAutoComplete()">닫기</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!--// search auto -->
+                                <button type="submit" class="search-btn" title="검색"><span class="hd-element">검색</span></button>
+                            </div>
+                        </div>
+                    </fieldset>
+                </form><!--// search form -->
+
+                <!-- mobile menu -->
+                <ul class="m-menu">
+                    <li><a href="javascript:void(0);"><span class="hd-element">검색</span></a></li>
+                    <li><a href="javascript:void(0);">
+                    	<em class="hd-element">모바일메뉴 열기</em>
+                        <span class="line1"></span>
+                        <span class="line2"></span>
+                        <span class="line3"></span>
+                    </a>
+                </li>
+                </ul>
+                <!--// mobile menu -->
+            </div>
+            <!-- gnb -->
+            <nav class="gnb" id="gnb">
+                <div class="gnb-inner">
+                	<div class="side-menu">
+                		<ul>
+                        	<li><a href="/eng" target="_blank" title="금융위원회 영문홈페이지 새창으로 열기">ENGLISH</a></li>
+                        	<li><a href="/kids" target="_blank" title="금융위원회 어린이 홈페이지 새창으로 열기">어린이</a></li>
+                        </ul>
+                    </div>
+                    <ul id="gnb-menu">
+                        <li>
+									<a	
+										
+													href="/no010101" target="_self" 
+										>알림마당<span class="line" ></span></a>
+									<ul>
+										<li>
+													<a	
+														
+																	href="/no010101" target="_self" 
+														>위원회 소식</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/no010101"
+																				
+																			>보도자료</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no010102"
+																				
+																			>보도설명자료</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no010103"
+																				
+																			>보고영상</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no010104"
+																				
+																			>알림·채용·입찰</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no010105"
+																				
+																			>새소식</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no010106"
+																				
+																			>사진뉴스</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no010107"
+																				
+																			>정책영상</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/no040101" target="_self" 
+														>홍보자료</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/no040101"
+																				
+																			>카드뉴스</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="https://www.youtube.com/@FSCKorea" target="_blank" title="새창으로 열기"
+																			>영상(유튜브)</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no040104"
+																				
+																			>웹툰</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no040103"
+																				
+																			>정보그림(인포그래픽)</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/no020101" target="_self" 
+														>의결정보</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/no020101"
+																				
+																			>금융위의결정보</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no020102"
+																				
+																			>증선위의결정보</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="https://www.fss.or.kr/fss/job/accnutAdtorInfo/list.do?acntnWrkCode=01&menuNo=200732" target="_blank" title="새창으로 열기"
+																			>제재정보</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/no07010101" target="_self" 
+														>자본시장 불공정거래</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/no07010101"
+																				
+																			>불공정거래 홈</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no070101"
+																				
+																			>불공정거래란</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no070200"
+																				
+																			>의결정보</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no070300"
+																				
+																			>보도자료ㆍ참고자료</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/no030101" target="_self" 
+														>금융시장동향</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/no030101"
+																				
+																			>금융시장동향</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no030102"
+																				
+																			>금융지표</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/edu" target="_blank" title="새창으로 열기"
+														>알기쉬운금융</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="/no060101" target="_self" 
+														>해외금융기관</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/no060101" target="_self" 
+																			>주요국가 금융감독기관</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/no060201"
+																				
+																			>주요국제금융기구</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																href="/pa050000"
+															
+														>뉴스레터</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="/in090101" target="_self" 
+														>자료실</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/in090101" target="_self" 
+																			>금융시장역사</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/in090201" target="_self" 
+																			>금융60년연표</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in090301"
+																				
+																			>금융용어설명</a>
+																	</li>
+																</ul>
+													</li>
+											</ul>
+								</li>
+							<li>
+									<a	
+										
+													href="/pa030101" target="_self" 
+										>참여마당<span class="line" ></span></a>
+									<ul>
+										<li>
+													<a	
+														
+																href="/pa010000"
+															
+														>민원신청</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="https://www.epeople.go.kr/idea/index.npaid" target="_blank" title="새창으로 열기"
+														>국민생각함</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="https://fine.fss.or.kr/fine/fncco/systemFncCo/list.do?menuNo=900038" target="_blank" title="새창으로 열기"
+														>제도권금융기관조회</a>
+													</li>
+											<li>
+													<a	
+														
+																href="/pa040000"
+															
+														>옴부즈만</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="/pa030101" target="_self" 
+														>신고마당</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/pa030101"
+																				
+																			>불공정거래신고</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/pa030201" target="_self" 
+																			>부패방지신고</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/pa030301" target="_self" 
+																			>직원친절ㆍ불친절제보</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/pa030401" target="_self" 
+																			>금융부조리신고(비영리포함)</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/pa030501"
+																				
+																			>금융사고제보</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/pa030502"
+																				
+																			>공익신고</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/pa030503"
+																				
+																			>갑질피해신고</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="https://www.epeople.go.kr/nep/crtf/userLogn.npaid?returnUrl=%2Fnep%2FbdgtWst%2FselectBdgtWstRqstPage.paid" target="_blank" title="새창으로 열기"
+																			>예산낭비신고</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="https://www.safetyreport.go.kr/api?apiKey=REDACTED_SOURCE_CREDENTIAL" target="_blank" title="새창으로 열기"
+																			>안전신문고</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/pa030601"
+																				
+																			>국고보조금 부조리 신고센터</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/pa070101" target="_self" 
+														>관련누리집</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/pa070102" target="_self" 
+																			>국내관련누리집</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/pa070201" target="_self" 
+																			>해외관련누리집</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																href="/pa070301"
+															
+														>금융위원회 공무원의 성과를 칭찬합니다.</a>
+													</li>
+											<li>
+													<a	
+														
+																href="/pa080001"
+															
+														>금융분야 정상화 과제 제안센터</a>
+													</li>
+											</ul>
+								</li>
+							<li>
+									<a	
+										
+													href="/po02010101" target="_self" 
+										>정책마당<span class="line" style="display:block"></span></a>
+									<ul>
+										<li>
+													<a	
+														
+																	href="/po02010101" target="_self" 
+														>정책자료</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/po0201010202" target="_self" 
+																			>주요업무계획</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/po02050101"
+																				
+																			>국정성과</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/po020201"
+																				
+																			>주요정책문답</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/po02030103" target="_self" 
+																			>국회·예산 등</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/po020401"
+																				
+																			>정부위원회현황</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/po040101" target="_self" 
+														>법령정보</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/po040101"
+																				
+																			>금융위 소관법규</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/po040200"
+																				
+																			>금융위 소관규정/고시/공고/훈령</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/po040301"
+																				
+																			>입법예고/규정변경예고</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/index" target="_self" 
+														>규제혁신</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="https://better.fsc.go.kr/" target="_blank" title="새창으로 열기"
+																			>금융규제 법령해석포털</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="https://www.better.go.kr/zz.main.PortalMain" target="_blank" title="새창으로 열기"
+																			>규제정보포털</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/po050100" target="_self" 
+														>국정과제</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/po050100"
+																				
+																			>국정과제</a>
+																	</li>
+																</ul>
+													</li>
+											</ul>
+								</li>
+							<li>
+									<a	
+										
+													href="/in010000" target="_self" 
+										>정보공개<span class="line" ></span></a>
+									<ul>
+										<li>
+													<a	
+														
+																href="/in010000"
+															
+														>정보공개제도안내</a>
+													</li>
+											<li>
+													<a	
+														
+																href="/in040000"
+															
+														>사전정보공표목록</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="/in050101" target="_self" 
+														>재정정보공개</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/in050101" target="_self" 
+																			>재정정보</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																href="/in070000"
+															
+														>비공개세부기준</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="https://www.open.go.kr/com/login/memberLogin.do" target="_blank" title="새창으로 열기"
+														>정보공개청구</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="https://www.open.go.kr/othicInfo/infoList/infoList.do" target="_blank" title="새창으로 열기"
+														>보유정보목록</a>
+													</li>
+											<li>
+													<a	
+														
+																	href="/in100100" target="_self" 
+														>감사·청렴</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/in100100"
+																				
+																			>자체감사결과</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in100200"
+																				
+																			>부패공직자현황</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in100300"
+																				
+																			>반부패·청렴</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/in060101" target="_self" 
+														>공공데이터개방</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/in060101"
+																				
+																			>금융공공데이터란</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in060201"
+																				
+																			>시스템 구성</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in060301"
+																				
+																			>개방 현황</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in060501"
+																				
+																			>자주 묻는 질문</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/in060701"
+																				
+																			>공공데이터 제공신청 및 의견수렴</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																href="/in080000"
+															
+														>정책실명제</a>
+													</li>
+											</ul>
+								</li>
+							<li>
+									<a	
+										
+													href="/ad010101" target="_self" 
+										>적극행정<span class="line" ></span></a>
+									<ul>
+										<li>
+													<a	
+														
+																	href="/ad010101" target="_self" 
+														>제도소개</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/ad010101"
+																				
+																			>적극행정과 소극행정의 정의</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/ad010102"
+																				
+																			>적극행정 추진방향</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/ad020101" target="_self" 
+														>국민참여</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/ad020101"
+																				
+																			>적극행정국민추천</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="https://www.epeople.go.kr/nep/pttn/negativePttn/NegativePttnCotents.npaid" target="_blank" title="새창으로 열기"
+																			>소극행정신고</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="https://www.mpm.go.kr/mpm/info/theActive/referenceBoard/newsBoard/" target="_blank" title="새창으로 열기"
+														>적극행정자료실</a>
+													</li>
+											<li>
+													<a	
+														
+																href="/ad040101"
+															
+														>적극행정우수공무원</a>
+													</li>
+											</ul>
+								</li>
+							<li>
+									<a	
+										
+													href="/fsc010101" target="_self" 
+										>금융위원회<span class="line" ></span></a>
+									<ul>
+										<li>
+													<a	
+														
+																	href="/fsc010101" target="_self" 
+														>금융위원회소개</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																					href="/fsc010101"
+																				
+																			>금융위원회</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																						href="/fsc010201" target="_self" 
+																			>위원소개</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/fsc020101" target="_self" 
+														>위원장</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/fsc020101" target="_self" 
+																			>소개</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/fsc020201"
+																				
+																			>위원장과의 대화</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/fsc020301"
+																				
+																			>위원장 일정</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/fsc020401"
+																				
+																			>기고/강연/연설</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/fsc020501"
+																				
+																			>역대위원장</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																	href="/fsc030101" target="_self" 
+														>부위원장</a>
+													<ul>
+															<li>
+																		<a	
+																			
+																						href="/fsc030101" target="_self" 
+																			>소개</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/fsc030201"
+																				
+																			>부위원장 일정</a>
+																	</li>
+																<li>
+																		<a	
+																			
+																					href="/fsc030202"
+																				
+																			>역대 부위원장</a>
+																	</li>
+																</ul>
+													</li>
+											<li>
+													<a	
+														
+																href="/fsc040101"
+															
+														>조직도</a>
+													</li>
+											<li>
+													<a	
+														
+																href="/fsc050101"
+															
+														>찾아오시는 길</a>
+													</li>
+											</ul>
+								</li>
+							<li class="allmenu">
+                            <a href="javascript:void(0);" title="전체보기"><span class="ico"></span>전체보기</a>
+                             <ul>
+                                <li>
+											<a	
+												
+															href="/no010101" target="_self" 
+												>알림마당</a>
+											<ul>
+												<li>
+															<a	
+																
+																			href="/no010101" target="_self" 
+																>위원회 소식</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/no010101"
+																					
+																				>보도자료</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no010102"
+																					
+																				>보도설명자료</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no010103"
+																					
+																				>보고영상</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no010104"
+																					
+																				>알림·채용·입찰</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no010105"
+																					
+																				>새소식</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no010106"
+																					
+																				>사진뉴스</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no010107"
+																					
+																				>정책영상</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/no040101" target="_self" 
+																>홍보자료</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/no040101"
+																					
+																				>카드뉴스</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="https://www.youtube.com/@FSCKorea" target="_blank" title="새창으로 열기"
+																				>영상(유튜브)</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no040104"
+																					
+																				>웹툰</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no040103"
+																					
+																				>정보그림(인포그래픽)</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/no020101" target="_self" 
+																>의결정보</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/no020101"
+																					
+																				>금융위의결정보</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no020102"
+																					
+																				>증선위의결정보</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="https://www.fss.or.kr/fss/job/accnutAdtorInfo/list.do?acntnWrkCode=01&menuNo=200732" target="_blank" title="새창으로 열기"
+																				>제재정보</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/no07010101" target="_self" 
+																>자본시장 불공정거래</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/no07010101"
+																					
+																				>불공정거래 홈</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no070101"
+																					
+																				>불공정거래란</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no070200"
+																					
+																				>의결정보</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no070300"
+																					
+																				>보도자료ㆍ참고자료</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/no030101" target="_self" 
+																>금융시장동향</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/no030101"
+																					
+																				>금융시장동향</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no030102"
+																					
+																				>금융지표</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/edu" target="_blank" title="새창으로 열기"
+																>알기쉬운금융</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/no060101" target="_self" 
+																>해외금융기관</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/no060101" target="_self" 
+																				>주요국가 금융감독기관</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/no060201"
+																					
+																				>주요국제금융기구</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/pa050000"
+																	
+																>뉴스레터</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/in090101" target="_self" 
+																>자료실</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/in090101" target="_self" 
+																				>금융시장역사</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/in090201" target="_self" 
+																				>금융60년연표</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in090301"
+																					
+																				>금융용어설명</a>
+																		</li>
+																	</ul>
+														</li>
+													</ul>
+										</li>
+									<li>
+											<a	
+												
+															href="/pa030101" target="_self" 
+												>참여마당</a>
+											<ul>
+												<li>
+															<a	
+																
+																		href="/pa010000"
+																	
+																>민원신청</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="https://www.epeople.go.kr/idea/index.npaid" target="_blank" title="새창으로 열기"
+																>국민생각함</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="https://fine.fss.or.kr/fine/fncco/systemFncCo/list.do?menuNo=900038" target="_blank" title="새창으로 열기"
+																>제도권금융기관조회</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/pa040000"
+																	
+																>옴부즈만</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/pa030101" target="_self" 
+																>신고마당</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/pa030101"
+																					
+																				>불공정거래신고</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/pa030201" target="_self" 
+																				>부패방지신고</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/pa030301" target="_self" 
+																				>직원친절ㆍ불친절제보</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/pa030401" target="_self" 
+																				>금융부조리신고(비영리포함)</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/pa030501"
+																					
+																				>금융사고제보</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/pa030502"
+																					
+																				>공익신고</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/pa030503"
+																					
+																				>갑질피해신고</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="https://www.epeople.go.kr/nep/crtf/userLogn.npaid?returnUrl=%2Fnep%2FbdgtWst%2FselectBdgtWstRqstPage.paid" target="_blank" title="새창으로 열기"
+																				>예산낭비신고</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="https://www.safetyreport.go.kr/api?apiKey=REDACTED_SOURCE_CREDENTIAL" target="_blank" title="새창으로 열기"
+																				>안전신문고</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/pa030601"
+																					
+																				>국고보조금 부조리 신고센터</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/pa070101" target="_self" 
+																>관련누리집</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/pa070102" target="_self" 
+																				>국내관련누리집</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/pa070201" target="_self" 
+																				>해외관련누리집</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/pa070301"
+																	
+																>금융위원회 공무원의 성과를 칭찬합니다.</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/pa080001"
+																	
+																>금융분야 정상화 과제 제안센터</a>
+															<ul>
+																</ul>
+														</li>
+													</ul>
+										</li>
+									<li>
+											<a	
+												
+															href="/po02010101" target="_self" 
+												>정책마당</a>
+											<ul>
+												<li>
+															<a	
+																
+																			href="/po02010101" target="_self" 
+																>정책자료</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/po0201010202" target="_self" 
+																				>주요업무계획</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/po02050101"
+																					
+																				>국정성과</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/po020201"
+																					
+																				>주요정책문답</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/po02030103" target="_self" 
+																				>국회·예산 등</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/po020401"
+																					
+																				>정부위원회현황</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/po040101" target="_self" 
+																>법령정보</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/po040101"
+																					
+																				>금융위 소관법규</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/po040200"
+																					
+																				>금융위 소관규정/고시/공고/훈령</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/po040301"
+																					
+																				>입법예고/규정변경예고</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/index" target="_self" 
+																>규제혁신</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="https://better.fsc.go.kr/" target="_blank" title="새창으로 열기"
+																				>금융규제 법령해석포털</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="https://www.better.go.kr/zz.main.PortalMain" target="_blank" title="새창으로 열기"
+																				>규제정보포털</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/po050100" target="_self" 
+																>국정과제</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/po050100"
+																					
+																				>국정과제</a>
+																		</li>
+																	</ul>
+														</li>
+													</ul>
+										</li>
+									<li>
+											<a	
+												
+															href="/in010000" target="_self" 
+												>정보공개</a>
+											<ul>
+												<li>
+															<a	
+																
+																		href="/in010000"
+																	
+																>정보공개제도안내</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/in040000"
+																	
+																>사전정보공표목록</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/in050101" target="_self" 
+																>재정정보공개</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/in050101" target="_self" 
+																				>재정정보</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/in070000"
+																	
+																>비공개세부기준</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="https://www.open.go.kr/com/login/memberLogin.do" target="_blank" title="새창으로 열기"
+																>정보공개청구</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="https://www.open.go.kr/othicInfo/infoList/infoList.do" target="_blank" title="새창으로 열기"
+																>보유정보목록</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/in100100" target="_self" 
+																>감사·청렴</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/in100100"
+																					
+																				>자체감사결과</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in100200"
+																					
+																				>부패공직자현황</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in100300"
+																					
+																				>반부패·청렴</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/in060101" target="_self" 
+																>공공데이터개방</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/in060101"
+																					
+																				>금융공공데이터란</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in060201"
+																					
+																				>시스템 구성</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in060301"
+																					
+																				>개방 현황</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in060501"
+																					
+																				>자주 묻는 질문</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/in060701"
+																					
+																				>공공데이터 제공신청 및 의견수렴</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/in080000"
+																	
+																>정책실명제</a>
+															<ul>
+																</ul>
+														</li>
+													</ul>
+										</li>
+									<li>
+											<a	
+												
+															href="/ad010101" target="_self" 
+												>적극행정</a>
+											<ul>
+												<li>
+															<a	
+																
+																			href="/ad010101" target="_self" 
+																>제도소개</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/ad010101"
+																					
+																				>적극행정과 소극행정의 정의</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/ad010102"
+																					
+																				>적극행정 추진방향</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/ad020101" target="_self" 
+																>국민참여</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/ad020101"
+																					
+																				>적극행정국민추천</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="https://www.epeople.go.kr/nep/pttn/negativePttn/NegativePttnCotents.npaid" target="_blank" title="새창으로 열기"
+																				>소극행정신고</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="https://www.mpm.go.kr/mpm/info/theActive/referenceBoard/newsBoard/" target="_blank" title="새창으로 열기"
+																>적극행정자료실</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/ad040101"
+																	
+																>적극행정우수공무원</a>
+															<ul>
+																</ul>
+														</li>
+													</ul>
+										</li>
+									<li>
+											<a	
+												
+															href="/fsc010101" target="_self" 
+												>금융위원회</a>
+											<ul>
+												<li>
+															<a	
+																
+																			href="/fsc010101" target="_self" 
+																>금융위원회소개</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																						href="/fsc010101"
+																					
+																				>금융위원회</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																							href="/fsc010201" target="_self" 
+																				>위원소개</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/fsc020101" target="_self" 
+																>위원장</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/fsc020101" target="_self" 
+																				>소개</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/fsc020201"
+																					
+																				>위원장과의 대화</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/fsc020301"
+																					
+																				>위원장 일정</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/fsc020401"
+																					
+																				>기고/강연/연설</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/fsc020501"
+																					
+																				>역대위원장</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																			href="/fsc030101" target="_self" 
+																>부위원장</a>
+															<ul>
+																<li>
+																			<a	
+																				
+																							href="/fsc030101" target="_self" 
+																				>소개</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/fsc030201"
+																					
+																				>부위원장 일정</a>
+																		</li>
+																	<li>
+																			<a	
+																				
+																						href="/fsc030202"
+																					
+																				>역대 부위원장</a>
+																		</li>
+																	</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/fsc040101"
+																	
+																>조직도</a>
+															<ul>
+																</ul>
+														</li>
+													<li>
+															<a	
+																
+																		href="/fsc050101"
+																	
+																>찾아오시는 길</a>
+															<ul>
+																</ul>
+														</li>
+													</ul>
+										</li>
+									</ul>
+                        </li>
+                    </ul>
+                </div>
+            </nav><!--// gnb -->
+		</header><!-- end:header -->
+		
+		<!-- start:content -->
+		<main id="sub-container">
+			<aside>
+	<script>
+	window.addEventListener("load", function () {
+	
+	    const lnb = document.querySelector(".lnb");
+	    
+	    if (!lnb) return;
+	    
+	    const depth2Menus = lnb.querySelectorAll("ul > li");
+	    
+	    depth2Menus.forEach(function(li) {
+	       
+	    	const a = li.querySelector("a");
+	        const subMenu = li.querySelector("ul");
+	
+	        // 실제 하위메뉴 있는지 체크 (핵심)
+	        const hasRealSubMenu = subMenu && subMenu.children.length > 0;
+	       
+	        if (a && hasRealSubMenu) {
+	            a.classList.add("has-submenu");
+	            a.setAttribute("aria-haspopup", "true");
+	          
+	            if (li.classList.contains("active")) {
+	                a.setAttribute("aria-expanded", "true");
+	                a.setAttribute("aria-label", "확장됨");
+	            } else {
+	                a.setAttribute("aria-expanded", "false");
+	                a.setAttribute("aria-label", "축소됨");
+	            }
+	
+	            // 클릭 (하위메뉴 있을 때만 막기)
+	            a.addEventListener("click", function(e) {
+	                e.preventDefault();
+	               
+	                const expanded = a.getAttribute("aria-expanded") === "true";
+	                
+	                a.setAttribute("aria-expanded", !expanded);
+	                a.setAttribute("aria-label", !expanded ? "확장됨" : "축소됨");
+	            });
+	
+	            // 키보드 접근성 (추가 but 안전)
+	            a.addEventListener("keydown", function(e) {
+	                if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+	                    e.preventDefault();
+	
+	                    const expanded = a.getAttribute("aria-expanded") === "true";
+	
+	                    a.setAttribute("aria-expanded", !expanded);
+	                    a.setAttribute("aria-label", !expanded ? "확장됨" : "축소됨");
+	                }
+	            });
+	        }
+	    });
+	});
+</script>
+	
+        <h2 class="lnb-title">정책마당</h2>
+        <nav class="lnb">
+            <ul>
+                <li title=""  >
+							<a href="/po02010101" target="_self" 
+							>정책자료<span></span>
+							</a>
+							<ul>
+								<li title="">
+											<a href="/po0201010202" target="_self" 
+											>주요업무계획</a>
+										</li>
+									<li title="">
+											<a href="/po02050101" 
+												
+											>국정성과</a>
+										</li>
+									<li title="">
+											<a href="/po020201" 
+												
+											>주요정책문답</a>
+										</li>
+									<li title="">
+											<a href="/po02030103" target="_self" 
+											>국회·예산 등</a>
+										</li>
+									<li title="">
+											<a href="/po020401" 
+												
+											>정부위원회현황</a>
+										</li>
+									</ul>
+						</li>
+					<li title=""  >
+							<a href="/po040101" target="_self" 
+							>법령정보<span></span>
+							</a>
+							<ul>
+								<li title="">
+											<a href="/po040101" 
+												
+											>금융위 소관법규</a>
+										</li>
+									<li title="">
+											<a href="/po040200" 
+												
+											>금융위 소관규정/고시/공고/훈령</a>
+										</li>
+									<li title="">
+											<a href="/po040301" 
+												
+											>입법예고/규정변경예고</a>
+										</li>
+									</ul>
+						</li>
+					<li title=""  >
+							<a href="/index" target="_self" 
+							>규제혁신<span></span>
+							</a>
+							<ul>
+								<li title="">
+											<a href="https://better.fsc.go.kr/" target="_blank" title="새 창에서 열림"
+											>금융규제 법령해석포털</a>
+										</li>
+									<li title="">
+											<a href="https://www.better.go.kr/zz.main.PortalMain" target="_blank" title="새 창에서 열림"
+											>규제정보포털</a>
+										</li>
+									</ul>
+						</li>
+					<li title=""  >
+							<a href="/po050100" target="_self" 
+							>국정과제<span></span>
+							</a>
+							<ul>
+								<li title="">
+											<a href="/po050100" 
+												
+											>국정과제</a>
+										</li>
+									</ul>
+						</li>
+					</ul>
+        </nav></aside><div class="content" id="container">
+	               	<!-- location -->
+	               	<div class="location-wrap">
+	                   	<div class="inner">
+							<span class="home"><a href="/index" title="금융위원회 홈으로 이동"><span class="hd-element">홈으로</span></a></span>
+		                   	<span ><a href="/po000000" title="정책마당 이동">정책마당</a></span>
+		                   	<span ><a href="/po010000" title="정책일반 이동">정책일반</a></span>
+		                   	<span class="active"><a href="/po010104?srchCtgry=4" title="중소서민정책 이동">중소서민정책</a></span>
+		                   	</div>
+	               	</div><!--// location -->
+	               	<!-- content-header -->
+	               	<div class="content-header">
+	                   	<h3>
+	                   	중소서민정책</h3>
+	                   <div class="right-column">
+	                       <span class="sns-link">
+	                           	<a href="javascript:void(0);"><span class="hd-element">공유하기</span></a>
+	                           	<div class="content-share-wrap">
+					            	<div class="content-share-layer">
+										<div class="sns-list-wrap">
+											<ul class="sns-list">
+												<li><a href="javascript:void(0);" class="btn-sns facebook" onclick="fn_sendSns('facebook','중소서민정책');" title="페이스북 공유하기 새창열기"><span>FaceBook</span></a></li>
+												<li><a href="javascript:void(0);" class="btn-sns twitter" onclick="fn_sendSns('twitter','중소서민정책');" title="X (구)트위터 공유하기 새창열기"><span>X (구)트위터</span></a></li>
+												<li><a href="javascript:void(0);" class="btn-sns naverblog" onclick="fn_sendSns('naverblog','중소서민정책');" title="네이버블로그 공유하기 새창열기"><span>NaverBlog</span></a></li>
+												<li><a href="javascript:void(0);" class="btn-linkurl" onclick="fn_copyUrl();" title="URL 복사하기"><span>URL 복사</span></a></li>
+											</ul>
+											<button type="button" class="close-btn-share-layer" aria-label="닫기"><span>close</span></button>
+										</div>
+									</div>
+								</div>
+	                       </span>
+	                       <span class="print-link">
+	                           <a href="javascript:void(0);" title="인쇄하기"><span class="hd-element">인쇄하기</span></a>
+	                       </span>
+	                   </div>
+	                   
+	               	</div><!--// content-header -->
+	               	<!-- content-body -->
+	               	<div class="content-body">
+	                   	<!-- tab -->
+	                   	<!--// tab -->
+	                	<!-- board-view -->
+<div class="board-view-wrap">
+    <div class="header">
+       	<div class="subject">[보도자료] 신탁을 활용한 가계 재산의 종합관리, 중소·혁신기업의 자금조달이 가능해집니다. - ｢신탁업 혁신 방안｣ 발표 -</div>
+       	<div class="day">
+           <span>2022-10-12</span>
+           <span>조회수 : 58315</span>
+       	</div>
+		<div class="info">
+					<span><strong>담당부서</strong>자산운용과</span>
+					<span><strong>담당자</strong>윤우근 사무관</span>
+					<span><strong>연락처</strong>02-2100-2661</span>
+				</div>
+	       	</div>
+    <div class="body">
+        <div class="cont">
+            <table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 100%; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0) rgb(255, 255, 255); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-weight: bold; font-size: 11pt; font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-weight: bold; font-size: 11pt;">&nbsp;</span></p> 
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;">주요 내용</span></p> 
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-weight: bold; font-size: 11pt; font-family: 굴림; text-indent: 0mm;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ <span style="font-weight: bold;">고령화&middot;국민재산축적</span> 등에 따라 <span style="font-weight: bold;">가계 재산을 종합적으로 관리하려는 수요, 4차 산업혁명 시대 혁신기업</span> 등의 적극적 재산활용을 통한 <span style="font-weight: bold;">자금조달 수요</span> 등에 대응하여 <span style="font-weight: bold;">신탁업 관련 제도를 전면 정비</span>하겠습니다.</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">➊ 금전은 물론 주식&middot;주택 등 <span style="font-weight: bold;">가계가 보유한 다양한 재산을 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">종합 관리</span>하고, <span style="font-weight: bold;">의료&middot;법률&middot;세무</span> 등 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">비금융 서비스</span>도 전문기관으로부터 받을 수 있도록 제도를 정비하여, 신탁의 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">종합 서비스 플랫폼</span> 기능을 강화하겠습니다.</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">➋ <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">비금전 재산의 신탁수익증권 발행</span>을 제도화하여, <span style="font-weight: bold;">중소&middot;혁신기업</span> 등이 <span style="font-weight: bold;">매출채권 유동화, 공장부지 유동화</span>(<span style="font-weight: bold;">세일즈앤리스백</span>) 등으로 <span style="font-weight: bold;">자금을 조달</span>할 수 있는 통로를 마련하고, <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">조각투자의 제도적 기반</span>을 갖추겠습니다.</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">➌ <span style="font-weight: bold;">고령화시대</span> 수요 확대가 예상되는 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">가업승계신탁</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">, </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">주택신탁</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">, </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">후견신탁 등의</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;"> </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">활성화</span>를 위한 제도적 기반을 마련하겠습니다.</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">➍ 신탁업 활성화에 걸맞는 수준의 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">두터운 소비자 보호</span>가 이뤄질 수 있도록, <span style="font-weight: bold;">관련 규율을 정비</span>하겠습니다.</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ 동 방안은 ｢<span style="font-weight: bold;">제3차 금융규제혁신회의</span>(<span style="font-weight: bold;">9.30일</span>)｣<span style="font-weight: bold;">의 심의</span>를 거친 내용으로, <span style="font-weight: bold;">내년 1분기 국회 논의</span>를 목표로 <span style="font-weight: bold;">법령 개정안 마련 등 후속조치</span>를 진행해 나가겠습니다.</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-weight: bold;">※ 신탁업 제도 개선에 따른 기대 효과</span></p> 
+<p class="0" style="text-indent: 0mm; text-align: right; word-break: keep-all; font-weight: bold; font-size: 11pt; line-height: 140%; font-family: 굴림;"><br></p> 
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 49.5%; height: 30px; padding: 0px; border-width: 0px 0px 1px; border-style: none none dotted; border-top-color: initial; border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; background: rgb(230, 238, 247); vertical-align: middle;"> 
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;">1. 다양한 재산을 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">종합</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;"> </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">&middot;</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;"> </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">장기적 관리</span></p></td> 
+<td style="width: 1%; height: 30px; padding: 0px; vertical-align: middle; border-width: 1px;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 49.5%; height: 30px; padding: 0px; border-width: 0px 0px 1px; border-style: none none dotted; border-top-color: initial; border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; background: rgb(230, 238, 247); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;">2. 금융 + 비금융 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">종합 서비스 플랫폼</span></p></td> 
+</tr> 
+<tr> 
+<td style="width: 309px; height: 357px; padding: 0px; border-width: 1px; border-style: dotted; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;"><img src="https://www.fsc.go.kr/comm/getImage?srvcId=MEDIA&amp;upperNo=790&amp;fileTy=MEDIA&amp;fileNo=1" alt="다양한 재산을 종합 · 장기적 관리"></p></td> 
+<td style="width: 3px; height: 357px; padding: 0px; border-width: 0px 1px; border-style: none dotted; border-top-color: initial; border-left-color: rgb(0, 0, 0); border-bottom-color: initial; border-right-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 309px; height: 357px; padding: 0px; border-width: 1px; border-style: dotted; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;"><img src="https://www.fsc.go.kr/comm/getImage?srvcId=MEDIA&amp;upperNo=791&amp;fileTy=MEDIA&amp;fileNo=1" alt="금융 + 비금융 종합 서비스 플랫폼"></p></td> 
+</tr> 
+<tr> 
+<td style="width: 309px; height: 3px; padding: 0px; border-width: 1px 0px 0px; border-style: dotted none none; border-top-color: rgb(0, 0, 0); border-left-color: initial; border-bottom-color: initial; border-right-color: initial; vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 3px; height: 3px; padding: 0px; vertical-align: middle; border-width: 1px;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 309px; height: 3px; padding: 0px; border-width: 1px 0px 0px; border-style: dotted none none; border-top-color: rgb(0, 0, 0); border-left-color: initial; border-bottom-color: initial; border-right-color: initial; vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+</tr> 
+<tr> 
+<td style="width: 309px; height: 30px; padding: 0px; border-width: 0px 0px 1px; border-style: none none dotted; border-top-color: initial; border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; background: rgb(230, 238, 247); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;">3. 다양한 방식의 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">자금조달</span><span style="font-weight: bold;"> 제도적 지원</span></p></td> 
+<td style="width: 3px; height: 30px; padding: 0px; vertical-align: middle; border-width: 1px;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 309px; height: 30px; padding: 0px; border-width: 0px 0px 1px; border-style: none none dotted; border-top-color: initial; border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; background: rgb(230, 238, 247); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;">4. </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">고령화시대</span><span style="font-weight: bold;"> 경제 &middot; 사회적 수요 대응</span></p></td> 
+</tr> 
+<tr> 
+<td style="width: 309px; height: 357px; padding: 0px; border-width: 1px; border-style: dotted; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;"><img src="https://www.fsc.go.kr/comm/getImage?srvcId=MEDIA&amp;upperNo=792&amp;fileTy=MEDIA&amp;fileNo=1" alt="다양한 방식의 자금조달 제도적 지원"></p></td> 
+<td style="width: 3px; height: 357px; padding: 0px; border-width: 0px 1px; border-style: none dotted; border-top-color: initial; border-left-color: rgb(0, 0, 0); border-bottom-color: initial; border-right-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 309px; height: 357px; padding: 0px; border-width: 1px; border-style: dotted; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;"><img src="https://www.fsc.go.kr/comm/getImage?srvcId=MEDIA&amp;upperNo=793&amp;fileTy=MEDIA&amp;fileNo=1" alt="고령화시대 경제 · 사회적 수요 대응"></p></td> 
+</tr> 
+<tr> 
+<td style="width: 309px; height: 3px; padding: 0px; border-width: 1px 0px; border-style: dotted none; border-top-color: rgb(0, 0, 0); border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 3px; height: 3px; padding: 0px; border-width: 0px 0px 1px; border-style: none none dotted; border-top-color: initial; border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 309px; height: 3px; padding: 0px; border-width: 1px 0px; border-style: dotted none; border-top-color: rgb(0, 0, 0); border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: initial; vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+</tr> 
+<tr> 
+<td colspan="3" style="width: 623px; height: 60px; padding: 0px 6px; border-width: 1px; border-style: dotted; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-family: 굴림; font-size: 11pt;">⇨ <span style="font-weight: bold;">신탁의 진화에 맞춰 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">소비자 보호도 한층 강화</span><span style="font-weight: bold;">하여, 안심하고 이용할 수 있는 환경을 조성하겠습니다.</span></p></td> 
+</tr> 
+</tbody> 
+</table> 
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><br></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><br></p>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><br></p>
+<table style="width: 175px; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 41px; height: 37px; padding: 1px 6px; border-width: 2px; border-style: solid; border-color: rgb(62, 87, 165); background: rgb(222, 234, 255); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; letter-spacing: 0pt; font-size: 11pt; font-weight: bold;">1</span></p></td> 
+<td style="width: 15px; height: 37px; padding: 0px; border-width: 0px 2px; border-style: none solid; border-top-color: initial; border-left-color: rgb(62, 87, 165); border-bottom-color: initial; border-right-color: rgb(62, 87, 165); vertical-align: middle;">
+<p class="0" style="font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;">&nbsp;</span></p></td> 
+<td style="width: 120px; height: 37px; padding: 1px 6px; border-width: 2px; border-style: solid; border-color: rgb(62, 87, 165); vertical-align: middle;">
+<p class="0" style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: HY헤드라인M; font-size: 15pt;"></span><span style="font-family: 굴림; font-size: 11pt;">&nbsp;<span style="font-weight: bold;">추진 배경</span></span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;"><br></span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">해외현황</span>) <span style="font-weight: bold;">미국&middot;일본&middot;영국 등 주요국</span>에서 <span style="font-weight: bold;">신탁</span>은 <span style="font-weight: bold;">가계 재산을 유연하게 관리</span>하는 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">종합 재산관리 수단</span>으로 널리 활용되고 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* GDP 대비 신탁 수탁고(%, &lsquo;20) : [日] 173 [美] 94 <span style="text-decoration: underline;">[<span style="font-weight: bold;">韓</span>] <span style="font-weight: bold;">53</span></span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 또한, <span style="font-weight: bold;">중소&middot;혁신기업</span> 등이 <span style="font-weight: bold;">비정형적 자산을 유동화</span>하여, <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">자본시장에서 자금을 조달</span>하는 수단으로 신탁을 활용하고 있습니다<span style="vertical-align: super;">*</span>.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* [例] 영화 제작사가 자신이 제작한 영화의 저작권을 신탁업자에게 신탁하고, 신탁업자는 동 신탁에서 발생하는 수익에 대한 권리를 수익증권 형태로 발행 및 투자자가 투자</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">국내현황</span>) 우리나라 신탁시장은 신탁업을 겸영하고 있는 금융회사가 <span style="font-weight: bold;">금융상품을 판매</span>하기 위한 <span style="font-weight: bold;">금전신탁</span><span style="vertical-align: super;">*</span>, <span style="font-weight: bold;">부동산 공급 확대</span>를 위한 <span style="font-weight: bold;">부동산신탁</span> 중심으로 발전해 왔습니다<span style="vertical-align: super;">**</span>.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; * 편입상품을 신탁업자가 미리 정한 소위 &ldquo;<span style="font-weight: bold;">상품성 신탁</span>&rdquo;(은행 ELT, 증권사 예금형신탁 등)</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: left; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;** 신탁재산별 비중(&lsquo;21말) : [금전] 50%(570조원) [부동산] 35%(403조원) [<span style="font-weight: bold;">종합재산</span>] <span style="font-weight: bold;">0.04%</span>(<span style="font-weight: bold;">0.6조원</span>)</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 이로 인해, 미국&middot;일본 등 주요국처럼 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">신탁 본연의 장점을 활용</span>하여 <span style="font-weight: bold;">가계 보유 재산</span>을 <span style="font-weight: bold;">종합관리</span>하거나, <span style="font-weight: bold;">중소기업</span> 등이 <span style="font-weight: bold;">자산을 유동화</span>하여 자금을 조달하는 데 신탁을 활용하는 경우는 <span style="font-weight: bold;">드문 상황</span>입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">개선방향</span>) 우리나라도 <span style="font-weight: bold;">고령화&middot;국민재산축적</span> 등으로 <span style="font-weight: bold;">적극적인 자산 관리</span>에 대한 <span style="font-weight: bold;">가계의 수요</span>가 커지고 있고, <span style="font-weight: bold;">혁신기업</span> 등이 <span style="font-weight: bold;">보유 재산을 적극적으로 활용</span>해 <span style="font-weight: bold;">자금을 조달</span>하려는 수요가 커지고 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 금융위원회는 신탁이 <span style="font-weight: bold;">금융투자상품으로 제한적으로 사용되지 않고,</span> <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">다양한 재산을 종합적</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">&middot;</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">적극적으로 관리</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">(</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">all</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">-</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">in</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">-</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">one care</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">)</span>하는 본연의 기능을 충실히 수행할 수 있도록, <span style="font-weight: bold;">신탁업 제도를 개선</span>합니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;"><span style="font-family: 굴림; letter-spacing: 0.1pt; font-size: 11pt;">&nbsp;</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-family: 굴림; font-size: 11pt;"><br></span></p>
+<table style="width: 255px; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 41px; height: 37px; padding: 1px 6px; border-width: 2px; border-style: solid; border-color: rgb(62, 87, 165); background: rgb(222, 234, 255); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; letter-spacing: 0pt; font-size: 11pt; font-weight: bold;">2</span></p></td> 
+<td style="width: 15px; height: 37px; padding: 0px; border-width: 0px 2px; border-style: none solid; border-top-color: initial; border-left-color: rgb(62, 87, 165); border-bottom-color: initial; border-right-color: rgb(62, 87, 165); vertical-align: middle;">
+<p class="0" style="font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;">&nbsp;</span></p></td> 
+<td style="width: 200px; height: 37px; padding: 1px 6px; border-width: 2px; border-style: solid; border-color: rgb(62, 87, 165); vertical-align: middle;">
+<p class="0" style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: HY헤드라인M; font-size: 15pt;"></span><span style="font-family: 굴림; font-size: 11pt;">&nbsp;<span style="font-weight: bold;">신탁업 제도 개선방안</span></span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; letter-spacing: 0pt; font-size: 11pt;">※ </span><span style="font-family: 굴림; font-size: 11pt;">상세한 개선방안은 별첨 자료 참고</span></p>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;"><br></span></p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 35%; height: 15px; padding: 1px 6px; border-width: 0px 1px 1px 0px; border-style: none solid solid none; border-top-color: initial; border-left-color: initial; border-bottom-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-size: 11pt; color: rgb(0, 0, 255); font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt; color: rgb(0, 0, 255);">&nbsp;</span></p></td> 
+<td rowspan="2" style="width: 30%; height: 30px; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); background: rgb(255, 255, 255); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="letter-spacing: 2pt; font-size: 11pt; font-family: 굴림; font-weight: bold;">기본방향</span></p></td> 
+<td style="width: 35%; height: 15px; padding: 1px 6px; border-width: 0px 0px 1px 1px; border-style: none none solid solid; border-top-color: initial; border-left-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0); border-right-color: initial; vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-size: 11pt; font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;">&nbsp;</span></p></td> 
+</tr> 
+<tr> 
+<td style="width: 207px; height: 15px; padding: 1px 6px; border-width: 1px 1px 0px; border-style: solid solid none; border-top-color: rgb(0, 0, 0); border-left-color: rgb(0, 0, 0); border-bottom-color: initial; border-right-color: rgb(0, 0, 0); background: rgb(255, 255, 255); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-size: 11pt; font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;">&nbsp;</span></p></td> 
+<td style="width: 207px; height: 15px; padding: 1px 6px; border-width: 1px 1px 0px; border-style: solid solid none; border-top-color: rgb(0, 0, 0); border-left-color: rgb(0, 0, 0); border-bottom-color: initial; border-right-color: rgb(0, 0, 0); background: rgb(255, 255, 255); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-align: center; word-break: keep-all; font-size: 11pt; font-family: 굴림; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;">&nbsp;</span></p></td> 
+</tr> 
+<tr> 
+<td colspan="3" style="width: 623px; height: 302px; padding: 1px 3px; border-width: 0px 1px 1px; border-style: none solid solid; border-top-color: initial; border-left-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); background: rgb(255, 255, 255); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: center; word-break: keep-all; font-size: 11pt; font-family: 굴림;"><span style="font-size: 11pt; font-family: 굴림;">&nbsp;</span></p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; text-align: center; word-break: keep-all; font-size: 11pt; font-family: 굴림;"><img src="https://www.fsc.go.kr/comm/getImage?srvcId=MEDIA&amp;upperNo=794&amp;fileTy=MEDIA&amp;fileNo=1" alt="신탁업 제도 개선방안 기본방향"></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;"><br></span></p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 37px; padding: 1px 6px; border-width: 2px 0px; border-style: solid none; border-top-color: rgb(0, 172, 255); border-left-color: initial; border-bottom-color: rgb(0, 172, 255); border-right-color: initial; background: rgb(232, 247, 252); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-weight: bold;"><span style="font-family: HY헤드라인M; font-size: 15pt;"></span>[가]&nbsp;신탁업의 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">종합재산관리 기능 강화</span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-family: 굴림; font-size: 11pt;"><br></span></p>
+<table style="width: 200px; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 200px; height: 35px; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); background: rgb(73, 131, 238); vertical-align: middle;">
+<p class="1" style="font-weight: bold; font-size: 11pt; color: rgb(255, 0, 0); line-height: 140%; font-family: 굴림; text-indent: 0mm;"><span style="font-family: HY헤드라인M; font-size: 15pt; color: rgb(255, 255, 255);"></span><span style="font-family: 굴림; letter-spacing: 0pt; font-size: 11pt; color: rgb(255, 255, 255);">[1]</span><span style="font-family: 굴림; font-size: 11pt; color: rgb(255, 255, 255);">&nbsp;</span><span style="font-family: 굴림; color: rgb(255, 255, 255); font-size: 11pt;"></span><span style="font-family: 굴림; font-size: 11pt; color: rgb(255, 255, 255);">취급재산 다양화</span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-size: 11pt; text-indent: 0mm;">&nbsp;</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">현황</span>) <span style="font-weight: bold;">일임&middot;펀드</span> 등 기존 자산관리수단과 달리, <span style="font-weight: bold;">신탁</span>은 금전은 물론 증권&middot;동산(차량&middot;미술품 등)&middot;부동산 등 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">다양한 재산</span>을 <span style="font-weight: bold;">일괄 신탁받아 관리</span>할 수 있다는 장점이 있습니다.&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 이 때문에, 경제 발전으로 <span style="font-weight: bold;">가계 보유 자산 구성이 다각화된 선진국</span>에서 신탁은 <span style="font-weight: bold;">종합재산관리 수단</span>으로 활발히 활용되고 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 그러나, <span style="font-weight: bold;">우리나라</span>에서는 <span style="font-weight: bold;">종합재산신탁</span>이 <span style="font-weight: bold;">거의 발달하지 못했는데</span><span style="vertical-align: super;">*</span>, <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">신탁 가능한 재산이 제한적</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt; vertical-align: super;">**</span>이라는 점이 그 이유 중 하나입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; * 신탁재산별 비중(&lsquo;21말) : [금전] 50%(570조원) [부동산] 35%(403조원) [<span style="font-weight: bold;">종합재산</span>] <span style="font-weight: bold;">0.04%</span>(<span style="font-weight: bold;">0.6조원</span>)</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;** 현행법 상 ➊<span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">금전</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">➋</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">증권</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">➌</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">금전채권</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">➍</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">동산</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">➎</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">부동산</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">➏</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">부동산관련권리</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">➐</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">무체재산권 </span><span style="font-size: 11pt; text-indent: 0mm;">7</span><span style="font-size: 11pt; text-indent: 0mm;">종의 재산만 신탁 가능</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;"><span style="font-size: 11pt; text-indent: 0mm;"><br></span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- 특히, 현행법상 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">채무</span>의 신탁이 허용되지 않는데, <span style="font-weight: bold;">대부분의 자산은 담보대출 등 채무가 결부</span>되어 있어, <span style="font-weight: bold;">신탁을 설정하기 어려운 상황</span>입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- 그 밖에 시장의 신탁 수요가 높은 일부 재산도 현행법 상으로는 신탁이 어려워, 신탁을 통해 <span style="font-weight: bold;">가계가 원하는 내용의 종합 재산관리 서비스</span>를 제공하는 데 <span style="font-weight: bold;">한계</span>가 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">개선</span>) 시장의 수요 및 해외사례 등을 감안해, <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">채무</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">&middot;</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">담보권 등</span>을 신탁 가능 재산에 추가하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;"><span style="font-size: 11pt; text-indent: 0mm; color: rgb(0, 0, 0);">&nbsp;</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 다만, <span style="font-weight: bold;">신탁관계의 안정성</span>을 고려해 <span style="font-weight: bold;">재산 별로 일정한 제한</span><span style="vertical-align: super;">*</span>을 설정해, 신탁이 악용되는 것을 방지하기 위한 제도적 장치도 마련하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* [例 : 채무] 적극재산 신탁 시 <span style="font-weight: bold;">동 적극재산에 결부된 채무</span>의 신탁만 허용(주택과 주담대 등)하고, <span style="font-weight: bold;">순자산가액이 陰</span>이 되는 수준의 과도한 채무 신탁은 <span style="font-weight: bold;">제한</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-weight: bold; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 100%; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0);">
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;"><span style="vertical-align: middle;">⇨</span> <span style="vertical-align: middle;">(</span><span style="vertical-align: middle; font-weight: bold;">기대효과</span><span style="vertical-align: middle;">) 고객 재산상황&middot;목적에 맞는 </span><span style="vertical-align: middle; font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">맞춤형 신탁</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt; vertical-align: super;">*</span><span style="vertical-align: middle; font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;"> </span><span style="vertical-align: middle; font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">확대</span><span style="vertical-align: middle;">가 기대됩니다.</span></p> 
+<p class="0" style="vertical-align: middle; line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="vertical-align: middle; line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* 例 : ➊ [<span style="font-weight: bold;">채무신탁</span>] 해외 장기체류 중인 주재원, 재산관리 능력이 떨어지는 고령층 등이 <span style="font-weight: bold;">잔여채무</span>(<span style="font-weight: bold; font-size: 11pt;">주담대</span>)가 존재하는 주택도 신탁을 통해 관리 가능</p> 
+<p class="0" style="vertical-align: middle; line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp; &nbsp; &nbsp; &nbsp;&nbsp;<span style="font-size: 11pt; text-indent: 0mm;">➋</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">[</span><span style="font-size: 11pt; text-indent: 0mm; font-weight: bold;">담보권신탁</span><span style="font-size: 11pt; text-indent: 0mm;">] </span><span style="font-size: 11pt; text-indent: 0mm;">채권자가 다수 존재하는 신디론에서 </span><span style="font-size: 11pt; text-indent: 0mm; font-weight: bold;">담보권 관리</span><span style="font-size: 11pt; text-indent: 0mm;">를 </span><span style="font-weight: bold;"><span style="font-size: 11pt; text-indent: 0mm;">1</span><span style="font-size: 11pt; text-indent: 0mm;">인</span></span><span style="font-size: 11pt; text-indent: 0mm;">(</span><span style="font-size: 11pt; text-indent: 0mm;">신탁업자</span><span style="font-size: 11pt; text-indent: 0mm;">)</span><span style="font-size: 11pt; text-indent: 0mm;">에게 집중시킴으로써</span><span style="font-size: 11pt; text-indent: 0mm;">, </span><span style="font-size: 11pt; text-indent: 0mm;">채권자간 이견 발생시에도 </span><span style="font-size: 11pt; text-indent: 0mm; font-weight: bold;">안정적인 담보권 관리</span><span style="font-size: 11pt; text-indent: 0mm;"> </span><span style="font-size: 11pt; text-indent: 0mm;">가능<br></span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-weight: bold; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<table style="width: 350px; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 350px; height: 35px; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); background: rgb(73, 131, 238); vertical-align: middle;">
+<p class="1" style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;"><span style="font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;"></span><span style="font-family: 굴림; letter-spacing: 0pt; font-size: 11pt; color: rgb(255, 255, 255);">[2]</span><span style="color: rgb(255, 255, 255); font-family: 굴림; font-size: 11pt;">&nbsp;</span><span style="font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;"></span><span style="font-family: 굴림; font-size: 11pt; color: rgb(255, 255, 255);">비금융 전문기관과의 협업 기반 마련</span></span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-family: 굴림; font-size: 11pt;">&nbsp;</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">현황</span>) 미국&middot;일본&middot;영국 등에서는 신탁이 <span style="font-weight: bold;">재산관리</span> 뿐만 아니라, <span style="font-weight: bold;">후견&middot;세무&middot;법률 서비스</span> 등도 <span style="font-weight: bold;">함께 제공</span>하는 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">고령화 시대 종합 생활관리 서비스</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">(</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">신탁 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">2.0</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">)</span> 수단으로 진화하고 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 이처럼 유연한 신탁 서비스가 가능한 이유는 수탁자(신탁업자 등)가 자신이 <span style="font-weight: bold;">역량을 갖추지 못한 분야</span>의 업무를 <span style="font-weight: bold;">외부의 전문기관에게 맡기는 영업행위</span>(<span style="font-weight: bold;">업무위탁</span>)가 자유롭기 때문입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><br></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 그러나, <span style="font-weight: bold;">우리나라</span>에서는 현행 자본시장법상 신탁업자가 <span style="font-weight: bold;">외부의 전문기관</span>에게 <span style="font-weight: bold;">신탁업무 일부를 맡기는 것</span>이 현실적으로 <span style="font-weight: bold;">어렵습니다.</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- <span style="font-weight: bold;">자본시장법</span>(<span style="font-weight: bold;">&sect;42</span>)에서 신탁과 관련한 <span style="font-weight: bold;">업무위탁을 허용</span>하고 있지만, 주요 업무는 <span style="font-weight: bold;">신탁업 인가를 받은 신탁업자에게만 위탁이 가능</span>합니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- 특히, 우리나라에서는 <span style="font-weight: bold;">주로 금융회사들이 신탁업을 겸영</span>하고 있어, <span style="font-weight: bold;">금융회사 간에만 신탁 관련 업무위탁</span>이 이루어지는 구조입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- 이러한 특성으로, <span style="font-weight: bold;">우리나라</span>에서는 <span style="font-weight: bold;">비금융 전문 서비스</span>를 결부한 신탁 서비스 출시에 <span style="font-weight: bold;">한계</span>가 있고, 실제로 <span style="font-weight: bold;">종합신탁업 인가</span>를 받은 신탁사가 다수(38개)이나, <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">금전신탁</span> 중심으로 <span style="font-weight: bold;">영업 관행</span>이 형성되어 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">개선</span>) <span style="font-weight: bold;">병원&middot;법무법인&middot;회계법인&middot;세무법인&middot;특허법인</span> 등 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">신탁업자가 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">아닌 비금융 전문기관</span>이 신탁 업무 일부를 맡아 <span style="font-weight: bold;">전문화된 서비스</span>를 제공할 수 있도록, <span style="font-weight: bold;">신탁업무 위탁 관련 규율을 정비</span>하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ <span style="font-weight: bold;">고객 동의</span> 하에 신탁업자가 자신의 업무 일부를 <span style="font-weight: bold;">검증된 외부 전문기관에 맡기는 것</span>을 <span style="font-weight: bold;">허용</span>하고,</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- 해당 전문기관은 신탁업무 일부를 위탁받은 자이므로 <span style="font-weight: bold;">자신이 업무 일부를 맡은 신탁계약</span>에 대한 <span style="font-weight: bold;">투자권유</span>(<span style="font-weight: bold;">소개</span>)<span style="font-weight: bold;">를 허용</span>(<span style="font-weight: bold;">현재는 금지</span>)하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 아울러, 업무위탁 활성화를 제도적으로 지원하는 한편, <span style="font-weight: bold;">금융당국</span>은 전문기관에 대한 <span style="font-weight: bold;">사전신고&middot;사후감독</span>을 통해 <span style="font-weight: bold;">제도 남용</span> 가능성을 <span style="font-weight: bold;">최소화</span>하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;"><span style="letter-spacing: -1.3pt; font-size: 11pt; font-family: 굴림;">&nbsp;</span></p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 100%; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">⇨ (<span style="font-weight: bold;">기대효과</span>) 신탁업자가 <span style="font-weight: bold;">다양한 재산을 수탁</span>받고, 이를 분야별 <span style="font-weight: bold;">전문 기관에 맡기는</span> <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">&ldquo;</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">전문적</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">&middot;</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">맞춤형 재산관리 기능 강화</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">&rdquo;</span>가 기대됩니다<span style="font-family: 굴림; letter-spacing: -0.3pt; vertical-align: super; font-size: 11pt;">*</span><span style="font-family: 굴림; letter-spacing: -0.3pt; font-size: 11pt;">.</span></p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; font-family: 굴림;"><span style="letter-spacing: -0.5pt; font-size: 11pt; font-family: 굴림;">&nbsp;</span></p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;"><span style="letter-spacing: -0.5pt; font-size: 11pt; font-family: 굴림;"></span>&nbsp;* [例] 세제 및 법률자문에 전문성 있는 <span style="font-weight: bold;">법무법인 </span>☞ <span style="font-weight: bold;">유언대용 </span>신탁 전문기관</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; &nbsp; &nbsp; <span style="font-weight: bold;">&nbsp;&nbsp;</span>특허권 관리&middot;활용 등에 전문성 있는 <span style="font-weight: bold;">특허법인 </span>☞ <span style="font-weight: bold;">지식재산권</span>(<span style="font-weight: bold;">IP</span>) 신탁 전문기관</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; &nbsp; &nbsp; <span style="font-weight: bold;">&nbsp;&nbsp;</span>치매노인 돌봄 및 요양에 특화한 <span style="font-weight: bold;">의료법인</span> 및 <span style="font-weight: bold;">병원 </span>☞ <span style="font-weight: bold;">치매&middot;요양</span> 신탁 전문기관</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; &nbsp; &nbsp;<span style="font-weight: bold;"> &nbsp;&nbsp;</span>애완동물 관리에 전문성 있는 <span style="font-weight: bold;">동물병원 </span>☞ <span style="font-weight: bold;">애완동물 </span>신탁 전문기관</p></td> 
+</tr> 
+</tbody> 
+</table>
+<p><br></p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 37px; padding: 1px 6px; border-width: 2px 0px; border-style: solid none; border-top-color: rgb(0, 172, 255); border-left-color: initial; border-bottom-color: rgb(0, 172, 255); border-right-color: initial; background: rgb(232, 247, 252); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-weight: bold;"><span style="font-size: 11pt; font-family: 굴림;"></span>[나]&nbsp;신탁을 통한 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">자금조달 활성화</span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;"><span style="letter-spacing: 0.2pt; font-size: 11pt; font-family: 굴림;">&nbsp;</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">현황</span>) 미국&middot;일본 등에서는 <span style="font-weight: bold;">중소기업</span> 등이 <span style="font-weight: bold;">보유 자산을 유동화</span>하여 <span style="font-weight: bold;">자금을 조달</span>하는 데 신탁이 활용되고 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ <span style="font-weight: bold;">신용등급 부족</span>으로 자본시장 자금조달이 어려운 <span style="font-weight: bold;">중소기업</span> 등에게 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">도산격리 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">효과</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt; vertical-align: super;">*</span>를 갖고 있는 <span style="font-weight: bold;">신탁</span>은 <span style="font-weight: bold;">유용한 자금조달 수단</span>이 될 수 있기 때문입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; color: rgb(255, 255, 255); font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* 재산의 소유권이 위탁자로부터 수탁자에게로 이전되는 바, <span style="font-weight: bold;">위탁자의 도산 위험으로부터 절연</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 그러나, <span style="font-weight: bold;">우리나라</span>에서는 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">비금전재산 신탁의 수익증권 발행이 제한</span>되고 있어, <span style="font-weight: bold;">중소&middot;혁신기업</span> 등이 신탁을 활용해 보유 재산을 <span style="font-weight: bold;">유동화</span>하여 <span style="font-weight: bold;">자금을 조달</span>하는 데 한계가 있습니다.&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* 자산유동화법 상 유동화 제도는 유동화 대상 자산을 보유한 법인의 <span style="font-weight: bold;">신용도 요건</span>(<span style="font-weight: bold;">더블B이상</span>) 때문에, 업력이 짧은 <span style="font-weight: bold;">혁신기업</span>이나 신용등급이 낮거나 없는 <span style="font-weight: bold;">중소기업</span>이 활용하는 데 <span style="font-weight: bold;">한계</span></p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- 또한, 최근 <span style="font-weight: bold;">규제특례</span>(<span style="font-weight: bold;">샌드박스</span>)를 통해 <span style="font-weight: bold;">빌딩&middot;저작권 등 다양한 비금전재산</span>을 신탁하여 <span style="font-weight: bold;">수익증권을 발행</span>하는 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">조각투자</span> 서비스가 출시되고 있지만, <span style="font-weight: bold;">해당 수익증권 발행 근거가 없어 신탁업 제도 정비가 필요</span>합니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">개선</span>) <span style="font-weight: bold;">중소&middot;혁신기업 등의 자금조달 지원, 조각투자 등 혁신 서비스 제도화</span>를 위해 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">비금전재산신탁의 수익증권 발행을 원칙 허용</span>하겠습니다<span style="vertical-align: super;">*</span>.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* 수익증권발행 신탁의 운용 과정에서 발생한 금전은 예금 예치 등으로 제한하여, 수익증권 발행 신탁이 운용 수단이 아닌 유동화 수단으로 기능하도록 규율</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 아울러, 신탁 수익증권에 투자하는 <span style="font-weight: bold;">소비자 보호</span>를 위해 <span style="vertical-align: super;">➊</span><span style="font-weight: bold;">발행 </span>- <span style="vertical-align: super;">➋</span><span style="font-weight: bold;">판매 </span>- <span style="vertical-align: super;">➌</span><span style="font-weight: bold;">운용 등 단계별 규율</span>도 <span style="font-weight: bold;">함께 정비</span>하도록 하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* [例] ➊ (<span style="font-weight: bold;">발행</span>) 금전&nbsp;등의 신탁수익증권 발행 금지, 할증발행 금지 등</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; &nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">&nbsp;</span>&nbsp;➋ (<span style="font-weight: bold;">판매</span>) 신탁수익증권 투자매매&middot;중개업 인가단위 신설, 금소법 판매규제 적용 등</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp; &nbsp;<span style="font-weight: bold;"> &nbsp; &nbsp; </span>➌ (<span style="font-weight: bold;">운용</span>) 제3자 확인을 거쳐 자산현황 등 정기적으로 공시, 금전의 운용 금지 등</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 100%; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">⇨ (<span style="font-weight: bold;">기대효과</span>) 유동화법 등 기존 제도를 통한 자산유동화가 어려웠던 <span style="font-weight: bold;">중소&middot;혁신기업</span>의 보유자산 유동화 및 <span style="font-weight: bold;">자금조달을 지원</span>하고,</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-weight: bold; font-size: 11pt; font-family: 굴림;">&nbsp;</p> 
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">ㅇ <span style="font-weight: bold;">조각투자</span> 등 <span style="font-weight: bold;">혁신 서비스의 법적 기반</span>이 마련됩니다.</p></td> 
+</tr> 
+</tbody> 
+</table>
+<p><br></p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 37px; padding: 1px 6px; border-width: 2px 0px; border-style: solid none; border-top-color: rgb(0, 172, 255); border-left-color: initial; border-bottom-color: rgb(0, 172, 255); border-right-color: initial; background: rgb(232, 247, 252); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-weight: bold;">[다]&nbsp; 소비자 수요에 맞는 </span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">다양한 신탁 출현</span><span style="font-weight: bold;"> 지원</span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">현황</span>) 2006년 <span style="font-weight: bold;">초고령사회</span>에 진입한 <span style="font-weight: bold;">일본</span>은 <span style="font-weight: bold;">고령층의 수요에 부합하는 다양한 신탁 상품&middot;서비스 출현</span>을 <span style="font-weight: bold;">정책적으로 지원</span><span style="vertical-align: super;">*</span>해 왔고, 실제로 <span style="font-weight: bold;">신탁</span>이 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">복지 기능</span>을 일정 부분 수행하고 있습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">&nbsp;* [例] 후견인이 피후견인 재산을 편취&middot;유용하는 것을 방지하기 위해, 가정재판소 주도로 후견 신탁을 도입(&lsquo;12)하고, 피후견인 재산이 일정 금액 이상인 경우 후견신탁 활용 권유</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ 그러나, <span style="font-weight: bold;">우리나라</span>에서는 <span style="font-weight: bold;">고령화 시대에 유용</span>한 <span style="font-weight: bold;">주택신탁&middot;후견신탁</span> 등이 제도적 한계 때문에 <span style="font-weight: bold;">적극적으로 활용되는 데 어려움</span>이 있는 상황입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">개선</span>) 고령화 시대 수요가 큰 유형의 신탁이 활성화될 수 있도록, <span style="font-weight: bold;">관계기관</span>과 긴밀히 협의하며 <span style="font-weight: bold;">제도를 정비</span>하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ (<span style="font-weight: bold;">가업승계신탁</span>) <span style="font-weight: bold;">중소&middot;중견기업</span>의 신탁을 활용한 <span style="font-weight: bold;">안정적인 가업승계</span> 수요가 커지고 있으나, 현행 자본시장법상 신탁된 주식은 <span style="font-weight: bold;">의결권 행사가 15%로 제한</span>되어 신탁 활용에 제한이 있는 상황입니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">의결권 행사 제한 규정</span> 등 가업승계신탁 활용을 저해하는 <span style="font-weight: bold;">제도적 요인을 발굴&middot;정비</span>하도록 하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ (<span style="font-weight: bold;">주택신탁</span>) 현행 주택금융공사법 상 <span style="font-weight: bold;">&ldquo;개인&rdquo;</span>&nbsp;<span style="font-weight: bold;">이 소유</span>한 주택만 <span style="font-weight: bold;">주택연금 가입이 가능</span>하기 때문에, 주택을 포함한 재산 전체를 신탁으로 관리하게 되면 주택연금 가입이 불가능합니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">- <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">신탁된 주택도 주택연금 가입이 가능</span>하도록 <span style="font-weight: bold;">주택금융공사법 개정</span>을 추진하도록 하겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">ㅇ (<span style="font-weight: bold;">후견신탁</span>) 일본에서는 <span style="font-weight: bold;">가정법원의 적극적 역할</span>로 후견신탁의 유용성&middot;필요성에 대한 인식이 개선된 점을 참조하여, <span style="font-weight: bold;">관계기관과 활성화 방안을 논의</span>해 나가겠습니다.</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 100%; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-family: 굴림; font-size: 11pt;">⇨ (<span style="font-weight: bold;">기대효과</span>) <span style="font-weight: bold;">중소&middot;중견기업</span>의 <span style="font-weight: bold;">안정적 가업승계</span>, <span style="font-weight: bold;">신탁된 주택</span>의 <span style="font-weight: bold;">활용도 제고</span>, 후견신탁 등을 통한 <span style="font-weight: bold;">맞춤형 복지수요</span> 충족 등이 기대됩니다.</p></td> 
+</tr> 
+</tbody> 
+</table>
+<p><br></p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 37px; padding: 1px 6px; border-width: 2px 0px; border-style: solid none; border-top-color: rgb(0, 172, 255); border-left-color: initial; border-bottom-color: rgb(0, 172, 255); border-right-color: initial; background: rgb(232, 247, 252); vertical-align: middle;">
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;"><span style="font-weight: bold;">[라]&nbsp;</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">소비자 보호</span><span style="font-weight: bold;"> 관련 규율 정비</span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p class="0" style="text-indent: 0mm; font-size: 11pt; line-height: 140%; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">현황</span>) 신탁이 설정되면 신탁된 재산의 <span style="font-weight: bold;">소유권</span>이 <span style="font-weight: bold;">위탁자로부터 수탁자</span>(<span style="font-weight: bold;">신탁업자</span>)<span style="font-weight: bold;">에게로 이전</span>되는 바, 신탁업자에게는 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">높은 수준의 행위원칙</span>이 적용될 필요가 있습니다.</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">ㅇ 그러나, <span style="font-weight: bold;">우리나라</span>에서는 신탁업자의 주요 행위원칙인 <span style="font-weight: bold;">선관의무</span>가 미국 등 주요국에 비해 일부 부족한 측면이 있고, <span style="font-weight: bold;">2012년 시행된 전면개정 신탁법</span>과 비교할 때에도 <span style="font-weight: bold;">일부 행위원칙을 보완</span>할 필요가 있습니다.</p>
+<p class="0" style="text-indent: 0mm; font-size: 11pt; line-height: 140%; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">□ (<span style="font-weight: bold;">개선</span>) 신탁법 및 해외 주요국 사례를 감안하여, 다수 수익자에 대한 <span style="font-weight: bold;">공평의무</span><span style="vertical-align: super;">*</span><span style="font-weight: bold;">를 신설</span>하고, 신탁업자의 <span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">선관의무</span><span style="color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt; vertical-align: super;">**</span><span style="font-weight: bold; color: rgb(13, 68, 223); font-family: 굴림; font-size: 11pt;">를 정비</span>하도록 하겠습니다.</p>
+<p class="0" style="text-indent: 0mm; font-size: 11pt; line-height: 140%; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp; * 수익자가 다수인 경우, 수탁자는 각 수익자를 위하여 공평하게 신탁사무를 처리할 것(신탁법&sect;35)</p>
+<p class="0" style="text-indent: 0mm; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt;"><span style="font-size: 11pt; text-indent: 0mm;">&nbsp;** [</span><span style="font-size: 11pt; text-indent: 0mm;">현행</span><span style="font-size: 11pt; text-indent: 0mm;">] </span><span style="font-size: 11pt; text-indent: 0mm;">신탁업자는 선량한 관리자로서 </span><span style="font-size: 11pt; text-indent: 0mm;">&ldquo;</span><span style="font-size: 11pt; text-indent: 0mm; font-weight: bold;">주의</span><span style="font-size: 11pt; text-indent: 0mm;">&rdquo;</span><span style="font-size: 11pt; text-indent: 0mm;">를 다 해 </span><span style="font-size: 11pt; text-indent: 0mm;">&ldquo;</span><span style="font-size: 11pt; text-indent: 0mm; font-weight: bold;">신탁재산을 운용</span><span style="font-size: 11pt; text-indent: 0mm;">&rdquo;</span><span style="font-size: 11pt; text-indent: 0mm;">할 것</span></p>
+<p class="0" style="text-indent: 0mm; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;&rarr; [개선] 신탁업자는 선량한 관리자로서 &ldquo;<span style="font-weight: bold;">주의와 전문성</span>&rdquo;을 다 해 &ldquo;<span style="font-weight: bold;">신탁사무를 처리</span>&rdquo;할 것</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">ㅇ <span style="font-weight: bold;">종합재산신탁이 활성화</span>될 수 있도록, 종합재산신탁에 편입된 <span style="font-weight: bold;">금전의 운용방법</span>에 대한 <span style="font-weight: bold;">규율을 정비</span><span style="vertical-align: super;">*</span>하고, 유언대용&middot;후견&middot;가업승계 등 <span style="font-weight: bold;">신탁계약의 기능적 측면</span>에 대한 <span style="font-weight: bold;">홍보를 허용</span>하도록 하겠습니다.</p>
+<p class="0" style="text-indent: 0mm; font-size: 11pt; line-height: 140%; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;* [例] 고객의 투자성향에 맞게 운용, 운용내역 분기별 제공, 계약 변경시 금전운용 내용 설명 등</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">ㅇ 아울러, 1:1 계약보다는 금융투자상품의 성격이 강한 <span style="font-weight: bold;">상품성 신탁</span>에 대한 <span style="font-weight: bold;">합리적인 보수 수취 관행</span><span style="vertical-align: super;">*</span>을 마련하겠습니다.</p>
+<p class="0" style="text-indent: 0mm; font-size: 11pt; line-height: 140%; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;* [例] ➊ 편입상품&middot;보수율 등을 금투협 홈페이지에 공시, ➋ 고객에게 신탁보수 수취방법에 대한 선택권 부여 등(예 : &ldquo;1회성&rdquo; 수수료 선취 또는 &ldquo;주기적&rdquo; 신탁보수 수취 중 선택 등)</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">&nbsp;</p>
+<p class="0" style="text-indent: 0mm; line-height: 140%; font-family: 굴림; font-size: 11pt;">ㅇ 또한, <span style="font-weight: bold;">신탁 관련 거래의 투명성 제고</span>를 위해, 신탁재산으로 거래시 <span style="font-weight: bold;">신탁재산임을 계약서 등에 표시</span>하도록 제도 개선을 추진하겠습니다.</p>
+<p class="0" style="text-indent: 0mm; font-size: 11pt; line-height: 140%; font-family: 굴림;">&nbsp;</p>
+<table style="width: 100%; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 100%; height: 100%; padding: 1px 6px; border-width: 1px; border-style: solid; border-color: rgb(0, 0, 0); vertical-align: middle;">
+<p class="0" style="text-indent: 0mm; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt;">⇨ (<span style="font-weight: bold;">기대효과</span>) 신탁업 활성화에 걸맞는 수준의 <span style="font-weight: bold;">소비자 보호 규율 확립</span> 으로, 소비자가 <span style="font-weight: bold;">믿고 재산을 맡길 수 있는 환경</span> 조성이 기대됩니다.</p></td> 
+</tr> 
+</tbody> 
+</table>
+<p><span style="font-size: 11pt;"><br></span></p>
+<p><span style="font-size: 11pt;"><br></span></p>
+<table style="width: 175px; border-collapse: collapse; table-layout: fixed; border-width: initial; border-style: none; border-color: initial;"> 
+<tbody> 
+<tr> 
+<td style="width: 41px; height: 37px; padding: 1px 6px; border-width: 2px; border-style: solid; border-color: rgb(62, 87, 165); background: rgb(222, 234, 255); vertical-align: middle;">
+<p class="0" style="text-align: center; word-break: keep-all; line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;"><span style="font-weight: bold;">3</span></p></td> 
+<td style="width: 15px; height: 37px; padding: 0px; border-width: 0px 2px; border-style: none solid; border-top-color: initial; border-left-color: rgb(62, 87, 165); border-bottom-color: initial; border-right-color: rgb(62, 87, 165); vertical-align: middle;">
+<p class="0" style="font-size: 11pt; line-height: 140%; font-family: 굴림; text-indent: 0mm;">&nbsp;</p></td> 
+<td style="width: 120px; height: 37px; padding: 1px 6px; border-width: 2px; border-style: solid; border-color: rgb(62, 87, 165); vertical-align: middle;">
+<p class="0" style="line-height: 140%; font-family: 굴림; font-size: 11pt; text-indent: 0mm;">&nbsp;<span style="font-weight: bold;">향후 계획</span></p></td> 
+</tr> 
+</tbody> 
+</table>
+<p class="0" style="line-height: 140%; text-indent: 0mm; word-break: keep-all; font-size: 11pt; font-family: 굴림;">&nbsp;</p>
+<p class="0" style="line-height: 140%; text-indent: 0mm; font-family: 굴림; font-size: 11pt;">□ <span style="font-weight: bold;">내년 1분기 국회 논의</span>를 목표로 ｢<span style="font-weight: bold;">신탁업 혁신 방안</span>｣을 반영한 <span style="font-weight: bold;">관련 법규 개정안 마련 등 후속조치</span>를 진행해 나가겠습니다.</p></div>
+        <div class="file">
+            <div class="title">첨부파일 (6)<a href="javascript:void(0);"><span class="hd-element">첨부파일 목록</span></a></div>
+            <div class="file-list-wrap">
+            <div class="file-list">
+	                <a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=7" title="221013 [보도자료] 신탁업 혁신 방안 발표.hwp"><span class="name">221013 [보도자료] 신탁업 혁신 방안 발표.hwp</span></a>
+			       	<span class="name"> (3 MB) </span>
+			        <span class="ico download"><a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=7" title="파일 다운로드"><span class="hd-element">파일다운로드</span></a></span>
+	            </div>
+            <div class="file-list">
+	                <a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=8" title="221013 [보도자료] 신탁업 혁신 방안 발표.pdf"><span class="name">221013 [보도자료] 신탁업 혁신 방안 발표.pdf</span></a>
+			       	<span class="name"> (1 MB) </span>
+			        <span class="ico view"><a href="/ezpdfwv/customLayout.jsp?encdata=F1FAADA4F2DF569F62BDB7C8FD4679176DB7E263D350004CDFF42BC7848B1E41615B67A13C32427FB33EA78A92555F7CC2E41E92A449FB0DE28A51911FD5AF5A7CCBBBF60B9F39E725E9CD80D455C766B7BAEE18E63F53011D01F2F13AE63A8F387C5A5D1455B0E26FD6DD2971E2D200E2883ABEBC839AC929153634321E49F8" title="문서뷰어 새창으로 열기"><span class="hd-element">파일뷰어</span></a></span>
+		                <span class="ico download"><a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=8" title="파일 다운로드"><span class="hd-element">파일다운로드</span></a></span>
+	            </div>
+            <div class="file-list">
+	                <a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=9" title="221013 [보도자료] 신탁업 혁신 방안 발표.hwpx"><span class="name">221013 [보도자료] 신탁업 혁신 방안 발표.hwpx</span></a>
+			       	<span class="name"> (3 MB) </span>
+			        <span class="ico download"><a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=9" title="파일 다운로드"><span class="hd-element">파일다운로드</span></a></span>
+	            </div>
+            <div class="file-list">
+	                <a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=10" title="221013 [별첨] 신탁업 혁신 방안.hwp"><span class="name">221013 [별첨] 신탁업 혁신 방안.hwp</span></a>
+			       	<span class="name"> (341 KB) </span>
+			        <span class="ico download"><a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=10" title="파일 다운로드"><span class="hd-element">파일다운로드</span></a></span>
+	            </div>
+            <div class="file-list">
+	                <a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=11" title="221013 [별첨] 신탁업 혁신 방안.pdf"><span class="name">221013 [별첨] 신탁업 혁신 방안.pdf</span></a>
+			       	<span class="name"> (491 KB) </span>
+			        <span class="ico view"><a href="/ezpdfwv/customLayout.jsp?encdata=F1FAADA4F2DF569F62BDB7C8FD4679176DB7E263D350004CDFF42BC7848B1E41615B67A13C32427FB33EA78A92555F7CFF4FA05AC55715546EF8EC84EA1D664EAF23BDEFFF5D279B77F840B2DE847647E01C4C495172CD7EEF4077BAB4FD5AE4387C5A5D1455B0E26FD6DD2971E2D20092DB997E0B3FE4540C53515C722692D2" title="문서뷰어 새창으로 열기"><span class="hd-element">파일뷰어</span></a></span>
+		                <span class="ico download"><a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=11" title="파일 다운로드"><span class="hd-element">파일다운로드</span></a></span>
+	            </div>
+            <div class="file-list">
+	                <a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=12" title="221013 [별첨] 신탁업 혁신 방안.hwpx"><span class="name">221013 [별첨] 신탁업 혁신 방안.hwpx</span></a>
+			       	<span class="name"> (308 KB) </span>
+			        <span class="ico download"><a href="/comm/getFile?srvcId=BBSTY1&amp;upperNo=78704&amp;fileTy=ATTACH&amp;fileNo=12" title="파일 다운로드"><span class="hd-element">파일다운로드</span></a></span>
+	            </div>
+            </div>
+        </div>
+        <div class="btn-board">
+        	<a href="/po010104?srchCtgry=&curPage=&srchKey=&srchText=&srchBeginDt=&srchEndDt=" class="bg-black" title="목록으로 이동">목록으로</a>
+        </div>
+    </div>
+    <!-- footer -->
+	<div class="foot">
+	    	<ul>
+	    	<li title="[보도자료] 김소영 금융위 부위원장, 중소기업 회계지원센터 개소식 참석 ">
+                    <dl>
+                        <dt>이전글</dt>
+                        <dd>
+                        	<a href="78701?srchCtgry=&curPage=&srchKey=&srchText=&srchBeginDt=&srchEndDt=" class="prev">[보도자료] 김소영 금융위 부위원장, 중소기업 회계지원센터 개소식 참석 </a>
+                            	</dd>
+                    </dl>
+                </li>
+                <li title="[보도참고] 금융시장 합동점검회의 개최">
+                    <dl>
+                        <dt>다음글</dt>
+                        <dd>
+                        	<a href="78709?srchCtgry=&curPage=&srchKey=&srchText=&srchBeginDt=&srchEndDt=" class="next">[보도참고] 금융시장 합동점검회의 개최</a>
+                            	</dd>
+                    </dl>
+                </li>
+                </ul>
+        </div>
+	</div><!--// board-view --></div><!--// content-body -->
+					<!-- content-foot -->
+	            	<div class="content-foot">
+	                   	<form id="stsfdgForm" name="stsfdgForm" method="post" class="ml-xlg">
+			<input type="hidden" name="crud" value="">
+			<input type="hidden" name="siteNo" value="1" title="사이트번호">
+			<input type="hidden" name="menuNo" value="8" title="메뉴번호">
+			<div class="header">
+	            <dl>
+	                <dt>콘텐츠 내용에 만족하셨나요?</dt>
+	                <dd>
+	                    <div class="form-radio">
+	                        <input type="radio" name="score" id="c5" value="5" class="">
+	                        <label for="c5" title="매우만족 선택"><span><i class="s1"></i>매우만족</span></label>
+	                    </div>
+	                </dd>
+	                <dd>
+	                    <div class="form-radio">
+	                        <input type="radio" name="score" id="c4" value="4" class="">
+	                        <label for="c4" title="만족 선택"><span><i class="s2"></i>만족</span></label>
+	                    </div>
+	                </dd>
+	                <dd>
+	                    <div class="form-radio">
+	                        <input type="radio" name="score" id="c3" value="3" class="">
+	                        <label for="c3" title="보통 선택"><span><i class="s3"></i>보통</span></label>
+	                    </div>
+	                </dd>
+	                <dd>
+	                    <div class="form-radio">
+	                        <input type="radio" name="score" id="c2" value="2" class="">
+	                        <label for="c2" title="불만족 선택"><span><i class="s4"></i>불만족</span></label>
+	                    </div>
+	                </dd>
+	                <dd>
+	                    <div class="form-radio">
+	                        <input type="radio" name="score" id="c1" value="1" class="">
+	                        <label for="c1" title="매우불만족 선택"><span><i class="s5"></i>매우불만족</span></label>
+	                    </div>
+	                </dd>
+	            </dl>
+	            <button type="submit" class="btn-vote">평가하기</button>
+	        </div>
+        </form>
+        
+		<script>
+		$(function(){
+			//save saticsfaction degree 
+			$(document).on('submit', 'form[name="stsfdgForm"]', function(e){
+				e.preventDefault();
+				if($("form[name='stsfdgForm'] input[name='score']:checked").length > 0 && $("form[name='stsfdgForm'] input[name='score']:checked").val() ) {
+					
+					if(!confirm("선택하신 점수로 평가 하시겠습니까?")){
+						return false;
+					}
+					
+					$("form[name='stsfdgForm'] input[name='crud']").val('CREATE');
+					$.ajax({
+						url: "/ajax/stsfdgAction.json", // 의견 추가,삭제
+						type: "post",
+						data: $("form[name='stsfdgForm']").serialize(),
+						success: function(data){
+							if (data.process!=undefined&&data.process==1) {
+								alert('등록되었습니다.');
+							} else if (data.errorMessage!=undefined) {
+								alert(data.errorMessage);
+							} else {
+								alert("처리에 오류가 발생했습니다.");
+							}
+						},
+						error: function(xhr, status, err){
+							alert("[error] " + ":" + err + "(" + status + ")");
+						}
+					});
+				} else {
+					alert("만족도 점수를 선택해주세요");
+					$("form[name='stsfdgForm'] input[name='score']#c5").focus();
+				}
+			});
+		})
+		</script></div><!--// content-foot -->
+	           </div>
+			</main>
+		<!-- end:content -->
+	
+		<!-- start:footer -->
+		<style>
+.topbtn {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	z-index: 999;
+}
+
+</style>
+
+<script type="text/javascript">
+	$(function() {
+	    $(window).scroll(function() {
+	        if ($(this).scrollTop() > 100) {
+	            $('#MOVE_TOP_BTN').fadeIn();
+	        } else {
+	            $('#MOVE_TOP_BTN').fadeOut();
+	        }
+	    });
+	    
+	    $("#MOVE_TOP_BTN").click(function() {
+	        $('html, body').animate({
+	            scrollTop : 0
+	        }, 400);
+	        return false;
+	    });
+		$("#MOVE_TOP_BTN").on("keydown", function(e) {
+	        if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+	            e.preventDefault();
+	            $('html, body').animate({ scrollTop : 0 }, 400);
+	        }
+	    });
+	});
+</script>
+
+<footer>
+	<div class="footer-inner">
+	    <ul class="family-wrap">
+	        <li title="금융위원회 유관기관 선택하기">
+	            <label for="s1" class="hd-element">금융위원회 유관기관</label>
+	            <select name="s1" id="s1">
+	                <option title="금융위원회 유관기관" value="">금융위원회 유관기관</option>
+	                <option title="금융감독원 선택" value="http://www.fss.or.kr">금융감독원</option>
+	                <option title="예금보험공사 선택" value="http://www.kdic.or.kr">예금보험공사</option>
+	                <option title="한국자산관리공사(캠코) 선택" value="http://www.kamco.or.kr">한국자산관리공사(캠코)</option>
+	                <option title="산업은행 선택" value="https://www.kdb.co.kr">산업은행</option>
+	                <option title="기업은행 선택" value="https://www.ibk.co.kr">기업은행</option>
+	                <option title="신용보증기금 선택" value="https://www.kodit.co.kr">신용보증기금</option>
+	                <option title="한국예탁결제원 선택" value="http://www.ksd.or.kr">한국예탁결제원</option>
+	                <option title="한국거래소 선택" value="http://www.krx.co.kr">한국거래소</option>
+	                <option title="한국주택금융공사 선택" value="http://www.hf.go.kr">한국주택금융공사</option>
+	                <option title="금융정보분석원 선택" value="https://www.kofiu.go.kr">금융정보분석원</option>
+	                <option title="전국은행연합회 선택" value="http://www.kfb.or.kr">전국은행연합회</option>
+	                <option title="생명보험협회 선택" value="http://www.klia.or.kr">생명보험협회</option>
+	                <option title="손해보험협회 선택" value="http://www.knia.or.kr">손해보험협회</option>
+	                <option title="한국금융투자협회 선택" value="http://www.kofia.or.kr">한국금융투자협회</option>
+	                <option title="여신금융협회 선택" value="https://www.crefia.or.kr">여신금융협회</option>
+	                <option title="상호저축은행중앙회 선택" value="https://www.fsb.or.kr">상호저축은행중앙회</option>
+	                <option title="신용정보협회 선택" value="http://www.cica.or.kr">신용정보협회</option>
+	                <option title="금융결제원 선택" value="http://www.kftc.or.kr">금융결제원</option>
+	                <option title="금융보안원 선택" value="http://www.fsec.or.kr">금융보안원</option>
+	                <option title="한국신용정보원 선택" value="http://www.kcredit.or.kr">한국신용정보원</option>
+	                <option title="서민금융진흥원 선택" value="http://www.kinfa.or.kr">서민금융진흥원</option>
+	                <option title="신용회복위원회 선택" value="https://www.ccrs.or.kr">신용회복위원회</option>
+	                <option title="한국금융연구원 선택" value="http://www.kif.re.kr">한국금융연구원</option>
+	                <option title="보험개발원 선택" value="http://www.kidi.or.kr">보험개발원</option>
+	                <option title="보험연구원 선택" value="http://www.kiri.or.kr">보험연구원</option>
+	                <option title="자본시장연구원 선택" value="http://www.kcmi.re.kr">자본시장연구원</option>
+	                <option title="한국금융연수원 선택" value="http://www.kbi.or.kr">한국금융연수원</option>
+	                <option title="핀테크지원센터 선택" value="https://fintech.or.kr">핀테크지원센터</option>
+	                <option title="한국핀테크산업협회 선택" value="http://www.korfin.kr">한국핀테크산업협회</option>
+	                <option title="한국화재보험협회 선택" value="https://www.kfpa.or.kr">한국화재보험협회</option>
+	                <option title="한국공인회계사회 선택" value="http://www.kicpa.or.kr">한국공인회계사회</option>
+	                <option title="한국회계기준원 선택" value="http://www.kasb.or.kr">한국회계기준원</option>
+	                <option title="코스콤 선택" value="http://www.koscom.co.kr">코스콤</option>
+	            </select>
+	            <button type="button" class="select-link-btn" title="선택한 유관기관 새창으로 열기"><span>이동</span></button>
+	        </li>
+	        <li title="금융서비스 포털모음 선택하기">
+	            <label for="s2" class="hd-element">금융서비스 포털모음</label>
+	            <select name="s2" id="s2">
+	                <option title="금융서비스 포털모음" value="">금융서비스 포털모음</option>
+	                <option title="파인 선택" value="http://fine.fss.or.kr">파인</option>
+	                <option title="카드포인트통합조회 선택" value="https://www.cardpoint.or.kr">카드포인트통합조회</option>
+	                <option title="착오송금 반환지원 선택" value="https://kmrs.kdic.or.kr/ko/index.do">착오송금 반환지원</option>
+	                <option title="휴면금융재산조회 선택" value="http://www.sleepmoney.or.kr">휴면금융재산조회</option>
+	                <option title="보험다모아 선택" value="http://www.e-insmarket.or.kr">보험다모아</option>
+	                <option title="본인신용정보 열람서비스 선택" value="https://www.credit4u.or.kr:2443/">본인신용정보 열람서비스</option>
+	                <option title="페이인포 선택" value="https://www.payinfo.or.kr/payinfo.html">페이인포</option>
+	                <option title="통합연금포털 선택" value="https://www.fss.or.kr/fss/lifeplan/lifeplanIndex/index.do?menuNo=201101">통합연금포털</option>
+	                <option title="ISA다모아 선택" value="https://dis.kofia.or.kr/websquare/index.jsp?w2xPath=/wq/isa/DISISANotice.xml&divisionId=MDIS07001001000000&serviceId=SDIS07001001000#!">ISA다모아</option>
+	                <option title="금융상품 한눈에 선택" value="http://finlife.fss.or.kr">금융상품 한눈에</option>
+	                <option title="마이데이터 종합포털 선택" value="https://www.mydatacenter.or.kr:3441/myd/index/index.do">마이데이터 종합포털</option>
+	                <option title="KRX ESG포털 선택" value="http://esgportal.kr">KRX ESG포털</option>
+	            </select>
+	            <button type="button" class="select-link-btn" title="선택한 포털 새창으로 열기"><span>이동</span></button>
+	        </li>
+	    </ul>
+	    <ul class="footer-body">
+	        <li>
+	            <dl class="guide-wrap">
+	                <dt>이용안내</dt>
+	                <dd><a href="/ut010101" title="금융행정서비스헌장 페이지로 이동">금융행정서비스헌장</a></dd>
+	                <dd class="font-color-yellow"><a href="/ut020103" title="개인정보처리방침 페이지로 이동">개인정보처리방침</a></dd>
+	                <dd><a href="/ut020105" title="전자우편 무단수집거부 페이지로 이동">전자우편 무단수집거부</a></dd>
+	                <dd><a href="/ut020104" title="저작권정책 페이지로 이동">저작권정책</a></dd>
+	                <dd><a href="/ut050101" title="누리집지도 페이지로 이동">누리집지도</a></dd>
+	                <dd><a href="/ut020102" title="누리집 개선제안 페이지로 이동">누리집 개선제안</a></dd>
+	                <dd><a href="/pa050000" title="소식지 신청 페이지로 이동">소식지 신청</a></dd>
+	                <dd><a href="/ut060101" title="최신소식(RSS)서비스 페이지로 이동">최신소식(RSS)서비스</a></dd>
+	            </dl>
+	        </li>
+	        <li>
+	            <dl class="custom">
+	                <dt>금융위 문의</dt>
+	                <dd class="loc">03171 서울특별시 종로구 세종대로 209 금융위원회</dd>
+					<dd class="tel">대표전화 : <a href="tel:02-2100-2500" title="대표전화:02-2100-2500 으로 전화걸기">02-2100-2500</a></dd>
+	                <dd class="tel">정부민원안내콜센터 국번없이 : 110(무료)</dd>
+					<dd class="tel">금감원콜센터 : 1332(유료, 통화료는 발신자 부담)</dd>
+	                </dl>
+	        </li>
+	        <li>
+	            <div class="copyright">
+	                <span>ⓒ FINANCIAL SERVICES COMMISSION.</span><br>ALL RIGHTS RESERVED. 
+	            </div>
+	            <ul class="footer-sns">
+	                <li class="fb"><a href="javascript:openFacebook()" title="금융위원회 페이스북 새창으로 열기"><span class="hd-element">페이스북</span></a></li>
+	                <li class="blog"><a href="javascript:openBlog()" title="금융위원회 네이버블로그 새창으로 열기"><span class="hd-element">네이버 블로그</span></a></li>
+	                <li class="yt"><a href="javascript:openYoutube()" title="금융위원회 유튜브 새창으로 열기"><span class="hd-element">유튜브</span></a></li>
+	                <li class="tw"><a href="javascript:openTwiter()" title="금융위원회 X (구)트위터 새창으로 열기"><span class="hd-element">X (구)트위터</span></a></li>
+	              	<li class="ins"><a href="javascript:openInstagram()" title="금융위원회 인스타그램 새창으로 열기"><span class="hd-element">인스타그램</span></a></li>
+	            </ul>
+	            <div class="other-wrap">
+	                <span><a href="https://www.mois.go.kr/frt/sub/popup/p_taegugki_banner/screen.do" title="국가상징 알아보기 새창으로 열기"><img src="/humanframe/theme/fscmain/assets/images/common/ico_tae1.png" alt="국가상징 알아보기"></a></span>
+	                <span><a href="https://www.kogl.or.kr/open/index.do" title="OPEN 정보공개 새창으로 열기"><img src="/humanframe/theme/fscmain/assets/images/common/ico_open.png" alt="OPEN 정보공개"></a></span>
+	                <span><a href="http://www.wa.or.kr/board/list.asp?search=link_url&SearchString=www.fsc.go.kr&BoardID=0006" target="_blank" title="웹접근성 품질인증 새창으로 열기" class="ext_link_none ext_link"><img style="width:43px; height:30px;" src="/humanframe/theme/fscmain/assets/images/common/2025_ico_wa.png" alt="(사)한국장애인단체총연합회 한국웹접근성인증평가원 웹 접근성 우수사이트 인증마크(WA인증마크)"></a></span>
+	            </div>
+	        </li>
+	    </ul>
+	</div>
+</footer>
+
+<aside class="topbtn">
+	<a id="MOVE_TOP_BTN" href="#eg"><img src="/humanframe/theme/fscmain/assets/images/ico/ico_top.png" alt="최상단 이동 버튼"></a>
+</aside><!-- end:footer -->
+		
+		<div class="mask-wrap"></div>
+		
+		<!-- layer popup -->
+	    <div class="layer-popup">
+	        <div class="load-wrap">
+	            <div id="loadUrl" class="load-inner"></div>
+	            </div>        
+	    </div>
+	    <!--// layer popup -->
+	    
+		</div>
+
+</body>
+</html>
