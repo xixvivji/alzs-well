@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  approveFinancialIntent, generatePlainLanguage, loadChangeAnalysis, saveFinancialIntent,
+  approveFinancialIntent, generatePlainLanguage, loadChangeAnalysis, loadCurrentFinancialIntent, saveFinancialIntent,
   suggestFinancialIntent, type ChangeAnalysis, type FinancialIntent, type IntentFields,
   type IntentSuggestion, type PlainLanguage,
 } from "../lib/ai-financial-assistance";
@@ -32,9 +32,19 @@ export function AiFinancialAssistant() {
   const [busy, setBusy] = useState<"start" | "suggest" | "save" | "approve" | "analysis" | "plain" | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [restoring, setRestoring] = useState(false);
   const speechSupported = useMemo(() => typeof window !== "undefined" && "speechSynthesis" in window, []);
 
-  useEffect(() => { const saved = readDemoContext(); if (saved) setContext(saved); }, []);
+  useEffect(() => {
+    const saved = readDemoContext();
+    if (!saved) return;
+    setContext(saved); setRestoring(true);
+    loadCurrentFinancialIntent(saved).then((current) => {
+      if (!current) return;
+      setIntent(current);
+      setFields({ paymentContinuity: current.paymentContinuity, explanationMode: current.explanationMode, helpCondition: current.helpCondition, shareScopes: current.shareScopes });
+    }).catch((reason) => setError(messageOf(reason))).finally(() => setRestoring(false));
+  }, []);
 
   async function start() {
     setBusy("start"); setError("");
@@ -87,6 +97,10 @@ export function AiFinancialAssistant() {
     <section className="panel ai-intent-hero">
       <div><p className="label">1 · AI 금융생활 의향서</p><h2>원하는 금융생활 방식을<br/>편한 말로 알려주세요.</h2><p>AI는 초안만 정리합니다. 저장과 승인은 고객이 직접 결정합니다.</p></div>
       <span className="ai-safety-badge">법적 위임 아님 · 금융 실행 없음</span>
+    </section>
+    <section className="panel current-intent-card" aria-live="polite">
+      <div><p className="label">현재 저장된 의향</p><h2>{restoring ? "저장 상태를 확인하고 있습니다." : intent ? (intent.status === "APPROVED" ? "고객이 승인한 의향이 있습니다." : "수정 가능한 초안이 있습니다.") : "아직 저장된 의향이 없습니다."}</h2></div>
+      {intent ? <div className="current-intent-summary"><span className={`status-pill ${intent.status === "APPROVED" ? "safe" : "warning"}`}>{intent.status === "APPROVED" ? "승인 완료" : "초안"}</span><dl><div><dt>필수 납부</dt><dd>{intent.paymentContinuity === "KEEP_ESSENTIAL_PAYMENTS" ? "계속 유지" : "변경 전 확인"}</dd></div><div><dt>설명 방식</dt><dd>{intent.explanationMode === "VOICE_AND_TEXT" ? "글과 음성" : intent.explanationMode === "STAFF_EXPLANATION" ? "행원 설명" : "쉬운 글"}</dd></div><div><dt>현재 버전</dt><dd>v{intent.version}</dd></div></dl></div> : <p className="muted">아래에 편한 말로 입력하면 AI가 확인 가능한 초안을 만듭니다.</p>}
     </section>
     <section className="panel ai-intent-input">
       <label htmlFor="intent-utterance">나의 금융생활 의향</label>

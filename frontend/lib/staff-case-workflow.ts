@@ -134,6 +134,21 @@ export type MutationResult = {
   data: MutationData;
 };
 
+export type StaffCaseTimeline = {
+  caseId: string;
+  currentState: string;
+  caseVersion: number;
+  phases: StaffCaseDetail["timeline"];
+  auditTrail: Array<{ auditId: string; eventType: string; actorType: string; fromState: string | null; toState: string | null; occurredAt: string }>;
+  hasMore: boolean;
+  externalActionCreated: false;
+};
+export type StaffCaseNote = { noteId: string; caseVersion: number; noteText: string; createdBy: string; createdAt: string; isVisibleToCustomer: false };
+export type StaffCaseNotes = { items: StaffCaseNote[]; count: number; externalDeliveryCreated: false };
+export type StaffFollowUp = { followUpId: string; status: "SCHEDULED" | "COMPLETED" | "CANCELLED"; reason: string; scheduledAt: string; resultNote: string | null; completedAt: string | null; createdAt: string; updatedAt: string; createdBy: string; externalDeliveryCreated: false };
+export type StaffFollowUps = { items: StaffFollowUp[]; count: number; nextFollowUpAt: string | null };
+export type StaffCaseOperations = { timeline: StaffCaseTimeline; notes: StaffCaseNotes; followUps: StaffFollowUps };
+
 export async function issueStaffCapability(sessionId: string): Promise<string> {
   const response = await fetch(`/api/internal/staff-capability/${encodeURIComponent(sessionId)}`, {
     method: "POST",
@@ -170,6 +185,44 @@ export async function loadStaffCase(
     detail: requireData(detail.body, "사건 상세 응답을 확인할 수 없습니다."),
     evidence: requireData(evidence.body, "사건 근거 응답을 확인할 수 없습니다."),
   };
+}
+
+export async function loadStaffCaseOperations(
+  context: StaffCaseContext, caseId: string, staffCapability: string,
+): Promise<StaffCaseOperations> {
+  const path = casePath(context.sessionId, caseId);
+  const options = { staffCapability, demoRunId: context.demoRunId };
+  const [timeline, notes, followUps] = await Promise.all([
+    apiRequest<StaffCaseTimeline>(`${path}/timeline`, options),
+    apiRequest<StaffCaseNotes>(`${path}/notes`, options),
+    apiRequest<StaffFollowUps>(`${path}/follow-ups`, options),
+  ]);
+  return {
+    timeline: requireData(timeline.body, "사건 타임라인 응답을 확인할 수 없습니다."),
+    notes: requireData(notes.body, "사건 메모 응답을 확인할 수 없습니다."),
+    followUps: requireData(followUps.body, "후속 일정 응답을 확인할 수 없습니다."),
+  };
+}
+
+export async function addStaffCaseNote(
+  context: StaffCaseContext, caseId: string, staffCapability: string, caseVersion: number, note: string,
+): Promise<MutationResult> {
+  return mutate(`${casePath(context.sessionId, caseId)}/notes`, "POST", context, staffCapability, { caseVersion, note });
+}
+
+export async function scheduleStaffFollowUp(
+  context: StaffCaseContext, caseId: string, staffCapability: string, caseVersion: number,
+  scheduledAt: string, reason: string,
+): Promise<MutationResult> {
+  return mutate(`${casePath(context.sessionId, caseId)}/follow-ups`, "POST", context, staffCapability, { caseVersion, scheduledAt, reason });
+}
+
+export async function updateStaffFollowUp(
+  context: StaffCaseContext, followUpId: string, staffCapability: string, caseVersion: number,
+  status: "COMPLETED" | "CANCELLED", resultNote: string,
+): Promise<MutationResult> {
+  return mutate(`/api/v1/demo/sessions/${encodeURIComponent(context.sessionId)}/staff/follow-ups/${encodeURIComponent(followUpId)}`,
+    "PATCH", context, staffCapability, { caseVersion, status, resultNote, completedAt: null });
 }
 
 export async function generateStaffCopilotDraft(
@@ -263,6 +316,17 @@ export async function approveStaffGuidancePlan(
 
 function casePath(sessionId: string, caseId: string): string {
   return `/api/v1/demo/sessions/${encodeURIComponent(sessionId)}/cases/${encodeURIComponent(caseId)}`;
+}
+
+async function mutate(
+  path: string, method: "POST" | "PATCH", context: StaffCaseContext, staffCapability: string,
+  body: Record<string, unknown>,
+): Promise<MutationResult> {
+  const response = await apiRequest<MutationData>(path, {
+    method, body: JSON.stringify(body), staffCapability, demoRunId: context.demoRunId,
+    idempotencyKey: crypto.randomUUID(),
+  });
+  return { message: response.body.message, data: requireData(response.body, "업무 변경 응답을 확인할 수 없습니다.") };
 }
 
 function requireData<T>(body: ApiResponse<T>, message: string): T {

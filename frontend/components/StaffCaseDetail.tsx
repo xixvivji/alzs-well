@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { readDemoContext } from "../lib/demo-session";
 import { findRehearsalScenario, type DemoRehearsalScenario } from "../lib/demo-rehearsal";
+import { StaffCaseOperations } from "./StaffCaseOperations";
 import {
   approveStaffGuidancePlan,
   closeStaffCaseAsFalsePositive,
@@ -199,10 +200,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
       <p className="provenance-note">출처: {evidence.provenance.sourceProvider} · 합성데이터 {evidence.provenance.syntheticData ? "확인" : "미확인"} · 외부조회 {evidence.provenance.externalFetchPerformed ? "발생" : "없음"}</p>
     </section>
 
-    <section className="panel timeline-section">
-      <div className="section-heading"><div><p className="label">사건 타임라인</p><h2>변화 발견부터 고객 확인까지</h2></div></div>
-      <ol>{detail.timeline.map((event) => <li key={`${event.phase}-${event.occurredAt}`}><span>{event.phase}</span><div><strong>{event.title}</strong><small>{dateTimeLabel(event.occurredAt)}</small></div></li>)}</ol>
-    </section>
+    {context && staffCapability && <StaffCaseOperations context={context} caseId={caseId} staffCapability={staffCapability} caseVersion={detail.caseVersion} caseState={detail.state} onChanged={refreshCase} />}
 
     <section className="panel copilot-section">
       <div className="section-heading"><div><p className="label">근거 기반 AI 지원</p><h2>행원 검토 초안</h2></div><button className="secondary-button" onClick={() => void generateCopilot()} disabled={busy !== null}>{busy === "copilot" ? "생성 중…" : copilot ? "초안 다시 생성" : "AI 검토 초안 생성"}</button></div>
@@ -248,12 +246,6 @@ function windowLabel(seconds: number): string {
   if (seconds >= 86_400) return `최근 ${Math.round(seconds / 86_400)}일`;
   if (seconds >= 60) return `최근 ${Math.round(seconds / 60)}분`;
   return `최근 ${seconds}초`;
-}
-function dateTimeLabel(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("ko-KR", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(date);
 }
 function safeHttpsUrl(value: string): string | null {
   try { const url = new URL(value); return url.protocol === "https:" ? url.href : null; }

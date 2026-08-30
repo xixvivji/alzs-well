@@ -1,4 +1,4 @@
-import { apiRequest } from "./api";
+import { ApiClientError, apiRequest } from "./api";
 import type { DemoContext } from "./demo-session";
 
 export type IntentFields = {
@@ -60,6 +60,16 @@ export async function approveFinancialIntent(context: DemoContext, expectedVersi
   });
   if (!response.body.data) throw new Error("금융생활 의향 승인 응답을 확인해 주세요.");
   return response.body.data;
+}
+
+export async function loadCurrentFinancialIntent(context: DemoContext): Promise<FinancialIntent | null> {
+  try {
+    const response = await apiRequest<FinancialIntent>(`${base(context)}/intent`, options(context));
+    return response.body.data;
+  } catch (error) {
+    if (error instanceof ApiClientError && error.status === 404 && error.code === "DEMO_AI_INTENT_NOT_FOUND") return null;
+    throw error;
+  }
 }
 
 export async function loadChangeAnalysis(context: DemoContext): Promise<ChangeAnalysis> {

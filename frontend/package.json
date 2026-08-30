@@ -11,7 +11,7 @@
     "start": "next start",
     "catalog:generate": "node scripts/generate-api-catalog.mjs",
     "catalog:check": "node scripts/generate-api-catalog.mjs --check",
-    "test": "npm run catalog:check && npm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/api-client.test.ts tests/api-proxy.test.ts tests/api-operation-catalog.test.ts tests/demo-capability-cookie.test.ts tests/demo-rehearsal.test.ts tests/demo-session.test.ts tests/demo-workflow.test.ts tests/staff-case-workflow.test.ts tests/ai-financial-assistance.test.ts",
+    "test": "npm run catalog:check && npm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/api-client.test.ts tests/api-proxy.test.ts tests/api-operation-catalog.test.ts tests/demo-capability-cookie.test.ts tests/demo-rehearsal.test.ts tests/demo-session.test.ts tests/demo-workflow.test.ts tests/staff-case-workflow.test.ts tests/ai-financial-assistance.test.ts tests/extended-api-workflows.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit"
   },

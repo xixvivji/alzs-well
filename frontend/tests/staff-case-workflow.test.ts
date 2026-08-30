@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  addStaffCaseNote,
   approveStaffGuidancePlan,
   closeStaffCaseAsFalsePositive,
   generateStaffCopilotDraft,
   issueStaffCapability,
   loadStaffCase,
+  loadStaffCaseOperations,
+  scheduleStaffFollowUp,
   startStaffCaseReview,
+  updateStaffFollowUp,
 } from "../lib/staff-case-workflow";
 
 const context = { sessionId: "98000000-0000-4000-8000-000000000001", demoRunId: "run-1" };
@@ -14,6 +18,50 @@ const context = { sessionId: "98000000-0000-4000-8000-000000000001", demoRunId: 
 const envelope = <T>(data: T, message = "ok") => JSON.stringify({
   success: true, status: 200, code: "OK", message, data,
   errors: [], timestamp: "2026-08-29T00:00:00Z", traceId: "trace-staff",
+});
+
+test("loads the dedicated timeline, note and follow-up APIs", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); paths.push(path);
+    assert.equal(new Headers(init?.headers).get("X-Demo-Capability"), "staff-secret");
+    const data = path.endsWith("/timeline")
+      ? { caseId: "CASE_001", currentState: "IN_BANK_REVIEW", caseVersion: 2, phases: [], auditTrail: [], hasMore: false, externalActionCreated: false }
+      : path.endsWith("/notes")
+        ? { items: [], count: 0, externalDeliveryCreated: false }
+        : { items: [], count: 0, nextFollowUpAt: null };
+    return new Response(envelope(data), { headers: { "content-type": "application/json" } });
+  });
+
+  const operations = await loadStaffCaseOperations(context, "CASE_001", "staff-secret");
+  assert.equal(operations.timeline.currentState, "IN_BANK_REVIEW");
+  assert.deepEqual(paths.sort(), [
+    `/api/v1/demo/sessions/${context.sessionId}/cases/CASE_001/follow-ups`,
+    `/api/v1/demo/sessions/${context.sessionId}/cases/CASE_001/notes`,
+    `/api/v1/demo/sessions/${context.sessionId}/cases/CASE_001/timeline`,
+  ]);
+});
+
+test("writes internal notes and follow-up changes with version and idempotency", async (t) => {
+  const calls: Array<{ path: string; method?: string; body: Record<string, unknown>; headers: Headers }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    calls.push({ path: String(input), method: init?.method, body: JSON.parse(String(init?.body)), headers: new Headers(init?.headers) });
+    return new Response(envelope({ caseId: "CASE_001", currentState: "IN_BANK_REVIEW", caseVersion: 3, externalExecutionCreated: false }), { headers: { "content-type": "application/json" } });
+  });
+
+  await addStaffCaseNote(context, "CASE_001", "staff-secret", 2, "고객이 직접 확인한 사실만 기록");
+  await scheduleStaffFollowUp(context, "CASE_001", "staff-secret", 2, "2026-09-01T01:00:00Z", "고객이 편한 시간에 다시 확인");
+  await updateStaffFollowUp(context, "11111111-1111-4111-8111-111111111111", "staff-secret", 3, "COMPLETED", "사실관계 확인 완료");
+
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls[0]?.body, { caseVersion: 2, note: "고객이 직접 확인한 사실만 기록" });
+  assert.deepEqual(calls[1]?.body, { caseVersion: 2, scheduledAt: "2026-09-01T01:00:00Z", reason: "고객이 편한 시간에 다시 확인" });
+  assert.deepEqual(calls[2]?.body, { caseVersion: 3, status: "COMPLETED", resultNote: "사실관계 확인 완료", completedAt: null });
+  assert.equal(calls[2]?.method, "PATCH");
+  for (const call of calls) {
+    assert.ok(call.headers.get("Idempotency-Key"));
+    assert.equal(call.headers.get("X-Demo-Run-Id"), context.demoRunId);
+  }
 });
 
 test("issues staff capability without exposing the bootstrap token to the browser", async (t) => {

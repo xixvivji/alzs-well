@@ -9,6 +9,7 @@ import "./senior-customer.css";
 import "./staff-case-detail.css";
 import "./ai-financial-assistant.css";
 import "./financial-portal.css";
+import "./extended-workflows.css";
 
 function metadataOrigin(): URL {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
