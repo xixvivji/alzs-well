@@ -5,8 +5,9 @@ import {
   loadPrivateProductOverview, loginPrivateCustomer, logoutPrivateCustomer, simulateLoanRepayment,
   type PrivateCustomerSession, type PrivateProductOverview, type RepaymentSimulation,
 } from "../lib/private-financial-products";
+import { PrivateCustomerAssets, type AssetTab } from "./PrivateCustomerAssets";
 
-type ProductTab = "card" | "loan" | "investment";
+type ProductTab = "card" | "loan" | "investment" | AssetTab;
 
 export function PrivateProductCenter() {
   const [loginId, setLoginId] = useState("synthetic-customer");
@@ -53,14 +54,14 @@ export function PrivateProductCenter() {
   }
 
   if (!session || !overview) return <section className="panel private-login-panel">
-    <div className="private-login-copy"><p className="label">사설 PoC 인증</p><h2>운영 금융정보는 로그인 후 조회합니다.</h2><p>카드·대출·투자 API는 공개 데모 capability로 우회하지 않습니다. 로컬 또는 사설 staging에서만 합성 고객 Bearer 인증을 활성화하세요.</p><ul><li>비밀번호와 token은 브라우저 저장소에 보관하지 않음</li><li>production의 로컬 합성 로그인 API는 강제 비활성화</li><li>실제 서비스 전환 시 기업 IdP·MFA로 교체</li></ul></div>
+    <div className="private-login-copy"><p className="label">사설 PoC 인증</p><h2>운영 금융정보는 로그인 후 조회합니다.</h2><p>카드·예금·대출·투자·외환·연금·신탁·동의 API는 공개 데모 capability로 우회하지 않습니다. 로컬 또는 사설 staging에서만 합성 고객 Bearer 인증을 활성화하세요.</p><ul><li>비밀번호와 token은 브라우저 저장소에 보관하지 않음</li><li>production의 로컬 합성 로그인 API는 강제 비활성화</li><li>실제 서비스 전환 시 기업 IdP·MFA로 교체</li></ul></div>
     <form onSubmit={(event) => { event.preventDefault(); void login(); }}><label><span>합성 계정 ID</span><input autoComplete="username" value={loginId} maxLength={80} onChange={(event) => setLoginId(event.target.value)} /></label><label><span>비밀번호</span><input type="password" autoComplete="current-password" value={password} minLength={12} maxLength={200} onChange={(event) => setPassword(event.target.value)} /></label><button className="primary-button" disabled={busy !== null || !loginId.trim() || password.length < 12}>{busy === "login" || busy === "load" ? "인증·조회 중…" : "사설 PoC 로그인"}</button>{error && <p className="api-error" role="alert">{error}</p>}</form>
   </section>;
 
   const card = overview.cards[0]; const loan = overview.loans[0]; const investment = overview.investments[0];
   return <div className="private-product-center">
     <section className="private-session-bar"><div><span>{session.displayName.slice(0, 1)}</span><p><strong>{session.displayName}</strong><small>합성 고객 · {session.customerId}</small></p></div><div><small>접근권한 {session.permissions.length}개 · token 메모리 전용</small><button onClick={() => void logout()} disabled={busy !== null}>{busy === "logout" ? "종료 중…" : "안전하게 로그아웃"}</button></div></section>
-    <nav className="product-tabs" aria-label="금융상품 화면"><button className={tab === "card" ? "active" : ""} onClick={() => setTab("card")}>카드</button><button className={tab === "loan" ? "active" : ""} onClick={() => setTab("loan")}>대출</button><button className={tab === "investment" ? "active" : ""} onClick={() => setTab("investment")}>투자</button></nav>
+    <nav className="product-tabs" aria-label="금융상품 화면"><button className={tab === "card" ? "active" : ""} onClick={() => setTab("card")}>카드</button><button className={tab === "deposit" ? "active" : ""} onClick={() => setTab("deposit")}>예금</button><button className={tab === "loan" ? "active" : ""} onClick={() => setTab("loan")}>대출</button><button className={tab === "investment" ? "active" : ""} onClick={() => setTab("investment")}>투자</button><button className={tab === "fx" ? "active" : ""} onClick={() => setTab("fx")}>외환</button><button className={tab === "future" ? "active" : ""} onClick={() => setTab("future")}>연금·신탁</button><button className={tab === "consent" ? "active" : ""} onClick={() => setTab("consent")}>동의관리</button></nav>
     {tab === "card" && <section className="product-screen card-screen">
       <div className="product-balance-card"><p>{card?.institutionName ?? "카드"}<span>{card?.status ?? "-"}</span></p><h2>{card?.displayName ?? "보유 카드 없음"}</h2><small>{card?.maskedCardNumber}</small><div><span>이번 달 이용금액<strong>{money(card?.currentUsageAmount, card?.currency)}</strong></span><span>결제 예정<strong>{money(overview.paymentDue?.amount, overview.paymentDue?.currency)}</strong></span></div><p className="no-action">잠금·한도변경·결제 실행 없음 · 합성 상세 {overview.cardDetail?.syntheticData ? "검증" : "미확인"}</p></div>
       <div className="product-side-cards"><article className="panel"><p className="label">이용한도</p><h3>{money(overview.cardLimit?.availableLimitAmount, overview.cardLimit?.currency)}</h3><small>총 {money(overview.cardLimit?.totalLimitAmount, overview.cardLimit?.currency)} 중 이용 가능</small><div className="limit-bar"><i style={{ width: `${limitPercent(overview.cardLimit?.usedAmount, overview.cardLimit?.totalLimitAmount)}%` }} /></div></article><article className="panel"><p className="label">다음 결제일</p><h3>{date(overview.paymentDue?.dueDate)}</h3><small>{overview.paymentDue?.paymentStatus ?? "조회 결과 없음"}</small></article></div>
@@ -76,6 +77,7 @@ export function PrivateProductCenter() {
       <div className="product-two-column"><section className="panel allocation-card"><div className="section-heading"><div><p className="label">자산배분</p><h2>포트폴리오 구성</h2></div></div><div className="allocation-chart"><div>{overview.allocations.map((item, index) => <i key={item.assetClass} style={{ width: `${item.weightPercent}%`, background: COLORS[index % COLORS.length] }} />)}</div>{overview.allocations.map((item, index) => <p key={item.assetClass}><span style={{ background: COLORS[index % COLORS.length] }} />{assetLabel(item.assetClass)}<strong>{item.weightPercent}%</strong></p>)}</div></section><section className="panel position-card"><div className="section-heading"><div><p className="label">보유 종목</p><h2>평가 현황</h2></div><span className="status-chip">{overview.positions.length}종목</span></div><div>{overview.positions.map((item) => <article key={item.positionId}><div><strong>{item.instrumentName}</strong><small>{item.maskedInstrumentCode} · {item.quantity}주</small></div><p><b>{money(item.marketValue, item.currency)}</b><span className={item.unrealizedProfitLoss >= 0 ? "gain" : "loss"}>{item.unrealizedProfitLoss >= 0 ? "+" : ""}{money(item.unrealizedProfitLoss, item.currency)}</span></p></article>)}</div></section></div>
       <section className="panel order-history"><div className="section-heading"><div><p className="label">과거 기록</p><h2>주문·체결 이력</h2></div><span className="status-chip">신규 주문 불가</span></div><div>{overview.orders.map((item) => <article key={item.orderId}><time>{date(item.orderedAt)}</time><div><strong>{item.instrumentName}</strong><small>{item.side} · {item.quantity}주</small></div><b>{money(item.orderPrice, item.currency)}</b><span>{item.status}</span></article>)}</div></section>
     </section>}
+    <PrivateCustomerAssets session={session} activeTab={isAssetTab(tab) ? tab : null} />
     {error && <p className="api-error" role="alert">{error}</p>}
   </div>;
 }
@@ -85,5 +87,6 @@ function money(value?: number, currency = "KRW") { return value === undefined ? 
 function date(value?: string) { if (!value) return "-"; const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric" }).format(parsed); }
 function limitPercent(used = 0, total = 0) { return total > 0 ? Math.min(100, Math.max(0, used / total * 100)) : 0; }
 function assetLabel(value: string) { return ({ EQUITY: "주식", BOND: "채권", CASH: "현금", FUND: "펀드" } as Record<string, string>)[value] ?? value; }
+function isAssetTab(value: ProductTab): value is AssetTab { return ["deposit", "fx", "future", "consent"].includes(value); }
 function messageOf(reason: unknown) { return reason instanceof Error ? reason.message : "금융상품 정보를 처리하지 못했습니다."; }
 function loginError(reason: unknown) { const message = messageOf(reason); return /404|찾을 수|등록되지/.test(message) ? "공개 production에서는 로컬 합성 로그인이 비활성화됩니다. 사설 staging의 기업 IdP 연결 상태를 확인해 주세요." : message; }
