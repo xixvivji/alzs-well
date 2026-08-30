@@ -21,16 +21,18 @@
 
 - `/demo`: 합성 세션 생성과 정상·주의·오탐 리허설 시작
 - `/demo/finance`: 통합자산, 계좌, 거래, 기준선, 동의, 보호 안내
-- `/demo/ai-assistant`: AI 금융생활 의향서, 장기 변화, 쉬운말·음성
-- `/demo/alerts`: 고객 변화 확인과 맥락 응답
+- `/demo/ai-assistant`: AI 금융생활 의향서 현재 상태·초안·승인, 장기 변화, 쉬운말·음성
+- `/demo/alerts`: 고객 변화 확인, 맥락 응답, 알림 감사이력
+- `/demo/products`: 사설 Bearer 인증 기반 합성 카드·대출·투자 조회와 실행 없는 상환 모의계산
 - `/demo/services`: 고객 금융서비스 전체 계약과 연결 상태
-- `/staff/cases`: 합성 사건 큐와 행원 검토 폐루프
+- `/staff/cases`: 합성 사건 큐, 타임라인·내부 메모·후속관리, 근거 기반 코파일럿, 행원 검토 폐루프
 - `/staff/operations`: 행원 업무 API 계약
 - `/staff/control-center`: 감사·준법·정책·운영 API 계약
+- `/staff/system-status`: health·readiness·공개 설정·버전과 AI 검색 장애 폴백 상태
 
 `scripts/generate-api-catalog.mjs`는 최종 API 명세 278개와 Spring Controller 234개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 233개, 코드 전용 직원 capability 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다.
 
-생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 다만 공개 Vercel 화면이 운영용 Bearer API를 임의로 호출하지는 않습니다. 운영 IdP·MFA·RBAC가 연결되기 전까지 직원·관리자 API는 화면에 `인증 필요`로 표시되고, `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
+생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 공개 Vercel 화면이 운영용 Bearer API를 임의로 호출하지는 않습니다. 카드·대출·투자 화면의 로컬 합성 로그인은 development 또는 사설 staging에서만 사용할 수 있고 production에서는 서버가 강제 비활성화합니다. 실제 서비스에서는 기업 IdP·MFA·RBAC로 교체해야 합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
 
 ## 로컬 실행
 

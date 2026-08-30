@@ -25,22 +25,27 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   assert.match(config, /Permissions-Policy/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
-  for (const route of ["/demo/finance/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page"]) {
+  for (const route of ["/demo/finance/page", "/demo/products/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
     assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
   }
 });
 
 test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링된다", async () => {
-  const [services, operations, control] = await Promise.all([
+  const [products, services, operations, control, systemStatus] = await Promise.all([
+    readFile(new URL("../.next/server/app/demo/products.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/demo/services.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/staff/operations.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/staff/control-center.html", import.meta.url), "utf8"),
+    readFile(new URL("../.next/server/app/staff/system-status.html", import.meta.url), "utf8"),
   ]);
+  assert.match(products, /운영 금융정보는 로그인 후 조회합니다/);
+  assert.match(products, /공개 데모 capability로 우회하지 않습니다/);
   assert.match(services, /필요한 금융생활을 한곳에서/);
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);
   assert.match(operations, /보호업무 운영 포털/);
   assert.match(control, /통제와 운영을 한 화면에서/);
+  assert.match(systemStatus, /서비스 준비상태를 확인하고 있습니다/);
   for (const html of [services, operations, control]) {
     assert.match(html, /사설 인증 필요|인증 필요/);
   }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  approveFinancialIntent, generatePlainLanguage, loadChangeAnalysis,
+  approveFinancialIntent, generatePlainLanguage, loadChangeAnalysis, loadCurrentFinancialIntent,
   saveFinancialIntent, suggestFinancialIntent,
 } from "../lib/ai-financial-assistance";
 
@@ -22,11 +22,20 @@ test("connects the three AI assistance flows through the scoped demo API", async
   await suggestFinancialIntent(context, "공과금을 유지해 주세요");
   await saveFinancialIntent(context, { paymentContinuity: "KEEP_ESSENTIAL_PAYMENTS", explanationMode: "SIMPLE_TEXT", helpCondition: "ON_CUSTOMER_REQUEST", shareScopes: [] }, 0);
   await approveFinancialIntent(context, 1);
+  assert.equal((await loadCurrentFinancialIntent(context))?.intentId, "intent-1");
   await loadChangeAnalysis(context);
   await generatePlainLanguage(context, "REPEATED_CONFIRMATION_COUNT");
 
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 6);
   assert.ok(calls.every((call) => call.url.includes("/ai-financial-assistance")));
   assert.ok(calls.every((call) => new Headers(call.init?.headers).get("X-Demo-Capability") === "capability"));
   assert.ok(calls.every((call) => new Headers(call.init?.headers).get("X-Demo-Run-Id") === "run-1"));
+});
+
+test("treats only the documented missing-intent response as an empty current state", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
+    success: false, status: 404, code: "DEMO_AI_INTENT_NOT_FOUND", message: "의향서가 없습니다.",
+    data: null, errors: [], timestamp: "2026-08-30T00:00:00Z", traceId: "trace",
+  }), { status: 404, headers: { "content-type": "application/json" } }));
+  assert.equal(await loadCurrentFinancialIntent(context), null);
 });
