@@ -7,12 +7,13 @@ import { AccessibilityControls } from "./AccessibilityControls";
 
 const customerLinks = [
   ["/demo", "내 금융생활", "01"],
-  ["/demo/finance", "통합 금융생활", "02"],
-  ["/demo/ai-assistant", "AI 금융생활 도우미", "03"],
-  ["/demo/alerts", "확인할 알림", "04"],
-  ["/demo/products", "금융상품·자산", "05"],
-  ["/demo/settings", "내 정보·도움 설정", "06"],
-  ["/demo/services", "전체 금융서비스", "07"],
+  ["/demo/protection", "안심 보호센터", "02"],
+  ["/demo/finance", "통합 금융생활", "03"],
+  ["/demo/ai-assistant", "AI 금융생활 도우미", "04"],
+  ["/demo/alerts", "확인할 알림", "05"],
+  ["/demo/products", "금융상품·자산", "06"],
+  ["/demo/settings", "내 정보·도움 설정", "07"],
+  ["/demo/services", "전체 금융서비스", "08"],
 ] as const;
 const staffLinks = [
   ["/staff/cases", "보호업무 사건", "01"],

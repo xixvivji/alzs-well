@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { loadAlertAudit } from "../lib/alert-audit";
+import { loadCustomerProtectionSnapshot } from "../lib/customer-protection-center";
 import {
   evaluateDisclosure, grantConsent, loadPrivateCustomerAssets, simulateDepositInterest, simulateFxExchange, withdrawConsent,
 } from "../lib/private-customer-assets";
@@ -18,6 +19,50 @@ const envelope = <T>(data: T, status = 200) => JSON.stringify({
   errors: [], timestamp: "2026-08-30T00:00:00Z", traceId: "trace",
 });
 const demoContext = { sessionId: "session-1", capability: "customer-cap", demoRunId: "run-1", customerId: "customer-1", alertId: "alert-1" };
+
+test("loads the customer protection center from five scoped read APIs", async (t) => {
+  const calls: Array<{ path: string; init?: RequestInit }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); calls.push({ path, init });
+    const data = path.endsWith("/financial-summary")
+      ? { assets: { total: { amount: "120000000" } }, cashFlow: { monthlyIncome: { amount: "3000000" }, monthlyExpense: { amount: "2100000" } }, changeSummary: { openAlertCount: 1, summary: "확인이 필요한 변화가 있습니다." } }
+      : path.endsWith("/alerts")
+        ? { items: [{ alertId: "alert-1", state: "PENDING_CUSTOMER_CONFIRMATION", severity: "MEDIUM" }] }
+        : path.endsWith("/intent")
+          ? { intentId: "intent-1", customerId: "customer-1", status: "APPROVED", version: 2, paymentContinuity: "KEEP_ESSENTIAL_PAYMENTS", explanationMode: "SIMPLE_TEXT", helpCondition: "ON_CUSTOMER_REQUEST", shareScopes: [], disclaimerAccepted: true, legallyBinding: false, healthInferenceUsed: false }
+          : path.endsWith("/change-analysis")
+            ? { baselineDays: 60, recentDays: 30, analysisWindowDays: 90, changes: [{ featureCode: "REPEATED_CONFIRMATION_COUNT", baselineValue: 2, recentValue: 7, delta: 5, direction: "INCREASE", ewmaScore: 1, cusumScore: 2, changeDetected: true, persistent: true, dataSufficient: true, method: "EWMA_CUSUM", explanation: "재확인이 증가했습니다." }], analysisMode: "FASTAPI", fallbackUsed: false, syntheticData: true, diagnosisInferred: false, financialActionExecuted: false }
+            : { items: [{ auditId: "audit-1", eventType: "ALERT_CREATED", actorType: "SYSTEM", fromState: null, toState: "PENDING_CUSTOMER_CONFIRMATION", resultCode: null, evidenceIds: [], algorithmVersion: "v1", policyVersion: "v1", traceId: "trace", occurredAt: "2026-08-30T00:00:00Z" }], nextCursor: null, hasMore: false };
+    return new Response(envelope(data), { headers: { "content-type": "application/json" } });
+  });
+
+  const snapshot = await loadCustomerProtectionSnapshot(demoContext);
+  assert.equal(snapshot.financialSummary.assets.total.amount, "120000000");
+  assert.equal(snapshot.alerts[0]?.alertId, "alert-1");
+  assert.equal(snapshot.intent?.status, "APPROVED");
+  assert.equal(snapshot.analysis?.changes[0]?.recentValue, 7);
+  assert.equal(snapshot.audit.length, 1);
+  assert.deepEqual(snapshot.unavailable, []);
+  assert.equal(calls.length, 5);
+  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("X-Demo-Capability") === "customer-cap"));
+  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("X-Demo-Run-Id") === "run-1"));
+});
+
+test("keeps core protection information visible when AI assistance is unavailable", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const path = String(input);
+    if (path.endsWith("/financial-summary")) return new Response(envelope({ assets: { total: { amount: "0" } }, cashFlow: { monthlyIncome: { amount: "0" }, monthlyExpense: { amount: "0" } }, changeSummary: { openAlertCount: 0, summary: "정상" } }), { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/alerts")) return new Response(envelope({ items: [] }), { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/intent")) return new Response(envelope(null, 404).replace("OK", "DEMO_AI_INTENT_NOT_FOUND"), { status: 404, headers: { "content-type": "application/json" } });
+    if (path.endsWith("/change-analysis")) throw new Error("AI offline");
+    return new Response(envelope({ items: [], nextCursor: null, hasMore: false }), { headers: { "content-type": "application/json" } });
+  });
+  const snapshot = await loadCustomerProtectionSnapshot(demoContext);
+  assert.equal(snapshot.intent, null);
+  assert.equal(snapshot.analysis, null);
+  assert.deepEqual(snapshot.unavailable, ["analysis"]);
+  assert.equal(snapshot.financialSummary.changeSummary.summary, "정상");
+});
 
 test("loads alert audit history with the scoped capability", async (t) => {
   t.mock.method(globalThis, "fetch", async (input, init) => {
