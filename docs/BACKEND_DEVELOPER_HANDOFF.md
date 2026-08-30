@@ -263,9 +263,9 @@ develop 최신화
 
 ## 11. 현재 알려진 인수인계 주의사항
 
-### 11.1 capability 저장 방식 불일치
+### 11.1 capability 저장 경계
 
-SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 요구한다. 현재 프런트 `frontend/lib/demo-session.ts`는 페이지 간 상태 유지를 위해 `sessionStorage`를 사용한다. 실서비스 또는 외부 공개 전에 메모리+BFF/HttpOnly 경계로 바꾸거나, 보안 검토를 거쳐 SSOT를 명시적으로 개정해야 한다. 조용히 현 구현을 기준으로 삼지 않는다.
+Vercel 공개 배포에서는 BFF가 고객 capability를 `Secure`·`HttpOnly`·`SameSite=Strict` host cookie에 보관하고 AWS로 전달할 때만 헤더로 변환한다. 프런트 자바스크립트가 읽을 수 있는 `sessionStorage`에는 비밀값이 아닌 세션·시나리오 식별자만 저장한다. 로컬 직접 호출 모드는 capability를 모듈 메모리에만 둔다. 이 경계를 변경할 때에는 SSOT·최종 명세·프런트 보안 테스트를 함께 갱신한다.
 
 ### 11.2 고객 응답 DTO
 
@@ -281,7 +281,7 @@ SSOT와 최종 명세는 capability를 브라우저 메모리에만 두도록 �
 
 ## 12. 추천 다음 작업
 
-1. capability의 `sessionStorage` 불일치 해소
+1. Vercel Preview에 서버 전용 환경변수를 연결하고 HttpOnly capability 경계를 E2E로 검증
 2. 구현된 233개 operation의 도메인별 summary·개별 오류 예시를 지속적으로 구체화
 3. 운영형 인앱 알림함 API의 프론트 연동과 사용성 검증
 4. Compose 스모크 증적의 보존기간·실패 로그를 운영 기준에 맞게 확장

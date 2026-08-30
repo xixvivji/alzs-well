@@ -71,6 +71,11 @@ export async function proxyApiRequest(
   options: ProxyOptions = {},
 ): Promise<Response> {
   const traceId = crypto.randomUUID();
+  const incoming = new URL(request.url);
+  const browserOrigin = request.headers.get("origin");
+  if (browserOrigin && !sameOrigin(browserOrigin, incoming.origin)) {
+    return proxyError(403, "BACKEND_PROXY_ORIGIN_REJECTED", "요청 출처를 확인할 수 없습니다.", traceId);
+  }
   let backendOrigin: string;
   try {
     backendOrigin = resolveBackendOrigin(rawOrigin, request.url);
@@ -78,7 +83,6 @@ export async function proxyApiRequest(
     return proxyError(503, "BACKEND_PROXY_CONFIGURATION_INVALID", "API 연결 설정을 확인할 수 없습니다.", traceId);
   }
 
-  const incoming = new URL(request.url);
   const target = new URL(backendOrigin);
   target.pathname = incoming.pathname;
   target.search = incoming.search;
@@ -159,6 +163,8 @@ function sanitizedRequestHeaders(source: Headers): Headers {
       normalized === "host" ||
       normalized === "content-length" ||
       normalized === "cookie" ||
+      normalized === "origin" ||
+      normalized === "referer" ||
       normalized === "x-real-ip" ||
       normalized.startsWith("x-forwarded-") ||
       normalized.startsWith("cf-") ||
@@ -248,4 +254,12 @@ function proxyError(status: number, code: string, message: string, traceId: stri
 function isLoopback(hostname: string): boolean {
   const normalized = hostname.toLowerCase();
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "[::1]";
+}
+
+function sameOrigin(value: string, expectedOrigin: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.origin === expectedOrigin && parsed.pathname === "/" && !parsed.search && !parsed.hash;
+  }
+  catch { return false; }
 }

@@ -49,3 +49,18 @@ test("best-effort discard does not surface an expired-session failure", async (t
   t.mock.method(globalThis, "fetch", async () => new Response("", { status: 404 }));
   await discardDemoSession("expired", "capability");
 });
+
+test("accepts the Vercel BFF HttpOnly cookie mode without exposing a capability header", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input) => {
+    if (String(input).endsWith("/api/v1/demo/sessions")) {
+      return new Response(envelope({ sessionId: "session-cookie" }), {
+        headers: { "content-type": "application/json", "X-Demo-Capability-Mode": "HTTP_ONLY_COOKIE" },
+      });
+    }
+    return new Response(envelope({ demoRunId: "run-cookie", customerId: "customer-cookie", alertId: "alert-cookie" }),
+      { headers: { "content-type": "application/json" } });
+  });
+  assert.deepEqual(await createDemoContext(), {
+    sessionId: "session-cookie", capability: "", demoRunId: "run-cookie", customerId: "customer-cookie", alertId: "alert-cookie",
+  });
+});

@@ -19,8 +19,9 @@ export async function discardDemoSession(sessionId: string, capability: string):
 export async function createDemoContext(): Promise<DemoContext> {
   const created = await apiRequest<Created>("/api/v1/demo/sessions", { method: "POST" });
   const sessionId = created.body.data?.sessionId;
-  const capability = created.headers.get("X-Demo-Customer-Capability");
-  if (!sessionId || !capability) throw new Error("세션 발급 응답을 확인해 주세요.");
+  const capability = created.headers.get("X-Demo-Customer-Capability") ?? "";
+  const httpOnlyBff = created.headers.get("X-Demo-Capability-Mode") === "HTTP_ONLY_COOKIE";
+  if (!sessionId || (!capability && !httpOnlyBff)) throw new Error("세션 발급 응답을 확인해 주세요.");
 
   try {
     const ingested = await apiRequest<Ingested>(

@@ -2,81 +2,49 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-  return worker.fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
-}
-
-test("server-renders the ALZ's well landing page", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-  assert.match(response.headers.get("content-security-policy") ?? "", /default-src 'self'/);
-  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
-  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
-  assert.equal(response.headers.get("x-frame-options"), "DENY");
-  assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(\)/);
-
-  const html = await response.text();
+test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링한다", async () => {
+  const html = await readFile(new URL("../.next/server/app/index.html", import.meta.url), "utf8");
   assert.match(html, /<html lang="ko">/i);
-  assert.match(html, /ALZ(?:&#x27;|')s well \| 금융생활 변화 조기알림/);
+  assert.match(html, /ALZ(?:&#x27;|')s well/);
   assert.match(html, /금융생활의 작은 변화/);
-  assert.match(html, /안심 서비스 체험하기/);
+  assert.match(html, /2026 금융 AI Challenge 참가 프로젝트/);
+  assert.match(html, /고객 흐름 체험하기/);
   assert.match(html, /href="\/demo"/);
   assert.match(html, /href="\/staff\/cases"/);
-  assert.match(html, /합성데이터만 사용하는 데모/);
+  assert.match(html, /합성데이터/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Building your site/i);
 });
 
-test("keeps the safety boundary visible in product source", async () => {
-  const [page, layout, staffCaseDetail] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
+test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () => {
+  const [config, manifest] = await Promise.all([
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.next/server/app-paths-manifest.json", import.meta.url), "utf8"),
   ]);
+  assert.match(config, /Content-Security-Policy/);
+  assert.match(config, /frame-ancestors 'none'/);
+  assert.match(config, /Permissions-Policy/);
+  assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
+  assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
+});
 
-  assert.match(page, /실제 금융 실행이나 외부 연락을 수행하지 않습니다/);
-  assert.match(page, /하나은행/);
-  assert.match(page, /신한은행/);
-  assert.match(page, /카카오뱅크/);
-  assert.match(page, /KB증권/);
-  assert.match(layout, /ALZ's well \| 금융생활 변화 조기알림/);
+test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 남는다", async () => {
+  const [page, staffCaseDetail, alertDetail] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/AlertDetail.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const name of ["금융보안원", "금융위원회", "하나은행", "신한은행", "카카오뱅크", "KB증권", "생명보험협회"]) assert.match(page, new RegExp(name));
+  assert.match(page, /각 기관의 공식 서비스가 아닙니다/);
   assert.match(staffCaseDetail, /AI는 검토 초안과 승인된 근거를 제시할 뿐/);
   assert.match(staffCaseDetail, /사람 검토 필수/);
-  assert.match(staffCaseDetail, /guidanceDelivered=false/);
-  assert.doesNotMatch(page, /codex-preview|SkeletonPreview|Building your site/i);
+  assert.match(alertDetail, /나중에 확인할게요/);
 });
 
-test("fails closed when the deployed API proxy origin is not configured", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("api-test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-  const response = await worker.fetch(
-    new Request("https://app.example.com/api/v1/system/health"),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
-  assert.equal(response.status, 503);
-  assert.match(response.headers.get("content-type") ?? "", /^application\/json\b/i);
-  assert.match(response.headers.get("content-security-policy") ?? "", /connect-src 'self'/);
-  assert.equal(response.headers.get("cache-control"), "no-store");
-  const body = await response.json();
-  assert.equal(body.code, "BACKEND_PROXY_CONFIGURATION_INVALID");
-});
-
-test("does not serialize the server-only proxy secret into build artifacts", async () => {
-  const sentinel = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
-  const dist = new URL("../dist/", import.meta.url);
-  const files = await allFiles(dist);
+test("서버 전용 비밀값의 예시 placeholder가 Next.js 산출물에 직렬화되지 않는다", async () => {
+  const files = await allFiles(new URL("../.next/", import.meta.url));
   for (const file of files) {
     const content = await readFile(file);
-    assert.equal(content.includes(Buffer.from(sentinel)), false, `secret leaked into ${file.pathname}`);
+    assert.equal(content.includes(Buffer.from("replace-with-64-lowercase-hex")), false, `placeholder leaked into ${file.pathname}`);
   }
 });
 

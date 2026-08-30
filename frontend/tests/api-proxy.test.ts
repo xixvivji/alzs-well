@@ -46,6 +46,8 @@ test("preserves method, body and API headers while stripping platform identity",
         "Idempotency-Key": "idem-12345678",
         "X-Demo-Capability": "demo-capability",
         Cookie: "site-session=secret",
+        Origin: "https://app.example.com",
+        Referer: "https://app.example.com/demo",
         "OAI-Authenticated-User-Id": "site-user",
         "CF-Connecting-IP": "203.0.113.10",
         "X-Forwarded-For": "203.0.113.10",
@@ -74,6 +76,8 @@ test("preserves method, body and API headers while stripping platform identity",
   assert.equal(forwarded.headers.get("idempotency-key"), "idem-12345678");
   assert.equal(forwarded.headers.get("x-demo-capability"), "demo-capability");
   assert.equal(forwarded.headers.get("cookie"), null);
+  assert.equal(forwarded.headers.get("origin"), null);
+  assert.equal(forwarded.headers.get("referer"), null);
   assert.equal(forwarded.headers.get("oai-authenticated-user-id"), null);
   assert.equal(forwarded.headers.get("cf-connecting-ip"), null);
   assert.equal(forwarded.headers.get("x-forwarded-for"), null);
@@ -84,6 +88,19 @@ test("preserves method, body and API headers while stripping platform identity",
   assert.equal(response.headers.get("set-cookie"), null);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("x-trace-id"), "backend-trace");
+});
+
+test("rejects a cross-origin browser request before contacting AWS", async () => {
+  let called = false;
+  const response = await proxyApiRequest(new Request("https://app.example.com/api/v1/demo/sessions", {
+    method: "POST", headers: { Origin: "https://attacker.example" }, body: "{}",
+  }), "https://backend.example.com", {
+    proxySharedSecret: PROXY_SECRET,
+    fetchImpl: async () => { called = true; return new Response(null); },
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).code, "BACKEND_PROXY_ORIGIN_REJECTED");
+  assert.equal(called, false);
 });
 
 test("fails closed with stable JSON for missing configuration and upstream failures", async () => {
@@ -219,4 +236,32 @@ test("allowlist 밖의 사용자는 직원 capability 발급 전에 거부한다
     bootstrapToken: "b".repeat(64), allowedUserIds: "staff-user-1" });
   assert.equal(response.status, 403);
   assert.equal((await response.json()).code, "STAFF_ACCESS_DENIED");
+});
+
+test("공개 합성 데모는 현재 고객 capability를 검증한 뒤에만 직원 capability를 발급한다", async () => {
+  const session = "98000000-0000-4000-8000-000000000001";
+  const paths: string[] = [];
+  const response = await issueStaffCapability(new Request(`https://app.example.com/api/internal/staff-capability/${session}`, {
+    method: "POST", headers: { "X-Demo-Capability": "customer-capability-secret-123456789" },
+  }), {
+    backendOrigin: "https://backend.example.com", proxySharedSecret: PROXY_SECRET,
+    bootstrapToken: "b".repeat(64), publicDemo: true,
+    fetchImpl: async (request) => {
+      paths.push(new URL(request.url).pathname);
+      if (request.method === "GET") {
+        assert.equal(request.headers.get("X-Demo-Capability"), "customer-capability-secret-123456789");
+        return Response.json({ success: true });
+      }
+      assert.equal(request.headers.get("Authorization"), `Bearer ${"b".repeat(64)}`);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "Content-Type": "application/json", "X-Demo-Staff-Capability": "staff-secret" },
+      });
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("X-Demo-Staff-Capability"), "staff-secret");
+  assert.deepEqual(paths, [
+    `/api/v1/demo/sessions/${session}`,
+    `/api/v1/demo/staff/sessions/${session}/capability`,
+  ]);
 });
