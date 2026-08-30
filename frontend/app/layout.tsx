@@ -7,6 +7,7 @@ import "./alert-detail.css";
 import "./intro-film.css";
 import "./senior-customer.css";
 import "./staff-case-detail.css";
+import "./ai-financial-assistant.css";
 
 export const metadata: Metadata = {
   title: "ALZ's well | 금융생활 변화 조기알림",
