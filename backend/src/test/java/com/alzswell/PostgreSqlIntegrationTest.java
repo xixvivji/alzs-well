@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -201,12 +202,13 @@ class PostgreSqlIntegrationTest {
                       ,'fx_rate_snapshot'
                       ,'customer_foreign_currency_account_snapshot'
                       ,'overseas_remittance_snapshot'
+                      ,'demo_financial_intent'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(144);
+        assertThat(tableCount).isEqualTo(145);
     }
 
     @Test
@@ -570,7 +572,7 @@ class PostgreSqlIntegrationTest {
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '72'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '73'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -643,7 +645,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("72"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("73"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -702,13 +704,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(206);
+        assertThat(specification.path("paths").size()).isEqualTo(211);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(221);
+        assertThat(operationCount).isEqualTo(227);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
@@ -886,6 +888,89 @@ class PostgreSqlIntegrationTest {
                 sessionId
         );
         assertThat(preserved).isEqualTo(2);
+    }
+
+    @Test
+    void demoAiFinancialAssistanceCompletesIntentChangeAndPlainLanguageFlow() throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/v1/demo/sessions"))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode createBody = objectMapper.readTree(created.getResponse().getContentAsByteArray());
+        UUID sessionId = UUID.fromString(createBody.at("/data/sessionId").asText());
+        String capability = created.getResponse().getHeader(DemoCapabilityService.CUSTOMER_RESPONSE_HEADER);
+
+        MvcResult ingested = mockMvc.perform(post(
+                        "/api/v1/demo/sessions/{sessionId}/scenarios/FIN_MGMT_AB_001/ingest", sessionId)
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header("Idempotency-Key", "ai-assistance-ingest-0001"))
+                .andExpect(status().isCreated()).andReturn();
+        JsonNode ingestBody = objectMapper.readTree(ingested.getResponse().getContentAsByteArray());
+        UUID runId = UUID.fromString(ingestBody.at("/data/demoRunId").asText());
+        String customerId = ingestBody.at("/data/customerId").asText();
+        String base = "/api/v1/demo/sessions/" + sessionId + "/customers/" + customerId
+                + "/ai-financial-assistance";
+
+        mockMvc.perform(post(base + "/intent-suggestions")
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header(DemoCapabilityService.RUN_HEADER, runId)
+                        .contentType("application/json")
+                        .content("{\"utterance\":\"공과금은 계속 납부하고 천천히 설명해 주세요.\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.suggestion.paymentContinuity").value("KEEP_ESSENTIAL_PAYMENTS"))
+                .andExpect(jsonPath("$.data.fallbackUsed").value(true))
+                .andExpect(jsonPath("$.data.healthInferenceUsed").value(false));
+
+        mockMvc.perform(put(base + "/intent")
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header(DemoCapabilityService.RUN_HEADER, runId)
+                        .contentType("application/json")
+                        .content("""
+                                {"expectedVersion":0,"paymentContinuity":"KEEP_ESSENTIAL_PAYMENTS",
+                                 "explanationMode":"VOICE_AND_TEXT","helpCondition":"ON_REPEATED_CHANGE",
+                                 "shareScopes":["PAYMENT_PREFERENCE","EXPLANATION_PREFERENCE"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andExpect(jsonPath("$.data.version").value(1))
+                .andExpect(jsonPath("$.data.legallyBinding").value(false));
+
+        mockMvc.perform(post(base + "/intent/approve")
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header(DemoCapabilityService.RUN_HEADER, runId)
+                        .contentType("application/json")
+                        .content("{\"expectedVersion\":1,\"disclaimerAccepted\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED"))
+                .andExpect(jsonPath("$.data.version").value(2));
+
+        mockMvc.perform(get(base + "/change-analysis")
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header(DemoCapabilityService.RUN_HEADER, runId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.analysisWindowDays").value(90))
+                .andExpect(jsonPath("$.data.changes.length()").value(6))
+                .andExpect(jsonPath("$.data.changes[?(@.featureCode == 'NEW_COUNTERPARTY_COUNT')]").exists())
+                .andExpect(jsonPath("$.data.changes[?(@.featureCode == 'UNUSUAL_TIME_COUNT')]").exists())
+                .andExpect(jsonPath("$.data.changes[?(@.featureCode == 'UNUSUAL_AMOUNT_COUNT')]").exists())
+                .andExpect(jsonPath("$.data.diagnosisInferred").value(false))
+                .andExpect(jsonPath("$.data.financialActionExecuted").value(false));
+
+        mockMvc.perform(post(base + "/plain-language")
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header(DemoCapabilityService.RUN_HEADER, runId)
+                        .contentType("application/json")
+                        .content("{\"featureCode\":\"REPEATED_CONFIRMATION_COUNT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.explanationMode").value("VOICE_AND_TEXT"))
+                .andExpect(jsonPath("$.data.speechText").isNotEmpty())
+                .andExpect(jsonPath("$.data.diagnosisInferred").value(false));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from demo_financial_intent where demo_session_id=?", Integer.class, sessionId))
+                .isOne();
+        jdbcTemplate.update("delete from demo_session where session_id=?", sessionId);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from demo_financial_intent where demo_session_id=?", Integer.class, sessionId))
+                .isZero();
     }
 
     private record AuditHash(UUID auditId, String previousHash, String eventHash) {
