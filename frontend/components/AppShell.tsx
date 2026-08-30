@@ -11,7 +11,8 @@ const customerLinks = [
   ["/demo/ai-assistant", "AI 금융생활 도우미", "03"],
   ["/demo/alerts", "확인할 알림", "04"],
   ["/demo/products", "금융상품·자산", "05"],
-  ["/demo/services", "전체 금융서비스", "06"],
+  ["/demo/settings", "내 정보·도움 설정", "06"],
+  ["/demo/services", "전체 금융서비스", "07"],
 ] as const;
 const staffLinks = [
   ["/staff/cases", "보호업무 사건", "01"],

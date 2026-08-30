@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "rehearsal-v1.0.0",
+  "fixture": {
+    "backendScenarioId": "FIN_MGMT_AB_001",
+    "fixtureVersion": "fin-mgmt-ab-v2.0.0",
+    "baselineMonths": 9,
+    "observationMonths": 3,
+    "signals": [
+      { "reasonCode": "MISSED_RECURRING", "observedCount": 3, "windowLabel": "최근 60일" },
+      { "reasonCode": "DUPLICATE_TRANSFER", "observedCount": 2, "windowLabel": "10분 이내" },
+      { "reasonCode": "REPEATED_CONFIRMATION", "observedCount": 7, "windowLabel": "1시간 이내" }
+    ],
+    "principle": "세 시나리오는 같은 T0 합성 snapshot을 사용하고 고객 맥락과 사람의 검토 결과만 비교한다.",
+    "externalActionsCreated": false
+  },
+  "scenarios": [
+    {
+      "id": "normal",
+      "label": "정상",
+      "title": "정상 생활맥락 확인",
+      "summary": "고객 응답을 서버의 검증된 구조적 근거와 대조해 사건 없이 종결합니다.",
+      "customerAction": "제가 알고 있는 금융활동입니다",
+      "expectedState": "CLOSED_NORMAL",
+      "checkpoints": ["고객이 알고 있는 활동으로 응답", "구조적 근거 4종 일치", "행원 사건 미생성"],
+      "responseCode": "KNOWN_AND_INTENTIONAL",
+      "demoBranchCode": "FIN_MGMT_A_NORMAL_CONTEXT",
+      "staffDecision": "사건 생성 없이 정상 생활맥락으로 종결",
+      "requiresCitation": false
+    },
+    {
+      "id": "caution",
+      "label": "주의",
+      "title": "행원 보호업무 연결",
+      "summary": "고객이 확인하기 어려운 변화를 행원에게 연결하고 승인된 근거로 안내계획을 만듭니다.",
+      "customerAction": "잘 모르겠습니다. 도움받겠습니다",
+      "expectedState": "GUIDANCE_PLAN_APPROVED",
+      "checkpoints": ["고객 도움 요청", "AI 초안의 승인 근거 인용", "행원의 안내계획 승인"],
+      "responseCode": "UNABLE_TO_CONFIRM",
+      "demoBranchCode": "FIN_MGMT_B_NO_CONTEXT",
+      "staffDecision": "승인 근거를 확인하고 안내계획 승인",
+      "requiresCitation": true
+    },
+    {
+      "id": "false-positive",
+      "label": "오탐",
+      "title": "사람 검토 후 오탐 종결",
+      "summary": "주의 사건을 자동 해제하지 않고 행원이 사실을 확인한 뒤 근거 메모와 함께 종결합니다.",
+      "customerAction": "잘 모르겠습니다. 도움받겠습니다",
+      "expectedState": "CLOSED_FALSE_POSITIVE",
+      "checkpoints": ["고객 도움 요청", "행원 사실확인 시작", "오탐 근거 기록 후 종결"],
+      "responseCode": "UNABLE_TO_CONFIRM",
+      "demoBranchCode": "FIN_MGMT_B_NO_CONTEXT",
+      "staffDecision": "거래 처리 지연과 의도한 재시도를 대조해 오탐 근거 기록",
+      "requiresCitation": false
+    }
+  ]
+}
