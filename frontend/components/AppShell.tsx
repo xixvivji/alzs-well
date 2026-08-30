@@ -7,10 +7,16 @@ import { AccessibilityControls } from "./AccessibilityControls";
 
 const customerLinks = [
   ["/demo", "내 금융생활", "01"],
-  ["/demo/ai-assistant", "AI 금융생활 도우미", "02"],
-  ["/demo/alerts", "확인할 알림", "03"],
+  ["/demo/finance", "통합 금융생활", "02"],
+  ["/demo/ai-assistant", "AI 금융생활 도우미", "03"],
+  ["/demo/alerts", "확인할 알림", "04"],
+  ["/demo/services", "전체 금융서비스", "05"],
 ] as const;
-const staffLinks = [["/staff/cases", "보호업무 사건", "01"]] as const;
+const staffLinks = [
+  ["/staff/cases", "보호업무 사건", "01"],
+  ["/staff/operations", "행원 업무서비스", "02"],
+  ["/staff/control-center", "관리·준법 통제", "03"],
+] as const;
 
 export function AppShell({ mode, title, children }: { mode: "customer" | "staff"; title: string; children: ReactNode }) {
   const pathname = usePathname();

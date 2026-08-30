@@ -6,12 +6,13 @@
 
 ## 현재 구현 상태
 
-- Spring Boot 3.5·Java 21·PostgreSQL/Flyway 기반 API 카탈로그 272개(P0 23, P1 170, P2 79)를 관리한다.
+- Spring Boot 3.5·Java 21·PostgreSQL/Flyway 기반 업무 API 카탈로그 278개를 관리하며, 코드 기준 operation은 234개다.
 - 합성 데이터 적재, 변화 탐지, 고객 알림, 직원 사건 검토, 동의·신뢰연락인·감사·정책 관리가 구현돼 있다.
 - FastAPI RAG는 승인 문서 ingestion, pgvector hybrid 검색, Spring citation 재검증과 결정론적 폴백을 제공한다.
 - Arctic-ko는 `STAGED_APPROVED`이며 AWS staging에서 승인값·revision·artifact/golden-set hash가 모두 일치할 때만 로드한다. 기본 embedding은 계속 Hash다.
 - 최종 staging은 업무 EC2 + AI EC2 + Private RDS다. 로컬 개발은 단일 Docker Compose를 사용한다.
 - 직원 사건 화면은 ChatGPT 로그인과 서버측 user allowlist를 통과한 사용자만 실제 합성 사건큐를 조회한다.
+- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 234개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 공개 화면은 capability 범위의 합성데이터 API만 실행한다.
 
 ```bash
 cd backend && ./gradlew check
