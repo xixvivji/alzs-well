@@ -25,14 +25,15 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   assert.match(config, /Permissions-Policy/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
-  for (const route of ["/demo/finance/page", "/demo/products/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
+  for (const route of ["/demo/finance/page", "/demo/products/page", "/demo/settings/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
     assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
   }
 });
 
 test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링된다", async () => {
-  const [products, services, operations, control, systemStatus] = await Promise.all([
+  const [products, settings, services, operations, control, systemStatus] = await Promise.all([
     readFile(new URL("../.next/server/app/demo/products.html", import.meta.url), "utf8"),
+    readFile(new URL("../.next/server/app/demo/settings.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/demo/services.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/staff/operations.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/staff/control-center.html", import.meta.url), "utf8"),
@@ -41,11 +42,15 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   assert.match(products, /운영 금융정보는 로그인 후 조회합니다/);
   assert.match(products, /공개 데모 capability로 우회하지 않습니다/);
   assert.match(products, /금융상품·자산/);
+  assert.match(settings, /프로필과 도움 요청 범위는/);
+  assert.match(settings, /신뢰 연락처는 대리권 없이 최소정보만 지정/);
   assert.match(services, /필요한 금융생활을 한곳에서/);
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);
-  assert.match(operations, /보호업무 운영 포털/);
-  assert.match(control, /통제와 운영을 한 화면에서/);
+  assert.match(operations, /고객의 확인 요청을/);
+  assert.match(operations, /현재 데모 세션 사건/);
+  assert.match(control, /정책과 AI가 안전 경계 안에서/);
+  assert.match(control, /관리 기능은 운영자 인증 후에만 실행/);
   assert.match(systemStatus, /서비스 준비상태를 확인하고 있습니다/);
   for (const html of [services, operations, control]) {
     assert.match(html, /사설 인증 필요|인증 필요/);
@@ -53,12 +58,14 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
 });
 
 test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 남는다", async () => {
-  const [page, staffCaseDetail, alertDetail, productCenter, customerAssets] = await Promise.all([
+  const [page, staffCaseDetail, alertDetail, productCenter, customerAssets, customerCare, scenarioData] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/AlertDetail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateProductCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateCustomerAssets.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/PrivateCustomerCare.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../data/rehearsal-scenarios-v1.json", import.meta.url), "utf8"),
   ]);
   for (const name of ["금융보안원", "금융위원회", "하나은행", "신한은행", "카카오뱅크", "KB증권", "생명보험협회"]) assert.match(page, new RegExp(name));
   assert.match(page, /각 기관의 공식 서비스가 아닙니다/);
@@ -68,6 +75,10 @@ test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 �
   for (const label of ["예금", "외환", "연금·신탁", "동의관리"]) assert.match(productCenter, new RegExp(label));
   assert.match(customerAssets, /가입·해지·외부 호출 없음/);
   assert.match(customerAssets, /외부 제공 자동 실행 없음/);
+  assert.match(customerCare, /사람의 재검토를 요청/);
+  assert.match(customerCare, /금융행위 대리권은 부여하지 않습니다/);
+  assert.match(scenarioData, /같은 T0 합성 snapshot/);
+  assert.match(scenarioData, /CLOSED_FALSE_POSITIVE/);
 });
 
 test("서버 전용 비밀값의 예시 placeholder가 Next.js 산출물에 직렬화되지 않는다", async () => {

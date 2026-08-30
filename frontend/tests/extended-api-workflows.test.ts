@@ -5,6 +5,10 @@ import {
   evaluateDisclosure, grantConsent, loadPrivateCustomerAssets, simulateDepositInterest, simulateFxExchange, withdrawConsent,
 } from "../lib/private-customer-assets";
 import {
+  createTrustedContact, ensureTrustedContactConsent, loadPrivateCustomerCare, revokeTrustedContact,
+  submitAlertAppeal, updateAccessibilitySettings, updateCustomerDisplayName, updateCustomerPreferences,
+} from "../lib/private-customer-care";
+import {
   loadPrivateProductOverview, loginPrivateCustomer, logoutPrivateCustomer, simulateLoanRepayment,
 } from "../lib/private-financial-products";
 import { loadSystemStatus } from "../lib/system-status";
@@ -161,6 +165,56 @@ test("connects safe simulations and consent lifecycle commands without external 
   assert.deepEqual(calls[3]?.body, { expectedVersion: 1, reason: "범위를 재검토합니다." });
   assert.ok(new Headers(calls[3]?.init?.headers).get("Idempotency-Key"));
   assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+});
+
+test("loads customer profile, accessibility, trusted contacts and appeal targets in one Bearer session", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); paths.push(path);
+    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer access-secret");
+    let data: unknown;
+    if (path.endsWith("/customers/customer-1")) data = { customerId: "customer-1", displayName: "합성고객", organization: "보호센터", region: "KR-11", status: "ACTIVE", version: 1, createdAt: "2026-08-30T00:00:00Z", updatedAt: "2026-08-30T00:00:00Z" };
+    else if (path.endsWith("/preferences")) data = { customerId: "customer-1", smsNotificationEnabled: false, pushNotificationEnabled: false, inAppNotificationEnabled: true, version: 1, updatedAt: "2026-08-30T00:00:00Z" };
+    else if (path.endsWith("/accessibility-settings")) data = { customerId: "customer-1", largeFont: true, highContrast: false, speechGuidance: false, oneHandMode: true, version: 1, updatedAt: "2026-08-30T00:00:00Z" };
+    else if (path.endsWith("/data-summary")) data = { customerId: "customer-1", institutions: 2, accounts: 4, transactionsSynced: 42, lastSyncAt: null, dataFreshness: { accounts: "FIXED_SNAPSHOT", transactions: "FIXED_SNAPSHOT", baseline: "CURRENT" }, updatedAt: "2026-08-30T00:00:00Z" };
+    else if (path.endsWith("/trusted-contacts")) data = { items: [{ contactId: "contact-1", customerId: "customer-1", consentId: "consent-1", displayName: "가족", relationshipCode: "FAMILY", maskedContact: "010-****-1234", recipientAccepted: false, acceptanceStatus: "PENDING_ACCEPTANCE", status: "ACTIVE", scopes: ["ALERT_REASON_SUMMARY"], validFrom: "2026-08-30T00:00:00Z", expiresAt: "2027-01-01T00:00:00Z", version: 1, authorizedToAct: false, externalContactEnabled: false }] };
+    else if (path.endsWith("/consents")) data = { items: [{ consentId: "consent-1", customerId: "customer-1", purposeCode: "TRUSTED_CONTACT_DISCLOSURE", status: "GRANTED", scopes: ["CONTACT_MINIMUM"], grantedAt: "2026-08-30T00:00:00Z", expiresAt: "2027-08-30T00:00:00Z", withdrawnAt: null, withdrawalReason: null, version: 1, revocable: true }] };
+    else data = { items: [{ alertId: "alert-1", signalId: "signal-1", customerId: "customer-1", state: "AWAITING_CONTEXT", severity: "MEDIUM", reasonCode: "DUPLICATE_TRANSFER", version: 1, deferredUntil: null, createdAt: "2026-08-30T00:00:00Z", updatedAt: "2026-08-30T00:00:00Z" }] };
+    return new Response(envelope(data), { headers: { "content-type": "application/json" } });
+  });
+  const bundle = await loadPrivateCustomerCare(privateSession());
+  assert.equal(bundle.summary.displayName, "합성고객");
+  assert.equal(bundle.accessibility.largeFont, true);
+  assert.equal(bundle.contacts[0]?.authorizedToAct, false);
+  assert.equal(bundle.alerts[0]?.alertId, "alert-1");
+  assert.equal(paths.length, 7);
+});
+
+test("connects customer settings, trusted-contact consent and human appeal mutations safely", async (t) => {
+  const calls: Array<{ path: string; body: Record<string, unknown>; headers: Headers }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+    calls.push({ path, body, headers: new Headers(init?.headers) });
+    let data: unknown = null;
+    if (path.endsWith("/consents")) data = { consentId: "consent-1", customerId: "customer-1", purposeCode: "TRUSTED_CONTACT_DISCLOSURE", status: "GRANTED", scopes: ["CONTACT_MINIMUM"], grantedAt: "2026-08-30T00:00:00Z", expiresAt: "2027-08-30T00:00:00Z", withdrawnAt: null, withdrawalReason: null, version: 1, revocable: true };
+    else if (path.endsWith("/trusted-contacts")) data = { contactId: "contact-1", customerId: "customer-1", consentId: "consent-1", displayName: "가족", relationshipCode: "FAMILY", maskedContact: "010-****-1234", recipientAccepted: false, acceptanceStatus: "PENDING_ACCEPTANCE", status: "ACTIVE", scopes: ["ALERT_REASON_SUMMARY"], validFrom: "2026-08-30T00:00:00Z", expiresAt: "2027-01-01T00:00:00Z", version: 1, authorizedToAct: false, externalContactEnabled: false };
+    else if (path.includes("/trusted-contacts/contact-1/revoke")) data = { contactId: "contact-1", status: "REVOKED", version: 2, authorizedToAct: false, externalContactEnabled: false };
+    else if (path.endsWith("/appeals")) data = { appealId: "appeal-1", alertId: "alert-1", caseId: "case-1", reasonCode: "REQUEST_HUMAN_REVIEW", status: "SUBMITTED", previousState: "AWAITING_CONTEXT", currentState: "BANK_REVIEW", alertVersion: 2, submittedAt: "2026-08-30T00:00:00Z", idempotencyReplayed: false, financialActionExecuted: false, externalNotificationSent: false };
+    return new Response(envelope(data), { headers: { "content-type": "application/json" } });
+  });
+  const session = privateSession();
+  await updateCustomerDisplayName(session, 1, "안심 고객");
+  await updateCustomerPreferences(session, { customerId: "customer-1", smsNotificationEnabled: false, pushNotificationEnabled: true, inAppNotificationEnabled: true, version: 1, updatedAt: "" });
+  await updateAccessibilitySettings(session, { customerId: "customer-1", largeFont: true, highContrast: true, speechGuidance: true, oneHandMode: true, version: 1, updatedAt: "" });
+  const consent = await ensureTrustedContactConsent(session, []);
+  const contact = await createTrustedContact(session, consent.consentId, { displayName: "가족", relationshipCode: "FAMILY", maskedContact: "010-****-1234", scopes: ["ALERT_REASON_SUMMARY"] });
+  await revokeTrustedContact(session, contact, "고객 직접 철회");
+  const appeal = await submitAlertAppeal(session, { alertId: "alert-1", signalId: "signal-1", customerId: "customer-1", state: "AWAITING_CONTEXT", severity: "MEDIUM", reasonCode: "DUPLICATE_TRANSFER", version: 1, deferredUntil: null, createdAt: "", updatedAt: "" }, "REQUEST_HUMAN_REVIEW", "사람의 재검토를 요청합니다.");
+  assert.equal(appeal.financialActionExecuted, false);
+  assert.ok(calls.every((call) => call.headers.get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => call.headers.get("Idempotency-Key")));
+  assert.deepEqual(calls[0]?.body, { expectedVersion: 1, displayName: "안심 고객" });
+  assert.deepEqual(calls.at(-1)?.body, { reasonCode: "REQUEST_HUMAN_REVIEW", statement: "사람의 재검토를 요청합니다.", expectedVersion: 1 });
 });
 
 function privateSession() {
