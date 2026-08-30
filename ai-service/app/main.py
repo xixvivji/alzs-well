@@ -9,6 +9,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api_config import ApiConfig
+from app.assistance.change import analyze_changes
+from app.assistance.intent import structure_intent
+from app.assistance.plain_language import plain_language
+from app.domain.assistance import (
+    ChangeAnalysisRequest,
+    ChangeAnalysisResponse,
+    IntentStructureRequest,
+    IntentStructureResponse,
+    PlainLanguageRequest,
+    PlainLanguageResponse,
+)
 from app.domain.search import Citation, SearchRequest, SearchResponse, SearchResult
 from app.embedding.base import EmbeddingProvider
 from app.embedding.config import EmbeddingConfig, create_embedding_provider
@@ -114,6 +125,33 @@ def create_app() -> FastAPI:
             results=results,
         )
 
+    @application.post(
+        "/internal/v1/intent-structure",
+        response_model=IntentStructureResponse,
+        response_model_by_alias=True,
+        dependencies=[Depends(_verify_internal_token)],
+    )
+    def intent_structure(payload: IntentStructureRequest) -> IntentStructureResponse:
+        return structure_intent(payload, get_embedding_provider())
+
+    @application.post(
+        "/internal/v1/change-analysis",
+        response_model=ChangeAnalysisResponse,
+        response_model_by_alias=True,
+        dependencies=[Depends(_verify_internal_token)],
+    )
+    def change_analysis(payload: ChangeAnalysisRequest) -> ChangeAnalysisResponse:
+        return analyze_changes(payload)
+
+    @application.post(
+        "/internal/v1/plain-language",
+        response_model=PlainLanguageResponse,
+        response_model_by_alias=True,
+        dependencies=[Depends(_verify_internal_token)],
+    )
+    def generate_plain_language(payload: PlainLanguageRequest) -> PlainLanguageResponse:
+        return plain_language(payload)
+
     return application
 
 
@@ -171,8 +209,13 @@ async def _knowledge_error_handler(
 async def _validation_error_handler(
     request: Request, error: RequestValidationError
 ) -> JSONResponse:
-    del request, error
-    contract_error = KnowledgeContractError("SEARCH_REQUEST_INVALID")
+    del error
+    code = (
+        "AI_ASSISTANCE_REQUEST_INVALID"
+        if request.url.path.startswith("/internal/v1/") and request.url.path != "/internal/v1/search"
+        else "SEARCH_REQUEST_INVALID"
+    )
+    contract_error = KnowledgeContractError(code)
     return JSONResponse(
         status_code=422,
         content={
