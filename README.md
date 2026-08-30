@@ -12,7 +12,7 @@
 - Arctic-ko는 `STAGED_APPROVED`이며 AWS staging에서 승인값·revision·artifact/golden-set hash가 모두 일치할 때만 로드한다. 기본 embedding은 계속 Hash다.
 - 최종 staging은 업무 EC2 + AI EC2 + Private RDS다. 로컬 개발은 단일 Docker Compose를 사용한다.
 - 직원 사건 화면은 ChatGPT 로그인과 서버측 user allowlist를 통과한 사용자만 실제 합성 사건큐를 조회한다.
-- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 234개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. AI 의향서 현재 상태, 알림 감사이력, 사건 메모·후속관리, 시스템·AI 폴백, 카드·예금·대출·투자·외환·연금·신탁·동의관리, 고객 프로필·접근성·신뢰연락처·이의신청 화면을 실제 API에 연결했다. 공개 화면은 capability 범위의 합성데이터 API만 실행하고 운영 고객정보 조회는 사설 Bearer 인증을 요구한다.
+- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 234개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 고객 안심 보호센터는 알림·AI 의향서·장기 변화·감사이력을 한 화면에 묶는다. AI 의향서 현재 상태, 사건 메모·후속관리, 시스템·AI 폴백, 카드·예금·대출·투자·외환·연금·신탁·동의관리, 고객 프로필·접근성·신뢰연락처·이의신청 화면도 실제 API에 연결했다. 공개 화면은 capability 범위의 합성데이터 API만 실행하고 운영 고객정보 조회는 사설 Bearer 인증을 요구한다.
 
 ```bash
 cd backend && ./gradlew check
