@@ -7,11 +7,14 @@ import {
   generateStaffCopilotDraft,
   issueStaffCapability,
   loadStaffCase,
+  loadStaffCaseQueue,
   loadStaffCaseOperations,
   scheduleStaffFollowUp,
   startStaffCaseReview,
   updateStaffFollowUp,
+  type StaffCaseQueueItem,
 } from "../lib/staff-case-workflow";
+import { selectStaffCaseQueueItems, staffCaseQueueMetrics } from "../lib/staff-case-queue-view";
 
 const context = { sessionId: "98000000-0000-4000-8000-000000000001", demoRunId: "run-1" };
 
@@ -81,6 +84,44 @@ test("issues staff capability without exposing the bootstrap token to the browse
   assert.equal(calledUrl, `/api/internal/staff-capability/${context.sessionId}`);
 });
 
+test("loads the staff queue with server-side state, priority and opaque cursor filters", async (t) => {
+  let calledUrl = "";
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    calledUrl = String(input);
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("X-Demo-Capability"), "staff-secret");
+    assert.equal(headers.get("X-Demo-Run-Id"), context.demoRunId);
+    return new Response(envelope({ items: [], nextCursor: "opaque-next", hasMore: true }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+
+  const queue = await loadStaffCaseQueue(context, "staff-secret", {
+    state: "PENDING_BANK_REVIEW",
+    reviewPriority: "HIGH",
+    cursor: "opaque-current",
+    limit: 20,
+  });
+
+  assert.equal(calledUrl, `/api/v1/demo/sessions/${context.sessionId}/staff/cases?state=PENDING_BANK_REVIEW&reviewPriority=HIGH&cursor=opaque-current&limit=20`);
+  assert.equal(queue.nextCursor, "opaque-next");
+  assert.equal(queue.hasMore, true);
+});
+
+test("searches and orders only loaded queue items while reporting loaded metrics", () => {
+  const items = [
+    queueItem("CASE_LOW", "LOW", "2026-08-30T09:00:00Z", "정기납부 확인"),
+    queueItem("CASE_HIGH_NEW", "HIGH", "2026-08-31T09:00:00Z", "반복확인 증가"),
+    queueItem("CASE_HIGH_OLD", "HIGH", "2026-08-29T09:00:00Z", "중복송금 확인"),
+  ];
+
+  assert.deepEqual(selectStaffCaseQueueItems(items, "", "WORK_ORDER").map((item) => item.caseId), [
+    "CASE_HIGH_OLD", "CASE_HIGH_NEW", "CASE_LOW",
+  ]);
+  assert.deepEqual(selectStaffCaseQueueItems(items, "중복송금", "NEWEST").map((item) => item.caseId), ["CASE_HIGH_OLD"]);
+  assert.deepEqual(staffCaseQueueMetrics(items), { loaded: 3, highPriority: 2, waiting: 3, active: 0 });
+});
+
 test("loads case detail and immutable evidence with the staff capability", async (t) => {
   const paths: string[] = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
@@ -141,3 +182,34 @@ test("connects copilot, review, guidance and false-positive commands without ext
   assert.ok(calls[2]?.headers.get("Idempotency-Key"));
   assert.ok(calls[3]?.headers.get("Idempotency-Key"));
 });
+
+function queueItem(caseId: string, reviewPriority: string, createdAt: string, summary: string): StaffCaseQueueItem {
+  return {
+    demoRunId: context.demoRunId,
+    caseId,
+    alertId: `ALERT_${caseId}`,
+    customerId: `SYN_CUSTOMER_${caseId}`,
+    state: "PENDING_BANK_REVIEW",
+    reviewPriority,
+    reasonCodes: ["REPEATED_CONFIRMATION"],
+    customerResponseCode: "UNABLE_TO_CONFIRM",
+    summary,
+    trustedContactGate: {
+      gateEvaluated: true,
+      consentSnapshotId: null,
+      consentStatus: "NOT_GRANTED",
+      recipientAccepted: false,
+      triggerMatched: true,
+      fieldScopeMatched: false,
+      validityMatched: false,
+      deliveryEnabled: false,
+      resultCode: "BLOCKED_BY_CONSENT",
+      dispatchAttempted: false,
+      externalDeliveryRequested: false,
+      externalDeliveryCreated: false,
+    },
+    createdAt,
+    caseVersion: 1,
+    sessionResetVersion: 1,
+  };
+}

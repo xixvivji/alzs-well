@@ -3,6 +3,57 @@ import type { DemoContext } from "./demo-session";
 
 export type StaffCaseContext = Pick<DemoContext, "sessionId" | "demoRunId">;
 
+export type StaffCaseState =
+  | "PENDING_BANK_REVIEW"
+  | "IN_BANK_REVIEW"
+  | "FOLLOW_UP_REQUIRED"
+  | "GUIDANCE_PLAN_APPROVED"
+  | "CLOSED_FALSE_POSITIVE";
+
+export type StaffReviewPriority = "HIGH" | "MEDIUM" | "LOW";
+
+export type StaffCaseQueueItem = {
+  demoRunId: string;
+  caseId: string;
+  alertId: string;
+  customerId: string;
+  state: StaffCaseState | string;
+  reviewPriority: StaffReviewPriority | string;
+  reasonCodes: string[];
+  customerResponseCode: string;
+  summary: string;
+  trustedContactGate: {
+    gateEvaluated: boolean;
+    consentSnapshotId: string | null;
+    consentStatus: string;
+    recipientAccepted: boolean;
+    triggerMatched: boolean;
+    fieldScopeMatched: boolean;
+    validityMatched: boolean;
+    deliveryEnabled: boolean;
+    resultCode: string | null;
+    dispatchAttempted: boolean;
+    externalDeliveryRequested: boolean;
+    externalDeliveryCreated: boolean;
+  };
+  createdAt: string;
+  caseVersion: number;
+  sessionResetVersion: number;
+};
+
+export type StaffCaseQueue = {
+  items: StaffCaseQueueItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
+export type StaffCaseQueueQuery = {
+  state?: StaffCaseState;
+  reviewPriority?: StaffReviewPriority;
+  cursor?: string;
+  limit?: number;
+};
+
 export type StaffCaseDetail = {
   caseId: string;
   caseVersion: number;
@@ -168,6 +219,23 @@ export async function issueStaffCapability(sessionId: string): Promise<string> {
   const capability = response.headers.get("X-Demo-Staff-Capability");
   if (!capability) throw new ApiClientError("parse", "직원 capability 응답이 올바르지 않습니다.");
   return capability;
+}
+
+export async function loadStaffCaseQueue(
+  context: StaffCaseContext,
+  staffCapability: string,
+  query: StaffCaseQueueQuery = {},
+): Promise<StaffCaseQueue> {
+  const parameters = new URLSearchParams();
+  if (query.state) parameters.set("state", query.state);
+  if (query.reviewPriority) parameters.set("reviewPriority", query.reviewPriority);
+  if (query.cursor) parameters.set("cursor", query.cursor);
+  parameters.set("limit", String(query.limit ?? 20));
+  const response = await apiRequest<StaffCaseQueue>(
+    `/api/v1/demo/sessions/${encodeURIComponent(context.sessionId)}/staff/cases?${parameters.toString()}`,
+    { staffCapability, demoRunId: context.demoRunId },
+  );
+  return requireData(response.body, "행원 사건큐 응답을 확인할 수 없습니다.");
 }
 
 export async function loadStaffCase(
