@@ -86,8 +86,10 @@ test("issues staff capability without exposing the bootstrap token to the browse
 
 test("loads the staff queue with server-side state, priority and opaque cursor filters", async (t) => {
   let calledUrl = "";
+  let requestSignal: AbortSignal | null | undefined;
   t.mock.method(globalThis, "fetch", async (input, init) => {
     calledUrl = String(input);
+    requestSignal = init?.signal;
     const headers = new Headers(init?.headers);
     assert.equal(headers.get("X-Demo-Capability"), "staff-secret");
     assert.equal(headers.get("X-Demo-Run-Id"), context.demoRunId);
@@ -96,16 +98,21 @@ test("loads the staff queue with server-side state, priority and opaque cursor f
     });
   });
 
+  const controller = new AbortController();
   const queue = await loadStaffCaseQueue(context, "staff-secret", {
     state: "PENDING_BANK_REVIEW",
     reviewPriority: "HIGH",
     cursor: "opaque-current",
     limit: 20,
+    signal: controller.signal,
   });
 
   assert.equal(calledUrl, `/api/v1/demo/sessions/${context.sessionId}/staff/cases?state=PENDING_BANK_REVIEW&reviewPriority=HIGH&cursor=opaque-current&limit=20`);
   assert.equal(queue.nextCursor, "opaque-next");
   assert.equal(queue.hasMore, true);
+  assert.equal(requestSignal?.aborted, false);
+  controller.abort();
+  assert.equal(requestSignal?.aborted, true);
 });
 
 test("searches and orders only loaded queue items while reporting loaded metrics", () => {

@@ -16,13 +16,15 @@ test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링�
 });
 
 test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () => {
-  const [config, manifest] = await Promise.all([
+  const [config, manifest, routesManifest] = await Promise.all([
     readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app-paths-manifest.json", import.meta.url), "utf8"),
+    readFile(new URL("../.next/routes-manifest.json", import.meta.url), "utf8"),
   ]);
   assert.match(config, /Content-Security-Policy/);
   assert.match(config, /frame-ancestors 'none'/);
   assert.match(config, /Permissions-Policy/);
+  assert.doesNotMatch(routesManifest, /unsafe-eval/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
   for (const route of ["/demo/protection/page", "/demo/finance/page", "/demo/products/page", "/demo/settings/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
@@ -43,16 +45,25 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   assert.match(protection, /오늘 확인할 금융생활을/);
   assert.match(protection, /보호센터 안전 체험 시작/);
   assert.match(protection, /외부 금융 실행 0건/);
-  assert.match(products, /운영 금융정보는 로그인 후 조회합니다/);
-  assert.match(products, /공개 데모 capability로 우회하지 않습니다/);
-  assert.match(products, /금융상품·자산/);
-  assert.match(settings, /프로필과 도움 요청 범위는/);
-  assert.match(settings, /신뢰 연락처는 대리권 없이 최소정보만 지정/);
+  assert.match(protection, /aria-label="모바일 고객 서비스"/);
+  for (const href of ["/demo/protection", "/demo/finance", "/demo/ai-assistant", "/demo/alerts", "/demo/services"]) {
+    assert.match(protection, new RegExp(`href="${href}"`));
+  }
+  assert.match(products, /금융상품·자산(?:<!-- -->)?은 공개 서비스에서 잠겨 있습니다/);
+  assert.match(products, /URL로 직접 접근해도 API를 호출하지 않습니다/);
+  assert.doesNotMatch(products, /href="\/demo\/products"/);
+  assert.match(settings, /내 정보·도움 설정(?:<!-- -->)?은 공개 서비스에서 잠겨 있습니다/);
+  assert.match(settings, /기업 IdP·MFA가 연결된 사설 staging/);
+  assert.doesNotMatch(settings, /href="\/demo\/settings"/);
   assert.match(services, /필요한 금융생활을 한곳에서/);
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);
   assert.match(operations, /고객의 확인 요청을/);
   assert.match(operations, /현재 데모 세션 사건/);
+  assert.match(operations, /aria-label="모바일 행원 서비스"/);
+  for (const href of ["/staff/cases", "/staff/operations", "/staff/control-center", "/staff/system-status"]) {
+    assert.match(operations, new RegExp(`href="${href}"`));
+  }
   assert.match(control, /정책과 AI가 안전 경계 안에서/);
   assert.match(control, /관리 기능은 운영자 인증 후에만 실행/);
   assert.match(systemStatus, /서비스 준비상태를 확인하고 있습니다/);

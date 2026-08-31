@@ -162,8 +162,26 @@ snapshot은 Spring import 전에 만들어져 `PENDING_ACTIVATION`이므로 이�
 외부 검색 결과로 승인하지 않는다. 감사 이력에는 원문 검색어 대신 `sha256:<hex>`만 남긴다.
 응답 citation은 권한 부여 결과가 아니며 Spring이 현재 `ACTIVE` catalog·governance,
 `AI_DB_SNAPSHOT_V1` proof, 문서 ID·버전·chunk 및 원문 해시를 최종 재검증한다. 임계값을 통과한 결과는
-`LAW > REGULATION > INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM` 순으로
+`LAW > REGULATION > INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM >
+SYNTHETIC_FIXTURE` 순으로
 권위 문서를 먼저 배치하고, 같은 유형 안에서는 하이브리드 점수로 정렬한다.
+
+전문검색 후보와 벡터 후보는 각각 최대 500개로 제한한다. PostgreSQL 문장 실행 시간은
+`ALZS_AI_DB_STATEMENT_TIMEOUT_MS`로 설정하며 기본값은 1,500ms, 허용 범위는
+100~10,000ms다. 제한을 넘긴 검색은 원문이나 DB 오류를 노출하지 않고 HTTP 503,
+`outcome=INDEX_UNAVAILABLE`, `reasonCode=SEARCH_TIMEOUT`, `retryable=true`로 응답한다.
+
+검색 응답은 빈 배열만으로 원인을 추론하지 않고 다음 상태를 제공한다.
+
+- `RESULTS`: 인용이 있는 정상 결과
+- `POLICY_ABSTAIN`: 정책 가드가 의도적으로 답변을 거절한 상태
+- `NO_MATCH`: 검색은 정상이나 임계값을 통과한 근거가 없는 상태
+- `INDEX_UNAVAILABLE`: DB·시간 초과·임베딩 장애 때문에 검색할 수 없는 복구 가능 상태
+
+Spring은 `POLICY_ABSTAIN`을 결정론적 답변으로 우회하지 않고, `NO_MATCH`에는 근거 없음
+안내만 사용한다. `INDEX_UNAVAILABLE`은 기존 클라이언트도 장애 폴백을 유지할 수 있도록
+HTTP 503으로 반환한다. 기존 핵심 필드와 `results`는 유지되므로 클라이언트는 새 필드를
+알 수 없는 속성으로 무시하는 동안에도 안전한 기존 동작을 유지한다.
 
 벡터는 `ai_knowledge.chunk_embedding`에 chunk·모델 ID·고정 모델 버전·차원과 함께
 저장한다. 스키마와 HNSW 부분 인덱스는 384차원 Hash/E5와 1024차원 Arctic-ko를 모델별로
@@ -253,8 +271,10 @@ Arctic-ko는 2026-08-28 운영형 골든셋 27건의 사람 최종 승인과 품
 
 AWS AI EC2에서는 [`../backend/compose.aws-ai.yaml`](../backend/compose.aws-ai.yaml)을 사용한다.
 8000번 포트는 업무 EC2 보안그룹에서만 허용하고 ALB에는 연결하지 않는다. `/health`는
-모델 상태, revision, artifact/golden-set SHA-256, index version과 배포 환경을 반환하며
-업무 EC2의 Spring strict readiness가 이를 기대값과 다시 비교한다. ingestion은 HTTP로
+DB·모델을 로드하지 않는 가벼운 liveness다. `/readiness`는 DB, 검색 감사 권한, 현재 승인
+문서의 현재 모델 임베딩, HNSW 인덱스, 벡터 검색 probe, assistance 계약과 모델 상태·revision·
+artifact/golden-set SHA-256·index version·배포 환경을 검사한다. 업무 EC2의 Spring strict
+readiness는 `/readiness`의 HTTP 200과 `status=READY`를 요구하고 기대값을 다시 비교한다. ingestion은 HTTP로
 공개하지 않고 Session Manager에서 `ingestion` profile의 일회성 CLI로만 실행한다.
 
 Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 FastAPI 내부 검색과 Spring

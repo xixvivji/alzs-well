@@ -51,6 +51,23 @@ class ResilientKnowledgeRetrievalAdapterTest {
     }
 
     @Test
+    void neverBypassesPolicyAbstainOrNoMatchInsideTheRetrievalAdapter() {
+        InternalRagKnowledgeRetrievalAdapter internal=mock(InternalRagKnowledgeRetrievalAdapter.class);
+        DeterministicKnowledgeRetrievalAdapter deterministic=mock(DeterministicKnowledgeRetrievalAdapter.class);
+        RetrievalResult policy=new RetrievalResult(
+                List.of(),"INTERNAL_RAG_POLICY_ABSTAIN",false,0);
+        RetrievalResult noMatch=new RetrievalResult(
+                List.of(),"INTERNAL_RAG_NO_MATCH",false,0);
+        when(internal.retrieve(query)).thenReturn(policy,noMatch);
+        ResilientKnowledgeRetrievalAdapter adapter=new ResilientKnowledgeRetrievalAdapter(
+                true,internal,deterministic);
+
+        assertThat(adapter.retrieve(query)).isSameAs(policy);
+        assertThat(adapter.retrieve(query)).isSameAs(noMatch);
+        verifyNoInteractions(deterministic);
+    }
+
+    @Test
     void keepsDeterministicPathWhenDisabled() {
         InternalRagKnowledgeRetrievalAdapter internal=mock(InternalRagKnowledgeRetrievalAdapter.class);
         DeterministicKnowledgeRetrievalAdapter deterministic=mock(DeterministicKnowledgeRetrievalAdapter.class);

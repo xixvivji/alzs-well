@@ -29,6 +29,11 @@ git lfs pull
 
 HTML·Markdown·체크섬·manifest·합성 평가 데이터는 일반 Git으로 관리한다. 공식 HTML에 포함된 공개 웹 자격증명은 `REDACTED_SOURCE_CREDENTIAL`로 치환하고 체크섬을 다시 생성한다. 모델 파일, 벡터, DB 파일, 실행 로그와 `derived/` 산출물은 커밋하지 않는다.
 
+`official-source/`는 공개 배포 artifact에서 `export-ignore`로 제외한다. 원문이 저장소에서
+보인다는 사실은 재배포 허락을 뜻하지 않으며 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)의
+기관별 이용조건을 따른다. `INTERNAL_USE_APPROVED` 문서는 공개 재배포 가능한 문서로 해석하지
+않는다.
+
 ## 무결성 확인
 
 공식 원문 93개의 체크섬은 다음 명령으로 검증한다.

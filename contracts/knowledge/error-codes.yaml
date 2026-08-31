@@ -169,7 +169,7 @@ errors:
     category: AI_MODEL
     httpStatus: 503
     cliExitCode: 5
-    retryable: false
+    retryable: true
   - code: INTERNAL_AUTHENTICATION_FAILED
     category: AUTHENTICATION
     httpStatus: 401
@@ -190,6 +190,11 @@ errors:
     httpStatus: 409
     cliExitCode: 6
     retryable: false
+  - code: SEARCH_TIMEOUT
+    category: RETRIEVAL
+    httpStatus: 503
+    cliExitCode: 6
+    retryable: true
   - code: AI_ASSISTANCE_REQUEST_INVALID
     category: AI_ASSISTANCE
     httpStatus: 422

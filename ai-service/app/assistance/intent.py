@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from app.domain.assistance import (
@@ -33,6 +34,22 @@ _HELP = (
     _Candidate("ON_CUSTOMER_REQUEST", ("제가 요청할 때 도움을 받고 싶어요",), ("요청할 때", "원할 때", "도움받고")),
     _Candidate("NEVER_AUTOMATIC", ("자동으로 도움을 요청하거나 연락하지 마세요",), ("자동으로 하지", "자동 연락", "원하지 않")),
 )
+_PAYMENT_STOP_PATTERNS = (
+    re.compile(r"(?:납부|공과금|보험료).{0,12}(?:중단|멈추|그만)"),
+    re.compile(r"(?:납부하|납부를\s*하|돈을\s*내|요금을\s*내)지\s*(?:않|말)"),
+    re.compile(r"(?:납부|공과금|보험료).{0,12}유지하지\s*(?:않|말)"),
+    re.compile(
+        r"(?:공과금|보험료|요금)(?:은|는|을|를)?\s*(?:계속\s*)?"
+        r"(?:내|납부하)지\s*(?:않|말)"
+    ),
+)
+_PAYMENT_KEEP_NEGATION_PATTERNS = (
+    re.compile(
+        r"(?:납부|공과금|보험료).{0,12}(?:중단|멈추|그만두|끊)하지\s*(?:않|말)"
+    ),
+    re.compile(r"(?:납부|결제).{0,12}(?:바꾸지|변경하지)\s*(?:않|말)"),
+    re.compile(r"(?:납부|결제)\s*방식은?\s*(?:그대로|유지)"),
+)
 
 
 def structure_intent(
@@ -41,7 +58,13 @@ def structure_intent(
 ) -> IntentStructureResponse:
     text = normalize(request.utterance)
     query_vector = provider.embed_query(text)
-    payment, payment_confidence, payment_excerpt = _select(text, query_vector, _PAYMENT, provider)
+    payment_override = _payment_negation_override(text)
+    if payment_override is None:
+        payment, payment_confidence, payment_excerpt = _select(
+            text, query_vector, _PAYMENT, provider
+        )
+    else:
+        payment, payment_confidence, payment_excerpt, _ = payment_override
     explanation, explanation_confidence, explanation_excerpt = _select(
         text, query_vector, _EXPLANATION, provider
     )
@@ -49,7 +72,9 @@ def structure_intent(
     scopes, scope_confidence, scope_excerpt, scope_question = _share_scopes(text)
 
     questions: list[str] = []
-    if payment_confidence < 0.55:
+    if payment_override is not None and payment_override[3]:
+        questions.append(payment_override[3])
+    elif payment_confidence < 0.55:
         questions.append("필수 납부를 계속 유지할지, 변경 전에 확인할지 선택해 주세요.")
     if explanation_confidence < 0.55:
         questions.append("쉬운 글, 음성 안내, 행원 설명 중 원하는 방식을 선택해 주세요.")
@@ -82,6 +107,25 @@ def structure_intent(
         model_invoked=descriptor.backend != "hash",
         fallback_used=descriptor.backend == "hash",
     )
+
+
+def _payment_negation_override(text: str) -> tuple[str, float, str, str | None] | None:
+    # "중단하지 말아 주세요"처럼 중단 동사 자체가 부정된 문장은
+    # 단순히 "중단"만 찾으면 정반대로 분류된다. 이중 부정을 먼저 판별한다.
+    for pattern in _PAYMENT_KEEP_NEGATION_PATTERNS:
+        matched = pattern.search(text)
+        if matched:
+            return "KEEP_ESSENTIAL_PAYMENTS", 0.99, matched.group(0)[:120], None
+    for pattern in _PAYMENT_STOP_PATTERNS:
+        matched = pattern.search(text)
+        if matched:
+            return (
+                "REVIEW_BEFORE_CHANGE",
+                0.99,
+                matched.group(0)[:120],
+                "필수 납부를 중단하려는 뜻인지 직접 확인해 주세요.",
+            )
+    return None
 
 
 def _select(

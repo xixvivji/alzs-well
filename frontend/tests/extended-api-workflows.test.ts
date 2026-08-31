@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { ApiClientError } from "../lib/api";
 import { loadAlertAudit } from "../lib/alert-audit";
 import { loadCustomerProtectionSnapshot } from "../lib/customer-protection-center";
 import {
@@ -12,6 +13,7 @@ import {
 import {
   loadPrivateProductOverview, loginPrivateCustomer, logoutPrivateCustomer, simulateLoanRepayment,
 } from "../lib/private-financial-products";
+import { PrivateSessionExpiredError, withPrivateCustomerSession } from "../lib/private-auth-session";
 import { loadSystemStatus } from "../lib/system-status";
 
 const envelope = <T>(data: T, status = 200) => JSON.stringify({
@@ -100,7 +102,7 @@ test("uses Bearer authentication for the private card, loan and investment dashb
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); calls.push({ path, init });
     let data: unknown;
-    if (path.endsWith("/auth/login")) data = { accessToken: "access-secret", accessExpiresAt: "2026-08-30T01:00:00Z", refreshToken: "refresh-secret", refreshExpiresAt: "2026-08-31T00:00:00Z" };
+    if (path.endsWith("/auth/login")) data = { accessToken: "access-secret", accessExpiresAt: "2099-08-30T01:00:00Z", refreshToken: "refresh-secret", refreshExpiresAt: "2099-08-31T00:00:00Z" };
     else if (path.endsWith("/auth/me/permissions")) data = { permissions: ["CARD_READ", "FINANCIAL_OVERVIEW_READ"] };
     else if (path.endsWith("/auth/me")) data = { customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"] };
     else if (path.endsWith("/customers/customer-1/cards")) data = { items: [{ cardId: "card-1", currency: "KRW" }] };
@@ -265,3 +267,49 @@ test("connects customer settings, trusted-contact consent and human appeal mutat
 function privateSession() {
   return { accessToken: "access-secret", accessExpiresAt: "", refreshToken: "refresh-secret", refreshExpiresAt: "", customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
 }
+
+test("401이면 access token을 자동 갱신하고 한 번만 재시도한다", async (t) => {
+  let refreshCalls = 0;
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    assert.equal(String(input), "/api/v1/auth/token/refresh");
+    assert.deepEqual(JSON.parse(String(init?.body)), { refreshToken: "refresh-old" });
+    refreshCalls += 1;
+    return new Response(envelope({
+      accessToken: "access-new", accessExpiresAt: "2099-01-01T00:00:00Z",
+      refreshToken: "refresh-new", refreshExpiresAt: "2099-02-01T00:00:00Z",
+    }), { headers: { "content-type": "application/json" } });
+  });
+  const session = {
+    ...privateSession(), accessToken: "access-old", accessExpiresAt: "2099-01-01T00:00:00Z",
+    refreshToken: "refresh-old", refreshExpiresAt: "2099-01-01T00:00:00Z",
+  };
+  let operationCalls = 0;
+  const token = await withPrivateCustomerSession(session, async (accessToken) => {
+    operationCalls += 1;
+    if (operationCalls === 1 && accessToken === "access-old") {
+      throw new ApiClientError("http", "expired upstream", 401);
+    }
+    return accessToken;
+  });
+  assert.equal(token, "access-new");
+  assert.equal(refreshCalls, 1);
+  assert.equal(operationCalls, 2);
+  assert.equal(session.refreshToken, "refresh-new");
+});
+
+test("refresh 실패 시 token을 메모리에서 폐기하고 안전 로그아웃한다", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response(envelope(null, 401), {
+    status: 401, headers: { "content-type": "application/json" },
+  }));
+  const session = {
+    ...privateSession(), accessExpiresAt: "2000-01-01T00:00:00Z",
+    refreshExpiresAt: "2099-01-01T00:00:00Z",
+  };
+  await assert.rejects(
+    withPrivateCustomerSession(session, async () => "unused"),
+    (reason: unknown) => reason instanceof PrivateSessionExpiredError,
+  );
+  assert.equal(session.accessToken, "");
+  assert.equal(session.refreshToken, "");
+  assert.equal(session.invalidated, true);
+});

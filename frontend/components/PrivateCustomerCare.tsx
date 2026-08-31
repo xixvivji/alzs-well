@@ -10,6 +10,7 @@ import {
 import {
   loginPrivateCustomer, logoutPrivateCustomer, type PrivateCustomerSession,
 } from "../lib/private-financial-products";
+import { isPrivateSessionExpiredError } from "../lib/private-auth-session";
 
 type CareTab = "profile" | "contact" | "appeal";
 type Busy = "login" | "load" | "profile" | "preferences" | "accessibility" | "consent" | "contact" | "logout" | string | null;
@@ -126,7 +127,11 @@ export function PrivateCustomerCare() {
 
   async function run(action: Exclude<Busy, null>, task: () => Promise<string>) {
     setBusy(action); clearNotice();
-    try { setMessage(await task()); } catch (reason) { setError(messageOf(reason)); }
+    try { setMessage(await task()); } catch (reason) {
+      if (isPrivateSessionExpiredError(reason)) {
+        setSession(null); setBundle(null); setAppeals({}); setError(reason.message);
+      } else setError(messageOf(reason));
+    }
     finally { setBusy(null); }
   }
 

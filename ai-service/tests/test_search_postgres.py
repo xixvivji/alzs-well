@@ -20,6 +20,8 @@ from app.storage.search_postgres import (
     E5_INDEX_VERSION,
     INDEX_VERSION,
     KEYWORD_WEIGHT,
+    MAX_KEYWORD_CANDIDATES,
+    MAX_VECTOR_CANDIDATES,
     RESULT_THRESHOLD,
     VECTOR_THRESHOLD,
     VECTOR_WEIGHT,
@@ -46,6 +48,19 @@ class FakeCursor:
     def fetchall(self) -> list[tuple[Any, ...]]:
         return self.rows
 
+    def fetchone(self) -> tuple[Any, ...] | None:
+        return self.rows[0] if self.rows else None
+
+
+class RaisingCursor(FakeCursor):
+    def __init__(self, error: psycopg.Error) -> None:
+        super().__init__()
+        self.error = error
+
+    def execute(self, statement: str, parameters: object = None) -> None:
+        del statement, parameters
+        raise self.error
+
 
 class FakeConnection:
     def __init__(self, cursor: FakeCursor) -> None:
@@ -64,9 +79,10 @@ class FakeConnection:
 class Connector:
     def __init__(self, *cursors: FakeCursor) -> None:
         self.cursors = list(cursors)
+        self.calls: list[dict[str, object]] = []
 
     def __call__(self, **kwargs: object) -> FakeConnection:
-        del kwargs
+        self.calls.append(dict(kwargs))
         return FakeConnection(self.cursors.pop(0))
 
 
@@ -105,16 +121,20 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "RETIRED" not in statement
     assert "d.effective_from <= %s" in statement
     assert "ai_knowledge.document_authority_rank(document_type)" in statement
-    assert "order by score desc, authority_rank desc" in statement
-    assert "left join ai_knowledge.chunk_embedding e" in statement
+    assert "order by authority_rank desc, score desc" in statement
+    assert "keyword_candidates as materialized" in statement
+    assert "vector_candidates as materialized" in statement
+    assert "from ai_knowledge.chunk_embedding e" in statement
     assert "e.embedding::vector(384) <=> search_query.embedding" in statement
     assert "where score >= %s" in statement
     assert parameters[0] == "금융거래 안심차단"  # type: ignore[index]
     assert str(parameters[1]).startswith("[")  # type: ignore[index]
     assert parameters[2:] == (  # type: ignore[index]
+        ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
+        date(2026, 8, 25), MAX_KEYWORD_CANDIDATES,
         "local-hash-ngram-ko", "local-hash-ngram-ko-v1", 384,
         ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
-        date(2026, 8, 25),
+        date(2026, 8, 25), MAX_VECTOR_CANDIDATES,
         KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD, 10,
     )
     assert "e.embedding_model_id = %s" in statement
@@ -137,7 +157,7 @@ def test_search_uses_injected_model_but_keeps_other_models_for_keyword_score() -
 
     statement, parameters = cursor.executions[0]
     assert provider.queries == ["금융거래 안심차단"]
-    assert parameters[2:5] == (  # type: ignore[index]
+    assert parameters[7:10] == (  # type: ignore[index]
         "intfloat/multilingual-e5-small",
         "multilingual-e5-small@test",
         384,
@@ -179,13 +199,13 @@ def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:
     statement, parameters = cursor.executions[0]
     assert "%s::vector(1024) as embedding" in statement
     assert "e.embedding::vector(1024) <=> search_query.embedding" in statement
-    assert parameters[2:5] == (  # type: ignore[index]
+    assert parameters[7:10] == (  # type: ignore[index]
         "dragonkue/snowflake-arctic-embed-l-v2.0-ko",
         "snowflake-arctic-embed-l-v2.0-ko@test",
         1024,
     )
     assert repository.index_version == ARCTIC_INDEX_VERSION
-    assert parameters[9:13] == (  # type: ignore[index]
+    assert parameters[15:19] == (  # type: ignore[index]
         ARCTIC_KEYWORD_WEIGHT,
         ARCTIC_VECTOR_WEIGHT,
         ARCTIC_VECTOR_THRESHOLD,
@@ -273,6 +293,70 @@ def test_database_errors_are_sanitized() -> None:
 
     assert caught.value.code == "STORAGE_UNAVAILABLE"
     assert "must-not-escape" not in caught.value.safe_message
+
+
+def test_search_connection_enforces_statement_timeout() -> None:
+    cursor = FakeCursor([])
+    connector = Connector(cursor)
+    repository = PostgresSearchRepository(_config(), connect=connector)
+
+    repository.search(_request())
+
+    assert connector.calls[0]["options"] == "-c statement_timeout=1500"
+
+
+def test_search_timeout_is_distinct_from_generic_storage_failure() -> None:
+    repository = PostgresSearchRepository(
+        _config(),
+        connect=Connector(RaisingCursor(psycopg.errors.QueryCanceled())),
+    )
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        repository.search(_request())
+
+    assert caught.value.code == "SEARCH_TIMEOUT"
+
+
+def test_readiness_checks_database_privileges_embedding_index_and_vector_probe() -> None:
+    cursor = FakeCursor([(True, True, True, True, True)])
+    repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
+
+    readiness = repository.readiness()
+
+    assert readiness.database is True
+    assert readiness.retrieval_audit_privileges is True
+    assert readiness.approved_embedding is True
+    assert readiness.vector_index is True
+    assert readiness.search_probe is True
+    statement, parameters = cursor.executions[0]
+    assert "has_table_privilege" in statement
+    assert "'INSERT'" in statement
+    assert statement.count("has_column_privilege") == 4
+    assert "'status', 'UPDATE'" in statement
+    assert "'result_count', 'UPDATE'" in statement
+    assert "'failure_code', 'UPDATE'" in statement
+    assert "'finished_at', 'UPDATE'" in statement
+    assert "not has_table_privilege" in statement
+    assert "'DELETE'" in statement
+    assert "from pg_indexes" in statement
+    assert "approved_embedding" in statement
+    assert parameters[0:3] == (  # type: ignore[index]
+        "local-hash-ngram-ko",
+        "local-hash-ngram-ko-v1",
+        384,
+    )
+
+
+def test_readiness_timeout_is_reported_as_recoverable_search_timeout() -> None:
+    repository = PostgresSearchRepository(
+        _config(),
+        connect=Connector(RaisingCursor(psycopg.errors.QueryCanceled())),
+    )
+
+    with pytest.raises(KnowledgeContractError) as caught:
+        repository.readiness()
+
+    assert caught.value.code == "SEARCH_TIMEOUT"
 
 
 def _request() -> SearchRequest:

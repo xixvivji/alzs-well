@@ -10,6 +10,7 @@ import com.alzswell.demo.api.P0WorkflowRequests.FollowUpCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.FollowUpUpdateCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.CaseReviewCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.DeferCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
 import com.alzswell.demo.application.P0WorkflowService;
 import jakarta.validation.Valid;
@@ -85,6 +86,22 @@ public class P0WorkflowController {
             @Valid @RequestBody ContextCommand request
     ) {
         P0WorkflowResult result = workflowService.applyContext(
+                sessionId, demoRunId, alertId, capabilityHash, idempotencyKey, request
+        );
+        return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);
+    }
+
+    @PostMapping("/alerts/{alertId}/defer")
+    @PreAuthorize("hasAuthority('CUSTOMER_DEMO')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deferConfirmation(
+            @PathVariable UUID sessionId,
+            @PathVariable String alertId,
+            @RequestHeader(name = DEMO_RUN_HEADER, required = false) UUID demoRunId,
+            @RequestAttribute(name = DemoCapabilityService.REQUEST_HASH_ATTRIBUTE) String capabilityHash,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody DeferCommand request
+    ) {
+        P0WorkflowResult result = workflowService.deferConfirmation(
                 sessionId, demoRunId, alertId, capabilityHash, idempotencyKey, request
         );
         return withRun(ApiResponses.ok(result.code(), result.message(), result.data()), demoRunId);

@@ -79,6 +79,9 @@ class SyntheticFixtureGenerationIntegrationTest {
                 """, created.runId());
         String customerId = (String) fixture.get("customer_id");
         UUID datasetId = (UUID) fixture.get("dataset_id");
+        assertThat(jdbc.queryForObject("""
+                select payload_hash from synthetic_detection_dataset where dataset_id=?
+                """, String.class, datasetId)).startsWith("sha256:").hasSize(71);
         var detectionRun = detectionRuns.run(customerId, datasetId, "fixture-promotion-smoke-0001");
         var promotion = promotions.promote(detectionRun.detectionRunId(),
                 new AuditActor(null, customerId, null, "STAFF"));

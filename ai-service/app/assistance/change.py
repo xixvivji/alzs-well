@@ -44,13 +44,29 @@ def _analyze(request: ChangeAnalysisRequest, feature: FeatureSeries) -> ChangeSi
     for value in recent:
         ewma = 0.3 * value + 0.7 * ewma
     ewma_score = (ewma - baseline_daily) / scale
-    allowance = 0.25 * scale
-    cusum = 0.0
+    positive_allowance = 0.25 * scale
+    # Count series are non-negative and often sparse. Reusing the positive
+    # allowance for decreases can put the lower boundary below zero and make a
+    # sustained drop to zero mathematically impossible to detect.
+    negative_allowance = min(0.25 * scale, baseline_daily * 0.25)
+    positive_cusum = 0.0
+    negative_cusum = 0.0
     for value in recent:
-        cusum = max(0.0, cusum + value - baseline_daily - allowance)
-    cusum_score = cusum / scale
-    active_days = sum(value > baseline_daily + 0.25 * scale for value in recent)
-    persistent = active_days >= max(3, math.ceil(request.recent_days * 0.1))
+        positive_cusum = max(
+            0.0, positive_cusum + value - baseline_daily - positive_allowance
+        )
+        negative_cusum = max(
+            0.0, negative_cusum + baseline_daily - value - negative_allowance
+        )
+    cusum_score = max(positive_cusum, negative_cusum) / scale
+    persistence_days = max(3, math.ceil(request.recent_days * 0.1))
+    increased_days = sum(value > baseline_daily + 0.25 * scale for value in recent)
+    decreased_days = sum(value < baseline_daily - negative_allowance for value in recent)
+    persistent = (
+        increased_days >= persistence_days
+        if delta > 0
+        else decreased_days >= persistence_days if delta < 0 else False
+    )
     meaningful_delta = abs(delta) >= max(1.0, baseline_value * 0.5)
     detected = meaningful_delta and (abs(ewma_score) >= 1.5 or cusum_score >= 3.0) and persistent
     if delta > 0.25:
@@ -60,7 +76,12 @@ def _analyze(request: ChangeAnalysisRequest, feature: FeatureSeries) -> ChangeSi
     else:
         direction = "STABLE"
     explanation = _explanation(
-        feature.feature_code, baseline_value, recent_value, request.recent_days, detected
+        feature.feature_code,
+        baseline_value,
+        recent_value,
+        request.recent_days,
+        direction,
+        detected,
     )
     return ChangeSignal(
         feature_code=feature.feature_code,
@@ -82,13 +103,18 @@ def _explanation(
     baseline_value: float,
     recent_value: float,
     recent_days: int,
+    direction: str,
     detected: bool,
 ) -> str:
     label = _FEATURE_LABELS[feature_code]
     baseline = _count_text(baseline_value)
     recent = _count_text(recent_value)
     if detected:
-        return f"최근 {recent_days}일 동안 {label}이 평소 {baseline}에서 {recent}로 지속적으로 달라졌습니다."
+        direction_text = "증가했습니다" if direction == "INCREASE" else "감소했습니다"
+        return (
+            f"최근 {recent_days}일 동안 {label}이 평소 {baseline}에서 {recent}로 "
+            f"지속적으로 {direction_text}"
+        )
     return f"최근 {recent_days}일 동안 {label}은 평소 범위와 뚜렷하게 다른 장기 변화가 없습니다."
 
 

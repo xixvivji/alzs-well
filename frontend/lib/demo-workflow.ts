@@ -3,6 +3,12 @@ import type { DemoContext } from "./demo-session";
 
 type Created = { sessionId: string };
 type Ingested = { demoRunId: string; customerId: string; alertId: string };
+export type DeferredDemoAlert = {
+  alertId: string;
+  currentState: "DEFERRED" | string;
+  incidentVersion: number;
+  deferredUntil: string;
+};
 
 export async function discardDemoSession(sessionId: string, capability: string): Promise<void> {
   try {
@@ -34,4 +40,25 @@ export async function createDemoContext(): Promise<DemoContext> {
     await discardDemoSession(sessionId, capability);
     throw error;
   }
+}
+
+export async function deferDemoAlert(
+  context: DemoContext,
+  alertId: string,
+  expectedVersion: number,
+  deferredUntil: string,
+  idempotencyKey: string,
+): Promise<DeferredDemoAlert> {
+  const response = await apiRequest<DeferredDemoAlert>(
+    `/api/v1/demo/sessions/${encodeURIComponent(context.sessionId)}/alerts/${encodeURIComponent(alertId)}/defer`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expectedVersion, deferredUntil }),
+      capability: context.capability,
+      demoRunId: context.demoRunId,
+      idempotencyKey,
+    },
+  );
+  if (!response.body.data) throw new Error("나중 확인 응답을 확인해 주세요.");
+  return response.body.data;
 }

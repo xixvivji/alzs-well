@@ -26,6 +26,8 @@ jobs:
           python-version: "3.13"
       - name: Validate API catalog counts and uniqueness
         run: python3 scripts/validate_api_catalog.py
+      - name: Validate public repository metadata
+        run: python3 scripts/validate_public_repository_metadata.py
 
   backend:
     name: Backend test and coverage
@@ -257,3 +259,47 @@ jobs:
           ignore-unfixed: false
           exit-code: "1"
           format: table
+
+  quality-gate:
+    name: CI quality gate
+    if: always()
+    needs:
+      - api-contract
+      - backend
+      - ai-service
+      - ai-sca
+      - frontend
+      - compose
+      - dependency-review
+      - backend-sca
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every mandatory CI job to pass
+        env:
+          API_CONTRACT_RESULT: ${{ needs.api-contract.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          AI_SERVICE_RESULT: ${{ needs.ai-service.result }}
+          AI_SCA_RESULT: ${{ needs.ai-sca.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          COMPOSE_RESULT: ${{ needs.compose.result }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs.dependency-review.result }}
+          BACKEND_SCA_RESULT: ${{ needs.backend-sca.result }}
+        run: |
+          set -eu
+          for result in \
+            "$API_CONTRACT_RESULT" \
+            "$BACKEND_RESULT" \
+            "$AI_SERVICE_RESULT" \
+            "$AI_SCA_RESULT" \
+            "$FRONTEND_RESULT" \
+            "$COMPOSE_RESULT" \
+            "$BACKEND_SCA_RESULT"; do
+            if [ "$result" != "success" ]; then
+              echo "필수 CI 작업이 통과하지 못했습니다: $result" >&2
+              exit 1
+            fi
+          done
+          if [ "$DEPENDENCY_REVIEW_RESULT" != "success" ] && [ "$DEPENDENCY_REVIEW_RESULT" != "skipped" ]; then
+            echo "의존성 변경 검토가 통과하지 못했습니다: $DEPENDENCY_REVIEW_RESULT" >&2
+            exit 1
+          fi

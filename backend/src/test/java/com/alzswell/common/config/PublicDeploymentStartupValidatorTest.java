@@ -12,7 +12,7 @@ class PublicDeploymentStartupValidatorTest {
     void acceptsPublicProductionDeployment() {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("production");
-        var validator = new PublicDeploymentStartupValidator(true, environment);
+        var validator = new PublicDeploymentStartupValidator(true, true, environment);
 
         assertThatCode(validator::validateProfile).doesNotThrowAnyException();
     }
@@ -21,10 +21,21 @@ class PublicDeploymentStartupValidatorTest {
     void rejectsPublicDevelopmentDeployment() {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("development");
-        var validator = new PublicDeploymentStartupValidator(true, environment);
+        var validator = new PublicDeploymentStartupValidator(true, true, environment);
 
         assertThatThrownBy(validator::validateProfile)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("production");
+    }
+
+    @Test
+    void rejectsPublicProductionDeploymentWithoutInternalAiHttps() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("production");
+        var validator = new PublicDeploymentStartupValidator(true, false, environment);
+
+        assertThatThrownBy(validator::validateProfile)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("AI HTTPS");
     }
 }

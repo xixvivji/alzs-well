@@ -1,4 +1,5 @@
 import { invokeApiOperation } from "./api-operation-client";
+import { invalidatePrivateCustomerSession, withPrivateCustomerSession } from "./private-auth-session";
 
 export type PrivateCustomerSession = {
   accessToken: string;
@@ -9,6 +10,7 @@ export type PrivateCustomerSession = {
   displayName: string;
   roles: string[];
   permissions: string[];
+  invalidated?: boolean;
 };
 type TokenPair = { accessToken: string; accessExpiresAt: string; refreshToken: string; refreshExpiresAt: string };
 type CurrentUser = { customerId: string; displayName: string; roles: string[] };
@@ -52,49 +54,57 @@ export async function loginPrivateCustomer(loginId: string, password: string): P
 }
 
 export async function logoutPrivateCustomer(session: PrivateCustomerSession): Promise<void> {
-  await invokeApiOperation("POST /api/v1/auth/logout", { accessToken: session.accessToken });
+  try {
+    if (session.accessToken) await invokeApiOperation("POST /api/v1/auth/logout", { accessToken: session.accessToken });
+  } finally {
+    invalidatePrivateCustomerSession(session);
+  }
 }
 
 export async function loadPrivateProductOverview(session: PrivateCustomerSession): Promise<PrivateProductOverview> {
-  const auth = { accessToken: session.accessToken };
-  const customer = { customerId: session.customerId };
-  const [cardList, loanList, loanProducts, investmentList] = await Promise.all([
-    invokeApiOperation<{ items: CardSummary[] }>("GET /api/v1/customers/{customerId}/cards", { path: customer, ...auth }),
-    invokeApiOperation<{ items: Loan[] }>("GET /api/v1/customers/{customerId}/loan-holdings", { path: customer, ...auth }),
-    invokeApiOperation<{ items: LoanProduct[] }>("GET /api/v1/loan-products", auth),
-    invokeApiOperation<{ items: InvestmentAccount[] }>("GET /api/v1/customers/{customerId}/investment-accounts", { path: customer, ...auth }),
-  ]);
-  const cards = required(cardList.body.data, "카드 목록").items;
-  const loans = required(loanList.body.data, "대출 목록").items;
-  const products = required(loanProducts.body.data, "대출상품 목록").items;
-  const investments = required(investmentList.body.data, "투자계좌 목록").items;
-  const card = cards[0]; const loan = loans[0]; const investment = investments[0];
-  const [cardDetail, cardTransactions, statements, paymentDue, cardLimit, repaymentSchedule, portfolio, positions, orders] = await Promise.all([
-    card ? invokeApiOperation<CardDetail>("GET /api/v1/cards/{cardId}", { path: { cardId: card.cardId }, ...auth }) : null,
-    card ? invokeApiOperation<{ items: CardTransaction[] }>("GET /api/v1/cards/{cardId}/transactions", { path: { cardId: card.cardId }, query: { limit: 20 }, ...auth }) : null,
-    card ? invokeApiOperation<{ items: CardStatement[] }>("GET /api/v1/cards/{cardId}/statements", { path: { cardId: card.cardId }, ...auth }) : null,
-    card ? invokeApiOperation<CardPaymentDue>("GET /api/v1/cards/{cardId}/payment-due", { path: { cardId: card.cardId }, ...auth }) : null,
-    card ? invokeApiOperation<CardLimit>("GET /api/v1/cards/{cardId}/limits", { path: { cardId: card.cardId }, ...auth }) : null,
-    loan ? invokeApiOperation<{ items: RepaymentInstallment[] }>("GET /api/v1/loan-holdings/{loanId}/repayment-schedule", { path: { loanId: loan.loanId }, ...auth }) : null,
-    investment ? invokeApiOperation<{ allocations: Allocation[] }>("GET /api/v1/investment-accounts/{accountId}/portfolio", { path: { accountId: investment.accountId }, ...auth }) : null,
-    investment ? invokeApiOperation<{ items: Position[] }>("GET /api/v1/investment-accounts/{accountId}/positions", { path: { accountId: investment.accountId }, ...auth }) : null,
-    investment ? invokeApiOperation<{ items: Order[] }>("GET /api/v1/investment-accounts/{accountId}/orders", { path: { accountId: investment.accountId }, ...auth }) : null,
-  ]);
-  return {
-    cards, cardDetail: cardDetail?.body.data ?? null, cardTransactions: cardTransactions?.body.data?.items ?? [], statements: statements?.body.data?.items ?? [], paymentDue: paymentDue?.body.data ?? null, cardLimit: cardLimit?.body.data ?? null,
-    loans, repaymentSchedule: repaymentSchedule?.body.data?.items ?? [], loanProducts: products,
-    investments, allocations: portfolio?.body.data?.allocations ?? [], positions: positions?.body.data?.items ?? [], orders: orders?.body.data?.items ?? [],
-  };
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const auth = { accessToken };
+    const customer = { customerId: session.customerId };
+    const [cardList, loanList, loanProducts, investmentList] = await Promise.all([
+      invokeApiOperation<{ items: CardSummary[] }>("GET /api/v1/customers/{customerId}/cards", { path: customer, ...auth }),
+      invokeApiOperation<{ items: Loan[] }>("GET /api/v1/customers/{customerId}/loan-holdings", { path: customer, ...auth }),
+      invokeApiOperation<{ items: LoanProduct[] }>("GET /api/v1/loan-products", auth),
+      invokeApiOperation<{ items: InvestmentAccount[] }>("GET /api/v1/customers/{customerId}/investment-accounts", { path: customer, ...auth }),
+    ]);
+    const cards = required(cardList.body.data, "카드 목록").items;
+    const loans = required(loanList.body.data, "대출 목록").items;
+    const products = required(loanProducts.body.data, "대출상품 목록").items;
+    const investments = required(investmentList.body.data, "투자계좌 목록").items;
+    const card = cards[0]; const loan = loans[0]; const investment = investments[0];
+    const [cardDetail, cardTransactions, statements, paymentDue, cardLimit, repaymentSchedule, portfolio, positions, orders] = await Promise.all([
+      card ? invokeApiOperation<CardDetail>("GET /api/v1/cards/{cardId}", { path: { cardId: card.cardId }, ...auth }) : null,
+      card ? invokeApiOperation<{ items: CardTransaction[] }>("GET /api/v1/cards/{cardId}/transactions", { path: { cardId: card.cardId }, query: { limit: 20 }, ...auth }) : null,
+      card ? invokeApiOperation<{ items: CardStatement[] }>("GET /api/v1/cards/{cardId}/statements", { path: { cardId: card.cardId }, ...auth }) : null,
+      card ? invokeApiOperation<CardPaymentDue>("GET /api/v1/cards/{cardId}/payment-due", { path: { cardId: card.cardId }, ...auth }) : null,
+      card ? invokeApiOperation<CardLimit>("GET /api/v1/cards/{cardId}/limits", { path: { cardId: card.cardId }, ...auth }) : null,
+      loan ? invokeApiOperation<{ items: RepaymentInstallment[] }>("GET /api/v1/loan-holdings/{loanId}/repayment-schedule", { path: { loanId: loan.loanId }, ...auth }) : null,
+      investment ? invokeApiOperation<{ allocations: Allocation[] }>("GET /api/v1/investment-accounts/{accountId}/portfolio", { path: { accountId: investment.accountId }, ...auth }) : null,
+      investment ? invokeApiOperation<{ items: Position[] }>("GET /api/v1/investment-accounts/{accountId}/positions", { path: { accountId: investment.accountId }, ...auth }) : null,
+      investment ? invokeApiOperation<{ items: Order[] }>("GET /api/v1/investment-accounts/{accountId}/orders", { path: { accountId: investment.accountId }, ...auth }) : null,
+    ]);
+    return {
+      cards, cardDetail: cardDetail?.body.data ?? null, cardTransactions: cardTransactions?.body.data?.items ?? [], statements: statements?.body.data?.items ?? [], paymentDue: paymentDue?.body.data ?? null, cardLimit: cardLimit?.body.data ?? null,
+      loans, repaymentSchedule: repaymentSchedule?.body.data?.items ?? [], loanProducts: products,
+      investments, allocations: portfolio?.body.data?.allocations ?? [], positions: positions?.body.data?.items ?? [], orders: orders?.body.data?.items ?? [],
+    };
+  });
 }
 
 export async function simulateLoanRepayment(
   session: PrivateCustomerSession, productId: string, principalAmount: number, termMonths: number, annualInterestRate: number,
 ): Promise<RepaymentSimulation> {
-  const response = await invokeApiOperation<RepaymentSimulation>("POST /api/v1/loan-products/{productId}/repayment-simulations", {
-    path: { productId }, accessToken: session.accessToken,
-    body: { principalAmount, termMonths, annualInterestRate },
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<RepaymentSimulation>("POST /api/v1/loan-products/{productId}/repayment-simulations", {
+      path: { productId }, accessToken,
+      body: { principalAmount, termMonths, annualInterestRate },
+    });
+    return required(response.body.data, "상환 모의계산");
   });
-  return required(response.body.data, "상환 모의계산");
 }
 
 function required<T>(value: T | null, label: string): T {

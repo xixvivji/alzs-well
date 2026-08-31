@@ -5,16 +5,17 @@ import {
   evaluateDisclosure, grantConsent, loadPrivateCustomerAssets, simulateDepositInterest, simulateFxExchange, withdrawConsent,
   type DisclosureEvaluation, type FxSimulation, type InterestSimulation, type PrivateCustomerAssets as Assets,
 } from "../lib/private-customer-assets";
+import { isPrivateSessionExpiredError } from "../lib/private-auth-session";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
 
 export type AssetTab = "deposit" | "fx" | "future" | "consent";
-type Props = { session: PrivateCustomerSession; activeTab: AssetTab | null };
+type Props = { session: PrivateCustomerSession; activeTab: AssetTab | null; onSessionExpired: (message: string) => void };
 const CONSENT_SCOPES = [
   ["ACCOUNT_SUMMARY", "계좌 요약"], ["TRANSACTION_SUMMARY", "거래 요약"], ["BASELINE_SIGNAL", "변화 기준선"],
   ["PROTECTION_CASE", "보호업무 사건"], ["CONTACT_MINIMUM", "최소 연락정보"],
 ] as const;
 
-export function PrivateCustomerAssets({ session, activeTab }: Props) {
+export function PrivateCustomerAssets({ session, activeTab, onSessionExpired }: Props) {
   const [assets, setAssets] = useState<Assets | null>(null);
   const [busy, setBusy] = useState<"load" | "deposit" | "fx" | "grant" | "withdraw" | "evaluate" | null>("load");
   const [error, setError] = useState("");
@@ -31,12 +32,21 @@ export function PrivateCustomerAssets({ session, activeTab }: Props) {
   const [withdrawReason, setWithdrawReason] = useState("고객이 정보 제공 범위를 다시 검토하기 위해 철회합니다.");
   const [evaluation, setEvaluation] = useState<DisclosureEvaluation | null>(null);
 
+  const handleError = useCallback((reason: unknown) => {
+    const message = messageOf(reason);
+    if (isPrivateSessionExpiredError(reason)) {
+      setAssets(null); setInterest(null); setFxResult(null);
+      onSessionExpired(message); return;
+    }
+    setError(message);
+  }, [onSessionExpired]);
+
   const refresh = useCallback(async () => {
     setBusy("load"); setError("");
     try { setAssets(await loadPrivateCustomerAssets(session)); }
-    catch (reason) { setError(messageOf(reason)); }
+    catch (reason) { handleError(reason); }
     finally { setBusy(null); }
-  }, [session]);
+  }, [handleError, session]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -44,13 +54,13 @@ export function PrivateCustomerAssets({ session, activeTab }: Props) {
     const product = assets?.depositProducts[0]; if (!product) return;
     setBusy("deposit"); setError("");
     try { setInterest(await simulateDepositInterest(session, product.productId, depositAmount, depositTerm)); }
-    catch (reason) { setError(messageOf(reason)); } finally { setBusy(null); }
+    catch (reason) { handleError(reason); } finally { setBusy(null); }
   }
 
   async function simulateFx() {
     setBusy("fx"); setError("");
     try { setFxResult(await simulateFxExchange(session, fromCurrency, toCurrency, fxAmount)); }
-    catch (reason) { setError(messageOf(reason)); } finally { setBusy(null); }
+    catch (reason) { handleError(reason); } finally { setBusy(null); }
   }
 
   async function grant() {
@@ -60,21 +70,21 @@ export function PrivateCustomerAssets({ session, activeTab }: Props) {
       const expiry = new Date(); expiry.setFullYear(expiry.getFullYear() + 1);
       await grantConsent(session, purpose, scopes, expiry.toISOString());
       setMessage("목적과 범위를 확인한 동의를 등록했습니다."); await refresh();
-    } catch (reason) { setError(messageOf(reason)); } finally { setBusy(null); }
+    } catch (reason) { handleError(reason); } finally { setBusy(null); }
   }
 
   async function withdraw() {
     const consent = assets?.consents.find((item) => item.revocable); if (!consent || !withdrawReason.trim()) return;
     setBusy("withdraw"); setError(""); setMessage("");
     try { await withdrawConsent(session, consent, withdrawReason.trim()); setMessage("동의를 철회했습니다. 변경 이력은 감사기록에 남습니다."); await refresh(); }
-    catch (reason) { setError(messageOf(reason)); } finally { setBusy(null); }
+    catch (reason) { handleError(reason); } finally { setBusy(null); }
   }
 
   async function evaluate() {
     const consent = assets?.consents[0]; if (!consent) return;
     setBusy("evaluate"); setError("");
     try { setEvaluation(await evaluateDisclosure(session, consent)); }
-    catch (reason) { setError(messageOf(reason)); } finally { setBusy(null); }
+    catch (reason) { handleError(reason); } finally { setBusy(null); }
   }
 
   if (!activeTab) return null;

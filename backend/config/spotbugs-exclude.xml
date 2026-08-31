@@ -31,4 +31,10 @@
         <Method name="requireKnownActionCodes"/>
         <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
     </Match>
+
+    <!-- Mockito의 SQL 인자 matcher를 실행 sink로 해석한 테스트 바이트코드 오탐이다. -->
+    <Match>
+        <Class name="com.alzswell.demo.application.DemoAiFinancialAssistanceServiceTest"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
 </FindBugsFilter>

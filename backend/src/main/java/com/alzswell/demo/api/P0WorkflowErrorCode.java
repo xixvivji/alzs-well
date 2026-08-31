@@ -25,6 +25,11 @@ public enum P0WorkflowErrorCode implements ErrorCode {
             "ALERT_CONTEXT_ALREADY_SUBMITTED",
             "생활맥락 응답이 이미 제출되었습니다."
     ),
+    ALERT_VERSION_CONFLICT(
+            HttpStatus.CONFLICT,
+            "ALERT_VERSION_CONFLICT",
+            "변화 알림이 다른 요청으로 변경되었습니다. 최신 상태를 다시 조회해 주세요."
+    ),
     INVALID_STATE_TRANSITION(
             HttpStatus.CONFLICT,
             "INVALID_STATE_TRANSITION",

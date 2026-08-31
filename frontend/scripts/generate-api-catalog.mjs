@@ -24,7 +24,7 @@ for (const line of catalogSection.split("\n")) {
   const [, priority, method, rawPath, purpose, boundary] = row;
   documented.push({ priority, method, path: rawPath.trim(), purpose: purpose.trim(), boundary, domain });
 }
-if (documented.length !== 278) throw new Error(`문서 operation 수가 278이 아니라 ${documented.length}입니다.`);
+if (documented.length !== 281) throw new Error(`문서 operation 수가 281이 아니라 ${documented.length}입니다.`);
 
 const controllers = walk(controllerRoot).filter((path) => path.endsWith("Controller.java"));
 const implemented = [];
@@ -41,26 +41,20 @@ for (const controller of controllers) {
   }
 }
 const implementedKeys = new Set(implemented.map(({ method, path }) => `${method} ${path}`));
-if (implemented.length !== 234 || implementedKeys.size !== 234) {
-  throw new Error(`구현 operation 수가 234가 아닙니다: total=${implemented.length}, unique=${implementedKeys.size}`);
+if (implemented.length !== 237 || implementedKeys.size !== 237) {
+  throw new Error(`구현 operation 수가 237가 아닙니다: total=${implemented.length}, unique=${implementedKeys.size}`);
 }
 
 const documentedKeys = new Set(documented.map(({ method, path }) => `${method} ${path}`));
 const codeOnly = implemented.filter(({ method, path }) => !documentedKeys.has(`${method} ${path}`));
 const implementedDocumented = documented.filter(({ method, path }) => implementedKeys.has(`${method} ${path}`));
-if (implementedDocumented.length !== 233 || codeOnly.length !== 1) {
+if (implementedDocumented.length !== 236 || codeOnly.length !== 1) {
   throw new Error(`카탈로그·코드 교집합이 예상과 다릅니다: documented=${implementedDocumented.length}, codeOnly=${codeOnly.length}`);
 }
 
 const operations = [
   ...documented.map((item) => definition(item, implementedKeys.has(`${item.method} ${item.path}`))),
-  ...codeOnly.map((item) => definition({
-    ...item,
-    priority: "P0-A",
-    purpose: "직원 데모 capability 발급",
-    boundary: "OWNED",
-    domain: "시스템·데모",
-  }, true)),
+  ...codeOnly.map((item) => definition(codeOnlyMetadata(item), true)),
 ];
 
 const output = `// 이 파일은 scripts/generate-api-catalog.mjs로 생성합니다. 직접 수정하지 마세요.\n\nexport type ApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";\nexport type ApiPriority = "P0-A" | "P0-B" | "P1" | "P2";\nexport type ApiBoundary = "OWNED" | "EXTERNAL_INTEGRATION" | "REFERENCE_ONLY";\nexport type ApiImplementation = "IMPLEMENTED" | "PLANNED" | "REFERENCE_ONLY";\nexport type ApiAudience = "PUBLIC" | "CUSTOMER" | "STAFF" | "ADMIN";\nexport type ApiAuthorityMode = "PUBLIC" | "DEMO_CAPABILITY" | "STAFF_BOOTSTRAP" | "BEARER";\n\nexport type ApiOperationDefinition = {\n  key: string;\n  method: ApiMethod;\n  path: string;\n  purpose: string;\n  domain: string;\n  domainId: string;\n  priority: ApiPriority;\n  boundary: ApiBoundary;\n  implementation: ApiImplementation;\n  audience: ApiAudience;\n  authorityMode: ApiAuthorityMode;\n  pathParameters: readonly string[];\n  externalActionAllowed: false;\n};\n\nexport const API_OPERATION_CATALOG = ${JSON.stringify(operations, null, 2)} as const satisfies readonly ApiOperationDefinition[];\n`;
@@ -72,7 +66,7 @@ if (process.argv.includes("--check")) {
     console.error("생성된 API operation 카탈로그가 최신이 아닙니다. npm run catalog:generate를 실행하세요.");
     process.exit(1);
   }
-  console.log("API operation catalog valid: 278 documented, 234 implemented, 1 code-only staging operation");
+  console.log("API operation catalog valid: 281 documented, 237 implemented, 1 code-only operation");
 } else {
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, output);
@@ -95,6 +89,21 @@ function definition(item, isImplemented) {
     authorityMode: authorityMode(item.method, item.path),
     pathParameters: [...item.path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]),
     externalActionAllowed: false,
+  };
+}
+
+function codeOnlyMetadata(item) {
+  if (item.path.endsWith("/alerts/{alertId}/defer")) return {
+    ...item, priority: "P0-A", purpose: "고객 알림 확인 유예", boundary: "OWNED", domain: "고객 확인·이의신청",
+  };
+  if (item.path === "/api/v1/system/core-readiness") return {
+    ...item, priority: "P0-A", purpose: "핵심 업무 readiness 확인", boundary: "OWNED", domain: "시스템·데모",
+  };
+  if (item.path === "/api/v1/system/ai-readiness") return {
+    ...item, priority: "P0-A", purpose: "AI 의존성 readiness 확인", boundary: "OWNED", domain: "시스템·데모",
+  };
+  return {
+    ...item, priority: "P0-A", purpose: "직원 데모 capability 발급", boundary: "OWNED", domain: "시스템·데모",
   };
 }
 

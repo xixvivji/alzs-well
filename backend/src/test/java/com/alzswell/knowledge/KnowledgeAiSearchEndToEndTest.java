@@ -140,16 +140,32 @@ class KnowledgeAiSearchEndToEndTest {
             HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
             server.createContext("/internal/v1/search",exchange->{
                 try {
-                    if(MODE.get()==Mode.UNAVAILABLE) {exchange.sendResponseHeaders(503,-1);return;}
                     JsonNode request=MAPPER.readTree(exchange.getRequestBody());
                     if(!TOKEN.equals(exchange.getRequestHeaders().getFirst("X-Internal-Service-Token"))) {
                         exchange.sendResponseHeaders(401,-1);return;
+                    }
+                    if(MODE.get()==Mode.UNAVAILABLE) {
+                        ObjectNode unavailable=MAPPER.createObjectNode();
+                        unavailable.put("contractVersion","1.0.0");
+                        unavailable.put("requestId",request.get("requestId").asText());
+                        unavailable.put("queryHash","sha256:"+sha256(
+                                request.get("query").asText().getBytes(StandardCharsets.UTF_8)));
+                        unavailable.put("outcome","INDEX_UNAVAILABLE");
+                        unavailable.put("retryable",true);
+                        unavailable.put("reasonCode","STORAGE_UNAVAILABLE");
+                        unavailable.putArray("results");
+                        byte[] bytes=MAPPER.writeValueAsBytes(unavailable);
+                        exchange.getResponseHeaders().set("Content-Type","application/json");
+                        exchange.sendResponseHeaders(503,bytes.length);
+                        exchange.getResponseBody().write(bytes);
+                        return;
                     }
                     String textHash="sha256:"+sha256(TEXT.getBytes(StandardCharsets.UTF_8));
                     String chunkId="chk_"+sha256(MAPPER.writeValueAsBytes(List.of(DOCUMENT_ID,VERSION,SECTION_PATH,1,textHash,"structure-ko-v1")));
                     ObjectNode response=MAPPER.createObjectNode();response.put("contractVersion","1.0.0");
                     response.put("requestId",request.get("requestId").asText());
                     response.put("queryHash","sha256:"+sha256(request.get("query").asText().getBytes(StandardCharsets.UTF_8)));
+                    response.put("outcome","RESULTS");response.put("retryable",false);response.putNull("reasonCode");
                     ObjectNode hit=response.putArray("results").addObject();hit.put("score",1.0);
                     hit.put("content",MODE.get()==Mode.TAMPERED?TEXT+" 변조":TEXT);
                     ObjectNode citation=hit.putObject("citation");citation.put("contractVersion","1.0.0");

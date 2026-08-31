@@ -29,6 +29,7 @@ import com.alzswell.common.security.AuditActor;
 import com.alzswell.common.security.SensitiveTextPolicy;
 import com.alzswell.staffaccess.api.StaffAccessErrorCode;
 import com.alzswell.staffaccess.application.StaffAccessPolicyService;
+import com.alzswell.staffaccess.application.StaffAccessAuditException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -641,9 +642,16 @@ public class OperationalCaseService {
 
     private void requireAssigned(CaseSummary current, AuditActor actor, String scope) {
         requireStaffPrincipal(actor);
-        staffAccess.require(actor, current.customerId(), "PROTECTION_CASE_MANAGEMENT", scope, "CASE", current.caseId().toString());
+        UUID grantId = staffAccess.require(actor, current.customerId(), "PROTECTION_CASE_MANAGEMENT",
+                scope, "CASE", current.caseId().toString());
         if (current.assignedTo() == null || !current.assignedTo().equals(actor.principalId().toString())) {
-            throw new BusinessException(StaffAccessErrorCode.ACCESS_DENIED);
+            throw new StaffAccessAuditException(StaffAccessErrorCode.ACCESS_DENIED,
+                    new StaffAccessAuditException.Decision(
+                            UUID.randomUUID(), grantId, actor.principalId(), current.customerId(),
+                            "PROTECTION_CASE_MANAGEMENT", scope, false,
+                            "DENY_CASE_NOT_ASSIGNED", "CASE", current.caseId().toString(), actor,
+                            AuditTimestamp.canonical(OffsetDateTime.now(clock))
+                    ));
         }
     }
 
