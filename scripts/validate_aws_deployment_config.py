@@ -113,6 +113,7 @@ def main() -> int:
         "separate AI instance profile": "  AiRuntimeInstanceProfile:\n",
         "temporary DB bootstrap policy": "  DatabaseBootstrapPolicy:\n",
         "temporary AI ingestion policy": "  AiIngestionPolicy:\n",
+        "temporary ECR image publish permission": '              - "ecr:PutImage"\n',
         "private AI service discovery": "  AiPrivateDnsRecord:\n",
         "App profile attachment": "IamInstanceProfile: !Ref AppRuntimeInstanceProfile",
         "AI profile attachment": "IamInstanceProfile: !Ref AiRuntimeInstanceProfile",
@@ -129,6 +130,16 @@ def main() -> int:
     for label, pattern in forbidden_foundation_contracts.items():
         if re.search(pattern, aws_foundation, re.MULTILINE):
             errors.append(f"AWS foundation still contains {label}")
+
+    bootstrap_policy = aws_foundation.split("  AiIngestionPolicy:\n", 1)[-1].split("\n  AppInstance:\n", 1)[0]
+    for repository in ("AppRepository.Arn", "AiRepository.Arn"):
+        if repository not in bootstrap_policy:
+            errors.append(f"temporary image publisher is missing {repository}")
+    permanent_ai_policy = aws_foundation.split("  AiRuntimeRole:\n", 1)[-1].split(
+        "\n  AiRuntimeInstanceProfile:\n", 1
+    )[0]
+    if "ecr:PutImage" in permanent_ai_policy:
+        errors.append("permanent AI runtime role must not publish ECR images")
 
     try:
         app_config = render_compose(APP_COMPOSE, APP_ENV)

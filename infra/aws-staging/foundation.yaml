@@ -462,6 +462,14 @@ Resources:
           - Effect: Allow
             Action: "secretsmanager:GetSecretValue"
             Resource: !Ref AiIngestionDatabaseSecret
+          - Effect: Allow
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:CompleteLayerUpload"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:PutImage"
+              - "ecr:UploadLayerPart"
+            Resource: [!GetAtt AppRepository.Arn, !GetAtt AiRepository.Arn]
 
   AppInstance:
     Type: AWS::EC2::Instance
