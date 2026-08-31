@@ -292,6 +292,26 @@ Resources:
       Name: !Sub "/${EnvironmentName}/internal-ai-token"
       GenerateSecretString: {PasswordLength: 80, ExcludePunctuation: true}
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AppTlsSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/tls-app"
+      GenerateSecretString:
+        SecretStringTemplate: '{"status":"BOOTSTRAP_REQUIRED"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiTlsSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/tls-ai"
+      SecretString: '{"status":"BOOTSTRAP_REQUIRED"}'
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AppDatabaseSecret:
     Type: AWS::SecretsManager::Secret
     DeletionPolicy: Retain
@@ -382,6 +402,23 @@ Resources:
       EnablePerformanceInsights: false
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
 
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/${EnvironmentName}/app"
+      RetentionInDays: 14
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/${EnvironmentName}/ai"
+      RetentionInDays: 14
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
   AppRuntimeRole:
     Type: AWS::IAM::Role
     Properties:
@@ -401,7 +438,10 @@ Resources:
                 Resource: !GetAtt AppRepository.Arn
               - Effect: Allow
                 Action: "secretsmanager:GetSecretValue"
-                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref InternalAiSecret, !Ref AppDatabaseSecret]
+                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref InternalAiSecret, !Ref AppTlsSecret, !Ref AppDatabaseSecret]
+              - Effect: Allow
+                Action: ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
+                Resource: !Sub "${AppLogGroup.Arn}:*"
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AppRuntimeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -427,7 +467,10 @@ Resources:
                 Resource: !GetAtt AiRepository.Arn
               - Effect: Allow
                 Action: "secretsmanager:GetSecretValue"
-                Resource: [!Ref InternalAiSecret, !Ref AiRuntimeDatabaseSecret]
+                Resource: [!Ref InternalAiSecret, !Ref AiTlsSecret, !Ref AiRuntimeDatabaseSecret]
+              - Effect: Allow
+                Action: ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
+                Resource: !Sub "${AiLogGroup.Arn}:*"
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AiRuntimeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -723,5 +766,9 @@ Outputs:
   MigrationDatabaseSecretArn: {Value: !Ref MigrationDatabaseSecret}
   AiIngestionDatabaseSecretArn: {Value: !Ref AiIngestionDatabaseSecret}
   AiRuntimeDatabaseSecretArn: {Value: !Ref AiRuntimeDatabaseSecret}
+  AppTlsSecretArn: {Value: !Ref AppTlsSecret}
+  AiTlsSecretArn: {Value: !Ref AiTlsSecret}
+  AppLogGroupName: {Value: !Ref AppLogGroup}
+  AiLogGroupName: {Value: !Ref AiLogGroup}
   AppRepositoryUri: {Value: !GetAtt AppRepository.RepositoryUri}
   AiRepositoryUri: {Value: !GetAtt AiRepository.RepositoryUri}

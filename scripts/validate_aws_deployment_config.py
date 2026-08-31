@@ -115,6 +115,10 @@ def main() -> int:
         "temporary AI ingestion policy": "  AiIngestionPolicy:\n",
         "temporary ECR image publish permission": '              - "ecr:PutImage"\n',
         "private AI service discovery": "  AiPrivateDnsRecord:\n",
+        "separate App mTLS secret": "  AppTlsSecret:\n",
+        "separate AI mTLS secret": "  AiTlsSecret:\n",
+        "App CloudWatch log group": "  AppLogGroup:\n",
+        "AI CloudWatch log group": "  AiLogGroup:\n",
         "App profile attachment": "IamInstanceProfile: !Ref AppRuntimeInstanceProfile",
         "AI profile attachment": "IamInstanceProfile: !Ref AiRuntimeInstanceProfile",
     }
@@ -178,6 +182,23 @@ def main() -> int:
             errors.append("AWS app must pin the approved embedding backend")
         if backend_environment.get("AI_EXPECTED_EMBEDDING_DIMENSIONS") != EXPECTED_EMBEDDING_DIMENSIONS:
             errors.append("AWS app must pin the approved embedding dimensions")
+
+        expected_logging = {
+            "AWS app gateway": (app_config["services"]["gateway"], "/alzs-well-staging/app", "gateway"),
+            "AWS app backend": (app_config["services"]["backend"], "/alzs-well-staging/app", "backend"),
+            "AWS AI gateway": (ai_config["services"]["ai-gateway"], "/alzs-well-staging/ai", "gateway"),
+            "AWS AI runtime": (ai_config["services"]["ai-service"], "/alzs-well-staging/ai", "runtime"),
+            "AWS AI ingestion": (ai_config["services"]["ingestion"], "/alzs-well-staging/ai", "ingestion"),
+        }
+        for label, (service, group, stream) in expected_logging.items():
+            logging = service.get("logging", {})
+            options = logging.get("options", {})
+            if logging.get("driver") != "awslogs":
+                errors.append(f"{label} must use the awslogs driver")
+            if options.get("awslogs-group") != group or options.get("awslogs-stream") != stream:
+                errors.append(f"{label} has an unexpected log destination: {options!r}")
+            if options.get("awslogs-create-group") != "false":
+                errors.append(f"{label} must not create log groups at runtime")
 
         ai_gateway = ai_config["services"].get("ai-gateway")
         if ai_gateway is None:

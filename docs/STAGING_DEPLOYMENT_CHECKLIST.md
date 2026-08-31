@@ -37,7 +37,7 @@
 - [x] CloudFront 기본 HTTPS, ALB, WAF, 업무/AI EC2 보안 그룹, Private RDS를 정의한다.
 - [x] ECR immutable tag, Secrets Manager, SSM instance profile, 백업·삭제 방지를 정의한다.
 - [x] EC2 상태·RDS CPU·RDS 여유 공간 경보를 정의한다.
-- [ ] 애플리케이션 CloudWatch 로그 수집과 보존 기간을 정의한다.
+- [x] App·AI 컨테이너 CloudWatch 로그 그룹과 14일 보존 기간을 정의한다.
 - [ ] 55개 추가 change set과 12일 안전 상한 `$90~105`를 검토하고 실제 실행을 승인한다.
 - [ ] IaC 적용 전 public IP, `0.0.0.0/0`, 원본 비밀값, 데이터베이스 삭제 위험을 검토한다.
 
@@ -46,6 +46,7 @@
 - [x] CI에서 Spring Boot·AI runtime image 빌드와 취약점 스캔을 통과한다.
 - [ ] AI EC2의 bootstrap 기간에 동일 커밋을 AMD64로 빌드·ECR에 게시하고 bootstrap 권한을 제거한다.
 - [ ] ECR digest를 `compose.aws-app.yaml`·`compose.aws-ai.yaml`에 고정한다.
+- [ ] App·AI mTLS 인증서를 생성해 분리된 Secrets Manager 비밀에 저장하고 각 인스턴스에만 배치한다.
 - [ ] Flyway를 runtime과 분리된 migration 역할로 1회 실행한다.
 - [ ] 승인 문서·Arctic-ko artifact·golden-set hash를 반입 증적과 대조한다.
 

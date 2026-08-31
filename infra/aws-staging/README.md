@@ -64,6 +64,10 @@ Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다.
 수 있다. 검증된 `develop` 커밋을 AMD64로 빌드하고 digest를 기록한 뒤
 `DatabaseBootstrapEnabled=false`로 갱신하여 이미지 게시·DB bootstrap·ingestion
 권한을 함께 제거한다. 상시 런타임 역할에는 ECR push 권한을 부여하지 않는다.
+App·AI mTLS 개인키는 각각 `/alzs-well-staging/tls-app`,
+`/alzs-well-staging/tls-ai` 비밀에 분리하며 상대 인스턴스의 개인키를 읽을 수 없다.
+컨테이너 로그는 `/alzs-well-staging/app`, `/alzs-well-staging/ai` CloudWatch
+로그 그룹으로 보내고 14일 뒤 만료한다.
 
 ## 운영 종료와 수동 철거
 
