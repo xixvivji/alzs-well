@@ -64,6 +64,14 @@ Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다.
 수 있다. 검증된 `develop` 커밋을 AMD64로 빌드하고 digest를 기록한 뒤
 `DatabaseBootstrapEnabled=false`로 갱신하여 이미지 게시·DB bootstrap·ingestion
 권한을 함께 제거한다. 상시 런타임 역할에는 ECR push 권한을 부여하지 않는다.
+App·AI mTLS 개인키는 각각 `/alzs-well-staging/tls-app`,
+`/alzs-well-staging/tls-ai` 비밀에 분리하며 상대 인스턴스의 개인키를 읽을 수 없다.
+컨테이너 로그는 `/alzs-well-staging/app`, `/alzs-well-staging/ai` CloudWatch
+로그 그룹으로 보내고 14일 뒤 만료한다.
+인스턴스 조작은 루트가 아니라 `alzs-well-staging-operator` 단기 세션으로 수행한다.
+운영 역할의 `SendCommand` 대상은 `Project=alzs-well`, `Environment=staging` 태그가
+모두 일치하는 EC2와 AWS 관리 `AWS-RunShellScript` 문서로 제한하며 Secrets Manager
+직접 읽기 권한은 두지 않는다.
 
 ## 운영 종료와 수동 철거
 

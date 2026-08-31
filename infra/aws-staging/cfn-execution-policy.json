@@ -245,6 +245,21 @@
       "Resource": "*"
     },
     {
+      "Sid": "StagingApplicationLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:DeleteRetentionPolicy",
+        "logs:DescribeLogGroups",
+        "logs:ListTagsForResource",
+        "logs:PutRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource"
+      ],
+      "Resource": "arn:aws:logs:ap-northeast-2:__AWS_ACCOUNT_ID__:log-group:/alzs-well-staging/*"
+    },
+    {
       "Sid": "PublicAmiParameter",
       "Effect": "Allow",
       "Action": "ssm:GetParameters",
