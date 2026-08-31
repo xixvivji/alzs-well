@@ -139,7 +139,6 @@
         "secretsmanager:CreateSecret",
         "secretsmanager:DeleteSecret",
         "secretsmanager:DescribeSecret",
-        "secretsmanager:GetRandomPassword",
         "secretsmanager:GetResourcePolicy",
         "secretsmanager:ListSecretVersionIds",
         "secretsmanager:PutSecretValue",
@@ -148,6 +147,17 @@
         "secretsmanager:UpdateSecret"
       ],
       "Resource": "arn:aws:secretsmanager:ap-northeast-2:__AWS_ACCOUNT_ID__:secret:/alzs-well-staging/*"
+    },
+    {
+      "Sid": "GenerateStagingSecretValues",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetRandomPassword",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
     },
     {
       "Sid": "NamedRuntimeIdentity",
