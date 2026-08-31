@@ -52,6 +52,9 @@ CloudFormation execution 역할의 사전검토 정책은
 사용할 수 없다. `render-cfn-execution-policy.sh`로 실제 12자리 계정 ID를 렌더링하고
 IAM Access Analyzer 검증을 통과한 결과만 역할에 적용한다. 최초 ALB 생성에 필요한
 서비스 연결 역할 권한은 `elasticloadbalancing.amazonaws.com`으로 제한한다.
+Secrets Manager의 `GetRandomPassword`는 리소스 수준 권한을 지원하지 않으므로
+`Resource: "*"`를 사용하되 `ap-northeast-2` 요청으로 제한한다. 생성·수정·삭제는
+계속 `/alzs-well-staging/*` 이름의 비밀에만 허용한다.
 AWS CLI `aws login`으로 생성된 루트 세션은 역할을 AssumeRole할 수 없으므로,
 Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다. 장기 access key를
 새로 발급해 우회하지 않는다.
