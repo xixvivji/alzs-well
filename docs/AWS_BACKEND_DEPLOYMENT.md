@@ -36,6 +36,15 @@ Spring, AI, RDS는 public IP를 갖지 않는다. AI health/search와 ingestion�
 
 RDS는 `rds.force_ssl=1`, 저장 암호화, 자동 백업, 삭제 방지를 적용한다. Spring runtime/migration 역할과 AI runtime/ingestion 역할을 분리하며 관리자 계정은 애플리케이션에 전달하지 않는다. AWS RDS CA bundle을 읽기 전용 mount하고 `sslmode=verify-full`을 강제한다.
 
+| 용도 | DB 역할 |
+|---|---|
+| Spring runtime | `alzswell_app` |
+| Flyway migration | `alzswell_migrator` |
+| AI 검색 runtime | `alzswell_ai_runtime` |
+| AI 승인 문서 ingestion | `alzswell_ai_ingestor` |
+
+Compose 기본값과 Secrets Manager에서 주입하는 사용자명은 `docker/create-database-roles.sh`가 생성하는 역할명과 정확히 일치해야 한다. CI의 AWS 배포 계약 검사는 이 값이 어긋나면 실패한다.
+
 ## 모델 기동 게이트
 
 AI EC2는 다음 조건을 모두 만족해야 Arctic-ko를 로드한다.

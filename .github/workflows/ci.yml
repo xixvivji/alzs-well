@@ -189,6 +189,8 @@ jobs:
       DEMO_STAFF_BOOTSTRAP_TOKEN: ci-only-demo-staff-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@v7
+      - name: Validate AWS deployment Compose and role contracts
+        run: python3 scripts/validate_aws_deployment_config.py
       - name: Validate production compose rendering
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
       - name: Boot the isolated stack and smoke test core APIs
