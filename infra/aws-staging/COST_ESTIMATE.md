@@ -19,10 +19,11 @@
 | 공인 IPv4 최대 3개 | $0.005/IP·시간 | $4.32 |
 | EC2 gp3 70GB | $0.0912/GB·월 | 약 $2.55 |
 | RDS gp3 20GB | $0.131/GB·월 | 약 $1.05 |
-| Secrets Manager 최대 4개 | $0.40/secret·월 | 약 $0.64 |
+| Secrets Manager 최대 8개 | $0.40/secret·월 | 약 $1.28 |
 | WAF Web ACL 1개·규칙 2개 | $5+$1/규칙·월 | 약 $2.80 |
+| Route 53 private hosted zone 1개 | $0.50/월 | 약 $0.20 |
 
-주요 고정비 합계는 약 **$79.47**이다. ALB LCU, NAT 처리량, CloudFront 요청·전송,
+주요 고정비 합계는 약 **$80.31**이다. ALB LCU, NAT 처리량, CloudFront 요청·전송,
 ECR, RDS backup 초과분과 기타 소액 항목을 포함해 **$90~105**를 안전 상한으로
 잡는다.
 

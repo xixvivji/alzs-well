@@ -26,6 +26,14 @@ Parameters:
     Type: String
     Default: db.t4g.micro
     AllowedValues: [db.t4g.micro, db.t4g.small]
+  DatabaseBootstrapEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Temporarily allow one-time DB role provisioning and AI ingestion secrets
+
+Conditions:
+  EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
 
 Mappings:
   Network:
@@ -284,6 +292,54 @@ Resources:
       Name: !Sub "/${EnvironmentName}/internal-ai-token"
       GenerateSecretString: {PasswordLength: 80, ExcludePunctuation: true}
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AppDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/db-app"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"alzswell_app"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  MigrationDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/db-migration"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"alzswell_migrator"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiIngestionDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/db-ai-ingestion"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"alzswell_ai_ingestor"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiRuntimeDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/db-ai-runtime"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"alzswell_ai_runtime"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
 
   DatabaseSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -326,10 +382,10 @@ Resources:
       EnablePerformanceInsights: false
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
 
-  RuntimeRole:
+  AppRuntimeRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${EnvironmentName}-runtime"
+      RoleName: !Sub "${EnvironmentName}-app-runtime"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement: [{Effect: Allow, Principal: {Service: ec2.amazonaws.com}, Action: "sts:AssumeRole"}]
@@ -342,23 +398,77 @@ Resources:
               - {Effect: Allow, Action: "ecr:GetAuthorizationToken", Resource: "*"}
               - Effect: Allow
                 Action: ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
-                Resource: [!GetAtt AppRepository.Arn, !GetAtt AiRepository.Arn]
+                Resource: !GetAtt AppRepository.Arn
               - Effect: Allow
                 Action: "secretsmanager:GetSecretValue"
-                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref InternalAiSecret, !GetAtt Database.MasterUserSecret.SecretArn]
+                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref InternalAiSecret, !Ref AppDatabaseSecret]
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
-  RuntimeInstanceProfile:
+  AppRuntimeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub "${EnvironmentName}-runtime"
-      Roles: [!Ref RuntimeRole]
+      InstanceProfileName: !Sub "${EnvironmentName}-app-runtime"
+      Roles: [!Ref AppRuntimeRole]
+  AiRuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${EnvironmentName}-ai-runtime"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: ec2.amazonaws.com}, Action: "sts:AssumeRole"}]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore]
+      Policies:
+        - PolicyName: ReadDeploymentArtifacts
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - {Effect: Allow, Action: "ecr:GetAuthorizationToken", Resource: "*"}
+              - Effect: Allow
+                Action: ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
+                Resource: !GetAtt AiRepository.Arn
+              - Effect: Allow
+                Action: "secretsmanager:GetSecretValue"
+                Resource: [!Ref InternalAiSecret, !Ref AiRuntimeDatabaseSecret]
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiRuntimeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${EnvironmentName}-ai-runtime"
+      Roles: [!Ref AiRuntimeRole]
+  DatabaseBootstrapPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableDatabaseBootstrap
+    Properties:
+      PolicyName: DatabaseRoleBootstrap
+      Roles: [!Ref AppRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "secretsmanager:GetSecretValue"
+            Resource:
+              - !GetAtt Database.MasterUserSecret.SecretArn
+              - !Ref MigrationDatabaseSecret
+              - !Ref AiIngestionDatabaseSecret
+              - !Ref AiRuntimeDatabaseSecret
+  AiIngestionPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableDatabaseBootstrap
+    Properties:
+      PolicyName: ApprovedDocumentIngestion
+      Roles: [!Ref AiRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "secretsmanager:GetSecretValue"
+            Resource: !Ref AiIngestionDatabaseSecret
 
   AppInstance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref AppInstanceType
-      IamInstanceProfile: !Ref RuntimeInstanceProfile
+      IamInstanceProfile: !Ref AppRuntimeInstanceProfile
       SubnetId: !Ref AppSubnetA
       SecurityGroupIds: [!Ref AppSecurityGroup]
       BlockDeviceMappings:
@@ -377,7 +487,7 @@ Resources:
     Properties:
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref AiInstanceType
-      IamInstanceProfile: !Ref RuntimeInstanceProfile
+      IamInstanceProfile: !Ref AiRuntimeInstanceProfile
       SubnetId: !Ref AppSubnetC
       SecurityGroupIds: [!Ref AiSecurityGroup]
       BlockDeviceMappings:
@@ -391,6 +501,22 @@ Resources:
           dnf install -y docker
           systemctl enable --now docker
       Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-ai"}, {Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: internal
+      HostedZoneConfig: {Comment: Private service discovery for ALZ's well staging}
+      VPCs: [{VPCId: !Ref Vpc, VPCRegion: !Ref "AWS::Region"}]
+      HostedZoneTags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiPrivateDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref PrivateHostedZone
+      Name: ai.internal
+      Type: A
+      TTL: 60
+      ResourceRecords: [!GetAtt AiInstance.PrivateIp]
 
   AppTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -511,6 +637,71 @@ Resources:
     Type: AWS::WAFv2::WebACLAssociation
     Properties: {ResourceArn: !Ref ApplicationLoadBalancer, WebACLArn: !GetAtt WebAcl.Arn}
 
+  AppStatusCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${EnvironmentName}-app-status-check"
+      AlarmDescription: App EC2 status check failed
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Dimensions: [{Name: InstanceId, Value: !Ref AppInstance}]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiStatusCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${EnvironmentName}-ai-status-check"
+      AlarmDescription: AI EC2 status check failed
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Dimensions: [{Name: InstanceId, Value: !Ref AiInstance}]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  DatabaseCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${EnvironmentName}-database-cpu"
+      AlarmDescription: RDS CPU usage remains high
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions: [{Name: DBInstanceIdentifier, Value: !Ref Database}]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  DatabaseFreeStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${EnvironmentName}-database-free-storage"
+      AlarmDescription: RDS free storage below 2 GiB
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions: [{Name: DBInstanceIdentifier, Value: !Ref Database}]
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 2147483648
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: missing
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
 Outputs:
   VpcId: {Value: !Ref Vpc}
   AlbDnsName: {Value: !GetAtt ApplicationLoadBalancer.DNSName}
@@ -520,5 +711,9 @@ Outputs:
   AiInstanceId: {Value: !Ref AiInstance}
   DatabaseEndpoint: {Value: !GetAtt Database.Endpoint.Address}
   DatabaseMasterSecretArn: {Value: !GetAtt Database.MasterUserSecret.SecretArn}
+  AppDatabaseSecretArn: {Value: !Ref AppDatabaseSecret}
+  MigrationDatabaseSecretArn: {Value: !Ref MigrationDatabaseSecret}
+  AiIngestionDatabaseSecretArn: {Value: !Ref AiIngestionDatabaseSecret}
+  AiRuntimeDatabaseSecretArn: {Value: !Ref AiRuntimeDatabaseSecret}
   AppRepositoryUri: {Value: !GetAtt AppRepository.RepositoryUri}
   AiRepositoryUri: {Value: !GetAtt AiRepository.RepositoryUri}

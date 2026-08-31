@@ -192,6 +192,36 @@
       }
     },
     {
+      "Sid": "PrivateServiceDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "route53:AssociateVPCWithHostedZone",
+        "route53:ChangeResourceRecordSets",
+        "route53:ChangeTagsForResource",
+        "route53:CreateHostedZone",
+        "route53:DeleteHostedZone",
+        "route53:DisassociateVPCFromHostedZone",
+        "route53:GetChange",
+        "route53:GetHostedZone",
+        "route53:ListHostedZonesByName",
+        "route53:ListQueryLoggingConfigs",
+        "route53:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StagingOperationalAlarms",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource"
+      ],
+      "Resource": "arn:aws:cloudwatch:ap-northeast-2:__AWS_ACCOUNT_ID__:alarm:alzs-well-staging-*"
+    },
+    {
       "Sid": "CloudFrontApiEntryPoint",
       "Effect": "Allow",
       "Action": [
