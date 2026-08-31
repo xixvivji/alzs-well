@@ -4138,7 +4138,7 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 | `PUT /intent` | `expectedVersion`, 납부·설명·도움 enum, 공유범위 0~4개 | `DEMO_AI_INTENT_DRAFT_SAVED` | 고객 수정값만 DRAFT로 저장, 낙관적 버전 검사 |
 | `POST /intent/approve` | `expectedVersion`, `disclaimerAccepted=true` | `DEMO_AI_INTENT_APPROVED` | 고객 확인 전 승인 불가, 법적 효력과 자동 실행 없음 |
 | `GET /intent` | 없음 | `DEMO_AI_INTENT_RETRIEVED` | 현재 세션·run의 의향만 조회 |
-| `GET /change-analysis` | 없음 | `DEMO_AI_CHANGE_ANALYZED` | 총 90일 합성 기준선, 이전 60일과 최근 30일 비교 |
+| `POST /change-analysis` | 없음 | `DEMO_AI_CHANGE_ANALYZED` | 총 90일 합성 기준선, 이전 60일과 최근 30일 비교·감사이력 기록 |
 | `POST /plain-language` | 허용된 `featureCode` | `DEMO_AI_PLAIN_LANGUAGE_GENERATED` | 300자 이하 제한 문장과 브라우저 음성용 동일 사실만 반환 |
 
 장기 변화 결과는 정기납부 누락, 중복송금, 거래결과 재확인, 새 수취인, 평소와 다른 시간대, 평소와 다른 금액의 6개 특징에 대해 EWMA·CUSUM 보조 점수와 기준·최근 횟수, 지속 여부, 자연어 근거를 함께 반환한다. 점수만으로 위험·질병·사기를 판정하지 않으며 화면도 “위험도” 대신 관찰된 횟수 변화로 설명한다. 음성 읽기는 서버가 음성 파일을 만들거나 외부 TTS로 전송하지 않고, 고객 브라우저의 `speechSynthesis`가 반환 문장을 `ko-KR`로 천천히 읽는다.
