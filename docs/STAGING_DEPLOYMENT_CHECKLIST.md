@@ -29,6 +29,7 @@
 - [ ] 최초 ALB 생성용 서비스 연결 역할 권한 보완을 별도 승인 후 적용한다.
 - [x] 일회용 비루트 주체로 deployer AssumeRole을 확인하고 사용자·Access Key를 즉시 삭제한다.
 - [x] 배포 역할과 App·AI EC2 instance profile, Spring·AI DB secret 경계를 분리한다.
+- [x] 태그가 일치하는 staging EC2에만 SSM 명령을 보낼 수 있는 별도 운영 역할을 정의한다.
 - [ ] GitHub/Vercel/AWS 배포는 장기 access key 대신 OIDC 또는 단기 세션을 사용한다.
 
 ## 2. IaC 및 비용 게이트

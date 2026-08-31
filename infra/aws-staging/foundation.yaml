@@ -477,6 +477,38 @@ Resources:
     Properties:
       InstanceProfileName: !Sub "${EnvironmentName}-ai-runtime"
       Roles: [!Ref AiRuntimeRole]
+  StagingOperatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${EnvironmentName}-operator"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"}
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: OperateTaggedStagingInstances
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "ssm:SendCommand"
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript"
+              - Effect: Allow
+                Action: "ssm:SendCommand"
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals:
+                    "ssm:resourceTag/Project": alzs-well
+                    "ssm:resourceTag/Environment": staging
+              - Effect: Allow
+                Action: ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations", "ssm:ListCommands"]
+                Resource: "*"
+              - Effect: Allow
+                Action: ["ec2:DescribeInstances", "cloudformation:DescribeStacks"]
+                Resource: "*"
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   DatabaseBootstrapPolicy:
     Type: AWS::IAM::Policy
     Condition: EnableDatabaseBootstrap
@@ -770,5 +802,6 @@ Outputs:
   AiTlsSecretArn: {Value: !Ref AiTlsSecret}
   AppLogGroupName: {Value: !Ref AppLogGroup}
   AiLogGroupName: {Value: !Ref AiLogGroup}
+  StagingOperatorRoleArn: {Value: !GetAtt StagingOperatorRole.Arn}
   AppRepositoryUri: {Value: !GetAtt AppRepository.RepositoryUri}
   AiRepositoryUri: {Value: !GetAtt AiRepository.RepositoryUri}

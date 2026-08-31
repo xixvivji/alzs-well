@@ -119,6 +119,7 @@ def main() -> int:
         "separate AI mTLS secret": "  AiTlsSecret:\n",
         "App CloudWatch log group": "  AppLogGroup:\n",
         "AI CloudWatch log group": "  AiLogGroup:\n",
+        "tag-scoped staging operator role": "  StagingOperatorRole:\n",
         "App profile attachment": "IamInstanceProfile: !Ref AppRuntimeInstanceProfile",
         "AI profile attachment": "IamInstanceProfile: !Ref AiRuntimeInstanceProfile",
     }
@@ -144,6 +145,14 @@ def main() -> int:
     )[0]
     if "ecr:PutImage" in permanent_ai_policy:
         errors.append("permanent AI runtime role must not publish ECR images")
+    operator_policy = aws_foundation.split("  StagingOperatorRole:\n", 1)[-1].split(
+        "\n  DatabaseBootstrapPolicy:\n", 1
+    )[0]
+    for marker in ('"ssm:resourceTag/Project": alzs-well', '"ssm:resourceTag/Environment": staging'):
+        if marker not in operator_policy:
+            errors.append(f"staging operator command scope is missing {marker}")
+    if "secretsmanager:GetSecretValue" in operator_policy:
+        errors.append("staging operator role must not read deployment secrets directly")
 
     try:
         app_config = render_compose(APP_COMPOSE, APP_ENV)
