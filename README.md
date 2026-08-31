@@ -11,7 +11,7 @@
 - FastAPI RAG는 승인 문서 ingestion, pgvector hybrid 검색, Spring citation 재검증과 결정론적 폴백을 제공한다.
 - Arctic-ko는 `STAGED_APPROVED`이며 AWS staging에서 승인값·revision·artifact/golden-set hash가 모두 일치할 때만 로드한다. 기본 embedding은 계속 Hash다.
 - 최종 staging은 업무 EC2 + AI EC2 + Private RDS다. 로컬 개발은 단일 Docker Compose를 사용한다.
-- 직원 사건 화면은 ChatGPT 로그인과 서버측 user allowlist를 통과한 사용자만 실제 합성 사건큐를 조회한다.
+- 공개 행원 시연은 현재 고객 capability로 같은 합성 세션을 먼저 검증한 후 단기 직원 capability를 발급한다. 사설 운영 모드는 서버가 서명·issuer·audience·만료·직원 역할을 검증한 RS256 IdP JWT만 신뢰한다.
 - Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 237개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 고객 안심 보호센터는 알림·AI 의향서·장기 변화·감사이력을 한 화면에 묶는다. AI 의향서 현재 상태, 사건 메모·후속관리, 시스템·AI 폴백, 카드·예금·대출·투자·외환·연금·신탁·동의관리, 고객 프로필·접근성·신뢰연락처·이의신청 화면도 실제 API에 연결했다. 공개 화면은 capability 범위의 합성데이터 API만 실행하고 운영 고객정보 조회는 사설 Bearer 인증을 요구한다.
 
 ```bash
@@ -31,6 +31,7 @@ API 개수와 실서비스 준비도를 혼동하지 않도록 단계별 승인 
 [`docs/PRODUCTION_READINESS.md`](./docs/PRODUCTION_READINESS.md)에 고정한다.
 
 AWS 구성은 [`docs/AWS_BACKEND_DEPLOYMENT.md`](./docs/AWS_BACKEND_DEPLOYMENT.md)를 따른다. 실제 고객정보·외부 금융사 호출·자동 거래차단·가족 통지는 금지한다.
+실제 배포 진행 상태와 승인 게이트는 [`docs/STAGING_DEPLOYMENT_CHECKLIST.md`](./docs/STAGING_DEPLOYMENT_CHECKLIST.md)에 기록한다.
 제3자 원문의 이용·배포 조건은 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)를 따르며,
 공개 배포 artifact에는 원문 corpus를 포함하지 않는다.
 
@@ -49,6 +50,7 @@ AWS 구성은 [`docs/AWS_BACKEND_DEPLOYMENT.md`](./docs/AWS_BACKEND_DEPLOYMENT.m
 9. AI ingestion·검색: [`ai-service/README.md`](./ai-service/README.md)
 10. 발표용 전체 리허설: [`docs/DEMO_REHEARSAL.md`](./docs/DEMO_REHEARSAL.md)
 11. 실서비스 전환 게이트: [`docs/PRODUCTION_READINESS.md`](./docs/PRODUCTION_READINESS.md)
+12. Staging 배포 체크리스트: [`docs/STAGING_DEPLOYMENT_CHECKLIST.md`](./docs/STAGING_DEPLOYMENT_CHECKLIST.md)
 
 충돌 시 `최신 대회 공식 공지 → 최종 SSOT → 최종 API 명세 → 실제 구현과 테스트` 순서로 판단하고, 차이가 생기면 문서와 구현을 같은 변경에서 함께 갱신한다.
 

@@ -14,6 +14,17 @@ Private RDS PostgreSQL + pgvector
 
 ## 네트워크와 권한
 
+AWS 루트 자격증명으로 배포하지 않는다. 실제 리소스 생성·변경은 AWS IAM Identity
+Center 전용 permission set 또는 최소 권한의 `alzswell-staging-deployer` 역할을
+AssumeRole한 세션에서만 실행한다. 루트는 계정 복구·보안 설정 외의 일상
+운영에 사용하지 않는다. 배포 역할과 EC2 runtime instance profile은 서로
+분리한다.
+
+실제 VPC·ALB·WAF·EC2·RDS·ECR·Secrets Manager 리소스는 승인된 IaC
+스택으로만 생성한다. 임시 `aws` CLI 명령으로 수동 생성하지 않으며, change
+set/plan에서 월 예상 비용·공인 IP·암호화·삭제 방지·백업 정책을 검토한 후
+적용한다.
+
 | 대상 | 허용 source |
 |---|---|
 | ALB 443 | WAF/인터넷 정책 |
