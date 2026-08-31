@@ -128,8 +128,8 @@
         "ecr:UntagResource"
       ],
       "Resource": [
-        "arn:aws:ecr:ap-northeast-2:${aws:PrincipalAccount}:repository/alzs-well/backend",
-        "arn:aws:ecr:ap-northeast-2:${aws:PrincipalAccount}:repository/alzs-well/ai-service"
+        "arn:aws:ecr:ap-northeast-2:__AWS_ACCOUNT_ID__:repository/alzs-well/backend",
+        "arn:aws:ecr:ap-northeast-2:__AWS_ACCOUNT_ID__:repository/alzs-well/ai-service"
       ]
     },
     {
@@ -147,7 +147,7 @@
         "secretsmanager:UntagResource",
         "secretsmanager:UpdateSecret"
       ],
-      "Resource": "arn:aws:secretsmanager:ap-northeast-2:${aws:PrincipalAccount}:secret:/alzs-well-staging/*"
+      "Resource": "arn:aws:secretsmanager:ap-northeast-2:__AWS_ACCOUNT_ID__:secret:/alzs-well-staging/*"
     },
     {
       "Sid": "NamedRuntimeIdentity",
@@ -176,9 +176,20 @@
         "iam:UntagRole"
       ],
       "Resource": [
-        "arn:aws:iam::${aws:PrincipalAccount}:role/alzs-well-staging-*",
-        "arn:aws:iam::${aws:PrincipalAccount}:instance-profile/alzs-well-staging-*"
+        "arn:aws:iam::__AWS_ACCOUNT_ID__:role/alzs-well-staging-*",
+        "arn:aws:iam::__AWS_ACCOUNT_ID__:instance-profile/alzs-well-staging-*"
       ]
+    },
+    {
+      "Sid": "CreateRequiredServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
+        }
+      }
     },
     {
       "Sid": "CloudFrontApiEntryPoint",

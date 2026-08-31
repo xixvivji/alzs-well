@@ -200,6 +200,14 @@ jobs:
         run: python3 -m pip install cfn-lint==1.55.1
       - name: Lint AWS staging CloudFormation
         run: cfn-lint infra/aws-staging/foundation.yaml
+      - name: Validate AWS execution policy rendering
+        run: |
+          infra/aws-staging/render-cfn-execution-policy.sh 123456789012 \
+            | jq -e '
+                .Version == "2012-10-17"
+                and ([.. | strings | select(contains("__AWS_ACCOUNT_ID__"))] | length) == 0
+                and ([.. | strings | select(contains("123456789012"))] | length) > 0
+              '
       - name: Validate production compose rendering
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
       - name: Boot the isolated stack and smoke test core APIs

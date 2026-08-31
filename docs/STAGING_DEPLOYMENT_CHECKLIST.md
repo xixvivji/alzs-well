@@ -15,8 +15,8 @@
 | Vercel 프로젝트 | 생성 | `alzs-well` 프로젝트 연결, GitHub App 저장소 권한 필요 |
 | Vercel 환경변수 | 미등록 | CloudFront 기본 HTTPS origin과 공유 비밀값 확정 후 Preview·Production 분리 등록 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
-| AWS 배포 주체 | 준비 중 | 역할 생성 완료, 루트 `aws login`은 AssumeRole 불가하여 Identity Center 세션 필요 |
-| AWS IaC | 사전검증 완료 | 비용절감형 CloudFormation 문법·`cfn-lint`·AWS `validate-template` 통과, change set 게이트 필요 |
+| AWS 배포 주체 | 사전검증 완료 | 일회용 비루트 bootstrap으로 deployer AssumeRole 확인 후 사용자·키 즉시 삭제 |
+| AWS IaC | change set 준비 | `alzs-well-staging-20260831-preflight` 55개 추가, 미실행 `AVAILABLE` 상태 |
 | AWS ALZ's well 리소스 | 미생성 | 기존 다른 서비스의 RDS를 재사용하지 않음 |
 | 로컬 이미지 빌드 | 대기 | Docker 엔진 기동 후 immutable digest 생성·스캔 |
 
@@ -25,8 +25,9 @@
 - [ ] AWS 루트 MFA·복구 수단을 확인하고 일상 배포에서 제외한다.
 - [x] `alzswell-staging-deployer`와 별도 CloudFormation execution 역할을 생성한다.
 - [x] CloudFormation execution 역할의 템플릿 전용 정책을 작성하고 Access Analyzer 경고 0건을 확인한다.
-- [ ] 고위험 IAM 변경임을 확인한 뒤 execution 정책 적용을 별도 승인한다.
-- [ ] Identity Center 또는 다른 비루트 단기 세션으로 deployer AssumeRole을 확인한다.
+- [x] 고위험 IAM 변경을 승인받고 기존 렌더링·검증 execution 정책을 적용한다.
+- [ ] 최초 ALB 생성용 서비스 연결 역할 권한 보완을 별도 승인 후 적용한다.
+- [x] 일회용 비루트 주체로 deployer AssumeRole을 확인하고 사용자·Access Key를 즉시 삭제한다.
 - [ ] 배포 역할과 EC2 instance profile, Spring·AI·DB runtime 역할을 분리한다.
 - [ ] GitHub/Vercel/AWS 배포는 장기 access key 대신 OIDC 또는 단기 세션을 사용한다.
 
@@ -36,7 +37,7 @@
 - [x] CloudFront 기본 HTTPS, ALB, WAF, 업무/AI EC2 보안 그룹, Private RDS를 정의한다.
 - [x] ECR immutable tag, Secrets Manager, SSM instance profile, 백업·삭제 방지를 정의한다.
 - [ ] CloudWatch 로그 보존·경보 구성을 정의한다.
-- [ ] plan/change set의 월 예상 비용과 NAT Gateway·VPC Endpoint·ALB·RDS 고정 비용을 승인한다.
+- [ ] 55개 추가 change set과 12일 안전 상한 `$90~105`를 검토하고 실제 실행을 승인한다.
 - [ ] IaC 적용 전 public IP, `0.0.0.0/0`, 원본 비밀값, 데이터베이스 삭제 위험을 검토한다.
 
 ## 3. 이미지·데이터 게이트

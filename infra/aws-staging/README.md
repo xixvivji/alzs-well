@@ -22,8 +22,8 @@ NAT Gateway, ALB, WAF, EC2 2대, RDS, EBS, Secrets Manager는 스택 실행 즉�
 ## 배포 게이트
 
 1. AWS 루트가 아닌 `alzswell-staging-deployer` 세션을 사용한다.
-   CloudFormation execution 역할은 아직 권한이 비어 있으며, 템플릿 전용
-   최소권한 검토가 끝나기 전에는 스택을 실행할 수 없다.
+   CloudFormation execution 역할에는 계정 ID를 렌더링하고 검증한 템플릿 전용
+   최소권한 정책만 적용한다.
 2. 서울 리전의 AWS 관리 CloudFront origin-facing prefix list ID를 확인한다.
 3. `cfn-lint` 및 AWS `validate-template`을 통과한다.
 4. change set은 생성만 하고 자동 실행하지 않는다.
@@ -36,11 +36,22 @@ uvx cfn-lint infra/aws-staging/foundation.yaml
 aws cloudformation validate-template \
   --region ap-northeast-2 \
   --template-body file://infra/aws-staging/foundation.yaml
+
+rendered_policy="$(mktemp)"
+infra/aws-staging/render-cfn-execution-policy.sh 123456789012 > "$rendered_policy"
+aws accessanalyzer validate-policy \
+  --region ap-northeast-2 \
+  --policy-document "file://$rendered_policy" \
+  --policy-type IDENTITY_POLICY
+rm -f "$rendered_policy"
 ```
 
 CloudFormation execution 역할의 사전검토 정책은
 `cfn-execution-policy.json`, 12일 운영비 산정은 `COST_ESTIMATE.md`를 기준으로
-한다. 정책은 IAM Access Analyzer 검증을 통과한 뒤에만 역할에 적용한다.
+한다. 정책 원본의 `__AWS_ACCOUNT_ID__`는 ARN의 계정 구간이므로 IAM 정책 변수로
+사용할 수 없다. `render-cfn-execution-policy.sh`로 실제 12자리 계정 ID를 렌더링하고
+IAM Access Analyzer 검증을 통과한 결과만 역할에 적용한다. 최초 ALB 생성에 필요한
+서비스 연결 역할 권한은 `elasticloadbalancing.amazonaws.com`으로 제한한다.
 AWS CLI `aws login`으로 생성된 루트 세션은 역할을 AssumeRole할 수 없으므로,
 Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다. 장기 access key를
 새로 발급해 우회하지 않는다.
