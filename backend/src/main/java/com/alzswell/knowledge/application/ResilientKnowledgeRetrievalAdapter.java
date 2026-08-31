@@ -26,6 +26,10 @@ public class ResilientKnowledgeRetrievalAdapter implements KnowledgeRetrievalPor
         if(!enabled) return deterministic.retrieve(query);
         try {
             RetrievalResult result=internal.retrieve(query);
+            if(InternalRagKnowledgeRetrievalAdapter.POLICY_ABSTAIN_MODE.equals(result.retrievalMode())
+                    ||InternalRagKnowledgeRetrievalAdapter.NO_MATCH_MODE.equals(result.retrievalMode())) {
+                return result;
+            }
             if(result.hits().isEmpty()&&result.rejectedCitations()>0) {
                 log.warn("All internal knowledge citations were rejected; using deterministic fallback (rejected={})",
                         result.rejectedCitations());

@@ -45,6 +45,12 @@ public final class P0WorkflowRequests {
     ) {
     }
 
+    public record DeferCommand(
+            @NotNull @Positive @JsonAlias("incidentVersion") Long expectedVersion,
+            @NotNull OffsetDateTime deferredUntil
+    ) {
+    }
+
     public record CaseReviewCommand(
             @NotBlank String action,
             @NotNull @Positive @JsonAlias("expectedCaseVersion") Long caseVersion,

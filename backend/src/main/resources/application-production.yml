@@ -10,6 +10,9 @@ app:
     require-https: true
   deployment:
     public-exposure: ${PUBLIC_DEPLOYMENT:true}
+  ai-retrieval:
+    tls:
+      require-https: ${AI_TLS_REQUIRE_HTTPS:true}
   demo:
     staff-bootstrap-token: ${DEMO_STAFF_BOOTSTRAP_TOKEN}
 

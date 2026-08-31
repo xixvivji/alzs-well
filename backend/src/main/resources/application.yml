@@ -106,12 +106,25 @@ app:
     connect-timeout-ms: ${AI_RETRIEVAL_CONNECT_TIMEOUT_MS:500}
     request-timeout-ms: ${AI_RETRIEVAL_REQUEST_TIMEOUT_MS:1500}
     strict-readiness: ${AI_RETRIEVAL_STRICT_READINESS:false}
+    require-for-core-readiness: ${AI_REQUIRE_FOR_CORE_READINESS:${AI_RETRIEVAL_STRICT_READINESS:false}}
     expected-model-status: ${AI_EXPECTED_MODEL_STATUS:}
+    expected-embedding-backend: ${AI_EXPECTED_EMBEDDING_BACKEND:}
+    expected-embedding-dimensions: ${AI_EXPECTED_EMBEDDING_DIMENSIONS:0}
     expected-model-revision: ${AI_EXPECTED_MODEL_REVISION:}
     expected-artifact-sha256: ${AI_EXPECTED_ARTIFACT_SHA256:}
     expected-golden-set-sha256: ${AI_EXPECTED_GOLDEN_SET_SHA256:}
     expected-index-version: ${AI_EXPECTED_INDEX_VERSION:}
     expected-deployment-environment: ${AI_EXPECTED_DEPLOYMENT_ENVIRONMENT:}
+    tls:
+      require-https: ${AI_TLS_REQUIRE_HTTPS:false}
+      key-store: ${AI_TLS_KEY_STORE:}
+      key-store-password: ${AI_TLS_KEY_STORE_PASSWORD:}
+      key-store-type: ${AI_TLS_KEY_STORE_TYPE:PKCS12}
+      trust-store: ${AI_TLS_TRUST_STORE:}
+      trust-store-password: ${AI_TLS_TRUST_STORE_PASSWORD:}
+      trust-store-type: ${AI_TLS_TRUST_STORE_TYPE:PKCS12}
+  ai-assistance:
+    enabled: ${AI_ASSISTANCE_ENABLED:${AI_RETRIEVAL_ENABLED:false}}
   copilot:
     rag-enabled: ${COPILOT_RAG_ENABLED:false}
   synthetic-seed:
@@ -135,7 +148,7 @@ app:
     cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "72"
+    schema: "74"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

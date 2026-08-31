@@ -102,6 +102,71 @@ class P0WorkflowIntegrationTest {
     }
 
     @Test
+    void defersCustomerConfirmationWithVersionedAuditThenAllowsFinalContext() throws Exception {
+        DemoTestClient.Session session = client.ingest(client.create(), "p0-defer-ingest-0001");
+        String deferredUntil = OffsetDateTime.now().plusDays(1).withNano(0).toString();
+        String expectedDeferredUtc = OffsetDateTime.parse(deferredUntil).toInstant().toString();
+        String request = "{\"expectedVersion\":1,\"deferredUntil\":\"%s\"}"
+                .formatted(deferredUntil);
+
+        JsonNode deferred = read(client.customer(post(
+                        "/api/v1/demo/sessions/{s}/alerts/{a}/defer", session.sessionId(), ALERT)
+                .header("Idempotency-Key", "p0-defer-confirmation-0001")
+                .contentType(APPLICATION_JSON).content(request), session));
+        assertThat(deferred.at("/code").asText()).isEqualTo("ALERT_CONFIRMATION_DEFERRED");
+        assertThat(deferred.at("/data/currentState").asText()).isEqualTo("DEFERRED");
+        assertThat(deferred.at("/data/incidentVersion").asLong()).isEqualTo(2);
+        assertThat(deferred.at("/data/deferredUntil").asText()).isEqualTo(expectedDeferredUtc);
+        assertThat(deferred.at("/data/nextAction/type").asText()).isEqualTo("RECHECK_LATER");
+
+        JsonNode replay = read(client.customer(post(
+                        "/api/v1/demo/sessions/{s}/alerts/{a}/defer", session.sessionId(), ALERT)
+                .header("Idempotency-Key", "p0-defer-confirmation-0001")
+                .contentType(APPLICATION_JSON).content(request), session));
+        assertThat(replay.at("/data/command/idempotencyReplayed").asBoolean()).isTrue();
+
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/alerts/{a}", session.sessionId(), ALERT), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.state").value("DEFERRED"))
+                .andExpect(jsonPath("$.data.incidentVersion").value(2))
+                .andExpect(jsonPath("$.data.deferredUntil").value(expectedDeferredUtc));
+        mockMvc.perform(client.customer(get(
+                        "/api/v1/demo/sessions/{s}/alerts/{a}/audit", session.sessionId(), ALERT), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[?(@.eventType == 'CUSTOMER_CONFIRMATION_DEFERRED')]").exists());
+
+        JsonNode completed = read(client.customer(post(
+                        "/api/v1/demo/sessions/{s}/alerts/{a}/context", session.sessionId(), ALERT)
+                .header("Idempotency-Key", "p0-deferred-context-0001")
+                .contentType(APPLICATION_JSON).content("""
+                        {"responseCode":"KNOWN_AND_INTENTIONAL",\
+                         "demoBranchCode":"FIN_MGMT_A_NORMAL_CONTEXT"}
+                        """), session));
+        assertThat(completed.at("/data/previousState").asText()).isEqualTo("DEFERRED");
+        assertThat(completed.at("/data/currentState").asText()).isEqualTo("CLOSED_NORMAL");
+        assertThat(completed.at("/data/incidentVersion").asLong()).isEqualTo(3);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from alert_deferral_event
+                 where demo_session_id=? and demo_run_id=? and alert_id=?
+                """, Integer.class, session.sessionId(), session.demoRunId(), ALERT)).isOne();
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                update alert_deferral_event set deferred_until=deferred_until+interval '1 hour'
+                 where demo_session_id=? and demo_run_id=? and alert_id=?
+                """, session.sessionId(), session.demoRunId(), ALERT))
+                .isInstanceOf(org.springframework.dao.DataAccessException.class)
+                .hasMessageContaining("append-only");
+
+        mockMvc.perform(client.customer(delete(
+                        "/api/v1/demo/sessions/{s}", session.sessionId()), session, false))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("DEMO_SESSION_DISCARDED"));
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from alert_deferral_event where demo_session_id=?",
+                Integer.class, session.sessionId())).isZero();
+    }
+
+    @Test
     void escalatesBranchBThenStopsGuidanceApprovalBeforeDeliveryOrExternalExecution() throws Exception {
         DemoTestClient.Session session = client.ingest(client.create(), "p0-b-ingest-0001");
         JsonNode escalated = applyBranchB(session, "p0-context-b-0001");

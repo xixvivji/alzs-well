@@ -86,8 +86,8 @@ def rank(
         )
     ranked.sort(
         key=lambda item: (
-            -item.score,
             -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
+            -item.score,
             item.chunk.document_id,
             item.chunk.chunk_id,
         )

@@ -13,6 +13,8 @@
 - 오프라인 AI model-runtime 이미지 빌드와 Trivy OS·Python high/critical 검사
 - Docker Compose 설정 렌더링
 - PR에서 새로 도입된 high severity 의존성 검토
+- 위 필수 작업을 하나로 집계하는 `CI quality gate`
+- Java·JavaScript/TypeScript 분석을 집계하는 `CodeQL quality gate`
 
 테스트와 JaCoCo HTML/XML 결과는 GitHub Actions artifact로 14일 보관한다. PR에서는 전체 90%, 변경 파일 80% 기준의 커버리지 댓글을 갱신한다.
 Maven 저장소가 일시적으로 `429 Too Many Requests`를 반환한 경우에만 백엔드 검증을 최대 3회 재시도한다. 코드·테스트·커버리지 실패는 즉시 실패시키며, 선행 Gradle 실패로 리포트가 생성되지 않은 경우 artifact 업로드는 원래 실패 원인을 덮지 않고 경고만 남긴다.
@@ -34,12 +36,16 @@ Dependabot은 매주 월요일 다음 생태계를 `develop` 대상으로 확인
 
 - Gitleaks는 PR, `develop`·`main` push, 매주 정기 실행에서 전체 Git 이력을 검사한다.
 - SpotBugs/FindSecBugs는 기존 네 개의 필수 상태검사 중 `Backend test and coverage` 안에서 실행되며, 검토된 내부 상수 SQL 조립 등 오탐만 `backend/config/spotbugs-exclude.xml`에 좁게 기록한다.
-- npm audit은 high 이상이면 프론트 필수 상태검사를 실패시킨다. 현재 남은 moderate 항목은 배포 런타임이 아닌 Drizzle 개발 도구의 구형 esbuild 경로이며, 무리한 major downgrade 대신 상위 패치를 추적한다.
+- npm audit은 high 이상이면 프론트 필수 상태검사를 실패시킨다. 프론트를 Vercel Next.js로 전환하면서 사용하지 않던 Drizzle·Cloudflare 개발 도구를 제거했고, 현재 잠금 의존성 감사 결과는 취약점 0건이다.
 - `uv audit --locked`는 Linux Python 3.12 기준으로 model-runtime 그룹까지 검사한다. 이어서 `Dockerfile.model-runtime`을 실제 빌드하고 Trivy가 이미지의 OS·Python high/critical 취약점을 차단한다.
 - CodeQL은 Java와 JavaScript/TypeScript를 대상으로 실행하며 저장소 변수 `CODEQL_ENABLED=true`로 활성화했다.
 - `knowledge/official-source/**`는 RAG 근거 보존용 제3자 공개 원문 사본이며 애플리케이션에서 제공하거나 실행하지 않으므로 JavaScript CodeQL 분석 대상에서 제외한다. 애플리케이션·프록시·테스트 코드는 제외하지 않는다.
 - CodeQL 경고 억제·오탐 분류는 근거를 소스와 보안 경고 이력에 함께 기록한 경우만 허용한다. 현재 CSRF 오탐 분류는 쿠키·세션 없이 명시적 Bearer/Capability 헤더로 인증하고, GET의 유일한 쓰기가 append-only 접근 감사인 핸들러에만 적용한다.
 - Dependency Review는 저장소 변수 `DEPENDENCY_REVIEW_ENABLED=true`로 활성화했다.
+- 브랜치 ruleset은 개별 작업 일부만 선택하지 않고 `CI quality gate`,
+  `CodeQL quality gate`, `Secret scan`을 필수 상태검사로 사용한다. 집계 작업은 선행 작업이
+  실패·취소되거나 예기치 않게 건너뛰어지면 실패한다. Dependency Review는 기능이 비활성화된
+  push에서는 `skipped`를 허용하지만 활성화된 PR에서 실패하면 전체 게이트를 실패시킨다.
 - 공개 저장소의 GitHub Secret Scanning과 Push Protection을 활성화했으며 Gitleaks 전체 이력 검사도 독립된 방어선으로 유지한다.
 
 민감정보는 `.env.example`에도 실제 값을 넣지 않는다. 비밀이 발견되면 파일 삭제만으로 끝내지 말고 해당 자격증명을 먼저 폐기·회전한 뒤 Git 이력 정리 여부를 판단한다.

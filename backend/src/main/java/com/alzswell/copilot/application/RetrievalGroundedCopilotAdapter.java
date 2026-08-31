@@ -45,6 +45,9 @@ public class RetrievalGroundedCopilotAdapter implements CopilotPort {
             RetrievalResult result = retrievalPort.retrieve(new RetrievalQuery(
                     safeQuery(facts), LocalDate.now(clock.withZone(SERVICE_ZONE)), "STAFF",
                     List.of("PROTECTION_STAFF"), List.of("STAFF"), 3));
+            if ("INTERNAL_RAG_POLICY_ABSTAIN".equals(result.retrievalMode())) {
+                return policyAbstained(facts);
+            }
             if (result.fallbackUsed() || !"INTERNAL_RAG_HYBRID".equals(result.retrievalMode())
                     || result.hits().isEmpty()) return deterministic.generate(facts);
             CopilotDraft base = deterministic.generate(facts);
@@ -60,6 +63,21 @@ public class RetrievalGroundedCopilotAdapter implements CopilotPort {
         } catch (RuntimeException exception) {
             return deterministic.generate(facts);
         }
+    }
+
+    private CopilotDraft policyAbstained(CopilotFacts facts) {
+        return new CopilotDraft(
+                "정책상 이 요청에는 안내 초안을 만들 수 없습니다. 승인된 절차에 따라 사람이 직접 검토해 주세요.",
+                List.of(),
+                List.of("승인된 업무 지침과 고객 동의 범위를 직접 확인"),
+                List.copyOf(facts.reasonCodes()),
+                "POLICY_GUARDRAIL",
+                false,
+                false,
+                false,
+                "INTERNAL_RAG_POLICY_ABSTAIN",
+                List.of()
+        );
     }
 
     private String safeQuery(CopilotFacts facts) {

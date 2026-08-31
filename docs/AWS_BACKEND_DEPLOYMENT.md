@@ -6,8 +6,8 @@
 Internet → WAF → HTTPS ALB (public subnet)
                     ↓
 업무 EC2 (private) ─ Nginx + Spring Boot
-                    ↓ http://ai.internal:8000, 내부 토큰
-AI EC2 (private) ─ FastAPI + Arctic-ko + SSM 전용 ingestion CLI
+                    ↓ mTLS https://ai.internal:8443, 내부 토큰
+AI EC2 (private) ─ mTLS Nginx + FastAPI + Arctic-ko + SSM 전용 ingestion CLI
                     ↓ TLS
 Private RDS PostgreSQL + pgvector
 ```
@@ -18,13 +18,20 @@ Private RDS PostgreSQL + pgvector
 |---|---|
 | ALB 443 | WAF/인터넷 정책 |
 | 업무 EC2 8080 | ALB 보안그룹만 |
-| AI EC2 8000 | 업무 EC2 보안그룹만 |
+| AI EC2 8443 | 업무 EC2 보안그룹만 |
 | RDS 5432 | 업무 EC2·AI EC2 보안그룹만 |
 | SSH | 차단; Session Manager 사용 |
 
-Spring, AI, RDS는 public IP를 갖지 않는다. AI health/search와 ingestion은 ALB listener rule에 추가하지 않는다. 사설 Route 53 zone에 `ai.internal` A record를 만든다. 인터넷 egress를 닫는 환경은 SSM 계열, ECR API/Docker, Secrets Manager, CloudWatch Logs interface endpoint와 S3 gateway endpoint를 준비한다. 필요하면 KMS·STS endpoint를 추가한다.
+Spring, AI, RDS는 public IP를 갖지 않는다. FastAPI 8000은 AI EC2 host에 publish하지 않고
+같은 EC2의 mTLS gateway에서만 접근한다. AI health/search와 ingestion은 public ALB listener
+rule에 추가하지 않는다. 사설 Route 53 zone에 `ai.internal` A record를 만들고 서버 인증서의
+SAN에도 같은 이름을 포함한다. 인터넷 egress를 닫는 환경은 SSM 계열, ECR API/Docker,
+Secrets Manager, CloudWatch Logs interface endpoint와 S3 gateway endpoint를 준비한다.
+필요하면 KMS·STS endpoint를 추가한다.
 
-업무 Compose의 `app` network는 Nginx↔Spring 전용 internal bridge이고 Spring만 별도 `egress` bridge를 통해 사설 AI/RDS 주소에 접근한다. EC2 보안그룹 egress는 AI 8000, RDS 5432, 필요한 VPC endpoint로 제한한다.
+업무 Compose의 `app` network는 Nginx↔Spring 전용 internal bridge이고 Spring만 별도 `egress`
+bridge를 통해 사설 AI/RDS 주소에 접근한다. AI Compose도 FastAPI↔mTLS gateway 전용 internal
+bridge를 사용한다. EC2 보안그룹 egress는 AI 8443, RDS 5432, 필요한 VPC endpoint로 제한한다.
 
 ## 배포 파일
 
@@ -34,7 +41,16 @@ Spring, AI, RDS는 public IP를 갖지 않는다. AI health/search와 ingestion�
 
 예제의 `INVALID` 값은 기동용 값이 아니다. 이미지에는 ECR immutable digest를 사용한다. 비밀번호·내부 토큰·proxy secret은 Secrets Manager에서 주입하고 Git, AMI, user-data, CloudWatch 로그에 남기지 않는다.
 
-RDS는 `rds.force_ssl=1`, 저장 암호화, 자동 백업, 삭제 방지를 적용한다. Spring runtime/migration 역할과 AI runtime/ingestion 역할을 분리하며 관리자 계정은 애플리케이션에 전달하지 않는다. AWS RDS CA bundle을 읽기 전용 mount하고 `sslmode=verify-full`을 강제한다.
+RDS는 `rds.force_ssl=1`, 저장 암호화, 자동 백업, 삭제 방지를 적용한다. Spring runtime/migration 역할과 AI runtime/ingestion 역할을 분리하며 관리자 계정은 애플리케이션에 전달하지 않는다. AWS RDS CA bundle을 읽기 전용 mount하고 `sslmode=verify-full`을 강제한다. 업무 EC2에는 AI client PKCS#12 keystore와 사설 CA truststore를 읽기 전용으로 mount한다. AI EC2에는 서버 인증서·개인키와 client CA를 mount하며 개인키와 비밀번호는 Secrets Manager·SSM 배포 단계에서만 주입한다.
+
+| 용도 | DB 역할 |
+|---|---|
+| Spring runtime | `alzswell_app` |
+| Flyway migration | `alzswell_migrator` |
+| AI 검색 runtime | `alzswell_ai_runtime` |
+| AI 승인 문서 ingestion | `alzswell_ai_ingestor` |
+
+Compose 기본값과 Secrets Manager에서 주입하는 사용자명은 `docker/create-database-roles.sh`가 생성하는 역할명과 정확히 일치해야 한다. CI의 AWS 배포 계약 검사는 이 값이 어긋나면 실패한다.
 
 ## 모델 기동 게이트
 
@@ -47,7 +63,12 @@ stagedApprovalEnabled == true
 revision, model SHA-256, golden-set SHA-256 일치
 ```
 
-Spring strict readiness는 FastAPI `/health`에서 같은 status/revision/hash/index/environment를 다시 확인한다. 불일치하거나 AI가 응답하지 않으면 AWS staging target은 ready가 되지 않는다. 로컬 기본값은 strict가 아니므로 AI 장애 시 결정론적 템플릿 폴백을 유지한다. RDS 장애 시 DB 기반 검색을 중단하고 readiness를 실패시킨다.
+Spring의 AI feature readiness는 FastAPI `/readiness`에서 `service=ai-rag`, 승인 embedding backend와
+차원, 같은 status/revision/hash/index/environment, DB·검색 계약을 다시 확인한다. 예상 metadata가
+하나라도 비어 있거나 런타임 값이 불일치하거나 AI가 응답하지 않으면 AI 기능은
+`DOWN/MISMATCH`가 되지만, 공모전 staging의 core readiness는 유지해 결정론적 템플릿 폴백으로
+시연을 계속한다. 승인 모델이 없으면 전체 트래픽도 막아야 하는 배포만
+`AI_REQUIRE_FOR_CORE_READINESS=true`를 사용한다. RDS 장애 시 DB 기반 검색은 중단한다.
 
 ## 배포 순서
 
@@ -59,4 +80,6 @@ Spring strict readiness는 FastAPI `/health`에서 같은 status/revision/hash/i
 6. SMOKE → DEMO → 조회·탐지 → RAG citation E2E를 검증한다.
 7. AI 중단·RDS 장애·이전 image digest 복귀 훈련을 실행한다.
 
-ingestion은 [`runbooks/AWS_AI_INGESTION.md`](./runbooks/AWS_AI_INGESTION.md), 장애 대응은 [`runbooks/AWS_FAILURE_RECOVERY.md`](./runbooks/AWS_FAILURE_RECOVERY.md)를 따른다.
+ingestion은 [`runbooks/AWS_AI_INGESTION.md`](./runbooks/AWS_AI_INGESTION.md), mTLS 인증서 운영은
+[`runbooks/AWS_AI_MTLS.md`](./runbooks/AWS_AI_MTLS.md), 장애 대응은
+[`runbooks/AWS_FAILURE_RECOVERY.md`](./runbooks/AWS_FAILURE_RECOVERY.md)를 따른다.

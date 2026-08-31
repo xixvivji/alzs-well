@@ -21,6 +21,7 @@ def test_loads_database_configuration_with_safe_defaults() -> None:
     assert config.port == 5432
     assert config.sslmode == "prefer"
     assert config.connect_timeout == 5
+    assert config.statement_timeout_ms == 1500
     assert "not-a-real-password" not in repr(config)
 
 
@@ -32,6 +33,9 @@ def test_loads_database_configuration_with_safe_defaults() -> None:
         ("ALZS_AI_DB_PORT", "65536"),
         ("ALZS_AI_DB_CONNECT_TIMEOUT", "0"),
         ("ALZS_AI_DB_CONNECT_TIMEOUT", "31"),
+        ("ALZS_AI_DB_STATEMENT_TIMEOUT_MS", "99"),
+        ("ALZS_AI_DB_STATEMENT_TIMEOUT_MS", "10001"),
+        ("ALZS_AI_DB_STATEMENT_TIMEOUT_MS", "invalid"),
         ("ALZS_AI_DB_SSLMODE", "unsafe-mode"),
     ],
 )

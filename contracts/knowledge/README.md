@@ -230,3 +230,34 @@ AI 파생 `document_snapshot`과 `chunk`만 조회하여 역할 교집합, audie
 INTERNAL_POLICY > PUBLIC_GUIDE > PUBLIC_NOTICE > FORM > SYNTHETIC_FIXTURE`다. 따라서 과거
 보도자료가 같은 주제의 현행 법령보다 먼저 제시되지 않는다. 문서유형 우선순위는 ACL·승인·활성·
 효력기간 필터를 우회하지 않으며, 임계값 미만 문서를 검색 결과에 추가하지도 않는다.
+
+### 검색 결과 상태와 Spring 처리
+
+`search-response.schema.json`의 `outcome`, `retryable`, `reasonCode`는 빈 결과의 원인을
+명시한다. 서버는 기존 `contractVersion`, `requestId`, `queryHash`, `results` 필드를 그대로
+유지하므로 이전 Spring 클라이언트는 알 수 없는 필드를 무시하는 동안 기존 HTTP 상태와 빈
+`results` 처리로 안전하게 동작할 수 있다. 신규 클라이언트는 다음 의미를 강제해야 한다.
+
+| HTTP | `outcome` | `reasonCode` | Spring 처리 |
+|---|---|---|---|
+| 200 | `RESULTS` | `null` | 비어 있지 않은 인용을 재검증한 뒤에만 사용 |
+| 200 | `POLICY_ABSTAIN` | `POLICY_GUARDRAIL` | 의도적 정책 거절로 종료하고 결정론적 답변으로 우회하지 않음 |
+| 200 | `NO_MATCH` | `NO_RELEVANT_MATCH` | 재시도하지 않고 근거 없음으로 표시하며, 제품 계약이 허용한 비-AI 안내만 사용 |
+| 503 | `INDEX_UNAVAILABLE` | 복구 가능한 안전 오류코드 | 장애 폴백을 사용하고 운영 재시도·알림 대상으로 분류 |
+
+`INDEX_UNAVAILABLE`의 `reasonCode`는 `STORAGE_UNAVAILABLE`, `SEARCH_TIMEOUT`,
+`EMBEDDING_MODEL_UNAVAILABLE`, `EMBEDDING_VECTOR_INVALID` 중 하나이며 `retryable=true`다.
+나머지 상태는 `retryable=false`다. `POLICY_ABSTAIN`을 `NO_MATCH`나 인덱스 장애로 바꾸어
+재검색하면 정책 가드를 우회하므로 금지한다.
+
+### 검색 자원 상한과 준비 상태
+
+운영 SQL은 전문검색 후보와 벡터 후보를 각각 최대 500개로 제한하고, 임계값을 통과한 결합
+후보에 권위 우선·점수 차순 정렬을 적용한다. PostgreSQL 연결에는 기본 1,500ms의
+`statement_timeout`을 적용한다. `ALZS_AI_DB_STATEMENT_TIMEOUT_MS`는 100~10,000ms 범위에서만
+설정할 수 있고, 초과 쿼리는 `SEARCH_TIMEOUT`인 `INDEX_UNAVAILABLE`로 반환한다.
+
+`GET /health`는 프로세스 생존만 확인하며 모델이나 DB를 로드하지 않는다. 트래픽 수신 판단은
+`GET /readiness`를 사용한다. readiness는 DB 연결, 검색 감사 쓰기 권한, 현재 승인 문서의 현재
+모델 임베딩, 해당 모델의 HNSW 인덱스, 실제 벡터 거리 연산과 세 가지 assistance 계약을 모두
+검사한다. 하나라도 실패하면 HTTP 503과 `status=NOT_READY`를 반환한다.

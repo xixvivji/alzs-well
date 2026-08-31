@@ -1,8 +1,8 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.30.0**
+> 문서 버전: **1.32.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-25 (Asia/Seoul)**
+> 기준일: **2026-08-31 (Asia/Seoul)**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
 > 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
@@ -14,32 +14,32 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **272개** |
+| 전체 API operation | **281개** |
 | API 도메인 | **26개** |
-| P0-A 기존 핵심 데모 | **12개** |
+| P0-A 기존 핵심 데모·운영 안전성 | **15개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
-| P0 구현 목표 합계 | **23개** |
-| P1 제품 핵심 백로그 | **170개** |
+| P0 구현 목표 합계 | **26개** |
+| P1 제품 핵심 백로그 | **176개** |
 | P2 은행·증권 확장 백로그 | **79개** |
-| ALZ's well 소유 `OWNED` | **183개** |
+| ALZ's well 소유 `OWNED` | **192개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 272개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 시스템 4개, 데모 세션·시나리오 5개, 금융생활 읽기 6개, 고객 알림 4개, 행원 사건 4개를 합한 **23개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 281개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 업무 API 227개 + staging 보안 발급 API 1개 |
+| `IMPLEMENTED` | 문서화된 업무 API 236개 + staging 직원 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 45개 |
 
-업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개와 외환 읽기·모의계산 5개를 포함해 227개다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 221개가 보이고, 고객 기능까지 명시적으로 켠 사설 검증 환경에서는 직원 발급 API를 포함해 총 228개가 노출된다. production에서는 합성 인증 API가 강제 비활성화되며 실제 IdP 어댑터는 아직 구현 전이다.
+문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 236개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 237개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라지며 production에서는 합성 인증 API가 강제 비활성화된다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
 
-여기서 API 272개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 281개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
-1. P0 23개를 먼저 구현하고 테스트한다.
+1. P0 26개를 먼저 구현하고 테스트한다.
 2. P1과 P2는 전체 경로·소유권을 선점하되 일정에 따라 후순위로 미룬다.
 3. `REFERENCE_ONLY`는 Spring Controller나 실행 버튼을 생성하지 않는다.
 4. 실제 이체·주문·대출·계좌개설·지급정지·한도변경·외부 연락은 공개 데모에서 실행하지 않는다.
@@ -140,9 +140,9 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 26개 도메인·272개 API 마스터 카탈로그
+3. 26개 도메인·281개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
-5. P0-A 12개 상세 계약
+5. P0-A 15개 상세 계약
 6. P0-B 11개 상세 계약
 7. 표준 상태·보안·수용기준·변경관리
 
@@ -386,7 +386,7 @@ T0는 경보 생성 시점의 불변 원시거래·기준선·특징·사유코�
 
 #### 현재 P0 계약의 보완 권고
 
-본 문서의 P0-A 12개 API는 핵심 흐름을 지원한다. SSOT가 요구하는 “12개월 금융생활 화면”을 프론트가 고정 fixture에 의존하지 않고 구성하기 위해 다음 읽기 계약을 P0-B로 함께 고정한다.
+본 문서의 P0-A 15개 API는 핵심 흐름과 readiness 분리·고객 확인 유예를 지원한다. SSOT가 요구하는 “12개월 금융생활 화면”을 프론트가 고정 fixture에 의존하지 않고 구성하기 위해 다음 읽기 계약을 P0-B로 함께 고정한다.
 
 - 데모 세션 상태 조회
 - 고객 금융생활 요약 조회
@@ -854,22 +854,22 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **272** |
-| P0-A 기존 핵심 데모 | **12** |
+| 전체 | **281** |
+| P0-A 기존 핵심 데모·운영 안전성 | **15** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **170** |
+| P1 제품 핵심 | **176** |
 | P2 은행·증권 확장 | **79** |
-| OWNED | **183** |
+| OWNED | **192** |
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 실제 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개를 포함해 총 227개다. 별도 staging 보안 발급 API 1개까지 포함하면 구현 코드는 228개 operation이다. development 기본 OpenAPI에는 기능 플래그로 숨긴 고객 프로필 경로를 제외한 221개가 노출된다. 나머지 45개는 P2·참조 카탈로그이며 구현 완료로 표현하지 않는다.
+현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 총 236개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 237개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
 | 우선순위 | 의미 |
 |---|---|
-| P0-A | 본 문서 5장에 확정된 공모전 핵심 데모 12개 |
+| P0-A | 본 문서 5장에 확정된 공모전 핵심 데모·운영 안전성 15개 |
 | P0-B | 공개 데모의 세션 격리를 유지하면서 뱅킹 셸을 완성하는 11개 |
 | P1 | 금융회사 PoC와 제품 핵심 기능 |
 | P2 | 은행·카드·증권 기능 확장 또는 장기 백로그 |
@@ -904,11 +904,13 @@ REFERENCE_ONLY 작업에는 OpenAPI 확장 속성 x-public-demo-enabled: false�
 
 ### 3.3 도메인별 API
 
-#### 3.3.1 시스템·데모 — 16개
+#### 3.3.1 시스템·데모 — 18개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
 | P0-A | GET | /api/v1/system/health | 상태와 데모 안전 가드레일 확인 | OWNED |
+| P0-A | GET | /api/v1/system/core-readiness | 핵심 업무 의존성 준비상태 | OWNED |
+| P0-A | GET | /api/v1/system/ai-readiness | AI 기능 의존성 준비상태 | OWNED |
 | P0-B | GET | /api/v1/system/readiness | DB·Flyway·필수 구성 준비상태 | OWNED |
 | P0-B | GET | /api/v1/system/public-config | 공개 프론트 설정과 합성데이터 모드 | OWNED |
 | P0-B | GET | /api/v1/system/versions | 알고리즘·정책·API 버전 | OWNED |
@@ -979,6 +981,19 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 승인은 법적 후견·유언·대리권을 만들지 않는다는 고정 면책 확인이 필수다. 행원 응답은 `shareScopes`에
 포함된 항목만 반환하며 철회된 의향은 조회하지 않는다. 모든 응답은 `legallyBinding=false`,
 `healthInferenceUsed=false`이며 의향은 건강상태·위험도·사건 우선순위 산정에 사용하지 않는다.
+
+#### 3.3.3-B 데모 AI 금융생활 지원 — 6개
+
+| 우선순위 | Method | Path | 용도 | 경계 |
+|---|---|---|---|---|
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent-suggestions | 고객 발화를 확인 가능한 의향 초안으로 구조화 | OWNED |
+| P1 | PUT | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent | 고객이 수정한 데모 의향 초안 저장 | OWNED |
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent/approve | 법적 효력 제한 확인 후 데모 의향 승인 | OWNED |
+| P1 | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent | 현재 데모 의향 조회 | OWNED |
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis | 30·60·90일 설명 가능한 장기 변화 분석 실행 및 감사이력 기록 | OWNED |
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/plain-language | 고객 선호에 맞는 쉬운말·음성용 문장 생성 | OWNED |
+
+이 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 내부 FastAPI가 구조화 임베딩 보조, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·금지 표현·크기·버전·승인을 다시 검증한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -1225,7 +1240,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 
 마지막 API는 공개 데모에서 호출하지 않는다. 데모에서는 정책 평가 결과 BLOCKED_BY_CONSENT만 감사로그에 남긴다.
 
-#### 3.3.16 기준선·신호·경보·생활맥락 — 18개
+#### 3.3.16 기준선·신호·경보·생활맥락 — 19개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
@@ -1246,6 +1261,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/alerts | 기존 데모 고객 경보 목록 | OWNED |
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/alerts/{alertId} | 기존 데모 경보 상세 | OWNED |
 | P0-A | POST | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context | 기존 데모 맥락 응답·재평가 | OWNED |
+| P0-A | POST | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer | 고객 확인 유예·감사이력 추가 | OWNED |
 | P0-A | GET | /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit | 기존 데모 판단·동의 감사이력 | OWNED |
 
 경보 이의신청은 Flyway V54부터 구현한다. 고객 본인의 경보와 `ALERT_APPEAL` 권한, `expectedVersion`, `Idempotency-Key`를 모두 검사하고 민감정보 검사를 통과한 사유만 추가 전용으로 저장한다. 허용 상태의 경보를 `BANK_REVIEW`로 전환하고 사람의 검토 사건을 한 건 생성하지만 금융 차단·이체·외부 알림은 실행하지 않는다. 동일 경보의 이의신청은 한 건으로 제한하고 통합 감사 API에 사유코드와 사건 ID를 남긴다.
@@ -1464,9 +1480,9 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 
 ### 3.4 구현 순서
 
-1. 본 문서 5장의 P0-A 12개 계약을 구현한다.
+1. 본 문서 5장의 P0-A 15개 계약을 구현한다.
 2. P0-B 11개는 공개 데모 안전설정 5개와 sessionId가 포함된 뱅킹 셸 읽기 API 6개로 한정한다.
-3. P0 총 23개를 공모전 MVP의 구현 경계로 삼는다.
+3. P0 총 26개를 공모전 MVP의 구현 경계로 삼는다.
 4. P0-B 금융 데이터는 실제 금융사 대신 세션별 SYNTHETIC_PROVIDER에서만 제공한다.
 5. P1은 고객 화면, 행원 업무, 공식 근거, 감사 추적 순으로 확장한다.
 6. P2는 시간이 부족하면 전부 문서 상태로 유지한다.
@@ -1476,12 +1492,12 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 
 | 웨이브 | 범위 | 누적 API |
 |---|---|---:|
-| Wave 1 | P0-A 핵심 A/B 데모 | 12 |
-| Wave 2 | P0-B 세션 격리 뱅킹 셸 | 23 |
-| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 170 |
-| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 255 |
+| Wave 1 | P0-A 핵심 A/B 데모·운영 안전성 | 15 |
+| Wave 2 | P0-B 세션 격리 뱅킹 셸 | 26 |
+| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 176 |
+| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 261 |
 
-발표에서는 “272개 API 카탈로그를 설계했고 228개 코드 operation을 구현했다”고 표현한다. 272개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “281개 API 카탈로그를 설계했고 237개 코드 operation을 구현했다”고 표현한다. 281개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -1518,7 +1534,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 
 `CUSTOMER_DEMO` capability는 세션 조회·적재·Reset, 금융생활 읽기, 알림 조회와 맥락 제출에만 사용할 수 있다. `DEMO_STAFF` capability는 행원 사건큐·상세·검토·안내계획과 필요한 감사조회에만 사용할 수 있다. 역할 범위를 벗어난 유효 토큰은 `403 DEMO_CAPABILITY_SCOPE_FORBIDDEN`을 반환한다. 두 토큰을 하나로 합치거나 고객 화면에 staff 토큰을 전달하지 않는다.
 
-현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 opaque bootstrap Bearer 토큰으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급하며, bootstrap 토큰은 직원 프론트 번들에 넣지 않고 신뢰된 staging 운영자만 사용한다. 두 화면은 각 역할 token을 브라우저 메모리에만 보관한다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
+현재 P0의 `POST /api/v1/demo/sessions`는 고객 token만 발급한다. 직원 token은 opaque bootstrap Bearer 토큰으로 보호된 `POST /api/v1/demo/staff/sessions/{sessionId}/capability`에서 별도로 발급한다. 공모전 공개 시연의 Vercel BFF는 브라우저가 보낸 현재 고객 capability로 같은 합성 세션을 먼저 조회·검증한 뒤에만 서버 전용 bootstrap 토큰을 사용하며, 이 토큰은 프론트 번들에 넣지 않는다. 두 역할 capability는 분리하고 고객 capability로 사건 API를 호출할 수 없다. 이 임시 발급 절차는 기업 직원 신원인증을 대체하지 않으므로 AWS 배포는 합성데이터 staging으로 한정한다. 실제 직원 화면 운영 전에는 기업 IdP·MFA·RBAC를 붙인 인증·발급 경로로 교체한다.
 
 시나리오가 적재되면 서버는 `demoRunId`를 발급한다. alert·context·audit·case와 시나리오 파생 금융생활 조회는 `{sessionId, demoRunId}` 복합범위에 귀속된다. Reset 뒤 이전 run ID로 변경 요청을 보내면 `409 DEMO_RUN_STALE`을 반환하고 이전 run의 감사이력은 읽기 전용으로만 보존한다.
 
@@ -1625,7 +1641,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 
 ## 5. P0-A 핵심 데모 상세 계약
 
-아래 P0-A 12개는 모두 `IMPLEMENTED`다. `FIN_MGMT_AB_001`, 역할별 capability, `demoRunId`, T0/T1 분리, `requestHash`, 사건 상태전이와 외부실행 금지를 코드·Flyway·계약시험에 함께 반영했다.
+아래 P0-A 15개는 모두 `IMPLEMENTED`다. `FIN_MGMT_AB_001`, 역할별 capability, `demoRunId`, T0/T1 분리, `requestHash`, 사건 상태전이와 외부실행 금지, 핵심·AI readiness 분리와 고객 확인 유예를 코드·Flyway·계약시험에 함께 반영했다.
 
 ### 5.1 시스템 API
 
@@ -1658,6 +1674,59 @@ GET /api/v1/system/health
 ```
 
 `syntheticDataOnly=false` 또는 `externalActionsEnabled=true`이면 공개 데모 프론트는 실행을 중단하고 설정 오류를 표시한다.
+
+#### 5.1.2 핵심 업무 readiness
+
+`IMPLEMENTED`
+
+```http
+GET /api/v1/system/core-readiness
+```
+
+DB 연결, Flyway V74, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "code": "SYSTEM_CORE_READY",
+  "data": {
+    "ready": true,
+    "status": "READY",
+    "checks": {
+      "database": "UP",
+      "flyway": "UP",
+      "syntheticFixtures": "UP",
+      "policyCatalog": "UP",
+      "detectionPolicy": "UP",
+      "safeGuardrails": "UP"
+    }
+  }
+}
+```
+
+#### 5.1.3 AI 기능 readiness
+
+`IMPLEMENTED`
+
+```http
+GET /api/v1/system/ai-readiness
+```
+
+Spring이 내부 FastAPI의 `/readiness`를 확인해 승인된 모델·index·DB 최소권한·검색 probe·assistance 계약이 모두 유효한지 검증한다. 준비되면 `SYSTEM_AI_READY`, 불일치·무응답이면 `503 SYSTEM_NOT_READY`와 `aiRetrieval` 세부 상태를 반환한다. 이 실패를 핵심 서비스 장애로 오인하지 않고 화면에서는 “AI 보조 기능 일시 중단, 검증된 템플릿 사용 중”으로 표시한다.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "code": "SYSTEM_AI_READY",
+  "data": {
+    "ready": true,
+    "status": "READY",
+    "checks": { "aiRetrieval": "UP" }
+  }
+}
+```
 
 ---
 
@@ -1700,7 +1769,7 @@ Access-Control-Expose-Headers: X-Trace-Id, X-Demo-Customer-Capability
 }
 ```
 
-고객 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. 고객 프론트는 브라우저 메모리에만 보관하고 URL, `localStorage`, `sessionStorage`, 쿠키에는 저장하지 않는다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
+고객 capability 원문은 JSON 본문에 넣지 않으며 이 응답 이후 다시 조회할 수 없다. Vercel 공개 배포에서는 BFF가 생성 응답의 capability 헤더를 제거하고 `Secure`·`HttpOnly`·`SameSite=Strict` host cookie로 전환한다. 자바스크립트와 URL, `localStorage`, `sessionStorage`에는 원문을 저장하지 않고, BFF가 AWS 요청 시에만 `X-Demo-Capability` 헤더로 변환한다. 로컬에서 백엔드를 직접 호출하는 개발 모드는 capability를 모듈 메모리에만 보관한다. 서버는 SHA-256 hash만 저장하며 역할·세션·만료를 검증하고, gateway rate limit과 애플리케이션 활성 세션 quota를 함께 적용한다.
 
 #### 5.2.1-A 직원 capability 발급
 
@@ -2211,7 +2280,49 @@ Content-Type: application/json
 
 고객의 `KNOWN_AND_INTENTIONAL` 응답만으로 강한 신호를 자동 해제하지 않는다. 구조적 근거가 없거나 불일치하면 `PENDING_BANK_REVIEW`로 전환한다.
 
-#### 5.3.4 알림 감사이력
+#### 5.3.4 고객 확인 유예
+
+`IMPLEMENTED`
+
+```http
+POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer
+Idempotency-Key: defer-0001
+X-Demo-Capability: {opaque-customer-capability}
+X-Demo-Run-Id: RUN_FIN_MGMT_A_001
+Content-Type: application/json
+```
+
+```json
+{
+  "expectedVersion": 1,
+  "deferredUntil": "2026-09-01T09:00:00+09:00"
+}
+```
+
+`deferredUntil`은 서버 현재 시각보다 미래이고 7일 이내여야 한다. 서버는 세션·run·고객 capability·멱등키·현재 `AWAITING_CONTEXT` 상태와 낙관적 버전을 모두 확인한 뒤 별도 추가 전용 유예 이벤트와 감사이력을 기록한다. 생체인증, 이체 제한, 외부 연락은 실행하지 않는다.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "code": "ALERT_CONFIRMATION_DEFERRED",
+  "data": {
+    "alertId": "ALERT_FIN_MGMT_001",
+    "incidentVersion": 2,
+    "previousState": "AWAITING_CONTEXT",
+    "currentState": "DEFERRED",
+    "deferredUntil": "2026-09-01T09:00:00+09:00",
+    "nextAction": {
+      "type": "RECHECK_LATER",
+      "actionCode": "CONFIRM_CONTEXT"
+    }
+  }
+}
+```
+
+동일 멱등키와 동일 요청은 최초 응답을 재생하고, 다른 요청 본문은 충돌로 거절한다. 이미 생활맥락이 제출됐거나 버전이 달라진 경우에도 덮어쓰지 않고 `409`를 반환한다.
+
+#### 5.3.5 알림 감사이력
 
 `IMPLEMENTED`
 
@@ -2240,7 +2351,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "72",
+        "schemaVersion": "74",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2694,7 +2805,7 @@ Content-Type: application/json
 }
 ```
 
-이 API의 `APPROVE`는 상담 계획 승인만 뜻한다. 지급정지·이체차단·한도변경·외부 연락 승인이나 고객 전달 완료로 해석하지 않는다. `CLOSED_GUIDANCE_DELIVERED`는 별도 전달 확인 이벤트가 기록된 뒤에만 사용할 수 있으며, 해당 전달 확인 API는 현재 P0 23개에 포함하지 않는다.
+이 API의 `APPROVE`는 상담 계획 승인만 뜻한다. 지급정지·이체차단·한도변경·외부 연락 승인이나 고객 전달 완료로 해석하지 않는다. `CLOSED_GUIDANCE_DELIVERED`는 별도 전달 확인 이벤트가 기록된 뒤에만 사용할 수 있으며, 해당 전달 확인 API는 현재 P0 26개에 포함하지 않는다.
 
 ---
 
@@ -2782,7 +2893,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V72와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. AI가 비활성화되면 `aiRetrieval=DISABLED`, 선택 연결이면 초기 기동 순서와 결정론적 폴백을 방해하지 않도록 능동 probe 없이 `OPTIONAL`을 표시한다. AWS AI 통합 staging은 strict 모드를 사용하므로 FastAPI health의 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경이 기대값과 다르면 `MISMATCH`, 무응답이면 `DOWN`으로 readiness를 실패시킨다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V74와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
 
 #### 공개 설정
 
@@ -2835,7 +2946,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "72",
+    "schemaVersion": "74",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -4015,7 +4126,26 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 
 ---
 
-## 6.10 미구현 API를 CONTRACT로 승격하는 규칙
+## 6.10 데모 AI 금융생활 지원 상세 계약
+
+이 절의 6개 operation은 `IMPLEMENTED-SYNTHETIC-AI-ASSISTED`다. 공통 경로는
+`/api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance`이며
+`CUSTOMER_DEMO` capability와 현재 `X-Demo-Run-Id`가 모두 필요하다.
+
+| Method·하위 path | 요청 핵심 | 성공 code | 안전 경계 |
+|---|---|---|---|
+| `POST /intent-suggestions` | `utterance` 4~500자 | `DEMO_AI_INTENT_SUGGESTED` | AI는 고정 enum 초안·근거·확인질문만 반환 |
+| `PUT /intent` | `expectedVersion`, 납부·설명·도움 enum, 공유범위 0~4개 | `DEMO_AI_INTENT_DRAFT_SAVED` | 고객 수정값만 DRAFT로 저장, 낙관적 버전 검사 |
+| `POST /intent/approve` | `expectedVersion`, `disclaimerAccepted=true` | `DEMO_AI_INTENT_APPROVED` | 고객 확인 전 승인 불가, 법적 효력과 자동 실행 없음 |
+| `GET /intent` | 없음 | `DEMO_AI_INTENT_RETRIEVED` | 현재 세션·run의 의향만 조회 |
+| `GET /change-analysis` | 없음 | `DEMO_AI_CHANGE_ANALYZED` | 총 90일 합성 기준선, 이전 60일과 최근 30일 비교 |
+| `POST /plain-language` | 허용된 `featureCode` | `DEMO_AI_PLAIN_LANGUAGE_GENERATED` | 300자 이하 제한 문장과 브라우저 음성용 동일 사실만 반환 |
+
+장기 변화 결과는 정기납부 누락, 중복송금, 거래결과 재확인, 새 수취인, 평소와 다른 시간대, 평소와 다른 금액의 6개 특징에 대해 EWMA·CUSUM 보조 점수와 기준·최근 횟수, 지속 여부, 자연어 근거를 함께 반환한다. 점수만으로 위험·질병·사기를 판정하지 않으며 화면도 “위험도” 대신 관찰된 횟수 변화로 설명한다. 음성 읽기는 서버가 음성 파일을 만들거나 외부 TTS로 전송하지 않고, 고객 브라우저의 `speechSynthesis`가 반환 문장을 `ko-KR`로 천천히 읽는다.
+
+FastAPI 내부 계약은 `POST /internal/v1/intent-structure`, `POST /internal/v1/change-analysis`, `POST /internal/v1/plain-language`다. 32자 이상 내부 서비스 토큰, 짧은 timeout, 최대 128KiB 응답 제한을 적용하고 Spring이 request ID와 모든 안전 플래그를 재검증한다. 실패하면 의향은 보수적 기본값, 변화는 기존 기준선 규칙, 쉬운말은 고정 템플릿으로 폴백한다.
+
+## 6.11 미구현 API를 CONTRACT로 승격하는 규칙
 
 현재 미구현 카탈로그·백로그 45개는 이름만 보고 구현하지 않는다. 개발할 endpoint는 먼저 아래 표를 채우고 리뷰에서 `DRAFT → CONTRACT` 승인을 받은 뒤 코드를 작성한다.
 

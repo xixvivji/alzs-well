@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 import pytest
 
 from app.embedding.base import EmbeddingDescriptor
-from app.evaluation.models import load_cases, load_corpus
+from app.evaluation.models import EvaluationCase, EvaluationChunk, load_cases, load_corpus
 from app.evaluation.ranker import DOCUMENT_AUTHORITY, SearchConfiguration, is_eligible, rank
 
 
@@ -29,6 +30,12 @@ class RecordingEmbeddingProvider:
     def embed_passage(self, value: str) -> tuple[float, ...]:
         self.passages.append(value)
         return (1.0, 0.0)
+
+
+class AuthorityOrderingEmbeddingProvider(RecordingEmbeddingProvider):
+    def embed_passage(self, value: str) -> tuple[float, ...]:
+        self.passages.append(value)
+        return (0.6, 0.8) if "법령 저점수" in value else (1.0, 0.0)
 
 
 def test_ranker_returns_relevant_chunk_and_applies_final_abstention_threshold() -> None:
@@ -92,6 +99,53 @@ def test_document_authority_order_matches_postgresql_contract() -> None:
         "FORM",
         "SYNTHETIC_FIXTURE",
     ]
+
+
+def test_authority_is_sorted_before_hybrid_score() -> None:
+    case = EvaluationCase(
+        query_id="AUTHORITY-FIRST",
+        query="피해 지원",
+        principal_roles=("PROTECTION_STAFF",),
+        requester_audiences=("STAFF",),
+        as_of=date(2026, 8, 31),
+        relevant_chunk_ids=frozenset({"law", "notice"}),
+        expect_no_results=False,
+        tags=("authority",),
+    )
+    common = {
+        "heading": "피해 지원",
+        "section_path": ("안내",),
+        "allowed_roles": ("PROTECTION_STAFF",),
+        "audience": "STAFF",
+        "approval_status": "APPROVED",
+        "lifecycle_status": "ACTIVE",
+        "effective_from": date(2026, 1, 1),
+        "effective_to": None,
+    }
+    law = EvaluationChunk(
+        chunk_id="law",
+        document_id="DOC-LAW",
+        document_type="LAW",
+        content="법령 저점수",
+        **common,
+    )
+    notice = EvaluationChunk(
+        chunk_id="notice",
+        document_id="DOC-NOTICE",
+        document_type="PUBLIC_NOTICE",
+        content="피해 지원 고점수",
+        **common,
+    )
+
+    ranked = rank(
+        case,
+        (notice, law),
+        SearchConfiguration(),
+        embedding_provider=AuthorityOrderingEmbeddingProvider(),
+    )
+
+    assert ranked[0].chunk.chunk_id == "law"
+    assert ranked[0].score < ranked[1].score
 
 
 def test_law_and_regulation_golden_queries_return_the_expected_authority() -> None:

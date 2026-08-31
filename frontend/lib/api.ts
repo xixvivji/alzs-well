@@ -5,7 +5,8 @@ export type ApiResponse<T> = {
 export type ApiErrorKind = "http" | "network" | "timeout" | "parse";
 export class ApiClientError extends Error {
   constructor(public readonly kind: ApiErrorKind, message: string, public readonly status?: number,
-    public readonly code?: string, public readonly traceId?: string, public readonly retryable = false) {
+    public readonly code?: string, public readonly traceId?: string, public readonly retryable = false,
+    public readonly data?: unknown) {
     super(message); this.name = "ApiClientError";
   }
 }
@@ -48,12 +49,13 @@ function requestSignal(signal: AbortSignal | null | undefined, timeoutMs: number
   const timeout = AbortSignal.timeout(timeoutMs);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
-export async function apiRequest<T>(path: string, options: RequestInit & { capability?: string; staffCapability?: string; demoRunId?: string; idempotencyKey?: string; timeoutMs?: number } = {}) {
-  const { capability, staffCapability, demoRunId, idempotencyKey, timeoutMs = 10_000, headers, signal, ...requestOptions } = options;
+export async function apiRequest<T>(path: string, options: RequestInit & { capability?: string; staffCapability?: string; demoRunId?: string; accessToken?: string; idempotencyKey?: string; timeoutMs?: number } = {}) {
+  const { capability, staffCapability, demoRunId, accessToken, idempotencyKey, timeoutMs = 10_000, headers, signal, ...requestOptions } = options;
   let response: Response;
   try {
     response = await fetch(resolveApiUrl(path), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...((staffCapability ?? capability) ? { "X-Demo-Capability": staffCapability ?? capability } : {}),
       ...(demoRunId ? { "X-Demo-Run-Id": demoRunId } : {}), ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}), ...headers,
     } });
@@ -74,7 +76,7 @@ export async function apiRequest<T>(path: string, options: RequestInit & { capab
   }
   if (!response.ok) {
     throw new ApiClientError("http", body?.message ?? `요청이 실패했습니다. (${response.status})`, response.status,
-      body?.code, body?.traceId ?? traceHeader, response.status >= 500 || response.status === 429);
+      body?.code, body?.traceId ?? traceHeader, response.status >= 500 || response.status === 429, body?.data);
   }
   if (!body) throw new ApiClientError("parse", "서버가 JSON 응답을 반환하지 않았습니다.", response.status, undefined, traceHeader);
   return { body, headers: response.headers };

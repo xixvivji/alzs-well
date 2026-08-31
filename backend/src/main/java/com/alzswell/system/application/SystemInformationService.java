@@ -36,6 +36,7 @@ public class SystemInformationService {
     private final String algorithmVersion;
     private final String policyVersion;
     private final LocalDate sourceCatalogCheckedAt;
+    private final boolean requireAiForCoreReadiness;
 
     public SystemInformationService(
             JdbcTemplate jdbcTemplate,
@@ -55,7 +56,9 @@ public class SystemInformationService {
             @Value("${app.versions.fixture:fin-mgmt-ab-v2.0.0}") String fixtureVersion,
             @Value("${app.versions.algorithm:baseline-rules-v2.0.0}") String algorithmVersion,
             @Value("${app.versions.policy:context-policy-v1.0.0}") String policyVersion,
-            @Value("${app.versions.source-catalog-checked-at:2026-08-14}") LocalDate sourceCatalogCheckedAt
+            @Value("${app.versions.source-catalog-checked-at:2026-08-14}") LocalDate sourceCatalogCheckedAt,
+            @Value("${app.ai-retrieval.require-for-core-readiness:${app.ai-retrieval.strict-readiness:false}}")
+            boolean requireAiForCoreReadiness
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.aiDeploymentReadiness = aiDeploymentReadiness;
@@ -75,6 +78,7 @@ public class SystemInformationService {
         this.algorithmVersion = algorithmVersion;
         this.policyVersion = policyVersion;
         this.sourceCatalogCheckedAt = sourceCatalogCheckedAt;
+        this.requireAiForCoreReadiness = requireAiForCoreReadiness;
     }
 
     public SystemHealthResponse health() {
@@ -82,6 +86,16 @@ public class SystemInformationService {
     }
 
     public SystemReadinessResponse readiness() {
+        SystemReadinessResponse core = coreReadiness();
+        AiDeploymentReadiness.Result ai = aiDeploymentReadiness.verify();
+        Map<String, String> checks = new LinkedHashMap<>(core.checks());
+        checks.put("aiRetrieval", ai.status());
+        checks.put("aiRequiredForCore", requireAiForCoreReadiness ? "REQUIRED" : "OPTIONAL");
+        boolean ready = core.ready() && (!requireAiForCoreReadiness || ai.ready());
+        return new SystemReadinessResponse(ready, ready ? "READY" : "NOT_READY", checks);
+    }
+
+    public SystemReadinessResponse coreReadiness() {
         Map<String, String> checks = new LinkedHashMap<>();
         boolean databaseReady;
         boolean flywayReady;
@@ -149,12 +163,16 @@ public class SystemInformationService {
         checks.put("policyCatalog", upOrDown(policyReady));
         checks.put("detectionPolicy", upOrDown(detectionPolicyReady));
         checks.put("safeGuardrails", upOrDown(safeGuardrails));
-        AiDeploymentReadiness.Result aiReadiness = aiDeploymentReadiness.verify();
-        checks.put("aiRetrieval", aiReadiness.status());
-
         boolean ready = databaseReady && flywayReady && fixtureReady && policyReady
-                && detectionPolicyReady && safeGuardrails && aiReadiness.ready();
+                && detectionPolicyReady && safeGuardrails;
         return new SystemReadinessResponse(ready, ready ? "READY" : "NOT_READY", checks);
+    }
+
+    public SystemReadinessResponse aiFeatureReadiness() {
+        AiDeploymentReadiness.Result ai = aiDeploymentReadiness.verify();
+        Map<String, String> checks = new LinkedHashMap<>();
+        checks.put("aiRetrieval", ai.status());
+        return new SystemReadinessResponse(ai.ready(), ai.ready() ? "READY" : "NOT_READY", checks);
     }
 
     public PublicConfigResponse publicConfig() {

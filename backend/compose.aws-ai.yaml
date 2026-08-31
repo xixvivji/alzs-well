@@ -1,13 +1,41 @@
 name: alzs-well-ai
 
 services:
+  ai-gateway:
+    image: ${AI_GATEWAY_IMAGE:?AI_GATEWAY_IMAGE must be an immutable ECR digest}
+    restart: unless-stopped
+    ports:
+      - "${AI_BIND_ADDRESS:?AI_BIND_ADDRESS must be the private EC2 address}:8443:8443"
+    volumes:
+      - ./docker/ai-mtls-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${AI_TLS_CERT_PATH:?AI_TLS_CERT_PATH must be set}:/run/secrets/ai-server.crt:ro
+      - ${AI_TLS_KEY_PATH:?AI_TLS_KEY_PATH must be set}:/run/secrets/ai-server.key:ro
+      - ${AI_CLIENT_CA_PATH:?AI_CLIENT_CA_PATH must be set}:/run/secrets/client-ca.crt:ro
+    depends_on:
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t && wget -q -O - http://ai-service:8000/health >/dev/null"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    networks: [ai-internal]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, CHOWN, DAC_OVERRIDE, SETGID, SETUID]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=16m,mode=0755
+      - /var/run:size=1m,mode=0755
+      - /tmp:size=8m,mode=1777
+
   ai-service:
     image: ${AI_IMAGE:?AI_IMAGE must be an immutable ECR digest}
     restart: unless-stopped
     entrypoint: ["uvicorn", "app.main:app"]
     command: ["--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log"]
-    ports:
-      - "${AI_BIND_ADDRESS:?AI_BIND_ADDRESS must be the private EC2 address}:8000:8000"
+    expose: ["8000"]
     environment: &ai-environment
       ALZS_AI_DB_HOST: ${RDS_HOST:?RDS_HOST must be set}
       ALZS_AI_DB_PORT: "5432"
@@ -42,8 +70,10 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     read_only: true
-    tmpfs: [/tmp:size=256m,mode=1777]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
     stop_grace_period: 60s
+    networks: [ai-internal, egress]
 
   ingestion:
     profiles: [ingestion]
@@ -51,7 +81,7 @@ services:
     restart: "no"
     environment:
       <<: *ai-environment
-      ALZS_AI_DB_USER: ${RDS_AI_INGESTION_USER:-alzswell_ai_ingestion}
+      ALZS_AI_DB_USER: ${RDS_AI_INGESTION_USER:-alzswell_ai_ingestor}
       ALZS_AI_DB_PASSWORD: ${RDS_AI_INGESTION_PASSWORD:?RDS_AI_INGESTION_PASSWORD must be set}
     volumes:
       - ${REPOSITORY_ROOT:?REPOSITORY_ROOT must be set}:/workspace:ro
@@ -61,4 +91,11 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     read_only: true
-    tmpfs: [/tmp:size=256m,mode=1777]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    networks: [egress]
+
+networks:
+  ai-internal:
+    internal: true
+  egress:

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "../../../../components/AppShell";
 import { StaffCaseDetail } from "../../../../components/StaffCaseDetail";
-import { requireChatGPTUser } from "../../../chatgpt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +10,6 @@ export default async function StaffCaseDetailPage({
   params: Promise<{ caseId: string }>;
 }) {
   const { caseId } = await params;
-  await requireChatGPTUser(`/staff/cases/${encodeURIComponent(caseId)}`);
   return <AppShell mode="staff" title="보호업무 사건 상세">
     <Link className="case-back-link" href="/staff/cases">← 사건 큐로 돌아가기</Link>
     <StaffCaseDetail caseId={caseId} />

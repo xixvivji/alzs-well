@@ -35,6 +35,8 @@ class OperationalCaseIntegrationTest {
     private static final String CUSTOMER_ID = "SYN_CUSTOMER_FIN_MGMT_001";
     private static final UUID STAFF_PRINCIPAL_ID =
             UUID.fromString("91000000-0000-0000-0000-000000000099");
+    private static final UUID OTHER_STAFF_PRINCIPAL_ID =
+            UUID.fromString("91000000-0000-0000-0000-000000000098");
 
     @Container
     @ServiceConnection
@@ -254,39 +256,86 @@ class OperationalCaseIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void auditsFinalDenialWhenGrantedStaffMutatesACaseAssignedToAnotherStaffMember() throws Exception {
+        String assignedStaffToken = loginProtectionStaff();
+        String otherStaffToken = loginProtectionStaff(
+                OTHER_STAFF_PRINCIPAL_ID, "synthetic-protection-staff-other", "c", "d");
+        UUID alertId = jdbcTemplate.queryForObject(
+                "select alert_id from operational_alert order by alert_id limit 1", UUID.class);
+        mockMvc.perform(post("/api/v1/alerts/{alertId}/context-responses", alertId)
+                        .with(user(CUSTOMER_ID).authorities(
+                                new SimpleGrantedAuthority("ALERT_RESPOND"),
+                                new SimpleGrantedAuthority("ALERT_READ")))
+                        .header("Idempotency-Key", "case-denial-context-001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"responseCode\":\"NOT_SURE\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk());
+        UUID caseId = java.util.Objects.requireNonNull(jdbcTemplate.queryForObject(
+                "select case_id from operational_protection_case where alert_id=?", UUID.class, alertId));
+        mockMvc.perform(put("/api/v1/staff/cases/{caseId}/assignment", caseId)
+                        .header("Authorization", "Bearer " + assignedStaffToken)
+                        .header("Idempotency-Key", "case-denial-assignment-001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"assignedTeam\":\"SAFE_TEAM_01\",\"assignedTo\":\""
+                                + STAFF_PRINCIPAL_ID + "\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/notes", caseId)
+                        .header("Authorization", "Bearer " + otherStaffToken)
+                        .header("Idempotency-Key", "case-denial-note-001")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"noteText\":\"다른 담당자가 변경을 시도한 합성 기록입니다.\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("STAFF_ACCESS_DENIED"));
+
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from staff_access_decision_audit_event
+                 where staff_principal_id=? and resource_type='CASE' and resource_id=?
+                   and allowed=false and decision_code='DENY_CASE_NOT_ASSIGNED'
+                """, Integer.class, OTHER_STAFF_PRINCIPAL_ID, caseId.toString())).isOne();
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from operational_case_note where case_id=?", Integer.class, caseId)).isZero();
+    }
+
     private org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.UserRequestPostProcessor
     staff(String authority) {
         return user("protection-staff").authorities(new SimpleGrantedAuthority(authority));
     }
 
     private String loginProtectionStaff() throws Exception {
+        return loginProtectionStaff(
+                STAFF_PRINCIPAL_ID, "synthetic-protection-staff", "a", "b");
+    }
+
+    private String loginProtectionStaff(
+            UUID principalId, String loginId, String idempotencySeed, String requestSeed
+    ) throws Exception {
         jdbcTemplate.update("""
                 insert into auth_principal (
                     principal_id, login_id, customer_id, display_name, password_hash,
                     status, created_at, updated_at
                 )
-                select ?, 'synthetic-protection-staff', customer_id, '합성 보호업무 담당자',
+                select ?, ?, customer_id, '합성 보호업무 담당자',
                        password_hash, 'ACTIVE', now(), now()
                   from auth_principal where login_id = 'synthetic-customer'
                 on conflict (principal_id) do update set status = 'ACTIVE',
                     password_hash = excluded.password_hash, updated_at = now()
-                """, STAFF_PRINCIPAL_ID);
+                """, principalId, loginId);
         jdbcTemplate.update("""
                 insert into auth_principal_role (principal_id, role_code)
                 values (?, 'PROTECTION_STAFF') on conflict do nothing
-                """, STAFF_PRINCIPAL_ID);
+                """, principalId);
         jdbcTemplate.update("""
                 insert into staff_access_grant(grant_id,staff_principal_id,customer_id,purpose_code,scopes,
                     status,granted_by,granted_at,expires_at,idempotency_key_hash,request_hash,row_version)
                 values(?,?,?,'PROTECTION_CASE_MANAGEMENT',array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
-                    'CASE_NOTE','CASE_FOLLOW_UP'],'ACTIVE',?,now(),now()+interval '1 day',repeat('a',64),repeat('b',64),1)
-                """, UUID.randomUUID(), STAFF_PRINCIPAL_ID, CUSTOMER_ID, STAFF_PRINCIPAL_ID);
+                    'CASE_NOTE','CASE_FOLLOW_UP'],'ACTIVE',?,now(),now()+interval '1 day',repeat(?,64),repeat(?,64),1)
+                """, UUID.randomUUID(), principalId, CUSTOMER_ID, principalId, idempotencySeed, requestSeed);
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(APPLICATION_JSON)
-                        .content("""
-                                {"loginId":"synthetic-protection-staff",
-                                 "password":"local-synthetic-customer-password"}
-                                """))
+                        .content("{\"loginId\":\"" + loginId
+                                + "\",\"password\":\"local-synthetic-customer-password\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).at("/data/accessToken").asText();
