@@ -42,7 +42,8 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     read_only: true
-    tmpfs: [/tmp:size=256m,mode=1777]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
     stop_grace_period: 60s
 
   ingestion:
@@ -51,7 +52,7 @@ services:
     restart: "no"
     environment:
       <<: *ai-environment
-      ALZS_AI_DB_USER: ${RDS_AI_INGESTION_USER:-alzswell_ai_ingestion}
+      ALZS_AI_DB_USER: ${RDS_AI_INGESTION_USER:-alzswell_ai_ingestor}
       ALZS_AI_DB_PASSWORD: ${RDS_AI_INGESTION_PASSWORD:?RDS_AI_INGESTION_PASSWORD must be set}
     volumes:
       - ${REPOSITORY_ROOT:?REPOSITORY_ROOT must be set}:/workspace:ro
@@ -61,4 +62,5 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     read_only: true
-    tmpfs: [/tmp:size=256m,mode=1777]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
