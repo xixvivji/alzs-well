@@ -71,7 +71,7 @@ public class DemoAiFinancialAssistanceController {
                 service.current(sessionId, demoRunId, customerId));
     }
 
-    @GetMapping("/change-analysis")
+    @PostMapping("/change-analysis")
     public ResponseEntity<ApiResponse<AiFinancialAssistanceResponses.ChangeAnalysis>> changes(
             @PathVariable UUID sessionId, @PathVariable String customerId,
             @RequestHeader(P0WorkflowController.DEMO_RUN_HEADER) UUID demoRunId
