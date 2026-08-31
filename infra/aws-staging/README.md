@@ -60,6 +60,10 @@ Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다.
 종단하고 ALB는 AWS 관리 CloudFront origin-facing 네트워크에서 오는 HTTP만
 허용한다. EC2는 인프라 기반만 준비하며, 실제 서비스는 ECR image digest·mTLS
 인증서·DB 역할 생성·Secrets 주입을 완료한 후 SSM으로 기동한다.
+최초 bootstrap 동안에만 AI EC2 역할이 backend·AI ECR 저장소에 이미지를 게시할
+수 있다. 검증된 `develop` 커밋을 AMD64로 빌드하고 digest를 기록한 뒤
+`DatabaseBootstrapEnabled=false`로 갱신하여 이미지 게시·DB bootstrap·ingestion
+권한을 함께 제거한다. 상시 런타임 역할에는 ECR push 권한을 부여하지 않는다.
 
 ## 운영 종료와 수동 철거
 

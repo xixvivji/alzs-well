@@ -18,7 +18,7 @@
 | AWS 배포 주체 | 사전검증 완료 | 일회용 비루트 bootstrap으로 deployer AssumeRole 확인 후 사용자·키 즉시 삭제 |
 | AWS IaC | change set 준비 | `alzs-well-staging-20260831-preflight` 55개 추가, 미실행 `AVAILABLE` 상태 |
 | AWS ALZ's well 리소스 | 미생성 | 기존 다른 서비스의 RDS를 재사용하지 않음 |
-| 로컬 이미지 빌드 | 대기 | Docker 엔진 기동 후 immutable digest 생성·스캔 |
+| 배포 이미지 빌드 | 대기 | CI 스캔 통과 후 AI EC2에서 AMD64로 빌드·ECR digest 고정 |
 
 ## 1. 배포 권한 게이트
 
@@ -43,7 +43,8 @@
 
 ## 3. 이미지·데이터 게이트
 
-- [ ] Spring Boot·AI runtime image를 빌드하고 취약점 스캔을 통과한다.
+- [x] CI에서 Spring Boot·AI runtime image 빌드와 취약점 스캔을 통과한다.
+- [ ] AI EC2의 bootstrap 기간에 동일 커밋을 AMD64로 빌드·ECR에 게시하고 bootstrap 권한을 제거한다.
 - [ ] ECR digest를 `compose.aws-app.yaml`·`compose.aws-ai.yaml`에 고정한다.
 - [ ] Flyway를 runtime과 분리된 migration 역할로 1회 실행한다.
 - [ ] 승인 문서·Arctic-ko artifact·golden-set hash를 반입 증적과 대조한다.
