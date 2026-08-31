@@ -38,6 +38,13 @@ aws cloudformation validate-template \
   --template-body file://infra/aws-staging/foundation.yaml
 ```
 
+CloudFormation execution 역할의 사전검토 정책은
+`cfn-execution-policy.json`, 12일 운영비 산정은 `COST_ESTIMATE.md`를 기준으로
+한다. 정책은 IAM Access Analyzer 검증을 통과한 뒤에만 역할에 적용한다.
+AWS CLI `aws login`으로 생성된 루트 세션은 역할을 AssumeRole할 수 없으므로,
+Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다. 장기 access key를
+새로 발급해 우회하지 않는다.
+
 별도 도메인과 ACM 인증서는 필요하지 않다. CloudFront 기본 인증서로 외부 HTTPS를
 종단하고 ALB는 AWS 관리 CloudFront origin-facing 네트워크에서 오는 HTTP만
 허용한다. EC2는 인프라 기반만 준비하며, 실제 서비스는 ECR image digest·mTLS
@@ -50,5 +57,6 @@ aws cloudformation validate-template \
 - 먼저 RDS 삭제 보호와 ALB 삭제 보호를 해제한 변경을 적용한다.
 - 스택 삭제 후 NAT Gateway·EIP·ALB·CloudFront·WAF·EC2·RDS가 남지 않았는지
   확인한다.
-- 최종 RDS snapshot과 ECR image는 제출 증적 보존 필요성을 확인한 후 별도로
-  삭제한다. 수동 snapshot과 ECR repository는 스택 상태와 별도로 재확인한다.
+- 최종 RDS snapshot, ECR image와 배포 secret은 제출 증적 보존 필요성을 확인한
+  후 별도로 삭제한다. 이 리소스들은 데이터 손실 방지를 위해 stack 삭제 시
+  `Retain` 또는 snapshot 정책을 사용하므로 반드시 별도로 재확인한다.
