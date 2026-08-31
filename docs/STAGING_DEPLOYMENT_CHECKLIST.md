@@ -15,7 +15,7 @@
 | Vercel 프로젝트 | 생성 | `alzs-well` 프로젝트 연결, GitHub App 저장소 권한 필요 |
 | Vercel 환경변수 | 미등록 | CloudFront 기본 HTTPS origin과 공유 비밀값 확정 후 Preview·Production 분리 등록 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
-| AWS 배포 주체 | 준비 중 | 전용 deployer·CloudFormation execution 역할 생성, execution 최소권한 확정 필요 |
+| AWS 배포 주체 | 준비 중 | 역할 생성 완료, 루트 `aws login`은 AssumeRole 불가하여 Identity Center 세션 필요 |
 | AWS IaC | 사전검증 완료 | 비용절감형 CloudFormation 문법·`cfn-lint`·AWS `validate-template` 통과, change set 게이트 필요 |
 | AWS ALZ's well 리소스 | 미생성 | 기존 다른 서비스의 RDS를 재사용하지 않음 |
 | 로컬 이미지 빌드 | 대기 | Docker 엔진 기동 후 immutable digest 생성·스캔 |
@@ -24,7 +24,9 @@
 
 - [ ] AWS 루트 MFA·복구 수단을 확인하고 일상 배포에서 제외한다.
 - [x] `alzswell-staging-deployer`와 별도 CloudFormation execution 역할을 생성한다.
-- [ ] CloudFormation execution 역할에 템플릿 전용 최소권한을 승인한다.
+- [x] CloudFormation execution 역할의 템플릿 전용 정책을 작성하고 Access Analyzer 경고 0건을 확인한다.
+- [ ] 고위험 IAM 변경임을 확인한 뒤 execution 정책 적용을 별도 승인한다.
+- [ ] Identity Center 또는 다른 비루트 단기 세션으로 deployer AssumeRole을 확인한다.
 - [ ] 배포 역할과 EC2 instance profile, Spring·AI·DB runtime 역할을 분리한다.
 - [ ] GitHub/Vercel/AWS 배포는 장기 access key 대신 OIDC 또는 단기 세션을 사용한다.
 
