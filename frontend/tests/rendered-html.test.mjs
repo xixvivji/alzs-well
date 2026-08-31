@@ -62,9 +62,10 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
 });
 
 test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 남는다", async () => {
-  const [page, staffCaseDetail, alertDetail, productCenter, customerAssets, customerCare, protectionCenter, scenarioData] = await Promise.all([
+  const [page, staffCaseDetail, staffCaseQueue, alertDetail, productCenter, customerAssets, customerCare, protectionCenter, scenarioData] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/StaffCaseQueue.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/AlertDetail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateProductCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateCustomerAssets.tsx", import.meta.url), "utf8"),
@@ -76,6 +77,10 @@ test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 �
   assert.match(page, /각 기관의 공식 서비스가 아닙니다/);
   assert.match(staffCaseDetail, /AI는 검토 초안과 승인된 근거를 제시할 뿐/);
   assert.match(staffCaseDetail, /사람 검토 필수/);
+  assert.match(staffCaseQueue, /먼저 확인할 사건부터/);
+  assert.match(staffCaseQueue, /업무 우선순위는 위험도·치매·사기 확률이 아닙니다/);
+  assert.match(staffCaseQueue, /다음 사건 20건 불러오기/);
+  assert.match(staffCaseQueue, /직원 접근 권한을 확인하고 있습니다/);
   assert.match(alertDetail, /나중에 확인할게요/);
   for (const label of ["예금", "외환", "연금·신탁", "동의관리"]) assert.match(productCenter, new RegExp(label));
   assert.match(customerAssets, /가입·해지·외부 호출 없음/);

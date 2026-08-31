@@ -7,6 +7,7 @@ import "./alert-detail.css";
 import "./intro-film.css";
 import "./senior-customer.css";
 import "./staff-case-detail.css";
+import "./staff-case-queue.css";
 import "./ai-financial-assistant.css";
 import "./financial-portal.css";
 import "./extended-workflows.css";
