@@ -805,10 +805,10 @@ export const API_OPERATION_CATALOG = [
     "externalActionAllowed": false
   },
   {
-    "key": "GET /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis",
-    "method": "GET",
+    "key": "POST /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis",
+    "method": "POST",
     "path": "/api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis",
-    "purpose": "30·60·90일 설명 가능한 장기 변화 분석",
+    "purpose": "30·60·90일 설명 가능한 장기 변화 분석 실행 및 감사이력 기록",
     "domain": "데모 AI 금융생활 지원",
     "domainId": "데모-ai-금융생활-지원",
     "priority": "P1",

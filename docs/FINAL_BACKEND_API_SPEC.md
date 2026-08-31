@@ -990,7 +990,7 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | PUT | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent | 고객이 수정한 데모 의향 초안 저장 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent/approve | 법적 효력 제한 확인 후 데모 의향 승인 | OWNED |
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent | 현재 데모 의향 조회 | OWNED |
-| P1 | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis | 30·60·90일 설명 가능한 장기 변화 분석 | OWNED |
+| P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis | 30·60·90일 설명 가능한 장기 변화 분석 실행 및 감사이력 기록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/plain-language | 고객 선호에 맞는 쉬운말·음성용 문장 생성 | OWNED |
 
 이 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 내부 FastAPI가 구조화 임베딩 보조, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·금지 표현·크기·버전·승인을 다시 검증한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.

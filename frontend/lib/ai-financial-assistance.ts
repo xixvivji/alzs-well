@@ -73,7 +73,9 @@ export async function loadCurrentFinancialIntent(context: DemoContext): Promise<
 }
 
 export async function loadChangeAnalysis(context: DemoContext): Promise<ChangeAnalysis> {
-  const response = await apiRequest<ChangeAnalysis>(`${base(context)}/change-analysis`, options(context));
+  const response = await apiRequest<ChangeAnalysis>(`${base(context)}/change-analysis`, {
+    ...options(context), method: "POST",
+  });
   if (!response.body.data) throw new Error("장기 변화 분석 응답을 확인해 주세요.");
   return response.body.data;
 }

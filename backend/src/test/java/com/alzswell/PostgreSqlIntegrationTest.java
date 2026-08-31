@@ -1055,7 +1055,7 @@ class PostgreSqlIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("APPROVED"))
                 .andExpect(jsonPath("$.data.version").value(2));
 
-        mockMvc.perform(get(base + "/change-analysis")
+        mockMvc.perform(post(base + "/change-analysis")
                         .header(DemoCapabilityService.REQUEST_HEADER, capability)
                         .header(DemoCapabilityService.RUN_HEADER, runId))
                 .andExpect(status().isOk())
