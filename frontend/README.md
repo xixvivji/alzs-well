@@ -15,7 +15,9 @@
 
 브라우저에는 AWS origin, 프록시 공유 비밀값, 직원 bootstrap 토큰을 노출하지 않습니다. 배포 환경에서 `NEXT_PUBLIC_API_BASE_URL`을 비워 두면 모든 API 요청은 같은 origin의 Vercel Route Handler를 통과합니다. 고객 capability는 생성 응답에서 제거해 `Secure`·`HttpOnly`·`SameSite=Strict` host cookie에만 보관하고, `sessionStorage`에는 비밀값이 아닌 세션·시나리오 식별자만 저장합니다.
 
-공개 행원 시연은 임의 방문자에게 직원 토큰을 바로 발급하지 않습니다. 고객 화면에서 생성된 현재 합성 세션 capability를 서버가 AWS에 검증한 후에만 단기 직원 capability를 발급합니다.
+공개 행원 시연은 임의 방문자에게 직원 토큰을 바로 발급하지 않습니다. 고객 화면에서 생성된 현재 합성 세션 capability를 서버가 AWS에 검증한 후에만 단기 직원 capability를 발급합니다. 운영 모드에서는 신뢰 프록시가 전달한 RS256 identity JWT의 서명·issuer·audience·만료·직원 역할을 Vercel 서버가 모두 검증하며, 원문 사용자 ID 헤더만으로는 권한을 발급하지 않습니다.
+
+Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x-vercel-forwarded-for`를 서버 비밀값으로 HMAC 처리한 비식별 network key를 사용합니다. 원문 IP는 AWS·로그·cookie로 전달하지 않으므로 cookie를 삭제해도 새 rate bucket이 발급되지 않습니다. 로컬 개발에서는 서버가 생성한 무작위 client ID의 HMAC 서명 cookie를 사용합니다. 고객 Bearer access token은 만료 전에 refresh token으로 한 번 갱신하고, 갱신 실패 또는 재시도 401이면 두 token을 메모리에서 즉시 폐기해 안전하게 로그아웃합니다.
 
 ## 화면과 API 연결
 
@@ -24,17 +26,19 @@
 - `/demo/finance`: 통합자산, 계좌, 거래, 기준선, 동의, 보호 안내
 - `/demo/ai-assistant`: AI 금융생활 의향서 현재 상태·초안·승인, 장기 변화, 쉬운말·음성
 - `/demo/alerts`: 고객 변화 확인, 맥락 응답, 알림 감사이력
-- `/demo/products`: 사설 Bearer 인증 기반 합성 카드·예금·대출·투자·외환·연금·신탁 조회, 동의관리, 실행 없는 이자·상환·환전 모의계산
-- `/demo/settings`: 고객 프로필·알림 채널·접근성 설정, 최소정보 신뢰 연락처, 사람 재검토 이의신청
+- `/demo/products`: 사설 Bearer 인증 기반 합성 카드·예금·대출·투자·외환·연금·신탁 조회, 동의관리, 실행 없는 이자·상환·환전 모의계산. 공개 production에서는 메뉴와 직접 URL 모두 잠김
+- `/demo/settings`: 고객 프로필·알림 채널·접근성 설정, 최소정보 신뢰 연락처, 사람 재검토 이의신청. 공개 production에서는 메뉴와 직접 URL 모두 잠김
 - `/demo/services`: 고객 금융서비스 전체 계약과 연결 상태
 - `/staff/cases`: 합성 사건 큐, 타임라인·내부 메모·후속관리, 근거 기반 코파일럿, 행원 검토 폐루프
 - `/staff/operations`: 실제 데모 사건 큐와 행원 처리 단계, 추가 행원 API 계약
 - `/staff/control-center`: 실제 readiness·버전·AI 폴백 상태와 감사·준법·정책 API 계약
 - `/staff/system-status`: health·readiness·공개 설정·버전과 AI 검색 장애 폴백 상태
 
-`scripts/generate-api-catalog.mjs`는 최종 API 명세 278개와 Spring Controller 234개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 233개, 코드 전용 직원 capability 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다.
+`scripts/generate-api-catalog.mjs`는 최종 API 명세 281개와 Spring Controller 237개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 236개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 237개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
 
-생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 공개 Vercel 화면이 운영용 Bearer API를 임의로 호출하지는 않습니다. 금융상품 및 고객 설정 화면의 로컬 합성 로그인은 development 또는 사설 staging에서만 사용할 수 있고 production에서는 서버가 강제 비활성화합니다. 실제 서비스에서는 기업 IdP·MFA·RBAC로 교체해야 합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
+생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 공개 Vercel 화면이 운영용 Bearer API를 임의로 호출하지는 않습니다. 금융상품 및 고객 설정 화면은 `NEXT_PUBLIC_PRIVATE_POC_ENABLED=true`와 서버 전용 `PRIVATE_POC_DEPLOYMENT_ALLOWED=true`가 모두 설정된 development 또는 사설 staging에서만 열립니다. 공개 production에서는 둘 다 false로 고정합니다. 표시 gate 자체가 인증 경계는 아니며 실제 서비스에서는 기업 IdP·MFA·RBAC가 별도로 필요합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
+
+고객 알림의 `나중에 확인`은 `POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer`를 호출하며 `{ expectedVersion, deferredUntil }`, `Idempotency-Key`, 데모 capability/run ID를 전달합니다. 백엔드는 같은 세션·run·알림의 version을 검증하고 `DEFERRED` 상태 및 변경된 알림 데이터를 반환해야 합니다.
 
 ## 로컬 실행
 
@@ -46,7 +50,7 @@ npm run lint
 npm test
 ```
 
-로컬에서 Spring을 직접 호출하려면 `.env.local`에 `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`을 설정합니다. Vercel 동작과 동일한 BFF를 확인하려면 이 값을 비우고 `BACKEND_API_ORIGIN`, `BACKEND_PROXY_SHARED_SECRET`, `DEMO_STAFF_BOOTSTRAP_TOKEN`, `DEMO_PUBLIC_STAFF_MODE`를 설정합니다.
+로컬에서 Spring을 직접 호출하려면 `.env.local`에 `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`을 설정합니다. Vercel 동작과 동일한 BFF를 확인하려면 이 값을 비우고 `BACKEND_API_ORIGIN`, `BACKEND_PROXY_SHARED_SECRET`, `DEMO_STAFF_BOOTSTRAP_TOKEN`, `DEMO_PUBLIC_STAFF_MODE`를 설정합니다. 사설 고객 PoC 화면을 열 때만 `NEXT_PUBLIC_PRIVATE_POC_ENABLED=true`와 `PRIVATE_POC_DEPLOYMENT_ALLOWED=true`를 함께 추가합니다. 운영 직원 모드(`DEMO_PUBLIC_STAFF_MODE=false`)에서는 `.env.example`의 `STAFF_IDENTITY_JWT_*` 항목이 모두 필요합니다.
 
 ## Vercel 설정
 
@@ -55,5 +59,9 @@ npm test
 - `.env.example`의 서버 전용 값을 Preview와 Production 환경에 각각 등록합니다.
 - `BACKEND_API_ORIGIN`은 경로가 없는 AWS HTTPS origin만 허용합니다.
 - AWS CORS는 Vercel 브라우저가 아닌 서버 BFF만 호출하므로 공개 wildcard를 사용하지 않습니다.
+- Vercel Firewall에서 `POST /api/v1/demo/sessions`를 IP별 분당 10회로 제한하고 `/api/**` 일반 제한과 Bot Protection을 함께 활성화합니다. 애플리케이션 HMAC key는 심층 방어이며 edge WAF를 대체하지 않습니다.
+- Preview는 Deployment Protection을 켜고, 배포 후 cookie를 지운 반복 세션 생성도 같은 IP 예산을 사용하는지 확인합니다.
+
+Vercel은 배포 함수에 전달하는 `x-forwarded-for`를 덮어써 외부 IP spoofing을 막는다고 명시합니다. 운영 rate limit은 [Vercel request headers](https://vercel.com/docs/headers/request-headers)와 [Vercel WAF rate limiting](https://examples.vercel.com/kb/guide/add-rate-limiting-vercel)을 함께 적용합니다.
 
 본 프로젝트는 합성데이터만 사용하며 질병·사기 자동 판정, 실제 송금, 지급정지 또는 외부 연락을 수행하지 않습니다.

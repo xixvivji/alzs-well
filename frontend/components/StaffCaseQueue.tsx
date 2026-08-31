@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { readDemoContext } from "../lib/demo-session";
 import {
   issueStaffCapability,
@@ -51,6 +51,8 @@ export function StaffCaseQueue({ compact = false }: StaffCaseQueueProps) {
   const [connectionKey, setConnectionKey] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const queueGeneration = useRef(0);
+  const loadMoreAbort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +76,11 @@ export function StaffCaseQueue({ compact = false }: StaffCaseQueueProps) {
 
   useEffect(() => {
     if (!connection) return;
+    const generation = ++queueGeneration.current;
+    loadMoreAbort.current?.abort();
+    loadMoreAbort.current = null;
+    setLoadingMore(false);
+    const controller = new AbortController();
     let cancelled = false;
     setPhase("loading");
     setError("");
@@ -84,18 +91,25 @@ export function StaffCaseQueue({ compact = false }: StaffCaseQueueProps) {
       ...(stateFilter === "ALL" ? {} : { state: stateFilter }),
       ...(priorityFilter === "ALL" ? {} : { reviewPriority: priorityFilter }),
       limit: PAGE_SIZE,
+      signal: controller.signal,
     }).then((queue) => {
-      if (cancelled) return;
+      if (cancelled || controller.signal.aborted || generation !== queueGeneration.current) return;
       setItems(queue.items);
       setNextCursor(queue.nextCursor);
       setHasMore(queue.hasMore);
       setPhase("ready");
     }).catch((reason: unknown) => {
-      if (cancelled) return;
+      if (cancelled || controller.signal.aborted || generation !== queueGeneration.current) return;
       setError(messageOf(reason, "사건 큐를 불러오지 못했습니다."));
       setPhase("error");
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (queueGeneration.current === generation) queueGeneration.current += 1;
+      loadMoreAbort.current?.abort();
+      loadMoreAbort.current = null;
+    };
   }, [connection, priorityFilter, reloadKey, stateFilter]);
 
   const visibleItems = useMemo(
@@ -106,6 +120,10 @@ export function StaffCaseQueue({ compact = false }: StaffCaseQueueProps) {
 
   async function loadMore() {
     if (!connection || !nextCursor || loadingMore) return;
+    const generation = queueGeneration.current;
+    loadMoreAbort.current?.abort();
+    const controller = new AbortController();
+    loadMoreAbort.current = controller;
     setLoadingMore(true);
     setError("");
     try {
@@ -114,14 +132,18 @@ export function StaffCaseQueue({ compact = false }: StaffCaseQueueProps) {
         ...(priorityFilter === "ALL" ? {} : { reviewPriority: priorityFilter }),
         cursor: nextCursor,
         limit: PAGE_SIZE,
+        signal: controller.signal,
       });
+      if (controller.signal.aborted || generation !== queueGeneration.current) return;
       setItems((current) => deduplicateCases([...current, ...queue.items]));
       setNextCursor(queue.nextCursor);
       setHasMore(queue.hasMore);
     } catch (reason) {
+      if (controller.signal.aborted || generation !== queueGeneration.current) return;
       setError(messageOf(reason, "다음 사건을 불러오지 못했습니다."));
     } finally {
-      setLoadingMore(false);
+      if (loadMoreAbort.current === controller) loadMoreAbort.current = null;
+      if (generation === queueGeneration.current) setLoadingMore(false);
     }
   }
 

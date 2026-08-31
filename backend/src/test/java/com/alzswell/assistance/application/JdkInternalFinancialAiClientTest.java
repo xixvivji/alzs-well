@@ -2,6 +2,7 @@ package com.alzswell.assistance.application;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.alzswell.common.http.InternalAiHttpClientFactory;
 import com.alzswell.assistance.application.InternalFinancialAiClient.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
@@ -54,7 +55,7 @@ class JdkInternalFinancialAiClientTest {
     @Test
     void rejectsMissingCredentialsAndUnexpectedResponse() throws Exception {
         JdkInternalFinancialAiClient missing = new JdkInternalFinancialAiClient(
-                new ObjectMapper(), "http://127.0.0.1:1", "", 100, 100);
+                new ObjectMapper(), httpClientFactory(), true, "http://127.0.0.1:1", "", 100, 100);
         assertThatThrownBy(() -> missing.structureIntent(
                 new IntentStructureRequest("1.0.0", UUID.randomUUID(), "공과금 유지")))
                 .isInstanceOf(AiAssistanceException.class);
@@ -74,16 +75,36 @@ class JdkInternalFinancialAiClientTest {
     @Test
     void validatesConfiguration() {
         assertThatThrownBy(() -> new JdkInternalFinancialAiClient(
-                new ObjectMapper(), "ftp://example.com", "12345678901234567890123456789012", 500, 1000))
+                new ObjectMapper(), httpClientFactory(), true, "ftp://example.com",
+                "12345678901234567890123456789012", 500, 1000))
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> new JdkInternalFinancialAiClient(
-                new ObjectMapper(), "http://127.0.0.1:8000", "12345678901234567890123456789012", 0, 1000))
+                new ObjectMapper(), httpClientFactory(), true, "http://127.0.0.1:8000",
+                "12345678901234567890123456789012", 0, 1000))
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void disabledAssistanceDoesNotInitializeAnInsecureTransport() {
+        InternalAiHttpClientFactory httpsOnly = new InternalAiHttpClientFactory(
+                true, "", "", "PKCS12", "", "", "PKCS12");
+        JdkInternalFinancialAiClient client = new JdkInternalFinancialAiClient(
+                new ObjectMapper(), httpsOnly, false, "http://ai-service:8000", "", 500, 1000);
+
+        assertThatThrownBy(() -> client.structureIntent(
+                new IntentStructureRequest("1.0.0", UUID.randomUUID(), "공과금 유지")))
+                .isInstanceOf(AiAssistanceException.class)
+                .hasMessage("AI assistance is disabled");
+    }
+
     private JdkInternalFinancialAiClient client(String token) {
-        return new JdkInternalFinancialAiClient(new ObjectMapper().findAndRegisterModules(),
-                "http://127.0.0.1:" + server.getAddress().getPort(), token, 500, 1000);
+        return new JdkInternalFinancialAiClient(new ObjectMapper().findAndRegisterModules(), httpClientFactory(),
+                true, "http://127.0.0.1:" + server.getAddress().getPort(), token, 500, 1000);
+    }
+
+    private InternalAiHttpClientFactory httpClientFactory() {
+        return new InternalAiHttpClientFactory(
+                false, "", "", "PKCS12", "", "", "PKCS12");
     }
 
     private static void respond(com.sun.net.httpserver.HttpExchange exchange,

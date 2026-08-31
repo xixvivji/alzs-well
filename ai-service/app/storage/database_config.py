@@ -25,6 +25,7 @@ class DatabaseConfig:
     password: str = field(repr=False)
     sslmode: str
     connect_timeout: int
+    statement_timeout_ms: int = 1_500
 
     @classmethod
     def from_environment(
@@ -36,6 +37,9 @@ class DatabaseConfig:
         try:
             port = int(values.get("ALZS_AI_DB_PORT", "5432"))
             connect_timeout = int(values.get("ALZS_AI_DB_CONNECT_TIMEOUT", "5"))
+            statement_timeout_ms = int(
+                values.get("ALZS_AI_DB_STATEMENT_TIMEOUT_MS", "1500")
+            )
         except ValueError:
             raise KnowledgeContractError("DATABASE_CONFIGURATION_INVALID") from None
         sslmode = values.get("ALZS_AI_DB_SSLMODE", "prefer").strip().lower()
@@ -44,6 +48,8 @@ class DatabaseConfig:
             or port > 65_535
             or connect_timeout < 1
             or connect_timeout > 30
+            or statement_timeout_ms < 100
+            or statement_timeout_ms > 10_000
             or sslmode not in ALLOWED_SSL_MODES
         ):
             raise KnowledgeContractError("DATABASE_CONFIGURATION_INVALID")
@@ -55,4 +61,5 @@ class DatabaseConfig:
             password=values["ALZS_AI_DB_PASSWORD"],
             sslmode=sslmode,
             connect_timeout=connect_timeout,
+            statement_timeout_ms=statement_timeout_ms,
         )

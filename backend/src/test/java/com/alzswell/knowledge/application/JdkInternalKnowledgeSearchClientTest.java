@@ -2,6 +2,7 @@ package com.alzswell.knowledge.application;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.alzswell.common.http.InternalAiHttpClientFactory;
 import com.alzswell.knowledge.application.InternalKnowledgeSearchClient.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
@@ -27,13 +28,16 @@ class JdkInternalKnowledgeSearchClientTest {
             protocol.set(exchange.getProtocol());
             exchange.getRequestBody().readAllBytes();
             byte[] response=("{\"contractVersion\":\"1.0.0\",\"requestId\":\""+requestId
-                    +"\",\"queryHash\":\"sha256:abc\",\"results\":[]}").getBytes(StandardCharsets.UTF_8);
+                    +"\",\"queryHash\":\"sha256:abc\",\"outcome\":\"NO_MATCH\","
+                    +"\"retryable\":false,\"reasonCode\":\"NO_RELEVANT_MATCH\",\"results\":[]}")
+                    .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200,response.length);exchange.getResponseBody().write(response);exchange.close();
         });
         server.start();
         String secret="12345678901234567890123456789012";
         JdkInternalKnowledgeSearchClient client=new JdkInternalKnowledgeSearchClient(
-                new ObjectMapper().findAndRegisterModules(),"http://127.0.0.1:"+server.getAddress().getPort(),secret,500,1000);
+                new ObjectMapper().findAndRegisterModules(),httpClientFactory(),
+                true,"http://127.0.0.1:"+server.getAddress().getPort(),secret,500,1000);
         AiSearchResponse response=client.search(new AiSearchRequest("1.0.0",requestId,"안심차단",
                 List.of("KNOWLEDGE_SEARCH"),List.of("PROTECTION_STAFF"),List.of("STAFF"),
                 LocalDate.of(2026,8,14),5));
@@ -51,11 +55,106 @@ class JdkInternalKnowledgeSearchClientTest {
         });
         server.start();
         JdkInternalKnowledgeSearchClient client=new JdkInternalKnowledgeSearchClient(
-                new ObjectMapper().findAndRegisterModules(),"http://127.0.0.1:"+server.getAddress().getPort(),
+                new ObjectMapper().findAndRegisterModules(),httpClientFactory(),
+                true,"http://127.0.0.1:"+server.getAddress().getPort(),
                 "12345678901234567890123456789012",500,1000);
         AiSearchRequest request=new AiSearchRequest("1.0.0",UUID.randomUUID(),"안심차단",List.of("KNOWLEDGE_SEARCH"),
                 List.of("PROTECTION_STAFF"),List.of("STAFF"),LocalDate.of(2026,8,14),5);
         assertThatThrownBy(()->client.search(request)).isInstanceOf(AiRetrievalException.class)
                 .hasMessageNotContaining("secret diagnostic");
+    }
+
+    @Test
+    void parsesOnlyContractualIndexUnavailableResponsesFromHttp503() throws Exception {
+        server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        UUID requestId=UUID.randomUUID();
+        server.createContext("/internal/v1/search",exchange->{
+            byte[] response=("{\"contractVersion\":\"1.0.0\",\"requestId\":\""+requestId
+                    +"\",\"queryHash\":\"sha256:abc\",\"outcome\":\"INDEX_UNAVAILABLE\","
+                    +"\"retryable\":true,\"reasonCode\":\"SEARCH_TIMEOUT\",\"results\":[]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(503,response.length);
+            exchange.getResponseBody().write(response);exchange.close();
+        });
+        server.start();
+        JdkInternalKnowledgeSearchClient client=new JdkInternalKnowledgeSearchClient(
+                new ObjectMapper().findAndRegisterModules(),httpClientFactory(),
+                true,"http://127.0.0.1:"+server.getAddress().getPort(),
+                "12345678901234567890123456789012",500,1000);
+        AiSearchResponse response=client.search(new AiSearchRequest("1.0.0",requestId,"안심차단",
+                List.of("KNOWLEDGE_SEARCH"),List.of("PROTECTION_STAFF"),List.of("STAFF"),
+                LocalDate.of(2026,8,14),5));
+
+        assertThat(response.outcome()).isEqualTo("INDEX_UNAVAILABLE");
+        assertThat(response.retryable()).isTrue();
+        assertThat(response.reasonCode()).isEqualTo("SEARCH_TIMEOUT");
+    }
+
+    @Test
+    void malformedPolicyAbstainPayloadCannotTurnIntoAnOperationalFallback() throws Exception {
+        server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/internal/v1/search",exchange->{
+            byte[] response="{\"outcome\":\"POLICY_ABSTAIN\",\"results\":\"malformed\"}"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200,response.length);
+            exchange.getResponseBody().write(response);exchange.close();
+        });
+        server.start();
+        JdkInternalKnowledgeSearchClient client=new JdkInternalKnowledgeSearchClient(
+                new ObjectMapper().findAndRegisterModules(),httpClientFactory(),
+                true,"http://127.0.0.1:"+server.getAddress().getPort(),
+                "12345678901234567890123456789012",500,1000);
+
+        AiSearchResponse response=client.search(new AiSearchRequest(
+                "1.0.0",UUID.randomUUID(),"안심차단",List.of("KNOWLEDGE_SEARCH"),
+                List.of("PROTECTION_STAFF"),List.of("STAFF"),LocalDate.of(2026,8,14),5));
+
+        assertThat(response.outcome()).isEqualTo("POLICY_ABSTAIN");
+        assertThat(response.results()).isEmpty();
+    }
+
+    @Test
+    void probesTheDeepReadinessEndpointInsteadOfLiveness() throws Exception {
+        AtomicReference<String> requestedPath=new AtomicReference<>();
+        server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/readiness",exchange->{
+            requestedPath.set(exchange.getRequestURI().getPath());
+            byte[] response=("""
+                    {"status":"READY","service":"ai-rag","embeddingConfiguredBackend":"hash",
+                     "checks":{"database":"UP","retrievalAuditPrivileges":"UP","approvedEmbedding":"UP",
+                     "vectorIndex":"UP","searchProbe":"UP","assistanceContracts":"UP"},
+                     "embeddingBackend":"hash","embeddingModelVersion":"hash-v1","embeddingDimensions":384,
+                     "modelStatus":"BUILT_IN","modelRevision":"hash-v1","artifactSha256":"",
+                     "goldenSetSha256":"","indexVersion":"idx-v1","arcticRolloutEnabled":false,
+                     "deploymentEnvironment":"LOCAL","stagedApprovalEnabled":false,
+                     "embeddingFallbackUsed":true}
+                    """).getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200,response.length);
+            exchange.getResponseBody().write(response);exchange.close();
+        });
+        server.start();
+        JdkInternalKnowledgeSearchClient client=new JdkInternalKnowledgeSearchClient(
+                new ObjectMapper().findAndRegisterModules(),httpClientFactory(),
+                true,"http://127.0.0.1:"+server.getAddress().getPort(),"",500,1000);
+
+        assertThat(client.health().status()).isEqualTo("READY");
+        assertThat(requestedPath).hasValue("/readiness");
+    }
+
+    @Test
+    void disabledRetrievalDoesNotInitializeAnInsecureTransport() {
+        InternalAiHttpClientFactory httpsOnly = new InternalAiHttpClientFactory(
+                true, "", "", "PKCS12", "", "", "PKCS12");
+        JdkInternalKnowledgeSearchClient client = new JdkInternalKnowledgeSearchClient(
+                new ObjectMapper(), httpsOnly, false, "http://ai-service:8000", "", 500, 1000);
+
+        assertThatThrownBy(client::health)
+                .isInstanceOf(AiRetrievalException.class)
+                .hasMessage("AI retrieval is disabled");
+    }
+
+    private InternalAiHttpClientFactory httpClientFactory() {
+        return new InternalAiHttpClientFactory(
+                false, "", "", "PKCS12", "", "", "PKCS12");
     }
 }

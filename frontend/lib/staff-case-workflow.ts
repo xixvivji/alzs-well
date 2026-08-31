@@ -52,6 +52,7 @@ export type StaffCaseQueueQuery = {
   reviewPriority?: StaffReviewPriority;
   cursor?: string;
   limit?: number;
+  signal?: AbortSignal;
 };
 
 export type StaffCaseDetail = {
@@ -233,7 +234,7 @@ export async function loadStaffCaseQueue(
   parameters.set("limit", String(query.limit ?? 20));
   const response = await apiRequest<StaffCaseQueue>(
     `/api/v1/demo/sessions/${encodeURIComponent(context.sessionId)}/staff/cases?${parameters.toString()}`,
-    { staffCapability, demoRunId: context.demoRunId },
+    { staffCapability, demoRunId: context.demoRunId, signal: query.signal },
   );
   return requireData(response.body, "행원 사건큐 응답을 확인할 수 없습니다.");
 }

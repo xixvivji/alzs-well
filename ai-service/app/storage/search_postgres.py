@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any
@@ -29,6 +30,17 @@ ARCTIC_KEYWORD_WEIGHT = 0.2
 ARCTIC_VECTOR_WEIGHT = 0.8
 ARCTIC_VECTOR_THRESHOLD = 0.15
 ARCTIC_RESULT_THRESHOLD = 0.4
+MAX_KEYWORD_CANDIDATES = 500
+MAX_VECTOR_CANDIDATES = 500
+
+
+@dataclass(frozen=True, slots=True)
+class SearchReadiness:
+    database: bool
+    retrieval_audit_privileges: bool
+    approved_embedding: bool
+    vector_index: bool
+    search_probe: bool
 
 
 def index_version_for_backend(backend: str) -> str:
@@ -115,33 +127,14 @@ class PostgresSearchRepository:
                     with search_query as (
                         select websearch_to_tsquery('simple', %s) as terms,
                             %s::{database_vector_type} as embedding
-                    ), ranked as (
+                    ), keyword_candidates as materialized (
                         select
-                            c.document_id, c.version_label, c.chunk_id, c.chunk_order,
-                            d.title, d.issuer, c.heading, c.section_path, c.page,
-                            d.source_url, c.source_hash, c.text_hash, c.content,
-                            d.document_type,
+                            c.chunk_id,
                             ts_rank_cd(to_tsvector('simple', c.content), search_query.terms, 32)
-                                as keyword_score,
-                            case
-                                when e.embedding is null
-                                    then 0.0
-                                else greatest(
-                                    0.0,
-                                    1.0 - (
-                                        e.embedding::{database_vector_type}
-                                        <=> search_query.embedding
-                                    )
-                                )
-                            end as vector_score
+                                as keyword_score
                         from ai_knowledge.chunk c
                         join ai_knowledge.document_snapshot d
                           on d.document_id = c.document_id and d.version_label = c.version_label
-                        left join ai_knowledge.chunk_embedding e
-                          on e.chunk_id = c.chunk_id
-                         and e.embedding_model_id = %s
-                         and e.embedding_model_version = %s
-                         and e.embedding_dimensions = %s
                         cross join search_query
                         where d.allowed_roles && %s::text[]
                           and (d.audience = 'BOTH' or d.audience = any(%s::text[]))
@@ -149,6 +142,65 @@ class PostgresSearchRepository:
                           and d.lifecycle_status in ('PENDING_ACTIVATION', 'ACTIVE')
                           and d.effective_from <= %s
                           and (d.effective_to is null or d.effective_to >= %s)
+                          and to_tsvector('simple', c.content) @@ search_query.terms
+                        order by keyword_score desc,
+                            ai_knowledge.document_authority_rank(d.document_type) desc,
+                            c.chunk_id
+                        limit %s
+                    ), vector_candidates as materialized (
+                        select
+                            c.chunk_id,
+                            greatest(
+                                0.0,
+                                1.0 - (
+                                    e.embedding::{database_vector_type}
+                                    <=> search_query.embedding
+                                )
+                            ) as vector_score
+                        from ai_knowledge.chunk_embedding e
+                        join ai_knowledge.chunk c on c.chunk_id = e.chunk_id
+                        join ai_knowledge.document_snapshot d
+                          on d.document_id = c.document_id and d.version_label = c.version_label
+                        cross join search_query
+                        where e.embedding_model_id = %s
+                          and e.embedding_model_version = %s
+                          and e.embedding_dimensions = %s
+                          and d.allowed_roles && %s::text[]
+                          and (d.audience = 'BOTH' or d.audience = any(%s::text[]))
+                          and d.approval_status = 'APPROVED'
+                          and d.lifecycle_status in ('PENDING_ACTIVATION', 'ACTIVE')
+                          and d.effective_from <= %s
+                          and (d.effective_to is null or d.effective_to >= %s)
+                        order by e.embedding::{database_vector_type}
+                            <=> search_query.embedding,
+                            ai_knowledge.document_authority_rank(d.document_type) desc,
+                            c.chunk_id
+                        limit %s
+                    ), candidate_scores as (
+                        select
+                            chunk_id,
+                            max(keyword_score) as keyword_score,
+                            max(vector_score) as vector_score
+                        from (
+                            select chunk_id, keyword_score, 0.0::double precision as vector_score
+                            from keyword_candidates
+                            union all
+                            select chunk_id, 0.0::double precision as keyword_score, vector_score
+                            from vector_candidates
+                        ) bounded_candidates
+                        group by chunk_id
+                    ), ranked as (
+                        select
+                            c.document_id, c.version_label, c.chunk_id, c.chunk_order,
+                            d.title, d.issuer, c.heading, c.section_path, c.page,
+                            d.source_url, c.source_hash, c.text_hash, c.content,
+                            d.document_type,
+                            candidate_scores.keyword_score,
+                            candidate_scores.vector_score
+                        from candidate_scores
+                        join ai_knowledge.chunk c on c.chunk_id = candidate_scores.chunk_id
+                        join ai_knowledge.document_snapshot d
+                          on d.document_id = c.document_id and d.version_label = c.version_label
                     ), scored as (
                         select ranked.*,
                             (least(1.0, keyword_score) * %s + vector_score * %s) as score,
@@ -163,13 +215,18 @@ class PostgresSearchRepository:
                         source_url, source_hash, text_hash, content, score
                     from scored
                     where score >= %s
-                    order by score desc, authority_rank desc,
+                    order by authority_rank desc, score desc,
                         document_id, version_label, chunk_order
                     limit %s
                     """,
                     (
                         keyword_query(request.query),
                         query_vector,
+                        list(request.principal_roles),
+                        list(request.requester_audiences),
+                        request.as_of,
+                        request.as_of,
+                        MAX_KEYWORD_CANDIDATES,
                         descriptor.model_id,
                         descriptor.model_version,
                         descriptor.dimensions,
@@ -177,6 +234,7 @@ class PostgresSearchRepository:
                         list(request.requester_audiences),
                         request.as_of,
                         request.as_of,
+                        MAX_VECTOR_CANDIDATES,
                         keyword_weight,
                         vector_weight,
                         vector_threshold,
@@ -185,6 +243,110 @@ class PostgresSearchRepository:
                     ),
                 )
                 return tuple(_stored_result(row) for row in cursor.fetchall())
+        except psycopg.errors.QueryCanceled:
+            raise KnowledgeContractError("SEARCH_TIMEOUT") from None
+        except psycopg.Error:
+            raise KnowledgeContractError("STORAGE_UNAVAILABLE") from None
+
+    def readiness(self) -> SearchReadiness:
+        descriptor = self._embedding_provider.descriptor
+        database_vector_type = vector_type(descriptor.dimensions)
+        query_vector = vector_literal(
+            self._embedding_provider.embed_query("내부 검색 준비상태 확인"),
+            dimensions=descriptor.dimensions,
+        )
+        try:
+            with self._connect() as connection, connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    with approved_embedding as (
+                        select e.embedding
+                        from ai_knowledge.chunk_embedding e
+                        join ai_knowledge.chunk c on c.chunk_id = e.chunk_id
+                        join ai_knowledge.document_snapshot d
+                          on d.document_id = c.document_id and d.version_label = c.version_label
+                        where e.embedding_model_id = %s
+                          and e.embedding_model_version = %s
+                          and e.embedding_dimensions = %s
+                          and d.approval_status = 'APPROVED'
+                          and d.lifecycle_status in ('PENDING_ACTIVATION', 'ACTIVE')
+                          and d.effective_from <= current_date
+                          and (d.effective_to is null or d.effective_to >= current_date)
+                        order by c.chunk_id
+                        limit 1
+                    )
+                    select
+                        current_database() is not null as database_ready,
+                        (
+                            has_table_privilege(
+                                current_user,
+                                'ai_knowledge.retrieval_run',
+                                'INSERT'
+                            )
+                            and has_column_privilege(
+                                current_user,
+                                'ai_knowledge.retrieval_run',
+                                'status',
+                                'UPDATE'
+                            )
+                            and has_column_privilege(
+                                current_user,
+                                'ai_knowledge.retrieval_run',
+                                'result_count',
+                                'UPDATE'
+                            )
+                            and has_column_privilege(
+                                current_user,
+                                'ai_knowledge.retrieval_run',
+                                'failure_code',
+                                'UPDATE'
+                            )
+                            and has_column_privilege(
+                                current_user,
+                                'ai_knowledge.retrieval_run',
+                                'finished_at',
+                                'UPDATE'
+                            )
+                            and not has_table_privilege(
+                                current_user,
+                                'ai_knowledge.retrieval_run',
+                                'DELETE'
+                            )
+                        ) as retrieval_audit_privileges,
+                        exists(select 1 from approved_embedding) as approved_embedding_ready,
+                        exists(
+                            select 1
+                            from pg_indexes
+                            where schemaname = 'ai_knowledge'
+                              and tablename = 'chunk_embedding'
+                              and position('using hnsw' in lower(indexdef)) > 0
+                              and position(lower(%s) in lower(indexdef)) > 0
+                              and position(lower(%s) in lower(indexdef)) > 0
+                        ) as vector_index_ready,
+                        coalesce((
+                            select (
+                                embedding::{database_vector_type} <=> %s::{database_vector_type}
+                            ) is not null
+                            from approved_embedding
+                        ), false) as search_probe_ready
+                    """,
+                    (
+                        descriptor.model_id,
+                        descriptor.model_version,
+                        descriptor.dimensions,
+                        descriptor.model_id,
+                        descriptor.model_version,
+                        query_vector,
+                    ),
+                )
+                row = cursor.fetchone()
+                if row is None or len(row) != 5:
+                    raise KnowledgeContractError("STORAGE_UNAVAILABLE")
+                return SearchReadiness(*(bool(value) for value in row))
+        except KnowledgeContractError:
+            raise
+        except psycopg.errors.QueryCanceled:
+            raise KnowledgeContractError("SEARCH_TIMEOUT") from None
         except psycopg.Error:
             raise KnowledgeContractError("STORAGE_UNAVAILABLE") from None
 
@@ -229,6 +391,7 @@ class PostgresSearchRepository:
             sslmode=self._config.sslmode,
             connect_timeout=self._config.connect_timeout,
             application_name="alzs-well-ai-search",
+            options=f"-c statement_timeout={self._config.statement_timeout_ms}",
         )
 
 

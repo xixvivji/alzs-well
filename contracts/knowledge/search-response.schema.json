@@ -4,11 +4,27 @@
   "title": "ALZ's well internal knowledge search response",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contractVersion", "requestId", "queryHash", "results"],
+  "required": ["contractVersion", "requestId", "queryHash", "outcome", "retryable", "results"],
   "properties": {
     "contractVersion": {"const": "1.0.0"},
     "requestId": {"type": "string", "format": "uuid"},
     "queryHash": {"$ref": "#/$defs/sha256"},
+    "outcome": {
+      "enum": ["RESULTS", "POLICY_ABSTAIN", "NO_MATCH", "INDEX_UNAVAILABLE"]
+    },
+    "retryable": {"type": "boolean"},
+    "reasonCode": {
+      "type": ["string", "null"],
+      "enum": [
+        "POLICY_GUARDRAIL",
+        "NO_RELEVANT_MATCH",
+        "STORAGE_UNAVAILABLE",
+        "SEARCH_TIMEOUT",
+        "EMBEDDING_MODEL_UNAVAILABLE",
+        "EMBEDDING_VECTOR_INVALID",
+        null
+      ]
+    },
     "results": {
       "type": "array",
       "maxItems": 20,
@@ -24,6 +40,58 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"outcome": {"const": "RESULTS"}}},
+      "then": {
+        "properties": {
+          "retryable": {"const": false},
+          "reasonCode": {"type": "null"},
+          "results": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"outcome": {"const": "POLICY_ABSTAIN"}}},
+      "then": {
+        "properties": {
+          "retryable": {"const": false},
+          "reasonCode": {"const": "POLICY_GUARDRAIL"},
+          "results": {"maxItems": 0}
+        },
+        "required": ["reasonCode"]
+      }
+    },
+    {
+      "if": {"properties": {"outcome": {"const": "NO_MATCH"}}},
+      "then": {
+        "properties": {
+          "retryable": {"const": false},
+          "reasonCode": {"const": "NO_RELEVANT_MATCH"},
+          "results": {"maxItems": 0}
+        },
+        "required": ["reasonCode"]
+      }
+    },
+    {
+      "if": {"properties": {"outcome": {"const": "INDEX_UNAVAILABLE"}}},
+      "then": {
+        "properties": {
+          "retryable": {"const": true},
+          "reasonCode": {
+            "enum": [
+              "STORAGE_UNAVAILABLE",
+              "SEARCH_TIMEOUT",
+              "EMBEDDING_MODEL_UNAVAILABLE",
+              "EMBEDDING_VECTOR_INVALID"
+            ]
+          },
+          "results": {"maxItems": 0}
+        },
+        "required": ["reasonCode"]
+      }
+    }
+  ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
   }

@@ -51,3 +51,18 @@ jobs:
         working-directory: backend
         run: ./gradlew classes testClasses --no-daemon
       - uses: github/codeql-action/analyze@v4
+
+  quality-gate:
+    name: CodeQL quality gate
+    if: always()
+    needs: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every language analysis to pass
+        env:
+          ANALYZE_RESULT: ${{ needs.analyze.result }}
+        run: |
+          if [ "$ANALYZE_RESULT" != "success" ]; then
+            echo "CodeQL 분석이 통과하지 못했습니다: $ANALYZE_RESULT" >&2
+            exit 1
+          fi

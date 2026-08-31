@@ -31,11 +31,18 @@ public class DetectionPromotionService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final DetectionPromotionIntegrityAuditWriter integrityAuditWriter;
 
-    public DetectionPromotionService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
+    public DetectionPromotionService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            Clock clock,
+            DetectionPromotionIntegrityAuditWriter integrityAuditWriter
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.integrityAuditWriter = integrityAuditWriter;
     }
 
     @Transactional
@@ -47,8 +54,9 @@ public class DetectionPromotionService {
             throw new BusinessException(DetectionErrorCode.PROMOTION_STATE_CONFLICT);
         }
 
-        List<FeatureObservation> observations = read(source.datasetPayload(), new TypeReference<>() {});
-        List<DetectedSignal> detectedSignals = read(source.resultPayload(), new TypeReference<>() {});
+        ParsedSource parsed = verifySourceIntegrity(source, actor);
+        List<FeatureObservation> observations = parsed.observations();
+        List<DetectedSignal> detectedSignals = parsed.detectedSignals();
         List<UUID> signalIds = new ArrayList<>();
         List<UUID> alertIds = new ArrayList<>();
         OffsetDateTime now = AuditTimestamp.canonical(OffsetDateTime.now(clock));
@@ -111,14 +119,17 @@ public class DetectionPromotionService {
     private RunSource lockRun(UUID runId) {
         List<RunSource> rows = jdbcTemplate.query("""
                 select r.detection_run_id, r.customer_id, r.status, r.algorithm_version,
-                       r.result_payload::text, r.result_hash, d.payload::text
+                       r.result_payload::text, r.result_hash, r.input_payload_hash,
+                       r.signal_count, d.payload::text, d.payload_hash, d.observation_count
                   from synthetic_detection_run r
                   join synthetic_detection_dataset d on d.dataset_id = r.dataset_id
                  where r.detection_run_id = ? for update of r
                 """, (rs, rowNum) -> new RunSource(rs.getObject("detection_run_id", UUID.class),
                         rs.getString("customer_id"), rs.getString("status"),
                         rs.getString("algorithm_version"), rs.getString("result_payload"),
-                        rs.getString("result_hash"), rs.getString("payload")), runId);
+                        rs.getString("result_hash"), rs.getString("input_payload_hash"),
+                        rs.getInt("signal_count"), rs.getString("payload"),
+                        rs.getString("payload_hash"), rs.getInt("observation_count")), runId);
         if (rows.size() != 1) throw new BusinessException(DetectionErrorCode.DETECTION_RUN_NOT_FOUND);
         return rows.getFirst();
     }
@@ -192,6 +203,69 @@ public class DetectionPromotionService {
         }
     }
 
+    private ParsedSource verifySourceIntegrity(RunSource source, AuditActor actor) {
+        if (!secureHashEquals(source.inputPayloadHash(), source.datasetPayloadHash())) {
+            rejectIntegrity(source, "INPUT_HASH_MISMATCH", source.inputPayloadHash(),
+                    source.datasetPayloadHash(), actor);
+        }
+        List<FeatureObservation> observations;
+        List<DetectedSignal> detectedSignals;
+        try {
+            observations = read(source.datasetPayload(), new TypeReference<>() {});
+            detectedSignals = read(source.resultPayload(), new TypeReference<>() {});
+        } catch (IllegalStateException exception) {
+            throw malformedSource(source, actor, null, null);
+        }
+        if (observations == null || detectedSignals == null
+                || observations.stream().anyMatch(java.util.Objects::isNull)
+                || detectedSignals.stream().anyMatch(java.util.Objects::isNull)
+                || observations.size() != source.observationCount()
+                || detectedSignals.size() != source.signalCount()) {
+            throw malformedSource(source, actor,
+                    source.observationCount() + ":" + source.signalCount(),
+                    (observations == null ? "null" : observations.size()) + ":"
+                            + (detectedSignals == null ? "null" : detectedSignals.size()));
+        }
+        String canonicalDatasetHash = sha256(source.datasetPayload());
+        if (!secureHashEquals(source.datasetPayloadHash(), canonicalDatasetHash)) {
+            rejectIntegrity(source, "DATASET_HASH_MISMATCH", source.datasetPayloadHash(),
+                    canonicalDatasetHash, actor);
+        }
+        String canonicalResultHash = sha256(json(detectedSignals));
+        if (!secureHashEquals(source.resultHash(), canonicalResultHash)) {
+            rejectIntegrity(source, "RESULT_HASH_MISMATCH", source.resultHash(), canonicalResultHash, actor);
+        }
+        return new ParsedSource(List.copyOf(observations), List.copyOf(detectedSignals));
+    }
+
+    private void rejectIntegrity(
+            RunSource source,
+            String reasonCode,
+            String storedHash,
+            String recomputedHash,
+            AuditActor actor
+    ) {
+        integrityAuditWriter.rejected(source.runId(), source.customerId(), reasonCode,
+                storedHash, recomputedHash, actor);
+        throw new BusinessException(DetectionErrorCode.PROMOTION_SOURCE_INVALID);
+    }
+
+    private BusinessException malformedSource(
+            RunSource source,
+            AuditActor actor,
+            String storedShape,
+            String recomputedShape
+    ) {
+        integrityAuditWriter.rejected(source.runId(), source.customerId(), "SOURCE_JSON_INVALID",
+                storedShape, recomputedShape, actor);
+        return new BusinessException(DetectionErrorCode.PROMOTION_SOURCE_INVALID);
+    }
+
+    private boolean secureHashEquals(String left, String right) {
+        return left != null && right != null && MessageDigest.isEqual(
+                left.getBytes(StandardCharsets.UTF_8), right.getBytes(StandardCharsets.UTF_8));
+    }
+
     private String json(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
@@ -211,6 +285,12 @@ public class DetectionPromotionService {
 
     private record RunSource(
             UUID runId, String customerId, String status, String algorithmVersion,
-            String resultPayload, String resultHash, String datasetPayload
+            String resultPayload, String resultHash, String inputPayloadHash, int signalCount,
+            String datasetPayload, String datasetPayloadHash, int observationCount
+    ) {}
+
+    private record ParsedSource(
+            List<FeatureObservation> observations,
+            List<DetectedSignal> detectedSignals
     ) {}
 }

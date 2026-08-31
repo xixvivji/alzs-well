@@ -169,6 +169,38 @@ class SyntheticDatasetIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "detection-admin", authorities = {
+            "SYNTHETIC_DATASET_ADMIN", "DETECTION_RUN_CREATE", "DETECTION_PROMOTE"
+    })
+    void rejectsPromotionWhenPersistedRunHashesDoNotMatchCanonicalSourcesAndAuditsBothReasons()
+            throws Exception {
+        UUID sourceRunId = createCompletedRun("integrity-source-" + UUID.randomUUID());
+        UUID forgedResultRunId = cloneRun(sourceRunId, false, true);
+        UUID forgedInputRunId = cloneRun(sourceRunId, true, false);
+
+        mockMvc.perform(post("/api/v1/detection-runs/{runId}/promotion", forgedResultRunId))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("DETECTION_PROMOTION_SOURCE_INVALID"));
+        mockMvc.perform(post("/api/v1/detection-runs/{runId}/promotion", forgedInputRunId))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("DETECTION_PROMOTION_SOURCE_INVALID"));
+
+        assertThat(jdbcTemplate.queryForList("""
+                select reason_code from detection_promotion_integrity_event
+                 where detection_run_id in (?, ?) order by reason_code
+                """, String.class, forgedResultRunId, forgedInputRunId))
+                .containsExactly("INPUT_HASH_MISMATCH", "RESULT_HASH_MISMATCH");
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from detection_run_promotion
+                 where detection_run_id in (?, ?)
+                """, Integer.class, forgedResultRunId, forgedInputRunId)).isZero();
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from customer_detection_signal
+                 where source_detection_run_id in (?, ?)
+                """, Integer.class, forgedResultRunId, forgedInputRunId)).isZero();
+    }
+
+    @Test
     @WithMockUser(username = "ordinary-user", authorities = "DETECTION_READ")
     void blocksNonAdminDatasetAccess() throws Exception {
         mockMvc.perform(post("/api/v1/admin/synthetic-datasets")
@@ -197,6 +229,43 @@ class SyntheticDatasetIntegrationTest {
                 .andReturn();
         return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsByteArray())
                 .path("data").path("dataset").path("datasetId").asText());
+    }
+
+    private UUID createCompletedRun(String idempotencyKey) throws Exception {
+        UUID datasetId = createDataset(validDatasetJson());
+        mockMvc.perform(post("/api/v1/admin/synthetic-datasets/{datasetId}/validate", datasetId))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/admin/synthetic-datasets/{datasetId}/ingest", datasetId))
+                .andExpect(status().isOk());
+        MvcResult run = mockMvc.perform(post("/api/v1/customers/{customerId}/detection-runs", CUSTOMER_ID)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"datasetId\":\"" + datasetId + "\"}"))
+                .andExpect(status().isAccepted()).andReturn();
+        return UUID.fromString(objectMapper.readTree(run.getResponse().getContentAsByteArray())
+                .path("data").path("detectionRunId").asText());
+    }
+
+    private UUID cloneRun(UUID sourceRunId, boolean forgeInputHash, boolean forgeResultHash) {
+        UUID clonedRunId = UUID.randomUUID();
+        String uniqueHash = "sha256:" + UUID.randomUUID().toString().replace("-", "").repeat(2);
+        String forgedHash = "sha256:" + "f".repeat(64);
+        jdbcTemplate.update("""
+                insert into synthetic_detection_run(
+                    detection_run_id,dataset_id,customer_id,status,algorithm_version,
+                    policy_version,policy_snapshot_hash,idempotency_key_hash,request_hash,
+                    input_payload_hash,result_payload,result_hash,signal_count,started_at,completed_at
+                )
+                select ?,dataset_id,customer_id,status,algorithm_version,
+                       policy_version,policy_snapshot_hash,?,request_hash,
+                       case when ? then ? else input_payload_hash end,
+                       result_payload,
+                       case when ? then ? else result_hash end,
+                       signal_count,started_at,completed_at
+                  from synthetic_detection_run where detection_run_id=?
+                """, clonedRunId, uniqueHash, forgeInputHash, forgedHash,
+                forgeResultHash, forgedHash, sourceRunId);
+        return clonedRunId;
     }
 
     private String validDatasetJson() {

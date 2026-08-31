@@ -8,6 +8,7 @@ import com.alzswell.demo.api.P0WorkflowRequests.CaseNoteCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.FollowUpCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.FollowUpUpdateCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.ContextCommand;
+import com.alzswell.demo.api.P0WorkflowRequests.DeferCommand;
 import com.alzswell.demo.api.P0WorkflowRequests.GuidancePlanCommand;
 import com.alzswell.demo.api.P0WorkflowResult;
 import com.alzswell.demo.domain.DemoSession;
@@ -125,6 +126,7 @@ public class P0WorkflowService {
                 "alertId", incident.alertId(),
                 "state", incident.state(),
                 "incidentVersion", incident.incidentVersion(),
+                "deferredUntil", incident.deferredUntil(),
                 "title", "정기납부·중복송금·거래확인 변화가 있어요",
                 "summary", summary(signals),
                 "reasonCodes", reasonCodes(signals),
@@ -152,6 +154,7 @@ public class P0WorkflowService {
                 "syntheticData", true,
                 "state", incident.state(),
                 "incidentVersion", incident.incidentVersion(),
+                "deferredUntil", incident.deferredUntil(),
                 "preDecision", incident.preDecision(),
                 "postDecision", incident.postDecision(),
                 "reasonCodes", reasonCodes(signals),
@@ -187,7 +190,7 @@ public class P0WorkflowService {
         if (replay != null) {
             return replay;
         }
-        if (!"AWAITING_CONTEXT".equals(incident.state())) {
+        if (!Set.of("AWAITING_CONTEXT", "DEFERRED").contains(incident.state())) {
             throw new BusinessException(P0WorkflowErrorCode.ALERT_CONTEXT_ALREADY_SUBMITTED);
         }
         OffsetDateTime now = OffsetDateTime.now(clock);
@@ -220,13 +223,14 @@ public class P0WorkflowService {
                 update alert_incident
                    set state = ?, incident_version = ?, post_decision = ?, response_code = ?,
                        demo_branch_code = ?, t1_context_evidence = cast(? as jsonb),
-                       trusted_contact_gate = cast(? as jsonb), context_observed_at = ?, updated_at = ?
+                       trusted_contact_gate = cast(? as jsonb), context_observed_at = ?,
+                       deferred_until = null, updated_at = ?
                  where demo_session_id = ? and demo_run_id = ? and alert_id = ?
-                   and state = 'AWAITING_CONTEXT' and incident_version = ?
+                   and state = ? and incident_version = ?
                 """,
                 nextState, nextIncidentVersion, postDecision, request.responseCode(),
                 request.demoBranchCode(), toJson(t1Evidence), toJson(gate), now, now,
-                sessionId, demoRunId, alertId, incident.incidentVersion()
+                sessionId, demoRunId, alertId, incident.state(), incident.incidentVersion()
         );
         if (updated != 1) {
             throw new BusinessException(P0WorkflowErrorCode.ALERT_CONTEXT_ALREADY_SUBMITTED);
@@ -296,6 +300,110 @@ public class P0WorkflowService {
                 closeNormal
                         ? "생활맥락을 반영해 변화를 다시 확인했습니다."
                         : "추가 설명이 필요해 은행 검토로 연결했습니다.",
+                data
+        );
+        saveCommand(scope, requestHash, result, now);
+        return result;
+    }
+
+    @Transactional
+    public P0WorkflowResult deferConfirmation(
+            UUID sessionId,
+            UUID demoRunId,
+            String alertId,
+            String capabilityHash,
+            String idempotencyKey,
+            DeferCommand request
+    ) {
+        requireCurrentRun(sessionId, demoRunId);
+        validateCommandHeaders(capabilityHash, idempotencyKey);
+        String path = "/api/v1/demo/sessions/" + sessionId + "/alerts/" + alertId + "/defer";
+        String requestHash = requestHash("POST", path, map(
+                "deferredUntil", request.deferredUntil(),
+                "expectedVersion", request.expectedVersion()
+        ));
+        CommandScope scope = commandScope(
+                sessionId, demoRunId, capabilityHash, CUSTOMER_ROLE, path, idempotencyKey
+        );
+
+        IncidentRow incident = requireIncident(sessionId, demoRunId, alertId, true);
+        P0WorkflowResult replay = findReplay(scope, requestHash);
+        if (replay != null) {
+            return replay;
+        }
+        if (!"AWAITING_CONTEXT".equals(incident.state())) {
+            throw new BusinessException(P0WorkflowErrorCode.ALERT_CONTEXT_ALREADY_SUBMITTED);
+        }
+        if (incident.incidentVersion() != request.expectedVersion()) {
+            throw new BusinessException(P0WorkflowErrorCode.ALERT_VERSION_CONFLICT);
+        }
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime deferredUntil = request.deferredUntil();
+        if (!deferredUntil.isAfter(now) || deferredUntil.isAfter(now.plusDays(7))) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT,
+                    "deferredUntil은 현재부터 7일 이내의 미래 시각이어야 합니다.");
+        }
+        long nextVersion = incident.incidentVersion() + 1;
+        int updated = jdbcTemplate.update(
+                """
+                update alert_incident
+                   set state = 'DEFERRED', incident_version = ?,
+                       post_decision = 'DEFER_CUSTOMER_CONFIRMATION',
+                       response_code = 'DEFERRED', demo_branch_code = 'FIN_MGMT_DEFERRED',
+                       deferred_until = ?, updated_at = ?
+                 where demo_session_id = ? and demo_run_id = ? and alert_id = ?
+                   and state = 'AWAITING_CONTEXT' and incident_version = ?
+                """,
+                nextVersion, deferredUntil, now,
+                sessionId, demoRunId, alertId, incident.incidentVersion()
+        );
+        if (updated != 1) {
+            throw new BusinessException(P0WorkflowErrorCode.ALERT_VERSION_CONFLICT);
+        }
+        jdbcTemplate.update(
+                """
+                insert into alert_deferral_event(
+                    deferral_event_id, demo_session_id, demo_run_id, alert_id,
+                    previous_state, resulting_state, previous_incident_version,
+                    resulting_incident_version, deferred_until, request_hash,
+                    idempotency_key_hash, created_at
+                ) values (?, ?, ?, ?, 'AWAITING_CONTEXT', 'DEFERRED', ?, ?, ?, ?, ?, ?)
+                """,
+                UUID.randomUUID(), sessionId, demoRunId, alertId,
+                incident.incidentVersion(), nextVersion, deferredUntil,
+                requestHash, scope.idempotencyKeyHash(), now
+        );
+        auditWriter.write(sessionId, demoRunId, "CUSTOMER_CONFIRMATION_DEFERRED", map(
+                "actorType", "CUSTOMER",
+                "alertId", alertId,
+                "fromState", incident.state(),
+                "toState", "DEFERRED",
+                "incidentVersion", nextVersion,
+                "deferredUntil", deferredUntil,
+                "resultCode", "DEFERRED_BY_CUSTOMER",
+                "requestHash", requestHash,
+                "idempotencyKeyHash", scope.idempotencyKeyHash(),
+                "financialActionExecuted", false,
+                "externalContactRequested", false
+        ), now);
+
+        Map<String, Object> data = map(
+                "demoRunId", demoRunId,
+                "alertId", alertId,
+                "incidentVersion", nextVersion,
+                "previousState", incident.state(),
+                "currentState", "DEFERRED",
+                "deferredUntil", deferredUntil,
+                "nextAction", map("type", "RECHECK_LATER", "actionCode", "CONFIRM_CONTEXT"),
+                "command", map(
+                        "requestHash", requestHash,
+                        "idempotencyKeyHash", scope.idempotencyKeyHash(),
+                        "idempotencyReplayed", false
+                )
+        );
+        P0WorkflowResult result = new P0WorkflowResult(
+                "ALERT_CONFIRMATION_DEFERRED",
+                "나중에 다시 확인하도록 저장했습니다. 금융 조치나 외부 연락은 실행되지 않았습니다.",
                 data
         );
         saveCommand(scope, requestHash, result, now);
@@ -1047,7 +1155,7 @@ public class P0WorkflowService {
         String sql = """
                 select alert_id, customer_id, state, incident_version, pre_decision, post_decision,
                        t1_context_evidence::text, trusted_contact_gate::text,
-                       alert_snapshot_at, context_observed_at
+                       alert_snapshot_at, context_observed_at, deferred_until
                   from alert_incident
                  where demo_session_id = ? and demo_run_id = ? and alert_id = ?
                 """ + (lock ? " for update" : "");
@@ -1836,7 +1944,8 @@ public class P0WorkflowService {
                 rs.getLong("incident_version"), rs.getString("pre_decision"), rs.getString("post_decision"),
                 rs.getString("t1_context_evidence"), rs.getString("trusted_contact_gate"),
                 rs.getObject("alert_snapshot_at", OffsetDateTime.class),
-                rs.getObject("context_observed_at", OffsetDateTime.class)
+                rs.getObject("context_observed_at", OffsetDateTime.class),
+                rs.getObject("deferred_until", OffsetDateTime.class)
         );
     }
 
@@ -2011,7 +2120,8 @@ public class P0WorkflowService {
             String t1ContextEvidenceJson,
             String trustedContactGateJson,
             OffsetDateTime alertSnapshotAt,
-            OffsetDateTime contextObservedAt
+            OffsetDateTime contextObservedAt,
+            OffsetDateTime deferredUntil
     ) {
     }
 

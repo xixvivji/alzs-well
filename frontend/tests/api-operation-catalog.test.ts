@@ -9,9 +9,9 @@ import {
 import { API_OPERATION_CATALOG } from "../lib/generated/api-operation-catalog.ts";
 
 test("문서와 코드의 전체 API operation을 중복 없이 분류한다", () => {
-  assert.equal(API_OPERATION_CATALOG.length, 279);
-  assert.equal(new Set(API_OPERATION_CATALOG.map(({ key }) => key)).size, 279);
-  assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "IMPLEMENTED").length, 234);
+  assert.equal(API_OPERATION_CATALOG.length, 282);
+  assert.equal(new Set(API_OPERATION_CATALOG.map(({ key }) => key)).size, 282);
+  assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "IMPLEMENTED").length, 237);
   assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "PLANNED").length, 23);
   assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "REFERENCE_ONLY").length, 22);
   assert.equal(API_OPERATION_CATALOG.every(({ externalActionAllowed }) => externalActionAllowed === false), true);

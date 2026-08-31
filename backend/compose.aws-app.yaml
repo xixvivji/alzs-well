@@ -51,10 +51,19 @@ services:
       SPRING_FLYWAY_PASSWORD: ${RDS_MIGRATION_PASSWORD:?RDS_MIGRATION_PASSWORD must be set}
       AI_RETRIEVAL_ENABLED: "true"
       AI_ASSISTANCE_ENABLED: "true"
-      AI_RETRIEVAL_BASE_URL: http://${AI_PRIVATE_DNS:-ai.internal}:8000
+      AI_RETRIEVAL_BASE_URL: https://${AI_PRIVATE_DNS:-ai.internal}:8443
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN must be set}
       AI_RETRIEVAL_STRICT_READINESS: "true"
+      AI_REQUIRE_FOR_CORE_READINESS: "false"
+      AI_TLS_KEY_STORE: /run/secrets/ai-client.p12
+      AI_TLS_KEY_STORE_PASSWORD: ${AI_TLS_KEY_STORE_PASSWORD:?AI_TLS_KEY_STORE_PASSWORD must be set}
+      AI_TLS_KEY_STORE_TYPE: PKCS12
+      AI_TLS_TRUST_STORE: /run/secrets/ai-truststore.p12
+      AI_TLS_TRUST_STORE_PASSWORD: ${AI_TLS_TRUST_STORE_PASSWORD:?AI_TLS_TRUST_STORE_PASSWORD must be set}
+      AI_TLS_TRUST_STORE_TYPE: PKCS12
       AI_EXPECTED_MODEL_STATUS: STAGED_APPROVED
+      AI_EXPECTED_EMBEDDING_BACKEND: ${AI_EXPECTED_EMBEDDING_BACKEND:-local-arctic-ko}
+      AI_EXPECTED_EMBEDDING_DIMENSIONS: ${AI_EXPECTED_EMBEDDING_DIMENSIONS:-1024}
       AI_EXPECTED_MODEL_REVISION: ${AI_EXPECTED_MODEL_REVISION:?AI_EXPECTED_MODEL_REVISION must be set}
       AI_EXPECTED_ARTIFACT_SHA256: ${AI_EXPECTED_ARTIFACT_SHA256:?AI_EXPECTED_ARTIFACT_SHA256 must be set}
       AI_EXPECTED_GOLDEN_SET_SHA256: ${AI_EXPECTED_GOLDEN_SET_SHA256:?AI_EXPECTED_GOLDEN_SET_SHA256 must be set}
@@ -68,6 +77,8 @@ services:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
     volumes:
       - ${RDS_CA_BUNDLE_PATH:?RDS_CA_BUNDLE_PATH must be set}:/run/secrets/rds-ca.pem:ro
+      - ${AI_TLS_KEY_STORE_PATH:?AI_TLS_KEY_STORE_PATH must be set}:/run/secrets/ai-client.p12:ro
+      - ${AI_TLS_TRUST_STORE_PATH:?AI_TLS_TRUST_STORE_PATH must be set}:/run/secrets/ai-truststore.p12:ro
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/api/v1/system/readiness | grep -q '\"ready\":true'"]
       interval: 15s

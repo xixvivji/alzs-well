@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   loadPrivateProductOverview, loginPrivateCustomer, logoutPrivateCustomer, simulateLoanRepayment,
   type PrivateCustomerSession, type PrivateProductOverview, type RepaymentSimulation,
 } from "../lib/private-financial-products";
+import { isPrivateSessionExpiredError } from "../lib/private-auth-session";
 import { PrivateCustomerAssets, type AssetTab } from "./PrivateCustomerAssets";
 
 type ProductTab = "card" | "loan" | "investment" | AssetTab;
@@ -21,6 +22,9 @@ export function PrivateProductCenter() {
   const [term, setTerm] = useState(60);
   const [rate, setRate] = useState(4.5);
   const [simulation, setSimulation] = useState<RepaymentSimulation | null>(null);
+  const expireSession = useCallback((message: string) => {
+    setSession(null); setOverview(null); setSimulation(null); setError(message); setBusy(null);
+  }, []);
 
   async function login() {
     setBusy("login"); setError("");
@@ -49,7 +53,10 @@ export function PrivateProductCenter() {
     if (!session || !product) return;
     setBusy("simulate"); setError("");
     try { setSimulation(await simulateLoanRepayment(session, product.productId, principal, term, rate)); }
-    catch (reason) { setError(messageOf(reason)); }
+    catch (reason) {
+      if (isPrivateSessionExpiredError(reason)) expireSession(reason.message);
+      else setError(messageOf(reason));
+    }
     finally { setBusy(null); }
   }
 
@@ -77,7 +84,7 @@ export function PrivateProductCenter() {
       <div className="product-two-column"><section className="panel allocation-card"><div className="section-heading"><div><p className="label">자산배분</p><h2>포트폴리오 구성</h2></div></div><div className="allocation-chart"><div>{overview.allocations.map((item, index) => <i key={item.assetClass} style={{ width: `${item.weightPercent}%`, background: COLORS[index % COLORS.length] }} />)}</div>{overview.allocations.map((item, index) => <p key={item.assetClass}><span style={{ background: COLORS[index % COLORS.length] }} />{assetLabel(item.assetClass)}<strong>{item.weightPercent}%</strong></p>)}</div></section><section className="panel position-card"><div className="section-heading"><div><p className="label">보유 종목</p><h2>평가 현황</h2></div><span className="status-chip">{overview.positions.length}종목</span></div><div>{overview.positions.map((item) => <article key={item.positionId}><div><strong>{item.instrumentName}</strong><small>{item.maskedInstrumentCode} · {item.quantity}주</small></div><p><b>{money(item.marketValue, item.currency)}</b><span className={item.unrealizedProfitLoss >= 0 ? "gain" : "loss"}>{item.unrealizedProfitLoss >= 0 ? "+" : ""}{money(item.unrealizedProfitLoss, item.currency)}</span></p></article>)}</div></section></div>
       <section className="panel order-history"><div className="section-heading"><div><p className="label">과거 기록</p><h2>주문·체결 이력</h2></div><span className="status-chip">신규 주문 불가</span></div><div>{overview.orders.map((item) => <article key={item.orderId}><time>{date(item.orderedAt)}</time><div><strong>{item.instrumentName}</strong><small>{item.side} · {item.quantity}주</small></div><b>{money(item.orderPrice, item.currency)}</b><span>{item.status}</span></article>)}</div></section>
     </section>}
-    <PrivateCustomerAssets session={session} activeTab={isAssetTab(tab) ? tab : null} />
+    <PrivateCustomerAssets session={session} activeTab={isAssetTab(tab) ? tab : null} onSessionExpired={expireSession} />
     {error && <p className="api-error" role="alert">{error}</p>}
   </div>;
 }

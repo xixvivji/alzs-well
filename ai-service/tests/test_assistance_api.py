@@ -45,6 +45,46 @@ def test_intent_respects_explicit_no_sharing(monkeypatch: object) -> None:
     assert response.json()["suggestion"]["shareScopes"] == []
 
 
+def test_intent_does_not_misclassify_payment_stop_negation_as_keep(
+    monkeypatch: object,
+) -> None:
+    client = _client(monkeypatch)
+    response = client.post(
+        "/internal/v1/intent-structure",
+        headers=_headers(),
+        json={
+            "requestId": str(uuid4()),
+            "utterance": "공과금은 더 이상 납부하지 말아 주세요.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["suggestion"]["paymentContinuity"] == "REVIEW_BEFORE_CHANGE"
+    assert body["needsClarification"] is True
+    assert "중단하려는 뜻인지" in body["clarifyingQuestions"][0]
+    assert body["financialActionExecuted"] is False
+
+
+def test_intent_treats_negated_stop_and_change_as_keep(monkeypatch: object) -> None:
+    client = _client(monkeypatch)
+
+    for utterance in (
+        "공과금 납부를 중단하지 말아 주세요.",
+        "보험료 납부 방식은 바꾸지 말아 주세요.",
+    ):
+        response = client.post(
+            "/internal/v1/intent-structure",
+            headers=_headers(),
+            json={"requestId": str(uuid4()), "utterance": utterance},
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["suggestion"]["paymentContinuity"] == "KEEP_ESSENTIAL_PAYMENTS"
+        assert all("중단하려는 뜻인지" not in question for question in body["clarifyingQuestions"])
+
+
 def test_detects_persistent_longitudinal_change(monkeypatch: object) -> None:
     client = _client(monkeypatch)
     values = [0.0] * 60 + [0.0] * 20 + [1.0] * 7 + [0.0] * 3
@@ -64,6 +104,61 @@ def test_detects_persistent_longitudinal_change(monkeypatch: object) -> None:
     assert change["changeDetected"] is True
     assert change["persistent"] is True
     assert response.json()["diagnosisInferred"] is False
+
+
+def test_detects_persistent_longitudinal_decrease_with_directional_explanation(
+    monkeypatch: object,
+) -> None:
+    client = _client(monkeypatch)
+    values = [1.0] * 60 + [0.0] * 30
+    response = client.post(
+        "/internal/v1/change-analysis",
+        headers=_headers(),
+        json={
+            "requestId": str(uuid4()),
+            "baselineDays": 60,
+            "recentDays": 30,
+            "features": [{"featureCode": "MISSED_RECURRING_COUNT", "dailyValues": values}],
+        },
+    )
+
+    assert response.status_code == 200
+    change = response.json()["changes"][0]
+    assert change["direction"] == "DECREASE"
+    assert change["changeDetected"] is True
+    assert change["persistent"] is True
+    assert change["cusumScore"] >= 3.0
+    assert "지속적으로 감소했습니다" in change["explanation"]
+    assert response.json()["diagnosisInferred"] is False
+
+
+def test_detects_persistent_decrease_for_sparse_nonnegative_count_series(
+    monkeypatch: object,
+) -> None:
+    client = _client(monkeypatch)
+    baseline = ([1.0] + [0.0] * 9) * 6
+    response = client.post(
+        "/internal/v1/change-analysis",
+        headers=_headers(),
+        json={
+            "requestId": str(uuid4()),
+            "features": [
+                {
+                    "featureCode": "DUPLICATE_TRANSFER_COUNT",
+                    "dailyValues": baseline + [0.0] * 30,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    change = response.json()["changes"][0]
+    assert change["baselineValue"] == 3.0
+    assert change["recentValue"] == 0.0
+    assert change["direction"] == "DECREASE"
+    assert change["changeDetected"] is True
+    assert change["persistent"] is True
+    assert "지속적으로 감소했습니다" in change["explanation"]
 
 
 def test_reports_stable_series_without_false_alarm(monkeypatch: object) -> None:

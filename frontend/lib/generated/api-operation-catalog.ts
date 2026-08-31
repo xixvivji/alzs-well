@@ -40,6 +40,36 @@ export const API_OPERATION_CATALOG = [
     "externalActionAllowed": false
   },
   {
+    "key": "GET /api/v1/system/core-readiness",
+    "method": "GET",
+    "path": "/api/v1/system/core-readiness",
+    "purpose": "핵심 업무 의존성 준비상태",
+    "domain": "시스템·데모",
+    "domainId": "시스템-데모",
+    "priority": "P0-A",
+    "boundary": "OWNED",
+    "implementation": "IMPLEMENTED",
+    "audience": "PUBLIC",
+    "authorityMode": "PUBLIC",
+    "pathParameters": [],
+    "externalActionAllowed": false
+  },
+  {
+    "key": "GET /api/v1/system/ai-readiness",
+    "method": "GET",
+    "path": "/api/v1/system/ai-readiness",
+    "purpose": "AI 기능 의존성 준비상태",
+    "domain": "시스템·데모",
+    "domainId": "시스템-데모",
+    "priority": "P0-A",
+    "boundary": "OWNED",
+    "implementation": "IMPLEMENTED",
+    "audience": "PUBLIC",
+    "authorityMode": "PUBLIC",
+    "pathParameters": [],
+    "externalActionAllowed": false
+  },
+  {
     "key": "GET /api/v1/system/readiness",
     "method": "GET",
     "path": "/api/v1/system/readiness",
@@ -3001,6 +3031,24 @@ export const API_OPERATION_CATALOG = [
     "method": "POST",
     "path": "/api/v1/demo/sessions/{sessionId}/alerts/{alertId}/context",
     "purpose": "기존 데모 맥락 응답·재평가",
+    "domain": "기준선·신호·경보·생활맥락",
+    "domainId": "기준선-신호-경보-생활맥락",
+    "priority": "P0-A",
+    "boundary": "OWNED",
+    "implementation": "IMPLEMENTED",
+    "audience": "PUBLIC",
+    "authorityMode": "DEMO_CAPABILITY",
+    "pathParameters": [
+      "sessionId",
+      "alertId"
+    ],
+    "externalActionAllowed": false
+  },
+  {
+    "key": "POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer",
+    "method": "POST",
+    "path": "/api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer",
+    "purpose": "고객 확인 유예·감사이력 추가",
     "domain": "기준선·신호·경보·생활맥락",
     "domainId": "기준선-신호-경보-생활맥락",
     "priority": "P0-A",

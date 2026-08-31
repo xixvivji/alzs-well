@@ -1,5 +1,6 @@
 import { invokeApiOperation } from "./api-operation-client";
 import { grantConsent, type Consent } from "./private-customer-assets";
+import { withPrivateCustomerSession } from "./private-auth-session";
 import type { PrivateCustomerSession } from "./private-financial-products";
 
 export type CustomerSummary = {
@@ -45,9 +46,9 @@ export type CustomerCareBundle = {
 };
 
 export async function loadPrivateCustomerCare(session: PrivateCustomerSession): Promise<CustomerCareBundle> {
-  const path = { customerId: session.customerId };
-  const accessToken = session.accessToken;
-  const [summary, preferences, accessibility, dataSummary, contacts, consents, alerts] = await Promise.all([
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const path = { customerId: session.customerId };
+    const [summary, preferences, accessibility, dataSummary, contacts, consents, alerts] = await Promise.all([
     invokeApiOperation<CustomerSummary>("GET /api/v1/customers/{customerId}", { path, accessToken }),
     invokeApiOperation<CustomerPreferences>("GET /api/v1/customers/{customerId}/preferences", { path, accessToken }),
     invokeApiOperation<AccessibilitySettings>("GET /api/v1/customers/{customerId}/accessibility-settings", { path, accessToken }),
@@ -55,48 +56,52 @@ export async function loadPrivateCustomerCare(session: PrivateCustomerSession): 
     invokeApiOperation<{ items: TrustedContact[] }>("GET /api/v1/customers/{customerId}/trusted-contacts", { path, accessToken }),
     invokeApiOperation<{ items: Consent[] }>("GET /api/v1/customers/{customerId}/consents", { path, accessToken }),
     invokeApiOperation<{ items: CustomerAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, accessToken }),
-  ]);
-  return {
-    summary: required(summary.body.data, "고객 프로필"),
-    preferences: required(preferences.body.data, "알림 설정"),
-    accessibility: required(accessibility.body.data, "접근성 설정"),
-    dataSummary: required(dataSummary.body.data, "데이터 범위"),
-    contacts: contacts.body.data?.items ?? [],
-    consents: consents.body.data?.items ?? [],
-    alerts: alerts.body.data?.items ?? [],
-  };
+    ]);
+    return {
+      summary: required(summary.body.data, "고객 프로필"),
+      preferences: required(preferences.body.data, "알림 설정"),
+      accessibility: required(accessibility.body.data, "접근성 설정"),
+      dataSummary: required(dataSummary.body.data, "데이터 범위"),
+      contacts: contacts.body.data?.items ?? [],
+      consents: consents.body.data?.items ?? [],
+      alerts: alerts.body.data?.items ?? [],
+    };
+  });
 }
 
 export async function updateCustomerDisplayName(
   session: PrivateCustomerSession, expectedVersion: number, displayName: string,
 ): Promise<void> {
-  await invokeApiOperation("PATCH /api/v1/customers/{customerId}/display-profile", {
-    path: { customerId: session.customerId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(), body: { expectedVersion, displayName },
-  });
+  const idempotencyKey = crypto.randomUUID();
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PATCH /api/v1/customers/{customerId}/display-profile", {
+    path: { customerId: session.customerId }, accessToken,
+    idempotencyKey, body: { expectedVersion, displayName },
+  }));
 }
 
 export async function updateCustomerPreferences(
   session: PrivateCustomerSession, preferences: CustomerPreferences,
 ): Promise<void> {
-  await invokeApiOperation("PATCH /api/v1/customers/{customerId}/preferences", {
-    path: { customerId: session.customerId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(),
+  const idempotencyKey = crypto.randomUUID();
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PATCH /api/v1/customers/{customerId}/preferences", {
+    path: { customerId: session.customerId }, accessToken,
+    idempotencyKey,
     body: {
       expectedVersion: preferences.version,
       smsNotificationEnabled: preferences.smsNotificationEnabled,
       pushNotificationEnabled: preferences.pushNotificationEnabled,
       inAppNotificationEnabled: preferences.inAppNotificationEnabled,
     },
-  });
+  }));
 }
 
 export async function updateAccessibilitySettings(
   session: PrivateCustomerSession, settings: AccessibilitySettings,
 ): Promise<void> {
-  await invokeApiOperation("PUT /api/v1/customers/{customerId}/accessibility-settings", {
-    path: { customerId: session.customerId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(),
+  const idempotencyKey = crypto.randomUUID();
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PUT /api/v1/customers/{customerId}/accessibility-settings", {
+    path: { customerId: session.customerId }, accessToken,
+    idempotencyKey,
     body: {
       expectedVersion: settings.version,
       largeFont: settings.largeFont,
@@ -104,7 +109,7 @@ export async function updateAccessibilitySettings(
       speechGuidance: settings.speechGuidance,
       oneHandMode: settings.oneHandMode,
     },
-  });
+  }));
 }
 
 export async function ensureTrustedContactConsent(session: PrivateCustomerSession, consents: Consent[]): Promise<Consent> {
@@ -119,31 +124,40 @@ export async function createTrustedContact(
   session: PrivateCustomerSession, consentId: string,
   input: { displayName: string; relationshipCode: string; maskedContact: string; scopes: string[] },
 ): Promise<TrustedContact> {
-  const response = await invokeApiOperation<TrustedContact>("POST /api/v1/customers/{customerId}/trusted-contacts", {
-    path: { customerId: session.customerId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(), body: { consentId, ...input, expiresAt: futureIso(180) },
+  const idempotencyKey = crypto.randomUUID();
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<TrustedContact>("POST /api/v1/customers/{customerId}/trusted-contacts", {
+      path: { customerId: session.customerId }, accessToken,
+      idempotencyKey, body: { consentId, ...input, expiresAt: futureIso(180) },
+    });
+    return required(response.body.data, "신뢰 연락처 등록");
   });
-  return required(response.body.data, "신뢰 연락처 등록");
 }
 
 export async function revokeTrustedContact(
   session: PrivateCustomerSession, contact: TrustedContact, reason: string,
 ): Promise<TrustedContact> {
-  const response = await invokeApiOperation<TrustedContact>("POST /api/v1/customers/{customerId}/trusted-contacts/{contactId}/revoke", {
-    path: { customerId: session.customerId, contactId: contact.contactId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(), body: { expectedVersion: contact.version, reason },
+  const idempotencyKey = crypto.randomUUID();
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<TrustedContact>("POST /api/v1/customers/{customerId}/trusted-contacts/{contactId}/revoke", {
+      path: { customerId: session.customerId, contactId: contact.contactId }, accessToken,
+    idempotencyKey, body: { expectedVersion: contact.version, reason },
+    });
+    return required(response.body.data, "신뢰 연락처 철회");
   });
-  return required(response.body.data, "신뢰 연락처 철회");
 }
 
 export async function submitAlertAppeal(
   session: PrivateCustomerSession, alert: CustomerAlert, reasonCode: string, statement: string,
 ): Promise<AlertAppeal> {
-  const response = await invokeApiOperation<AlertAppeal>("POST /api/v1/alerts/{alertId}/appeals", {
-    path: { alertId: alert.alertId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(), body: { reasonCode, statement, expectedVersion: alert.version },
+  const idempotencyKey = crypto.randomUUID();
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<AlertAppeal>("POST /api/v1/alerts/{alertId}/appeals", {
+      path: { alertId: alert.alertId }, accessToken,
+    idempotencyKey, body: { reasonCode, statement, expectedVersion: alert.version },
+    });
+    return required(response.body.data, "사람 재검토 요청");
   });
-  return required(response.body.data, "사람 재검토 요청");
 }
 
 function futureIso(days: number): string { return new Date(Date.now() + days * 86_400_000).toISOString(); }

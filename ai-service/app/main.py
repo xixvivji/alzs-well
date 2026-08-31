@@ -24,6 +24,7 @@ from app.domain.search import Citation, SearchRequest, SearchResponse, SearchRes
 from app.embedding.base import EmbeddingProvider
 from app.embedding.config import EmbeddingConfig, create_embedding_provider
 from app.errors import KnowledgeContractError
+from app.readiness import assistance_contracts_ready
 from app.retrieval.query import requires_abstention
 from app.storage.database_config import DatabaseConfig
 from app.storage.search_postgres import (
@@ -45,12 +46,39 @@ def create_app() -> FastAPI:
     application.add_exception_handler(RequestValidationError, _validation_error_handler)
 
     @application.get("/health")
-    def health() -> dict[str, str | int | bool | None]:
+    def health() -> dict[str, str]:
+        return {"status": "UP", "service": "ai-rag"}
+
+    @application.get("/readiness")
+    def readiness(
+        repository: Annotated[PostgresSearchRepository, Depends(get_search_repository)],
+    ) -> JSONResponse:
         config = get_embedding_config()
         descriptor = get_embedding_provider().descriptor
-        return {
-            "status": "UP",
+        try:
+            storage = repository.readiness()
+            checks = {
+                "database": storage.database,
+                "retrievalAuditPrivileges": storage.retrieval_audit_privileges,
+                "approvedEmbedding": storage.approved_embedding,
+                "vectorIndex": storage.vector_index,
+                "searchProbe": storage.search_probe,
+                "assistanceContracts": assistance_contracts_ready(),
+            }
+        except KnowledgeContractError:
+            checks = {
+                "database": False,
+                "retrievalAuditPrivileges": False,
+                "approvedEmbedding": False,
+                "vectorIndex": False,
+                "searchProbe": False,
+                "assistanceContracts": assistance_contracts_ready(),
+            }
+        ready = all(checks.values())
+        content: dict[str, object] = {
+            "status": "READY" if ready else "NOT_READY",
             "service": "ai-rag",
+            "checks": {name: "UP" if value else "DOWN" for name, value in checks.items()},
             "embeddingConfiguredBackend": config.backend,
             "embeddingBackend": descriptor.backend,
             "embeddingModelVersion": descriptor.model_version,
@@ -69,6 +97,7 @@ def create_app() -> FastAPI:
                 and descriptor.backend == "hash"
             ),
         }
+        return JSONResponse(status_code=200 if ready else 503, content=content)
 
     @application.post(
         "/internal/v1/search",
@@ -79,21 +108,61 @@ def create_app() -> FastAPI:
     def search(
         payload: SearchRequest,
         repository: Annotated[PostgresSearchRepository, Depends(get_search_repository)],
-    ) -> SearchResponse:
+    ) -> SearchResponse | JSONResponse:
         if "KNOWLEDGE_SEARCH" not in payload.permissions:
             raise KnowledgeContractError("KNOWLEDGE_PERMISSION_DENIED")
         query_hash = hash_query(payload.query)
-        run_id = repository.start_run(payload, query_hash)
-        try:
-            stored_results = (
-                () if requires_abstention(payload.query) else repository.search(payload)
+        policy_abstain = requires_abstention(payload.query)
+        if policy_abstain:
+            # 정책 거절은 검색·감사 저장소보다 먼저 결정한다. 감사 저장 실패가 더 허용적인
+            # INDEX_UNAVAILABLE 폴백으로 바뀌어 정책을 우회해서는 안 된다.
+            policy_run_id = None
+            try:
+                policy_run_id = repository.start_run(payload, query_hash)
+                repository.complete_run(policy_run_id, 0)
+            except KnowledgeContractError as error:
+                if policy_run_id is not None:
+                    try:
+                        repository.fail_run(policy_run_id, error.code)
+                    except KnowledgeContractError:
+                        pass
+            return SearchResponse(
+                request_id=payload.request_id,
+                query_hash=query_hash,
+                outcome="POLICY_ABSTAIN",
+                retryable=False,
+                reason_code="POLICY_GUARDRAIL",
+                results=(),
             )
+        run_id = None
+        try:
+            run_id = repository.start_run(payload, query_hash)
+            stored_results = repository.search(payload)
             repository.complete_run(run_id, len(stored_results))
         except KnowledgeContractError as error:
-            try:
-                repository.fail_run(run_id, error.code)
-            except KnowledgeContractError:
-                pass
+            if run_id is not None:
+                try:
+                    repository.fail_run(run_id, error.code)
+                except KnowledgeContractError:
+                    pass
+            if error.code in {
+                "STORAGE_UNAVAILABLE",
+                "SEARCH_TIMEOUT",
+                "EMBEDDING_MODEL_UNAVAILABLE",
+                "EMBEDDING_VECTOR_INVALID",
+            }:
+                unavailable = SearchResponse(
+                    request_id=payload.request_id,
+                    query_hash=query_hash,
+                    outcome="INDEX_UNAVAILABLE",
+                    retryable=True,
+                    reason_code=error.code,
+                    results=(),
+                )
+                return JSONResponse(
+                    status_code=503,
+                    content=unavailable.model_dump(mode="json", by_alias=True),
+                )
             raise
         results = tuple(
             SearchResult(
@@ -122,6 +191,13 @@ def create_app() -> FastAPI:
         return SearchResponse(
             request_id=payload.request_id,
             query_hash=query_hash,
+            outcome=(
+                "RESULTS" if results else "NO_MATCH"
+            ),
+            retryable=False,
+            reason_code=(
+                None if results else "NO_RELEVANT_MATCH"
+            ),
             results=results,
         )
 
@@ -193,6 +269,7 @@ async def _knowledge_error_handler(
         "INTERNAL_AUTHENTICATION_FAILED": 401,
         "KNOWLEDGE_PERMISSION_DENIED": 403,
         "SEARCH_REQUEST_CONFLICT": 409,
+        "SEARCH_TIMEOUT": 503,
         "STORAGE_UNAVAILABLE": 503,
         "API_CONFIGURATION_INVALID": 500,
         "DATABASE_CONFIGURATION_INVALID": 500,

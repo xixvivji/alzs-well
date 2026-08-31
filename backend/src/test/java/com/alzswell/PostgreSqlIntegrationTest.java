@@ -203,12 +203,14 @@ class PostgreSqlIntegrationTest {
                       ,'customer_foreign_currency_account_snapshot'
                       ,'overseas_remittance_snapshot'
                       ,'demo_financial_intent'
+                      ,'alert_deferral_event'
+                      ,'detection_promotion_integrity_event'
                   )
                 """,
                 Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(145);
+        assertThat(tableCount).isEqualTo(147);
     }
 
     @Test
@@ -223,6 +225,16 @@ class PostgreSqlIntegrationTest {
                   and a.attname = 'embedding'
                   and not a.attisdropped
                 """, String.class)).isEqualTo("vector(384)");
+        assertThat(jdbcTemplate.queryForObject("""
+                select exists(
+                    select 1 from pg_indexes
+                     where schemaname='ai_knowledge'
+                       and tablename='chunk'
+                       and indexname='idx_ai_knowledge_chunk_content_fts_simple'
+                       and indexdef ilike '%using gin%'
+                       and indexdef ilike '%to_tsvector(''simple''::regconfig, content)%'
+                )
+                """, Boolean.class)).isTrue();
     }
 
     @Test
@@ -262,6 +274,51 @@ class PostgreSqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','staff_access_grant_event','INSERT')",
                 Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','auth_principal','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','auth_principal','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','auth_principal','SELECT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','auth_role_permission','INSERT')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','protection_action_catalog','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','synthetic_detection_dataset','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','synthetic_detection_dataset','status','UPDATE')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_column_privilege('alzswell_app','synthetic_detection_dataset','payload','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','synthetic_detection_run','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','detection_run_promotion','DELETE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','customer_signal_evidence_snapshot','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','alert_deferral_event','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','alert_deferral_event','UPDATE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','detection_promotion_integrity_event','INSERT')",
+                Boolean.class)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_app','detection_promotion_integrity_event','UPDATE')",
+                Boolean.class)).isFalse();
         assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_app','staff_access_grant_event','UPDATE')",
                 Boolean.class)).isFalse();
@@ -487,6 +544,9 @@ class PostgreSqlIntegrationTest {
                 "select has_column_privilege('alzswell_ai_runtime','ai_knowledge.retrieval_run','status','UPDATE')",
                 Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject(
+                "select has_table_privilege('alzswell_ai_runtime','ai_knowledge.retrieval_run','DELETE')",
+                Boolean.class)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
                 "select has_table_privilege('alzswell_ai_runtime','knowledge_document','SELECT')",
                 Boolean.class)).isFalse();
     }
@@ -555,6 +615,37 @@ class PostgreSqlIntegrationTest {
     }
 
     @Test
+    void databaseRejectsDetectionAndAiTerminalHistoryRewrites() {
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                update customer_signal_evidence_snapshot
+                   set description='rewritten' where evidence_id='94100000-0000-0000-0000-000000000001'
+                """))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("append-only");
+
+        UUID runId = UUID.randomUUID();
+        UUID requestId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into ai_knowledge.retrieval_run(
+                    run_id,request_id,query_hash,as_of,principal_roles,requester_audiences,
+                    requested_limit,index_version,status,started_at
+                ) values(?,?,?,current_date,array['CUSTOMER'],array['CUSTOMER'],5,?,'RUNNING',now())
+                """, runId, requestId, "sha256:" + "a".repeat(64), "db-guard-index");
+        jdbcTemplate.update("""
+                update ai_knowledge.retrieval_run
+                   set status='SUCCEEDED',result_count=0,finished_at=now() where run_id=?
+                """, runId);
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "update ai_knowledge.retrieval_run set result_count=1 where run_id=?", runId))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("terminal AI retrieval runs are immutable");
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "delete from ai_knowledge.retrieval_run where run_id=?", runId))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("cannot be deleted");
+    }
+
+    @Test
     void readinessApiChecksDatabaseFlywayFixturesAndPolicyCatalog() throws Exception {
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isOk())
@@ -566,13 +657,26 @@ class PostgreSqlIntegrationTest {
                 .andExpect(jsonPath("$.data.checks.syntheticFixtures").value("UP"))
                 .andExpect(jsonPath("$.data.checks.policyCatalog").value("UP"))
                 .andExpect(jsonPath("$.data.checks.detectionPolicy").value("UP"))
-                .andExpect(jsonPath("$.data.checks.safeGuardrails").value("UP"));
+                .andExpect(jsonPath("$.data.checks.safeGuardrails").value("UP"))
+                .andExpect(jsonPath("$.data.checks.aiRequiredForCore").value("OPTIONAL"));
+
+        mockMvc.perform(get("/api/v1/system/core-readiness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SYSTEM_CORE_READY"))
+                .andExpect(jsonPath("$.data.ready").value(true))
+                .andExpect(jsonPath("$.data.checks.aiRetrieval").doesNotExist());
+
+        mockMvc.perform(get("/api/v1/system/ai-readiness"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SYSTEM_NOT_READY"))
+                .andExpect(jsonPath("$.data.ready").value(false))
+                .andExpect(jsonPath("$.data.checks.aiRetrieval").value("DISABLED"));
     }
 
     @Test
     @Transactional
     void readinessRejectsDatabaseWithoutTheRequiredLatestMigration() throws Exception {
-        jdbcTemplate.update("delete from flyway_schema_history where version = '73'");
+        jdbcTemplate.update("delete from flyway_schema_history where version = '74'");
 
         mockMvc.perform(get("/api/v1/system/readiness"))
                 .andExpect(status().isServiceUnavailable())
@@ -645,7 +749,7 @@ class PostgreSqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system/versions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SYSTEM_VERSIONS_RETRIEVED"))
-                .andExpect(jsonPath("$.data.schemaVersion").value("73"))
+                .andExpect(jsonPath("$.data.schemaVersion").value("74"))
                 .andExpect(jsonPath("$.data.fixtureVersion").value("fin-mgmt-ab-v2.0.0"))
                 .andExpect(jsonPath("$.data.algorithmVersion").value("baseline-rules-v2.0.0"))
                 .andExpect(jsonPath("$.data.policyVersion").value("context-policy-v1.0.0"));
@@ -704,13 +808,13 @@ class PostgreSqlIntegrationTest {
                 .andReturn();
 
         JsonNode specification = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-        assertThat(specification.path("paths").size()).isEqualTo(211);
+        assertThat(specification.path("paths").size()).isEqualTo(214);
         long operationCount = StreamSupport.stream(specification.path("paths").spliterator(), false)
                 .mapToLong(path -> List.of("get", "post", "put", "patch", "delete").stream()
                         .filter(path::has)
                         .count())
                 .sum();
-        assertThat(operationCount).isEqualTo(227);
+        assertThat(operationCount).isEqualTo(230);
 
         assertThat(specification.path("components").path("securitySchemes").has("BearerAuth")).isTrue();
         List<JsonNode> operations = StreamSupport.stream(specification.path("paths").spliterator(), false)
@@ -917,7 +1021,16 @@ class PostgreSqlIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.suggestion.paymentContinuity").value("KEEP_ESSENTIAL_PAYMENTS"))
                 .andExpect(jsonPath("$.data.fallbackUsed").value(true))
+                .andExpect(jsonPath("$.data.evidence[0].excerpt").value("공과금"))
                 .andExpect(jsonPath("$.data.healthInferenceUsed").value(false));
+
+        mockMvc.perform(post(base + "/intent-suggestions")
+                        .header(DemoCapabilityService.REQUEST_HEADER, capability)
+                        .header(DemoCapabilityService.RUN_HEADER, runId)
+                        .contentType("application/json")
+                .content("{\"utterance\":\"주민등록번호 900101-1234567을 참고해 주세요.\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON_INVALID_INPUT"));
 
         mockMvc.perform(put(base + "/intent")
                         .header(DemoCapabilityService.REQUEST_HEADER, capability)
@@ -967,6 +1080,14 @@ class PostgreSqlIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from demo_financial_intent where demo_session_id=?", Integer.class, sessionId))
                 .isOne();
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from decision_audit
+                 where demo_session_id=? and event_type='DEMO_AI_ASSISTANCE_FALLBACK_USED'
+                """, Integer.class, sessionId)).isGreaterThanOrEqualTo(4);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from decision_audit
+                 where demo_session_id=? and event_payload::text like '%공과금은 계속%'
+                """, Integer.class, sessionId)).isZero();
         jdbcTemplate.update("delete from demo_session where session_id=?", sessionId);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from demo_financial_intent where demo_session_id=?", Integer.class, sessionId))

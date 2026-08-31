@@ -21,7 +21,7 @@ type ProxyFetch = (request: Request) => Promise<Response>;
 type ProxyOptions = {
   fetchImpl?: ProxyFetch;
   timeoutMs?: number;
-  trustedClientAddress?: string | null;
+  clientRateIdentity?: string | null;
   proxySharedSecret?: string;
 };
 
@@ -91,6 +91,10 @@ export async function proxyApiRequest(
   if (!proxySharedSecret || !/^[a-f0-9]{64}$/.test(proxySharedSecret)) {
     return proxyError(503, "BACKEND_PROXY_CONFIGURATION_INVALID", "API 연결 설정을 확인할 수 없습니다.", traceId);
   }
+  const clientRateIdentity = options.clientRateIdentity;
+  if (!clientRateIdentity || !/^[A-Za-z0-9_-]{22}$/.test(clientRateIdentity)) {
+    return proxyError(503, "BACKEND_PROXY_CONFIGURATION_INVALID", "API 연결 설정을 확인할 수 없습니다.", traceId);
+  }
 
   const maxRequestBodyBytes = incoming.pathname === KNOWLEDGE_IMPORT_PATH
     ? KNOWLEDGE_IMPORT_MAX_REQUEST_BODY_BYTES
@@ -107,7 +111,7 @@ export async function proxyApiRequest(
   try {
     const headers = sanitizedRequestHeaders(request.headers);
     headers.set("X-Alzs-Proxy-Secret", proxySharedSecret);
-    headers.set("X-Alzs-Client-Key", await signedClientKey(proxySharedSecret, options.trustedClientAddress));
+    headers.set("X-Alzs-Client-Key", await signedClientKey(proxySharedSecret, clientRateIdentity));
     const body = request.method === "GET" || request.method === "HEAD" || request.body === null
       ? undefined
       : limitedBody(request.body, maxRequestBodyBytes, () => {
@@ -196,10 +200,7 @@ function limitedBody(
   }));
 }
 
-async function signedClientKey(secretHex: string, trustedClientAddress: string | null | undefined): Promise<string> {
-  const source = trustedClientAddress && /^[0-9a-f:.]{1,64}$/i.test(trustedClientAddress)
-    ? trustedClientAddress.toLowerCase()
-    : "anonymous";
+async function signedClientKey(secretHex: string, clientRateIdentity: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     Uint8Array.from(secretHex.match(/.{2}/g) ?? [], (value) => Number.parseInt(value, 16)),
@@ -207,7 +208,7 @@ async function signedClientKey(secretHex: string, trustedClientAddress: string |
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`alzs-client-rate-v1:${source}`));
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`alzs-client-rate-v1:${clientRateIdentity}`));
   return Array.from(new Uint8Array(signature), (value) => value.toString(16).padStart(2, "0")).join("");
 }
 

@@ -257,8 +257,13 @@ public class AuthSessionService {
     }
 
     private TokenPair createSession(UUID principalId, OffsetDateTime now) {
-        jdbcTemplate.queryForObject("select principal_id from auth_principal where principal_id = ? for update",
-                UUID.class, principalId);
+        // Principal and role rows are runtime read-only.  Serialize session-count changes
+        // with a transaction-scoped advisory lock instead of requiring UPDATE privilege
+        // merely to execute SELECT ... FOR UPDATE on the principal row.
+        jdbcTemplate.query(
+                "select pg_advisory_xact_lock(hashtextextended(cast(? as text), 0))",
+                resultSet -> null,
+                principalId.toString());
         Long activeSessions = jdbcTemplate.queryForObject("""
                 select count(*) from auth_session
                  where principal_id = ? and revoked_at is null

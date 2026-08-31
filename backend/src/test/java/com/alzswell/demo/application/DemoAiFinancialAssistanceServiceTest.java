@@ -1,0 +1,330 @@
+package com.alzswell.demo.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.alzswell.assistance.application.InternalFinancialAiClient;
+import com.alzswell.assistance.application.InternalFinancialAiClient.ChangeAnalysisRequest;
+import com.alzswell.assistance.application.InternalFinancialAiClient.ChangeAnalysisResponse;
+import com.alzswell.assistance.application.InternalFinancialAiClient.ChangeSignal;
+import com.alzswell.assistance.application.InternalFinancialAiClient.IntentFieldEvidence;
+import com.alzswell.assistance.application.InternalFinancialAiClient.IntentStructureRequest;
+import com.alzswell.assistance.application.InternalFinancialAiClient.IntentStructureResponse;
+import com.alzswell.assistance.application.InternalFinancialAiClient.IntentSuggestion;
+import com.alzswell.common.exception.BusinessException;
+import com.alzswell.common.security.SensitiveTextPolicy;
+import com.alzswell.demo.api.AiFinancialAssistanceRequests.IntentDraft;
+import com.alzswell.demo.api.DemoErrorCode;
+import com.alzswell.demo.api.BaselineListResponse;
+import com.alzswell.demo.domain.DemoSession;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+
+class DemoAiFinancialAssistanceServiceTest {
+
+    private static final UUID SESSION_ID = UUID.fromString("10000000-0000-0000-0000-000000000001");
+    private static final UUID RUN_ID = UUID.fromString("20000000-0000-0000-0000-000000000001");
+    private static final String CUSTOMER_ID = DemoSessionService.CUSTOMER_ID;
+
+    private final DemoSessionService sessionService = mock(DemoSessionService.class);
+    private final SyntheticFinanceQueryService financeQueryService = mock(SyntheticFinanceQueryService.class);
+    private final InternalFinancialAiClient aiClient = mock(InternalFinancialAiClient.class);
+    private final DemoAuditWriter auditWriter = mock(DemoAuditWriter.class);
+    private final DemoAiAssistanceAuditWriter assistanceAuditWriter = mock(DemoAiAssistanceAuditWriter.class);
+    private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+    private final Clock clock = Clock.fixed(Instant.parse("2026-08-31T00:00:00Z"), ZoneOffset.UTC);
+
+    private DemoAiFinancialAssistanceService service;
+
+    @BeforeEach
+    void setUp() {
+        DemoSession session = new DemoSession(
+                SESSION_ID, RUN_ID, 1, "sha256:customer-capability",
+                OffsetDateTime.now(clock), OffsetDateTime.now(clock).plusHours(2));
+        session.ingest("FIN_MGMT_AB_001", "sha256:snapshot", CUSTOMER_ID,
+                DemoSessionService.ALERT_ID, DemoSessionService.CASE_ID, OffsetDateTime.now(clock));
+        when(sessionService.requireFinancialFixture(SESSION_ID, CUSTOMER_ID)).thenReturn(session);
+        service = new DemoAiFinancialAssistanceService(
+                sessionService, financeQueryService, aiClient, auditWriter, assistanceAuditWriter,
+                new SensitiveTextPolicy(), jdbcTemplate, clock, true);
+    }
+
+    @Test
+    void rejectsSensitiveIntentBeforeCallingFastApi() {
+        assertThatThrownBy(() -> service.suggest(
+                SESSION_ID, RUN_ID, CUSTOMER_ID, "주민등록번호 900101-1234567을 참고해 주세요"))
+                .isInstanceOf(BusinessException.class);
+
+        verify(aiClient, never()).structureIntent(any());
+        verify(assistanceAuditWriter, never()).fallback(any(), any(), anyString(), anyString());
+    }
+
+    @Test
+    void rejectsUngroundedOrForbiddenAiIntentAndRemovesRawFallbackEvidence() {
+        when(aiClient.structureIntent(any(IntentStructureRequest.class))).thenAnswer(invocation -> {
+            IntentStructureRequest request = invocation.getArgument(0);
+            return new IntentStructureResponse(
+                    "1.0.0", request.requestId(),
+                    new IntentSuggestion("KEEP_ESSENTIAL_PAYMENTS", "SIMPLE_TEXT",
+                            "ON_CUSTOMER_REQUEST", List.of()),
+                    "치매 진단 결과로 정리했습니다.",
+                    List.of(
+                            new IntentFieldEvidence("paymentContinuity", "공과금", 0.9),
+                            new IntentFieldEvidence("explanationMode", "천천히", 0.9),
+                            new IntentFieldEvidence("helpCondition", "근거 없는 문장", 0.9),
+                            new IntentFieldEvidence("shareScopes", "공과금", 0.9)
+                    ), false, List.of(), "safe-model:1.0", true, false, false, false
+            );
+        });
+        String utterance = "공과금은 계속 납부하고 천천히 설명해 주세요";
+
+        var result = service.suggest(SESSION_ID, RUN_ID, CUSTOMER_ID, utterance);
+
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.evidence()).allSatisfy(evidence -> assertThat(evidence.excerpt())
+                .isNotEqualTo(utterance));
+        verify(assistanceAuditWriter).fallback(
+                SESSION_ID, RUN_ID, "INTENT_STRUCTURE", "UPSTREAM_RESPONSE_REJECTED");
+    }
+
+    @Test
+    void acceptsIntentOnlyWhenSummaryQuestionsAndEvidenceMatchTheStructuredFields() {
+        when(aiClient.structureIntent(any(IntentStructureRequest.class))).thenAnswer(invocation -> {
+            IntentStructureRequest request = invocation.getArgument(0);
+            return new IntentStructureResponse(
+                    "1.0.0", request.requestId(),
+                    new IntentSuggestion("KEEP_ESSENTIAL_PAYMENTS", "SIMPLE_TEXT",
+                            "ON_CUSTOMER_REQUEST", List.of("PAYMENT_PREFERENCE")),
+                    "필수 납부를 유지, 쉬운 글 방식, 고객이 요청할 때 도움 제공, 1개 항목 공유으로 정리했습니다.",
+                    List.of(
+                            new IntentFieldEvidence("paymentContinuity", "공과금", 0.9),
+                            new IntentFieldEvidence("explanationMode", "천천히", 0.9),
+                            new IntentFieldEvidence("helpCondition", "요청할 때", 0.9),
+                            new IntentFieldEvidence("shareScopes", "공유", 0.9)
+                    ), false, List.of(), "hash-local:v1", false, true, false, false
+            );
+        });
+
+        var result = service.suggest(SESSION_ID, RUN_ID, CUSTOMER_ID,
+                "공과금은 계속 납부하고 천천히 설명해 주세요. 요청할 때 도움받고 행원에게 공유해 주세요.");
+
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.generatedBy()).isEqualTo("hash-local:v1");
+        verify(assistanceAuditWriter).fallback(
+                SESSION_ID, RUN_ID, "INTENT_STRUCTURE", "UPSTREAM_DECLARED_FALLBACK");
+    }
+
+    @Test
+    void fallbackIntentHandlesPaymentNegationWithoutReversingCustomerMeaning() {
+        var stop = service.suggest(
+                SESSION_ID, RUN_ID, CUSTOMER_ID, "공과금은 계속 납부하지 말아 주세요");
+        var keep = service.suggest(
+                SESSION_ID, RUN_ID, CUSTOMER_ID, "공과금 납부를 중단하지 말아 주세요");
+
+        assertThat(stop.suggestion().paymentContinuity()).isEqualTo("REVIEW_BEFORE_CHANGE");
+        assertThat(stop.clarifyingQuestions()).contains("필수 납부를 중단하려는 뜻인지 직접 확인해 주세요.");
+        assertThat(keep.suggestion().paymentContinuity()).isEqualTo("KEEP_ESSENTIAL_PAYMENTS");
+    }
+
+    @Test
+    void rejectsUpstreamIntentThatReversesExplicitPaymentNegation() {
+        when(aiClient.structureIntent(any(IntentStructureRequest.class))).thenAnswer(invocation -> {
+            IntentStructureRequest request = invocation.getArgument(0);
+            return new IntentStructureResponse(
+                    "1.0.0", request.requestId(),
+                    new IntentSuggestion("KEEP_ESSENTIAL_PAYMENTS", "SIMPLE_TEXT",
+                            "ON_CUSTOMER_REQUEST", List.of()),
+                    "필수 납부를 유지, 쉬운 글 방식, 고객이 요청할 때 도움 제공, 행원 공유 없음으로 정리했습니다.",
+                    List.of(
+                            new IntentFieldEvidence("paymentContinuity", "공과금", 0.9),
+                            new IntentFieldEvidence("explanationMode", "천천히", 0.9),
+                            new IntentFieldEvidence("helpCondition", "요청할 때", 0.9),
+                            new IntentFieldEvidence("shareScopes", "공유", 0.9)
+                    ), false, List.of(), "safe-model:1.0", true, false, false, false
+            );
+        });
+
+        var result = service.suggest(SESSION_ID, RUN_ID, CUSTOMER_ID,
+                "공과금은 계속 납부하지 말아 주세요. 천천히 설명하고 요청할 때 도움받고 공유하지 마세요.");
+
+        assertThat(result.suggestion().paymentContinuity()).isEqualTo("REVIEW_BEFORE_CHANGE");
+        assertThat(result.clarifyingQuestions()).contains("필수 납부를 중단하려는 뜻인지 직접 확인해 주세요.");
+        verify(assistanceAuditWriter).fallback(
+                SESSION_ID, RUN_ID, "INTENT_STRUCTURE", "UPSTREAM_RESPONSE_REJECTED");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void convertsConcurrentFirstIntentInsertConflictToVersionConflict() {
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
+        IntentDraft draft = new IntentDraft(0, "KEEP_ESSENTIAL_PAYMENTS", "SIMPLE_TEXT",
+                "ON_CUSTOMER_REQUEST", List.of("PAYMENT_PREFERENCE"));
+
+        assertThatThrownBy(() -> service.saveDraft(SESSION_ID, RUN_ID, CUSTOMER_ID, draft))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getErrorCode())
+                        .isEqualTo(DemoErrorCode.AI_INTENT_VERSION_CONFLICT));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void recomputesChangeFactsAndRejectsTamperedFastApiValues() {
+        BaselineListResponse.BaselineItem baseline = new BaselineListResponse.BaselineItem(
+                "baseline-1", "REPEATED_CONFIRMATION_COUNT", "2", "8", "COUNT", "READY",
+                "합성 기준선", List.of("REPEATED_CONFIRMATION"), "baseline-rules-v2.0.0",
+                OffsetDateTime.now(clock));
+        when(financeQueryService.baselines(SESSION_ID, CUSTOMER_ID)).thenReturn(new BaselineListResponse(
+                CUSTOMER_ID,
+                new BaselineListResponse.DatePeriod(LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 29)),
+                new BaselineListResponse.DatePeriod(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 30)),
+                List.of(baseline), null));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(aiClient.analyzeChanges(any(ChangeAnalysisRequest.class))).thenAnswer(invocation -> {
+            ChangeAnalysisRequest request = invocation.getArgument(0);
+            List<ChangeSignal> forged = request.features().stream().map(feature -> new ChangeSignal(
+                    feature.featureCode(), 0, 0, 0, "STABLE", 0, 0,
+                    false, false, true, "EWMA_CUSUM_V1", "최근 변화가 없습니다."
+            )).toList();
+            return new ChangeAnalysisResponse(
+                    "1.0.0", request.requestId(), 60, 30, forged, false, false);
+        });
+
+        var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
+
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.changes().getFirst().baselineValue()).isEqualTo(1);
+        assertThat(result.changes().getFirst().recentValue()).isEqualTo(8);
+        verify(assistanceAuditWriter).fallback(
+                SESSION_ID, RUN_ID, "CHANGE_ANALYSIS", "UPSTREAM_RESPONSE_REJECTED");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void acceptsFastApiCompatibleIncreaseDecreaseAndStableChangeSignals() {
+        List<BaselineListResponse.BaselineItem> baselines = List.of(
+                baseline("MISSED_RECURRING_COUNT", "0", "8"),
+                baseline("DUPLICATE_TRANSFER_COUNT", "10", "0"),
+                baseline("REPEATED_CONFIRMATION_COUNT", "0", "0")
+        );
+        when(financeQueryService.baselines(SESSION_ID, CUSTOMER_ID)).thenReturn(new BaselineListResponse(
+                CUSTOMER_ID,
+                new BaselineListResponse.DatePeriod(LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 29)),
+                new BaselineListResponse.DatePeriod(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 30)),
+                baselines, null));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(aiClient.analyzeChanges(any(ChangeAnalysisRequest.class))).thenAnswer(invocation -> {
+            ChangeAnalysisRequest request = invocation.getArgument(0);
+            List<ChangeSignal> changes = request.features().stream()
+                    .map(this::fastApiCompatibleSignal).toList();
+            return new ChangeAnalysisResponse(
+                    "1.0.0", request.requestId(), 60, 30, changes, false, false);
+        });
+
+        var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
+
+        assertThat(result.fallbackUsed()).isFalse();
+        assertThat(result.changes()).filteredOn(item -> item.featureCode().equals("MISSED_RECURRING_COUNT"))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.direction()).isEqualTo("INCREASE");
+                    assertThat(item.changeDetected()).isTrue();
+                    assertThat(item.explanation()).endsWith("지속적으로 증가했습니다.");
+                });
+        assertThat(result.changes()).filteredOn(item -> item.featureCode().equals("DUPLICATE_TRANSFER_COUNT"))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.direction()).isEqualTo("DECREASE");
+                    assertThat(item.changeDetected()).isTrue();
+                    assertThat(item.explanation()).endsWith("지속적으로 감소했습니다.");
+                });
+        assertThat(result.changes()).filteredOn(item -> item.featureCode().equals("REPEATED_CONFIRMATION_COUNT"))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.direction()).isEqualTo("STABLE");
+                    assertThat(item.changeDetected()).isFalse();
+                });
+        verify(assistanceAuditWriter, never()).fallback(any(), any(), anyString(), anyString());
+        verify(assistanceAuditWriter).accepted(
+                SESSION_ID, RUN_ID, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void acceptsOnlyTheExactPlainLanguageSentenceGroundedInTheSuppliedFactAndMode() {
+        DemoAiFinancialAssistanceService spyService = spy(service);
+        var change = new com.alzswell.demo.api.AiFinancialAssistanceResponses.ChangeItem(
+                "REPEATED_CONFIRMATION_COUNT", 2, 8, 6, "INCREASE", 1.7, 4.2,
+                true, true, true, "EWMA_CUSUM_V1", "검증된 변화 설명");
+        doReturn(new com.alzswell.demo.api.AiFinancialAssistanceResponses.ChangeAnalysis(
+                60, 30, 90, List.of(change), "FASTAPI_EWMA_CUSUM", false,
+                true, false, false))
+                .when(spyService).analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(aiClient.plainLanguage(any())).thenAnswer(invocation -> {
+            var request = (InternalFinancialAiClient.PlainLanguageRequest) invocation.getArgument(0);
+            String text = "최근 30일 동안 거래결과 확인이 평소 2회에서 8회로 늘었습니다. "
+                    + "알고 있는 변화인지 천천히 확인해 주세요.";
+            return new InternalFinancialAiClient.PlainLanguageResponse(
+                    "1.0.0", request.requestId(), "거래결과 확인 변화를 확인해 주세요",
+                    text, text, "CONSTRAINED_NLG_V1", false, false, false, false);
+        });
+
+        var result = spyService.plainLanguage(
+                SESSION_ID, RUN_ID, CUSTOMER_ID, "REPEATED_CONFIRMATION_COUNT");
+
+        assertThat(result.fallbackUsed()).isFalse();
+        assertThat(result.speechText()).isEqualTo(result.text());
+        verify(assistanceAuditWriter, never()).fallback(any(), any(), anyString(), anyString());
+        verify(assistanceAuditWriter).accepted(
+                SESSION_ID, RUN_ID, "PLAIN_LANGUAGE", "CONSTRAINED_NLG_V1", false);
+    }
+
+    private BaselineListResponse.BaselineItem baseline(String featureCode, String baseline, String current) {
+        return new BaselineListResponse.BaselineItem(
+                "baseline-" + featureCode, featureCode, baseline, current, "COUNT", "READY",
+                "합성 기준선", List.of(featureCode), "baseline-rules-v2.0.0", OffsetDateTime.now(clock));
+    }
+
+    private ChangeSignal fastApiCompatibleSignal(InternalFinancialAiClient.FeatureSeries feature) {
+        return switch (feature.featureCode()) {
+            case "MISSED_RECURRING_COUNT" -> new ChangeSignal(
+                    feature.featureCode(), 0, 8, 8, "INCREASE", 1.9059, 14.25,
+                    true, true, true, "EWMA_CUSUM_V1",
+                    "최근 30일 동안 정기납부 누락이 평소 0회에서 8회로 지속적으로 증가했습니다.");
+            case "DUPLICATE_TRANSFER_COUNT" -> new ChangeSignal(
+                    feature.featureCode(), 5, 0, -5, "DECREASE", -0.2582, 5.8095,
+                    true, true, true, "EWMA_CUSUM_V1",
+                    "최근 30일 동안 중복송금이 평소 5회에서 0회로 지속적으로 감소했습니다.");
+            case "REPEATED_CONFIRMATION_COUNT" -> stableSignal(feature.featureCode(), "거래결과 재확인");
+            case "NEW_COUNTERPARTY_COUNT" -> stableSignal(feature.featureCode(), "새 수취인 거래");
+            case "UNUSUAL_TIME_COUNT" -> stableSignal(feature.featureCode(), "평소와 다른 시간대 거래");
+            case "UNUSUAL_AMOUNT_COUNT" -> stableSignal(feature.featureCode(), "평소 범위를 벗어난 금액 거래");
+            default -> throw new IllegalArgumentException("unexpected feature");
+        };
+    }
+
+    private ChangeSignal stableSignal(String featureCode, String label) {
+        return new ChangeSignal(featureCode, 0, 0, 0, "STABLE", 0, 0,
+                false, false, true, "EWMA_CUSUM_V1",
+                "최근 30일 동안 " + label + "은 평소 범위와 뚜렷하게 다른 장기 변화가 없습니다.");
+    }
+}

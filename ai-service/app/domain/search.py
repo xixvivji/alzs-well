@@ -18,6 +18,20 @@ KnowledgeRole = Literal[
     "SECURITY_ADMIN",
 ]
 Audience = Literal["CUSTOMER", "STAFF"]
+SearchOutcome = Literal[
+    "RESULTS",
+    "POLICY_ABSTAIN",
+    "NO_MATCH",
+    "INDEX_UNAVAILABLE",
+]
+SearchReasonCode = Literal[
+    "POLICY_GUARDRAIL",
+    "NO_RELEVANT_MATCH",
+    "STORAGE_UNAVAILABLE",
+    "SEARCH_TIMEOUT",
+    "EMBEDDING_MODEL_UNAVAILABLE",
+    "EMBEDDING_VECTOR_INVALID",
+]
 
 
 def _camel_case(value: str) -> str:
@@ -115,7 +129,33 @@ class SearchResponse(BaseModel):
     contract_version: Literal["1.0.0"] = "1.0.0"
     request_id: UUID
     query_hash: str
+    outcome: SearchOutcome
+    retryable: bool = False
+    reason_code: SearchReasonCode | None = None
     results: tuple[SearchResult, ...]
+
+    @model_validator(mode="after")
+    def validate_outcome(self) -> SearchResponse:
+        if self.outcome == "RESULTS":
+            if not self.results or self.retryable or self.reason_code is not None:
+                raise ValueError("RESULTS requires non-empty results only")
+            return self
+        if self.results:
+            raise ValueError("non-result outcomes require empty results")
+        if self.outcome == "POLICY_ABSTAIN":
+            if self.retryable or self.reason_code != "POLICY_GUARDRAIL":
+                raise ValueError("POLICY_ABSTAIN must be terminal")
+        elif self.outcome == "NO_MATCH":
+            if self.retryable or self.reason_code != "NO_RELEVANT_MATCH":
+                raise ValueError("NO_MATCH must be terminal")
+        elif not self.retryable or self.reason_code not in {
+            "STORAGE_UNAVAILABLE",
+            "SEARCH_TIMEOUT",
+            "EMBEDDING_MODEL_UNAVAILABLE",
+            "EMBEDDING_VECTOR_INVALID",
+        }:
+            raise ValueError("INDEX_UNAVAILABLE must be retryable")
+        return self
 
 
 @dataclass(frozen=True, slots=True)

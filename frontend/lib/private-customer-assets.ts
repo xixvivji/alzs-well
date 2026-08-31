@@ -1,4 +1,5 @@
 import { invokeApiOperation } from "./api-operation-client";
+import { withPrivateCustomerSession } from "./private-auth-session";
 import type { PrivateCustomerSession } from "./private-financial-products";
 
 export type DepositHolding = { holdingId: string; accountId: string; institutionName: string; displayName: string; maskedAccountNumber: string; productType: string; principalAmount: number; currentBalance: number; accruedInterest: number; annualInterestRate: number; openedOn: string; maturityDate: string; status: string; currency: string; dataAsOf: string };
@@ -34,9 +35,10 @@ export type PrivateCustomerAssets = {
 };
 
 export async function loadPrivateCustomerAssets(session: PrivateCustomerSession): Promise<PrivateCustomerAssets> {
-  const auth = { accessToken: session.accessToken };
-  const customer = { customerId: session.customerId };
-  const [depositList, productList, rateList, fxAccounts, remittances, pensionList, trustList, consentList] = await Promise.all([
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const auth = { accessToken };
+    const customer = { customerId: session.customerId };
+    const [depositList, productList, rateList, fxAccounts, remittances, pensionList, trustList, consentList] = await Promise.all([
     invokeApiOperation<{ items: DepositHolding[] }>("GET /api/v1/customers/{customerId}/deposit-holdings", { path: customer, ...auth }),
     invokeApiOperation<{ items: DepositProduct[] }>("GET /api/v1/deposit-products", auth),
     invokeApiOperation<{ items: FxRate[] }>("GET /api/v1/fx/rates", auth),
@@ -45,12 +47,12 @@ export async function loadPrivateCustomerAssets(session: PrivateCustomerSession)
     invokeApiOperation<{ items: PensionHolding[] }>("GET /api/v1/customers/{customerId}/pension-holdings", { path: customer, ...auth }),
     invokeApiOperation<{ items: TrustHolding[] }>("GET /api/v1/customers/{customerId}/trust-holdings", { path: customer, ...auth }),
     invokeApiOperation<{ items: Consent[] }>("GET /api/v1/customers/{customerId}/consents", { path: customer, ...auth }),
-  ]);
-  const deposits = items(depositList.body.data); const products = items(productList.body.data);
-  const fxRates = items(rateList.body.data); const pensions = items(pensionList.body.data);
-  const trusts = items(trustList.body.data); const consents = items(consentList.body.data);
-  const deposit = deposits[0]; const product = products[0]; const pension = pensions[0]; const trust = trusts[0]; const consent = consents[0]; const currency = fxRates[0]?.currency;
-  const [depositDetail, productDetail, depositRates, maturityOptions, selectedFxRate, pensionProjection, trustDetail, consentDetail, consentHistory] = await Promise.all([
+    ]);
+    const deposits = items(depositList.body.data); const products = items(productList.body.data);
+    const fxRates = items(rateList.body.data); const pensions = items(pensionList.body.data);
+    const trusts = items(trustList.body.data); const consents = items(consentList.body.data);
+    const deposit = deposits[0]; const product = products[0]; const pension = pensions[0]; const trust = trusts[0]; const consent = consents[0]; const currency = fxRates[0]?.currency;
+    const [depositDetail, productDetail, depositRates, maturityOptions, selectedFxRate, pensionProjection, trustDetail, consentDetail, consentHistory] = await Promise.all([
     deposit ? invokeApiOperation<DepositDetail>("GET /api/v1/deposit-holdings/{holdingId}", { path: { holdingId: deposit.holdingId }, ...auth }) : null,
     product ? invokeApiOperation<DepositProductDetail>("GET /api/v1/deposit-products/{productId}", { path: { productId: product.productId }, ...auth }) : null,
     product ? invokeApiOperation<{ items: DepositRate[] }>("GET /api/v1/deposit-products/{productId}/rates", { path: { productId: product.productId }, ...auth }) : null,
@@ -60,52 +62,65 @@ export async function loadPrivateCustomerAssets(session: PrivateCustomerSession)
     trust ? invokeApiOperation<TrustDetail>("GET /api/v1/trust-holdings/{trustId}", { path: { trustId: trust.trustId }, ...auth }) : null,
     consent ? invokeApiOperation<Consent>("GET /api/v1/customers/{customerId}/consents/{consentId}", { path: { ...customer, consentId: consent.consentId }, ...auth }) : null,
     consent ? invokeApiOperation<{ items: ConsentEvent[] }>("GET /api/v1/customers/{customerId}/consents/{consentId}/history", { path: { ...customer, consentId: consent.consentId }, ...auth }) : null,
-  ]);
-  return {
-    deposits, depositDetail: depositDetail?.body.data ?? null, depositProducts: products,
-    depositProductDetail: productDetail?.body.data ?? null, depositRates: items(depositRates?.body.data), maturityOptions: items(maturityOptions?.body.data),
-    fxRates, selectedFxRate: selectedFxRate?.body.data ?? null, fxAccounts: items(fxAccounts.body.data), remittances: items(remittances.body.data),
-    pensions, pensionProjection: pensionProjection?.body.data ?? null, trusts, trustDetail: trustDetail?.body.data ?? null,
-    consents, consentDetail: consentDetail?.body.data ?? null, consentHistory: items(consentHistory?.body.data),
-  };
+    ]);
+    return {
+      deposits, depositDetail: depositDetail?.body.data ?? null, depositProducts: products,
+      depositProductDetail: productDetail?.body.data ?? null, depositRates: items(depositRates?.body.data), maturityOptions: items(maturityOptions?.body.data),
+      fxRates, selectedFxRate: selectedFxRate?.body.data ?? null, fxAccounts: items(fxAccounts.body.data), remittances: items(remittances.body.data),
+      pensions, pensionProjection: pensionProjection?.body.data ?? null, trusts, trustDetail: trustDetail?.body.data ?? null,
+      consents, consentDetail: consentDetail?.body.data ?? null, consentHistory: items(consentHistory?.body.data),
+    };
+  });
 }
 
 export async function simulateDepositInterest(session: PrivateCustomerSession, productId: string, principalAmount: number, termMonths: number): Promise<InterestSimulation> {
-  const response = await invokeApiOperation<InterestSimulation>("POST /api/v1/deposit-products/{productId}/interest-simulations", {
-    path: { productId }, accessToken: session.accessToken, body: { principalAmount, termMonths },
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<InterestSimulation>("POST /api/v1/deposit-products/{productId}/interest-simulations", {
+      path: { productId }, accessToken, body: { principalAmount, termMonths },
+    });
+    return required(response.body.data, "예금 이자 모의계산");
   });
-  return required(response.body.data, "예금 이자 모의계산");
 }
 
 export async function simulateFxExchange(session: PrivateCustomerSession, fromCurrency: string, toCurrency: string, amount: number): Promise<FxSimulation> {
-  const response = await invokeApiOperation<FxSimulation>("POST /api/v1/fx/exchange-simulations", {
-    accessToken: session.accessToken, body: { fromCurrency, toCurrency, amount },
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<FxSimulation>("POST /api/v1/fx/exchange-simulations", {
+      accessToken, body: { fromCurrency, toCurrency, amount },
+    });
+    return required(response.body.data, "환전 모의계산");
   });
-  return required(response.body.data, "환전 모의계산");
 }
 
 export async function grantConsent(session: PrivateCustomerSession, purposeCode: string, scopes: string[], expiresAt: string): Promise<Consent> {
-  const response = await invokeApiOperation<Consent>("POST /api/v1/customers/{customerId}/consents", {
-    path: { customerId: session.customerId }, accessToken: session.accessToken, idempotencyKey: crypto.randomUUID(),
-    body: { purposeCode, scopes, expiresAt },
+  const idempotencyKey = crypto.randomUUID();
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<Consent>("POST /api/v1/customers/{customerId}/consents", {
+      path: { customerId: session.customerId }, accessToken, idempotencyKey,
+      body: { purposeCode, scopes, expiresAt },
+    });
+    return required(response.body.data, "동의 등록");
   });
-  return required(response.body.data, "동의 등록");
 }
 
 export async function withdrawConsent(session: PrivateCustomerSession, consent: Consent, reason: string): Promise<Consent> {
-  const response = await invokeApiOperation<Consent>("POST /api/v1/customers/{customerId}/consents/{consentId}/withdraw", {
-    path: { customerId: session.customerId, consentId: consent.consentId }, accessToken: session.accessToken,
-    idempotencyKey: crypto.randomUUID(), body: { expectedVersion: consent.version, reason },
+  const idempotencyKey = crypto.randomUUID();
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<Consent>("POST /api/v1/customers/{customerId}/consents/{consentId}/withdraw", {
+      path: { customerId: session.customerId, consentId: consent.consentId }, accessToken,
+      idempotencyKey, body: { expectedVersion: consent.version, reason },
+    });
+    return required(response.body.data, "동의 철회");
   });
-  return required(response.body.data, "동의 철회");
 }
 
 export async function evaluateDisclosure(session: PrivateCustomerSession, consent: Consent): Promise<DisclosureEvaluation> {
-  const response = await invokeApiOperation<DisclosureEvaluation>("POST /api/v1/customers/{customerId}/disclosure-evaluations", {
-    path: { customerId: session.customerId }, accessToken: session.accessToken,
-    body: { consentId: consent.consentId, purposeCode: consent.purposeCode, requestedScopes: consent.scopes },
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<DisclosureEvaluation>("POST /api/v1/customers/{customerId}/disclosure-evaluations", {
+      path: { customerId: session.customerId }, accessToken,
+      body: { consentId: consent.consentId, purposeCode: consent.purposeCode, requestedScopes: consent.scopes },
+    });
+    return required(response.body.data, "최소정보 제공 평가");
   });
-  return required(response.body.data, "최소정보 제공 평가");
 }
 
 function items<T>(value: { items: T[] } | null | undefined): T[] { return value?.items ?? []; }
