@@ -191,8 +191,15 @@ jobs:
       DEMO_STAFF_BOOTSTRAP_TOKEN: ci-only-demo-staff-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
       - name: Validate AWS deployment Compose and role contracts
         run: python3 scripts/validate_aws_deployment_config.py
+      - name: Install pinned CloudFormation linter
+        run: python3 -m pip install cfn-lint==1.55.1
+      - name: Lint AWS staging CloudFormation
+        run: cfn-lint infra/aws-staging/foundation.yaml
       - name: Validate production compose rendering
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
       - name: Boot the isolated stack and smoke test core APIs
