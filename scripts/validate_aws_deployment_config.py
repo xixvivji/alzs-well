@@ -18,6 +18,7 @@ ROLE_SCRIPT = ROOT / "backend" / "docker" / "create-database-roles.sh"
 AI_SERVICE_ENV = ROOT / "ai-service" / ".env.example"
 LOCAL_COMPOSE = ROOT / "backend" / "compose.yaml"
 MIGRATION_ROOT = ROOT / "backend" / "src" / "main" / "resources" / "db" / "migration"
+AWS_FOUNDATION = ROOT / "infra" / "aws-staging" / "foundation.yaml"
 
 EXPECTED_INGESTION_ROLE = "alzswell_ai_ingestor"
 EXPECTED_RUNTIME_ROLE = "alzswell_ai_runtime"
@@ -58,6 +59,7 @@ def main() -> int:
     aws_env = read(AI_ENV)
     role_script = read(ROLE_SCRIPT)
     ai_service_env = read(AI_SERVICE_ENV)
+    aws_foundation = read(AWS_FOUNDATION)
     errors: list[str] = []
 
     contracts = {
@@ -103,6 +105,30 @@ def main() -> int:
         for role in set(re.findall(r"\balzswell_ai_[a-z0-9_]+\b", source)):
             if role not in allowed_ai_roles:
                 errors.append(f"unknown AI database role {role!r} in {path.relative_to(ROOT)}")
+
+    required_foundation_contracts = {
+        "separate App runtime role": "  AppRuntimeRole:\n",
+        "separate AI runtime role": "  AiRuntimeRole:\n",
+        "separate App instance profile": "  AppRuntimeInstanceProfile:\n",
+        "separate AI instance profile": "  AiRuntimeInstanceProfile:\n",
+        "temporary DB bootstrap policy": "  DatabaseBootstrapPolicy:\n",
+        "temporary AI ingestion policy": "  AiIngestionPolicy:\n",
+        "private AI service discovery": "  AiPrivateDnsRecord:\n",
+        "App profile attachment": "IamInstanceProfile: !Ref AppRuntimeInstanceProfile",
+        "AI profile attachment": "IamInstanceProfile: !Ref AiRuntimeInstanceProfile",
+    }
+    for label, marker in required_foundation_contracts.items():
+        if marker not in aws_foundation:
+            errors.append(f"AWS foundation is missing {label}: {marker.strip()!r}")
+
+    forbidden_foundation_contracts = {
+        "shared runtime role": r"^  RuntimeRole:$",
+        "shared runtime instance profile": r"^  RuntimeInstanceProfile:$",
+        "shared runtime profile attachment": r"IamInstanceProfile: !Ref RuntimeInstanceProfile",
+    }
+    for label, pattern in forbidden_foundation_contracts.items():
+        if re.search(pattern, aws_foundation, re.MULTILINE):
+            errors.append(f"AWS foundation still contains {label}")
 
     try:
         app_config = render_compose(APP_COMPOSE, APP_ENV)

@@ -28,7 +28,7 @@
 - [x] 고위험 IAM 변경을 승인받고 기존 렌더링·검증 execution 정책을 적용한다.
 - [ ] 최초 ALB 생성용 서비스 연결 역할 권한 보완을 별도 승인 후 적용한다.
 - [x] 일회용 비루트 주체로 deployer AssumeRole을 확인하고 사용자·Access Key를 즉시 삭제한다.
-- [ ] 배포 역할과 EC2 instance profile, Spring·AI·DB runtime 역할을 분리한다.
+- [x] 배포 역할과 App·AI EC2 instance profile, Spring·AI DB secret 경계를 분리한다.
 - [ ] GitHub/Vercel/AWS 배포는 장기 access key 대신 OIDC 또는 단기 세션을 사용한다.
 
 ## 2. IaC 및 비용 게이트
@@ -36,7 +36,8 @@
 - [x] 전용 VPC와 2개 AZ의 public·private subnet을 정의한다.
 - [x] CloudFront 기본 HTTPS, ALB, WAF, 업무/AI EC2 보안 그룹, Private RDS를 정의한다.
 - [x] ECR immutable tag, Secrets Manager, SSM instance profile, 백업·삭제 방지를 정의한다.
-- [ ] CloudWatch 로그 보존·경보 구성을 정의한다.
+- [x] EC2 상태·RDS CPU·RDS 여유 공간 경보를 정의한다.
+- [ ] 애플리케이션 CloudWatch 로그 수집과 보존 기간을 정의한다.
 - [ ] 55개 추가 change set과 12일 안전 상한 `$90~105`를 검토하고 실제 실행을 승인한다.
 - [ ] IaC 적용 전 public IP, `0.0.0.0/0`, 원본 비밀값, 데이터베이스 삭제 위험을 검토한다.
 
