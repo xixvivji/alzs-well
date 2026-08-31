@@ -1,0 +1,457 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ALZ's well cost-conscious synthetic-data staging foundation
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: alzs-well-staging
+    AllowedPattern: "^[a-z0-9-]+$"
+  CertificateArn:
+    Type: String
+    Description: ACM certificate ARN for the public HTTPS ALB
+    AllowedPattern: "^arn:aws:acm:ap-northeast-2:[0-9]{12}:certificate/[0-9a-f-]+$"
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  AppInstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues: [t3.small, t3.medium]
+  AiInstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues: [t3.medium, t3.large, m7i.large]
+  DatabaseInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+    AllowedValues: [db.t4g.micro, db.t4g.small]
+
+Mappings:
+  Network:
+    Cidr:
+      Vpc: 10.42.0.0/16
+      PublicA: 10.42.0.0/24
+      PublicC: 10.42.1.0/24
+      AppA: 10.42.10.0/24
+      AppC: 10.42.11.0/24
+      DatabaseA: 10.42.20.0/24
+      DatabaseC: 10.42.21.0/24
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [Network, Cidr, Vpc]
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-vpc"}, {Key: Project, Value: alzs-well}]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-igw"}, {Key: Project, Value: alzs-well}]
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: {VpcId: !Ref Vpc, InternetGatewayId: !Ref InternetGateway}
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !FindInMap [Network, Cidr, PublicA]
+      MapPublicIpOnLaunch: false
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-public-a"}, {Key: Project, Value: alzs-well}]
+  PublicSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !FindInMap [Network, Cidr, PublicC]
+      MapPublicIpOnLaunch: false
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-public-c"}, {Key: Project, Value: alzs-well}]
+  AppSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !FindInMap [Network, Cidr, AppA]
+      MapPublicIpOnLaunch: false
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-app-a"}, {Key: Project, Value: alzs-well}]
+  AppSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !FindInMap [Network, Cidr, AppC]
+      MapPublicIpOnLaunch: false
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-app-c"}, {Key: Project, Value: alzs-well}]
+  DatabaseSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !FindInMap [Network, Cidr, DatabaseA]
+      MapPublicIpOnLaunch: false
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-db-a"}, {Key: Project, Value: alzs-well}]
+  DatabaseSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !FindInMap [Network, Cidr, DatabaseC]
+      MapPublicIpOnLaunch: false
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-db-c"}, {Key: Project, Value: alzs-well}]
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-public-rt"}, {Key: Project, Value: alzs-well}]
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref PublicSubnetA, RouteTableId: !Ref PublicRouteTable}
+  PublicRouteAssociationC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref PublicSubnetC, RouteTableId: !Ref PublicRouteTable}
+
+  NatElasticIp:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-nat-eip"}, {Key: Project, Value: alzs-well}]
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatElasticIp.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-nat"}, {Key: Project, Value: alzs-well}]
+  AppRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-app-rt"}, {Key: Project, Value: alzs-well}]
+  AppDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref AppRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+  AppRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref AppSubnetA, RouteTableId: !Ref AppRouteTable}
+  AppRouteAssociationC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref AppSubnetC, RouteTableId: !Ref AppRouteTable}
+  DatabaseRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-db-rt"}, {Key: Project, Value: alzs-well}]
+  DatabaseRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref DatabaseSubnetA, RouteTableId: !Ref DatabaseRouteTable}
+  DatabaseRouteAssociationC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: {SubnetId: !Ref DatabaseSubnetC, RouteTableId: !Ref DatabaseRouteTable}
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Gateway
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      RouteTableIds: [!Ref AppRouteTable]
+
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public HTTPS ALB only
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - {IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: Public HTTPS}
+      SecurityGroupEgress: []
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-alb-sg"}, {Key: Project, Value: alzs-well}]
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Spring application tier
+      VpcId: !Ref Vpc
+      SecurityGroupIngress: []
+      SecurityGroupEgress:
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: Package bootstrap}
+        - {IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: AWS APIs and registries}
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-app-sg"}, {Key: Project, Value: alzs-well}]
+  AiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Internal AI tier
+      VpcId: !Ref Vpc
+      SecurityGroupIngress: []
+      SecurityGroupEgress:
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: Package bootstrap}
+        - {IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: AWS APIs and registries}
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-ai-sg"}, {Key: Project, Value: alzs-well}]
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: PostgreSQL from application tiers only
+      VpcId: !Ref Vpc
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-db-sg"}, {Key: Project, Value: alzs-well}]
+  AlbToAppEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: {GroupId: !Ref AlbSecurityGroup, IpProtocol: tcp, FromPort: 8080, ToPort: 8080, DestinationSecurityGroupId: !Ref AppSecurityGroup}
+  AppFromAlbIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: {GroupId: !Ref AppSecurityGroup, IpProtocol: tcp, FromPort: 8080, ToPort: 8080, SourceSecurityGroupId: !Ref AlbSecurityGroup}
+  AppToAiEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: {GroupId: !Ref AppSecurityGroup, IpProtocol: tcp, FromPort: 8443, ToPort: 8443, DestinationSecurityGroupId: !Ref AiSecurityGroup}
+  AiFromAppIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: {GroupId: !Ref AiSecurityGroup, IpProtocol: tcp, FromPort: 8443, ToPort: 8443, SourceSecurityGroupId: !Ref AppSecurityGroup}
+  AppToDatabaseEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: {GroupId: !Ref AppSecurityGroup, IpProtocol: tcp, FromPort: 5432, ToPort: 5432, DestinationSecurityGroupId: !Ref DatabaseSecurityGroup}
+  AiToDatabaseEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: {GroupId: !Ref AiSecurityGroup, IpProtocol: tcp, FromPort: 5432, ToPort: 5432, DestinationSecurityGroupId: !Ref DatabaseSecurityGroup}
+  DatabaseFromAppIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: {GroupId: !Ref DatabaseSecurityGroup, IpProtocol: tcp, FromPort: 5432, ToPort: 5432, SourceSecurityGroupId: !Ref AppSecurityGroup}
+  DatabaseFromAiIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: {GroupId: !Ref DatabaseSecurityGroup, IpProtocol: tcp, FromPort: 5432, ToPort: 5432, SourceSecurityGroupId: !Ref AiSecurityGroup}
+
+  AppRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: alzs-well/backend
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration: {ScanOnPush: true}
+      EncryptionConfiguration: {EncryptionType: AES256}
+      EmptyOnDelete: false
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: alzs-well/ai-service
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration: {ScanOnPush: true}
+      EncryptionConfiguration: {EncryptionType: AES256}
+      EmptyOnDelete: false
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
+  ProxySharedSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "/${EnvironmentName}/proxy-shared-secret"
+      GenerateSecretString: {PasswordLength: 64, ExcludePunctuation: true}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  StaffBootstrapSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "/${EnvironmentName}/staff-bootstrap-token"
+      GenerateSecretString: {PasswordLength: 80, ExcludePunctuation: true}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  InternalAiSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "/${EnvironmentName}/internal-ai-token"
+      GenerateSecretString: {PasswordLength: 80, ExcludePunctuation: true}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Isolated ALZ's well database subnets
+      SubnetIds: [!Ref DatabaseSubnetA, !Ref DatabaseSubnetC]
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-db-subnets"}, {Key: Project, Value: alzs-well}]
+  DatabaseParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Enforce TLS for ALZ's well PostgreSQL
+      Family: postgres17
+      Parameters: {rds.force_ssl: "1"}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "${EnvironmentName}-postgres"
+      Engine: postgres
+      EngineVersion: "17.6"
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: alzswell
+      MasterUsername: alzswell_admin
+      ManageMasterUserPassword: true
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DBParameterGroupName: !Ref DatabaseParameterGroup
+      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: true
+      DeletionProtection: true
+      AutoMinorVersionUpgrade: true
+      EnablePerformanceInsights: false
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
+  RuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${EnvironmentName}-runtime"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: ec2.amazonaws.com}, Action: "sts:AssumeRole"}]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore]
+      Policies:
+        - PolicyName: ReadDeploymentArtifacts
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - {Effect: Allow, Action: "ecr:GetAuthorizationToken", Resource: "*"}
+              - Effect: Allow
+                Action: ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
+                Resource: [!GetAtt AppRepository.Arn, !GetAtt AiRepository.Arn]
+              - Effect: Allow
+                Action: "secretsmanager:GetSecretValue"
+                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref InternalAiSecret, !GetAtt Database.MasterUserSecret.SecretArn]
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  RuntimeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${EnvironmentName}-runtime"
+      Roles: [!Ref RuntimeRole]
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref AppInstanceType
+      IamInstanceProfile: !Ref RuntimeInstanceProfile
+      SubnetId: !Ref AppSubnetA
+      SecurityGroupIds: [!Ref AppSecurityGroup]
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: {VolumeSize: 20, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true}
+      MetadataOptions: {HttpEndpoint: enabled, HttpTokens: required, InstanceMetadataTags: enabled}
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -euo pipefail
+          dnf install -y docker
+          systemctl enable --now docker
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-app"}, {Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  AiInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref AiInstanceType
+      IamInstanceProfile: !Ref RuntimeInstanceProfile
+      SubnetId: !Ref AppSubnetC
+      SecurityGroupIds: [!Ref AiSecurityGroup]
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: {VolumeSize: 50, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true}
+      MetadataOptions: {HttpEndpoint: enabled, HttpTokens: required, InstanceMetadataTags: enabled}
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -euo pipefail
+          dnf install -y docker
+          systemctl enable --now docker
+      Tags: [{Key: Name, Value: !Sub "${EnvironmentName}-ai"}, {Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+
+  AppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: alzs-well-staging-app
+      VpcId: !Ref Vpc
+      Protocol: HTTP
+      Port: 8080
+      TargetType: instance
+      Targets: [{Id: !Ref AppInstance, Port: 8080}]
+      HealthCheckEnabled: true
+      HealthCheckPath: /api/v1/system/readiness
+      Matcher: {HttpCode: "200"}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: alzs-well-staging
+      Scheme: internet-facing
+      Type: application
+      IpAddressType: ipv4
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetC]
+      LoadBalancerAttributes:
+        - {Key: deletion_protection.enabled, Value: "true"}
+        - {Key: routing.http.drop_invalid_header_fields.enabled, Value: "true"}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTPS
+      Port: 443
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates: [{CertificateArn: !Ref CertificateArn}]
+      DefaultActions: [{Type: forward, TargetGroupArn: !Ref AppTargetGroup}]
+
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub "${EnvironmentName}-web-acl"
+      Scope: REGIONAL
+      DefaultAction: {Allow: {}}
+      VisibilityConfig: {CloudWatchMetricsEnabled: true, MetricName: alzs-well-staging, SampledRequestsEnabled: true}
+      Rules:
+        - Name: AwsCommonRules
+          Priority: 0
+          OverrideAction: {None: {}}
+          Statement: {ManagedRuleGroupStatement: {VendorName: AWS, Name: AWSManagedRulesCommonRuleSet}}
+          VisibilityConfig: {CloudWatchMetricsEnabled: true, MetricName: common-rules, SampledRequestsEnabled: true}
+        - Name: SessionCreationRateLimit
+          Priority: 1
+          Action: {Block: {}}
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: 100
+              EvaluationWindowSec: 60
+              ScopeDownStatement:
+                ByteMatchStatement:
+                  FieldToMatch: {UriPath: {}}
+                  PositionalConstraint: EXACTLY
+                  SearchString: /api/v1/demo/sessions
+                  TextTransformations: [{Priority: 0, Type: NONE}]
+          VisibilityConfig: {CloudWatchMetricsEnabled: true, MetricName: session-rate, SampledRequestsEnabled: true}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  WebAclAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties: {ResourceArn: !Ref ApplicationLoadBalancer, WebACLArn: !GetAtt WebAcl.Arn}
+
+Outputs:
+  VpcId: {Value: !Ref Vpc}
+  AlbDnsName: {Value: !GetAtt ApplicationLoadBalancer.DNSName}
+  AppInstanceId: {Value: !Ref AppInstance}
+  AiInstanceId: {Value: !Ref AiInstance}
+  DatabaseEndpoint: {Value: !GetAtt Database.Endpoint.Address}
+  DatabaseMasterSecretArn: {Value: !GetAtt Database.MasterUserSecret.SecretArn}
+  AppRepositoryUri: {Value: !GetAtt AppRepository.RepositoryUri}
+  AiRepositoryUri: {Value: !GetAtt AiRepository.RepositoryUri}
