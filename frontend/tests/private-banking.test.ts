@@ -147,7 +147,7 @@ test("보호업무와 관리자는 서로 다른 Bearer 역할의 운영 조회 
   const paths: string[] = [];
   t.mock.method(globalThis, "fetch", async (input) => { paths.push(String(input)); return response({ items: [] }); });
   const staff = { ...session, roles: ["PROTECTION_STAFF"] };
-  const admin = { ...session, roles: ["DETECTION_ADMIN"] };
+  const admin = { ...session, roles: ["DETECTION_ADMIN"], permissions: ["AUDIT_READ_ALL"] };
   await loadStaffOperations(staff);
   await loadAdminOperations(admin);
   assert.ok(paths.includes("/api/v1/staff/cases?limit=50"));
@@ -155,6 +155,16 @@ test("보호업무와 관리자는 서로 다른 Bearer 역할의 운영 조회 
   assert.ok(paths.includes("/api/v1/audit/events?limit=25"));
   await assert.rejects(() => loadAdminOperations(staff), /역할/);
   await assert.rejects(() => loadStaffOperations(admin), /역할/);
+});
+
+test("감사권한이 없는 탐지 관리자는 감사 API를 호출하지 않고 권한 분리를 표시한다", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input) => { paths.push(String(input)); return response({ items: [] }); });
+  const admin = { ...session, roles: ["DETECTION_ADMIN"], permissions: [] };
+  const bundle = await loadAdminOperations(admin);
+  assert.equal(bundle.auditAuthorized, false);
+  assert.equal(bundle.audit.length, 0);
+  assert.ok(!paths.some((path) => path.startsWith("/api/v1/audit/events")));
 });
 
 test("로그인 행원 사건 화면은 데모 capability가 아닌 운영 Bearer 큐와 상세를 조회한다", async (t) => {

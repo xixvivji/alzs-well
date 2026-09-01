@@ -35,7 +35,7 @@ export function OperationalLogin() {
       <button disabled={busy || !valid || password.length < 12}>{busy ? "권한 확인 중…" : "운영 채널 로그인"}</button>
       {error && <p className="api-error" role="alert">{error}</p>}
     </form>
-    <aside><strong>공개 합성 운영 계정</strong><p><b>staff001~staff005</b>는 보호업무, <b>admin001~admin002</b>는 탐지·감사 관리 역할입니다. 공통 비밀번호는 <b>local-synthetic-customer-password</b>이며 실제 금융 조치는 실행하지 않습니다.</p></aside>
+    <aside><strong>공개 합성 운영 계정</strong><p><b>staff001~staff005</b>는 보호업무, <b>admin001~admin002</b>는 탐지·정책 관리 역할입니다. 공통 비밀번호는 <b>local-synthetic-customer-password</b>이며 실제 금융 조치는 실행하지 않습니다.</p></aside>
     <Link className="member-login-help" href="/login">고객 금융서비스 로그인 →</Link>
   </section></main>;
 }

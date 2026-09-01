@@ -92,7 +92,7 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
 });
 
 test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 제외한다", async () => {
-  const [page, staffCaseDetail, staffCaseQueue, alertDetail, productCenter, customerAssets, customerCare, protectionCenter, scenarioData] = await Promise.all([
+  const [page, staffCaseDetail, staffCaseQueue, alertDetail, productCenter, customerAssets, customerCare, privateLifeServices, protectionCenter, scenarioData] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseQueue.tsx", import.meta.url), "utf8"),
@@ -100,6 +100,7 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
     readFile(new URL("../components/PrivateProductCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateCustomerAssets.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateCustomerCare.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/PrivateLifeServices.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/CustomerProtectionCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../data/rehearsal-scenarios-v1.json", import.meta.url), "utf8"),
   ]);
@@ -115,8 +116,12 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   for (const label of ["예금", "외환", "연금·신탁", "동의관리"]) assert.match(productCenter, new RegExp(label));
   assert.match(customerAssets, /가입·해지·외부 호출 없음/);
   assert.match(customerAssets, /외부 제공 자동 실행 없음/);
+  assert.match(customerAssets, /useState\(1_000_000\)/);
+  assert.match(customerAssets, /min=\{product\?\.minPrincipal/);
+  assert.match(customerAssets, /max=\{product\?\.maxPrincipal/);
   assert.match(customerCare, /사람의 재검토를 요청/);
   assert.match(customerCare, /금융행위 대리권은 부여하지 않습니다/);
+  assert.match(privateLifeServices, /생활금융 정보를 안전하게 불러오고 있습니다/);
   assert.match(protectionCenter, /결정은 언제나 고객과 사람에게 있습니다/);
   assert.match(protectionCenter, /진단하거나 거래를 자동으로 막지 않습니다/);
   assert.match(scenarioData, /같은 T0 합성 snapshot/);
