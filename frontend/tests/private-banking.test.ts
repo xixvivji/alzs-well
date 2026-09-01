@@ -4,11 +4,11 @@ import { evaluateTransfer, loadBankingOverview, loadRecurringInsight, loadStatem
 import { loadLifeServices, searchKnowledge } from "../lib/private-life-services";
 import { loadSafetyCenter, respondToSafetyAlert } from "../lib/private-safety-center";
 import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
-import { loadOperationalCaseBundle, loadOperationalCaseQueue } from "../lib/private-staff-cases";
+import { loadOperationalCaseBundle, loadOperationalCaseQueue, startOperationalCaseReview } from "../lib/private-staff-cases";
 import { loadPrivateHelpOverview } from "../lib/private-help";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
 
-const session: PrivateCustomerSession = { customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"], permissions: [] };
+const session: PrivateCustomerSession = { principalId: "00000000-0000-0000-0000-000000000001", customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"], permissions: [] };
 const envelope = (data: unknown) => JSON.stringify({ success: true, status: 200, code: "OK", message: "ok", data, errors: [], timestamp: "2026-09-01T00:00:00Z", traceId: "trace" });
 const response = (data: unknown) => new Response(envelope(data), { headers: { "content-type": "application/json" } });
 
@@ -174,4 +174,24 @@ test("로그인 행원 사건 화면은 데모 capability가 아닌 운영 Beare
   assert.equal(bundle.timeline.length, 0);
   assert.equal(paths.length, 6);
   assert.ok(paths.every((path) => path.startsWith("/api/v1/staff/cases")));
+});
+
+test("미배정 사건의 검토 시작은 로그인 행원에게 최소권한 배정 후 상태를 전이한다", async (t) => {
+  const calls: Array<{ path: string; method?: string; body?: string }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    calls.push({ path: String(input), method: init?.method, body: init?.body?.toString() });
+    return response({ version: calls.length + 1 });
+  });
+  const staff = { ...session, roles: ["PROTECTION_STAFF"] };
+  await startOperationalCaseReview(staff, {
+    caseId: "case-1", alertId: "alert-1", signalId: "signal-1", customerId: "customer-1",
+    reviewPriority: "HIGH", taskStatus: "PENDING", version: 1, assignedTeam: null, assignedTo: null,
+    createdAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z",
+  });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0]?.path, "/api/v1/staff/cases/case-1/assignment");
+  assert.equal(calls[0]?.method, "PUT");
+  assert.match(calls[0]?.body ?? "", /"assignedTo":"00000000-0000-0000-0000-000000000001"/);
+  assert.equal(calls[1]?.path, "/api/v1/staff/cases/case-1/reviews");
+  assert.match(calls[1]?.body ?? "", /"expectedVersion":2/);
 });

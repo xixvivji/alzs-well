@@ -43,9 +43,19 @@ export async function loadOperationalCaseBundle(session: PrivateCustomerSession,
 
 export async function startOperationalCaseReview(session: PrivateCustomerSession, item: OperationalCaseSummary): Promise<void> {
   requireStaff(session);
+  let expectedVersion = item.version;
+  if (!item.assignedTo) {
+    await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PUT /api/v1/staff/cases/{caseId}/assignment", {
+      path: { caseId: item.caseId }, accessToken, idempotencyKey: crypto.randomUUID(),
+      body: { assignedTeam: "SYNTHETIC_PROTECTION_TEAM", assignedTo: session.principalId, expectedVersion },
+    }));
+    expectedVersion += 1;
+  } else if (item.assignedTo !== session.principalId) {
+    throw new Error("다른 행원에게 배정된 사건은 검토를 시작할 수 없습니다.");
+  }
   await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("POST /api/v1/staff/cases/{caseId}/reviews", {
     path: { caseId: item.caseId }, accessToken, idempotencyKey: crypto.randomUUID(),
-    body: { actionCode: "START_REVIEW", note: "합성 고객의 응답과 불변 근거 검토를 시작합니다.", expectedVersion: item.version },
+    body: { actionCode: "START_REVIEW", note: "합성 고객의 응답과 불변 근거 검토를 시작합니다.", expectedVersion },
   }));
 }
 
