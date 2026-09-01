@@ -76,6 +76,7 @@
         "elasticloadbalancing:ModifyTargetGroupAttributes",
         "elasticloadbalancing:RegisterTargets",
         "elasticloadbalancing:RemoveTags",
+        "elasticloadbalancing:SetWebACL",
         "rds:AddTagsToResource",
         "rds:CreateDBInstance",
         "rds:CreateDBParameterGroup",
