@@ -2,13 +2,14 @@ import { invokeApiOperation } from "./api-operation-client";
 import { invalidatePrivateCustomerSession, withPrivateCustomerSession } from "./private-auth-session";
 
 export type PrivateCustomerSession = {
+  principalId: string;
   customerId: string;
   displayName: string;
   roles: string[];
   permissions: string[];
   invalidated?: boolean;
 };
-type CurrentUser = { customerId: string; displayName: string; roles: string[] };
+type CurrentUser = { principalId: string; customerId: string; displayName: string; roles: string[] };
 type PermissionList = { permissions: string[] };
 export type CardSummary = { cardId: string; institutionName: string; displayName: string; maskedCardNumber: string; cardType: string; brandCode: string; status: string; paymentDay: number; currentUsageAmount: number; currency: string; dataAsOf: string };
 export type CardDetail = { card: CardSummary; nextPaymentDueDate: string; currentDueAmount: number; syntheticData: boolean; externalActionExecuted: false };
@@ -51,7 +52,7 @@ export async function restorePrivateCustomerSession(): Promise<PrivateCustomerSe
     invokeApiOperation<PermissionList>("GET /api/v1/auth/me/permissions"),
   ]);
   const user = required(me.body.data, "현재 사용자");
-  return { customerId: user.customerId, displayName: user.displayName, roles: user.roles, permissions: required(permissions.body.data, "권한").permissions };
+  return { principalId: user.principalId, customerId: user.customerId, displayName: user.displayName, roles: user.roles, permissions: required(permissions.body.data, "권한").permissions };
 }
 
 export async function logoutPrivateCustomer(session: PrivateCustomerSession): Promise<void> {
