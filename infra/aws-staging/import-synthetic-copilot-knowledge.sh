@@ -49,8 +49,21 @@ export PGSSLROOTCERT="$certificate_root/global-bundle.pem"
 existing_imports="$(psql -At \
   -c "select count(*) from knowledge_ingestion_import where document_id='${document_id}' and version_label='${version_label}'")"
 if [[ "$existing_imports" == "1" ]]; then
-  echo "synthetic copilot knowledge already imported"
-  exit 0
+  existing_verified="$(psql -At -c "
+    select i.chunk_count>0
+      and i.ai_proof_version='AI_DB_SNAPSHOT_V1'
+      and i.ai_verified_at is not null
+      and count(b.chunk_id)=i.chunk_count
+    from knowledge_ingestion_import i
+    left join knowledge_ai_passage_binding b on b.import_id=i.import_id
+    where i.document_id='${document_id}' and i.version_label='${version_label}'
+    group by i.import_id,i.chunk_count,i.ai_proof_version,i.ai_verified_at")"
+  if [[ "$existing_verified" == "t" ]]; then
+    echo "synthetic copilot knowledge already imported and verified"
+    exit 0
+  fi
+  echo "existing synthetic copilot import failed proof verification" >&2
+  exit 1
 fi
 if [[ "$existing_imports" != "0" ]]; then
   echo "unexpected knowledge import count" >&2
@@ -159,8 +172,14 @@ curl --fail --silent --show-error --request POST \
   --header "Authorization: Bearer $access_token" "$bootstrap_url/api/v1/auth/logout" >/dev/null
 
 verified="$(psql -At -c "
-  select count(*)=1 and min(passage_count)>0 and bool_and(ai_proof_version='AI_DB_SNAPSHOT_V1')
-  from knowledge_ingestion_import where document_id='${document_id}' and version_label='${version_label}'")"
+  select i.chunk_count>0
+    and i.ai_proof_version='AI_DB_SNAPSHOT_V1'
+    and i.ai_verified_at is not null
+    and count(b.chunk_id)=i.chunk_count
+  from knowledge_ingestion_import i
+  left join knowledge_ai_passage_binding b on b.import_id=i.import_id
+  where i.document_id='${document_id}' and i.version_label='${version_label}'
+  group by i.import_id,i.chunk_count,i.ai_proof_version,i.ai_verified_at")"
 if [[ "$verified" != "t" ]]; then
   echo "Spring knowledge import proof verification failed" >&2
   exit 1
