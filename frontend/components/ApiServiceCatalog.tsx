@@ -13,8 +13,8 @@ type StatusFilter = "ALL" | ApiImplementation;
 
 const MODE: Record<PortalMode, { audiences: ApiAudience[]; eyebrow: string; title: string; description: string }> = {
   customer: {
-    audiences: ["PUBLIC", "CUSTOMER"], eyebrow: "금융서비스", title: "필요한 금융생활을 한곳에서",
-    description: "조회·동의·금융생활 지원을 목적별로 찾을 수 있습니다. 운영 인증이 필요한 서비스는 공개 데모에서 실행되지 않습니다.",
+    audiences: ["PUBLIC", "CUSTOMER"], eyebrow: "개발·시연 점검", title: "백엔드 서비스 연결 현황",
+    description: "고객 화면에서 사용하는 API 계약과 구현 상태를 확인하는 기술 검증 화면입니다. 실제 금융업무 메뉴가 아닙니다.",
   },
   staff: {
     audiences: ["STAFF"], eyebrow: "행원 업무", title: "보호업무 운영 포털",

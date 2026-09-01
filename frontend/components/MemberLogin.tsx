@@ -11,16 +11,19 @@ export function MemberLogin() {
   const [password, setPassword] = useState("local-synthetic-customer-password");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [nextPath, setNextPath] = useState("/banking");
 
   useEffect(() => {
-    void restorePrivateCustomerSession().then(() => router.replace("/banking")).catch(() => undefined);
+    const requested = safeNextPath(new URLSearchParams(window.location.search).get("next"));
+    setNextPath(requested);
+    void restorePrivateCustomerSession().then(() => router.replace(requested)).catch(() => undefined);
   }, [router]);
 
   async function login() {
     setBusy(true); setError("");
     try {
       await loginPrivateCustomer(loginId.trim(), password);
-      router.replace("/banking");
+      router.replace(nextPath);
       router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "로그인하지 못했습니다.");
@@ -38,7 +41,11 @@ export function MemberLogin() {
         {error && <p className="api-error" role="alert">{error}</p>}
       </form>
       <aside><strong>공개 합성 체험 계정</strong><p><b>demo001 ~ demo300</b> 중 하나와 공통 비밀번호 <b>local-synthetic-customer-password</b>를 이용하세요. 300명은 계좌·거래·설정이 서로 분리되어 있습니다.</p></aside>
-      <Link className="member-login-help" href="/demo">로그인 없이 금융생활 도움받기 →</Link>
+      <Link className="member-login-help" href="/demo">로그인 없이 공개 도움 시나리오 체험 →</Link>
     </section>
   </main>;
+}
+
+function safeNextPath(value: string | null) {
+  return value?.startsWith("/banking") && !value.startsWith("//") ? value : "/banking";
 }
