@@ -43,6 +43,8 @@ export type BankingOverview = {
 
 export type AccountWorkspace = {
   accounts: Account[]; transactions: Transaction[]; recurring: RecurringPayment[];
+  accountTransactions: Transaction[]; counterparties: Array<Record<string, unknown>>;
+  recurringCalendar: Array<Record<string, unknown>>; liabilities: Array<Record<string, unknown>>;
   missed: Array<{ payment: RecurringPayment; missedCount: number; latestMissedDate: string; totalMissedAmount: number; reasonCode: string }>;
   duplicates: Array<{ payment: RecurringPayment; duplicateOccurrenceCount: number; cycleDate: string; duplicateAmount: number; reasonCode: string }>;
   transactionSummary: { totalInflow: number; totalOutflow: number; netCashflow: number; transactionCount: number; categories: CashflowCategory[] };
@@ -95,7 +97,7 @@ export async function loadBankingOverview(session: PrivateCustomerSession): Prom
 export async function loadAccountWorkspace(session: PrivateCustomerSession, accountId?: string, query?: string): Promise<AccountWorkspace> {
   return withPrivateCustomerSession(session, async (accessToken) => {
     const customer = { customerId: session.customerId }; const auth = { accessToken };
-    const [accountList, transactionPage, transactionSummary, recurring, missed, duplicates, groups] = await Promise.all([
+    const [accountList, transactionPage, transactionSummary, recurring, missed, duplicates, groups, counterparties, liabilities, recurringCalendar] = await Promise.all([
       invokeApiOperation<{ items: Account[] }>("GET /api/v1/customers/{customerId}/accounts", { path: customer, ...auth }),
       invokeApiOperation<{ items: Transaction[] }>("GET /api/v1/customers/{customerId}/transactions/search", { path: customer, query: { q: query || undefined, accountId, limit: 50 }, ...auth }),
       invokeApiOperation<AccountWorkspace["transactionSummary"]>("GET /api/v1/customers/{customerId}/transactions/summary", { path: customer, ...auth }),
@@ -103,6 +105,11 @@ export async function loadAccountWorkspace(session: PrivateCustomerSession, acco
       invokeApiOperation<{ items: AccountWorkspace["missed"] }>("GET /api/v1/customers/{customerId}/recurring-payments/missed", { path: customer, ...auth }),
       invokeApiOperation<{ items: AccountWorkspace["duplicates"] }>("GET /api/v1/customers/{customerId}/recurring-payments/duplicates", { path: customer, ...auth }),
       invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/customers/{customerId}/account-groups", { path: customer, ...auth }),
+      invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/customers/{customerId}/counterparties", { path: customer, query: { limit: 50 }, ...auth }),
+      invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/customers/{customerId}/liabilities", { path: customer, ...auth }),
+      invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/customers/{customerId}/recurring-payments/calendar", {
+        path: customer, query: calendarRange(), ...auth,
+      }),
     ]);
     const accounts = data(accountList, "계좌 목록").items;
     const selected = accountId ?? accounts[0]?.accountId;
@@ -114,6 +121,7 @@ export async function loadAccountWorkspace(session: PrivateCustomerSession, acco
       invokeApiOperation<Record<string, unknown>>("GET /api/v1/accounts/{accountId}/interest-summary", { path: { accountId: selected }, ...auth }),
       invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/accounts/{accountId}/statements", { path: { accountId: selected }, ...auth }),
       invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/accounts/{accountId}/recurring-counterparties", { path: { accountId: selected }, ...auth }),
+      invokeApiOperation<{ items: Transaction[] }>("GET /api/v1/accounts/{accountId}/transactions", { path: { accountId: selected }, query: { limit: 50 }, ...auth }),
     ]) : null;
     return {
       accounts, transactions: data(transactionPage, "거래내역").items,
@@ -126,8 +134,46 @@ export async function loadAccountWorkspace(session: PrivateCustomerSession, acco
       interest: detailCalls ? data(detailCalls[4], "이자") : null,
       statements: detailCalls ? data(detailCalls[5], "명세서").items : [],
       recurringCounterparties: detailCalls ? data(detailCalls[6], "반복 거래처").items : [],
+      accountTransactions: detailCalls ? data(detailCalls[7], "계좌별 거래").items : [],
+      counterparties: data(counterparties, "거래처").items,
+      liabilities: data(liabilities, "부채").items,
+      recurringCalendar: data(recurringCalendar, "정기납부 달력").items,
     };
   });
+}
+
+export async function updateTransactionCategory(
+  session: PrivateCustomerSession, transaction: Transaction, category: string,
+): Promise<void> {
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PUT /api/v1/transactions/{transactionId}/category", {
+    path: { transactionId: transaction.transactionId }, accessToken, idempotencyKey: crypto.randomUUID(),
+    body: { category, expectedVersion: transaction.preferenceVersion },
+  }));
+}
+
+export async function updateTransactionNote(
+  session: PrivateCustomerSession, transaction: Transaction, note: string,
+): Promise<void> {
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PUT /api/v1/transactions/{transactionId}/note", {
+    path: { transactionId: transaction.transactionId }, accessToken, idempotencyKey: crypto.randomUUID(),
+    body: { note, expectedVersion: transaction.preferenceVersion },
+  }));
+}
+
+export async function updateRecurringReminder(
+  session: PrivateCustomerSession, payment: RecurringPayment, enabled: boolean, leadDays: number,
+): Promise<void> {
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("PUT /api/v1/recurring-payments/{recurringPaymentId}/reminder-settings", {
+    path: { recurringPaymentId: payment.recurringPaymentId }, accessToken, idempotencyKey: crypto.randomUUID(),
+    body: { enabled, leadDays, expectedVersion: payment.version },
+  }));
+}
+
+function calendarRange() {
+  const from = new Date(); from.setDate(1);
+  const to = new Date(from); to.setMonth(to.getMonth() + 2); to.setDate(0);
+  const iso = (value: Date) => value.toISOString().slice(0, 10);
+  return { from: iso(from), to: iso(to) };
 }
 
 export async function loadTransactionInsight(session: PrivateCustomerSession, transaction: Transaction): Promise<TransactionInsight> {

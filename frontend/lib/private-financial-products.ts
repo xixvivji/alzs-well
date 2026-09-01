@@ -24,12 +24,15 @@ export type InvestmentAccount = { accountId: string; institutionName: string; di
 export type Allocation = { assetClass: string; marketValue: number; weightPercent: number };
 export type Position = { positionId: string; assetClass: string; instrumentName: string; maskedInstrumentCode: string; quantity: number; averagePurchasePrice: number; currentPrice: number; marketValue: number; unrealizedProfitLoss: number; currency: string };
 export type Order = { orderId: string; instrumentName: string; maskedInstrumentCode: string; side: string; quantity: number; orderPrice: number; filledQuantity: number; status: string; orderedAt: string; currency: string };
+export type Watchlist = { customerId: string; items: Array<{ instrumentId: string; instrumentName: string; maskedInstrumentCode: string; displayOrder: number; currentPrice: number; changeRate: number; currency: string }>; total: number; version: number; updatedAt: string };
 
 export type PrivateProductOverview = {
   cards: CardSummary[]; cardDetail: CardDetail | null; cardTransactions: CardTransaction[];
   statements: CardStatement[]; paymentDue: CardPaymentDue | null; cardLimit: CardLimit | null;
   loans: Loan[]; repaymentSchedule: RepaymentInstallment[]; loanProducts: LoanProduct[];
   investments: InvestmentAccount[]; allocations: Allocation[]; positions: Position[]; orders: Order[];
+  loanDetail: Record<string, unknown> | null; loanProductDetail: Record<string, unknown> | null;
+  watchlist: Watchlist | null; selectedQuote: Record<string, unknown> | null; selectedChart: Record<string, unknown> | null;
 };
 
 export async function loginPrivateCustomer(loginId: string, password: string): Promise<PrivateCustomerSession> {
@@ -86,21 +89,31 @@ export async function loadPrivateProductOverview(session: PrivateCustomerSession
     const products = required(loanProducts.body.data, "대출상품 목록").items;
     const investments = required(investmentList.body.data, "투자계좌 목록").items;
     const card = cards[0]; const loan = loans[0]; const investment = investments[0];
-    const [cardDetail, cardTransactions, statements, paymentDue, cardLimit, repaymentSchedule, portfolio, positions, orders] = await Promise.all([
+    const [cardDetail, cardTransactions, statements, paymentDue, cardLimit, repaymentSchedule, loanDetail, loanProductDetail, portfolio, positions, orders, watchlist] = await Promise.all([
       card ? invokeApiOperation<CardDetail>("GET /api/v1/cards/{cardId}", { path: { cardId: card.cardId }, ...auth }) : null,
       card ? invokeApiOperation<{ items: CardTransaction[] }>("GET /api/v1/cards/{cardId}/transactions", { path: { cardId: card.cardId }, query: { limit: 20 }, ...auth }) : null,
       card ? invokeApiOperation<{ items: CardStatement[] }>("GET /api/v1/cards/{cardId}/statements", { path: { cardId: card.cardId }, ...auth }) : null,
       card ? invokeApiOperation<CardPaymentDue>("GET /api/v1/cards/{cardId}/payment-due", { path: { cardId: card.cardId }, ...auth }) : null,
       card ? invokeApiOperation<CardLimit>("GET /api/v1/cards/{cardId}/limits", { path: { cardId: card.cardId }, ...auth }) : null,
       loan ? invokeApiOperation<{ items: RepaymentInstallment[] }>("GET /api/v1/loan-holdings/{loanId}/repayment-schedule", { path: { loanId: loan.loanId }, ...auth }) : null,
+      loan ? invokeApiOperation<Record<string, unknown>>("GET /api/v1/loan-holdings/{loanId}", { path: { loanId: loan.loanId }, ...auth }) : null,
+      products[0] ? invokeApiOperation<Record<string, unknown>>("GET /api/v1/loan-products/{productId}", { path: { productId: products[0].productId }, ...auth }) : null,
       investment ? invokeApiOperation<{ allocations: Allocation[] }>("GET /api/v1/investment-accounts/{accountId}/portfolio", { path: { accountId: investment.accountId }, ...auth }) : null,
       investment ? invokeApiOperation<{ items: Position[] }>("GET /api/v1/investment-accounts/{accountId}/positions", { path: { accountId: investment.accountId }, ...auth }) : null,
       investment ? invokeApiOperation<{ items: Order[] }>("GET /api/v1/investment-accounts/{accountId}/orders", { path: { accountId: investment.accountId }, ...auth }) : null,
+      invokeApiOperation<Watchlist>("GET /api/v1/customers/{customerId}/watchlist", { path: customer, ...auth }),
     ]);
+    const watchlistData = watchlist.body.data; const instrumentId = watchlistData?.items[0]?.instrumentId;
+    const [selectedQuote, selectedChart] = instrumentId ? await Promise.all([
+      invokeApiOperation<Record<string, unknown>>("GET /api/v1/market-instruments/{instrumentId}/quote", { path: { instrumentId }, ...auth }),
+      invokeApiOperation<Record<string, unknown>>("GET /api/v1/market-instruments/{instrumentId}/chart", { path: { instrumentId }, ...auth }),
+    ]) : [null, null];
     return {
       cards, cardDetail: cardDetail?.body.data ?? null, cardTransactions: cardTransactions?.body.data?.items ?? [], statements: statements?.body.data?.items ?? [], paymentDue: paymentDue?.body.data ?? null, cardLimit: cardLimit?.body.data ?? null,
       loans, repaymentSchedule: repaymentSchedule?.body.data?.items ?? [], loanProducts: products,
       investments, allocations: portfolio?.body.data?.allocations ?? [], positions: positions?.body.data?.items ?? [], orders: orders?.body.data?.items ?? [],
+      loanDetail: loanDetail?.body.data ?? null, loanProductDetail: loanProductDetail?.body.data ?? null,
+      watchlist: watchlistData ?? null, selectedQuote: selectedQuote?.body.data ?? null, selectedChart: selectedChart?.body.data ?? null,
     };
   });
 }

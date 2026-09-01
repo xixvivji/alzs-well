@@ -30,9 +30,9 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/login`: `demo001`~`demo300` 합성 회원 전용 로그인. 회원가입은 없고 token은 Vercel Secure·HttpOnly 쿠키에만 저장
 - `/banking`: 로그인 회원의 통합자산·현금흐름·지출·금융일정 대시보드
 - `/banking/help`: 로그인 회원과 동일한 customerId의 의향·알림·기준선·변화신호·본인 확인 현황을 묶은 도움 허브
-- `/banking/accounts`: 계좌 상세·잔액 추세·거래 검색, 거래 분석·거래처 이력, 정기납부·발생 이력, 월별 명세서 상세
+- `/banking/accounts`: 계좌 상세·잔액 추세·계좌별 거래·거래처·부채·납부 달력, 거래 분류·기억 메모, 정기납부 확인 알림, 월별 명세서 상세
 - `/banking/transfer`: 등록 수취인·한도·이체 양식과 실제 실행 없는 이체 사전검증
-- `/banking/products`: 회원별 카드·예금·대출·투자·외환·연금·신탁 조회와 실행 없는 모의계산
+- `/banking/products`: 회원별 카드·예금·대출·투자·외환·연금·신탁, 관심종목 지연 시세·차트 조회와 실행 없는 모의계산
 - `/banking/life`: 금융생활 의향서·인앱 알림·기관 연결·보호수단·승인 근거·보안 세션
 - `/banking/safety`: 로그인 회원별 기준선·변화신호·불변 근거·본인 확인 선택지·감사이력
 - `/banking/settings`: 프로필·접근성·신뢰 연락처·이의신청
@@ -40,8 +40,8 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/demo/settings`: 로그인 회원 본인의 프로필·알림 채널·접근성 설정, 최소정보 신뢰 연락처, 사람 재검토 이의신청
 - `/demo/services`: 실제 금융업무 메뉴가 아닌 개발·시연용 API 계약과 연결 상태
 - `/staff/cases`: 합성 사건 큐, 타임라인·내부 메모·후속관리, 근거 기반 코파일럿, 행원 검토 폐루프
-- `/staff/operations`: 실제 데모 사건 큐와 행원 처리 단계, 추가 행원 API 계약
-- `/staff/control-center`: 실제 readiness·버전·AI 폴백 상태와 감사·준법·정책 API 계약
+- `/staff/operations`: 실제 데모 사건 큐와 운영 사건 상세·타임라인·근거·메모·후속관리·금융생활 의향 요약
+- `/staff/control-center`: core/AI/통합 readiness·버전·AI 폴백 상태와 규칙·감사 상세, 준법·정책 API 계약
 - `/staff/login`: `staff001`~`staff005` 보호업무 역할과 `admin001`~`admin002` 탐지관리 역할의 합성 운영 로그인
 - `/staff/system-status`: health·readiness·공개 설정·버전과 AI 검색 장애 폴백 상태
 
@@ -49,7 +49,7 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 
 생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 브라우저는 Bearer token을 받지 않으며 같은 origin의 `/api/member-auth/*` BFF가 로그인·회전·로그아웃을 처리합니다. 나머지 고객·운영 API에는 BFF가 HttpOnly access token을 서버에서 주입하고, 직접 `/api/v1/auth/login`·`token/refresh`를 호출해 원문 token을 받는 경로는 차단합니다. 공개 계정은 성공한 `PUBLIC` fixture의 고객 300명·보호업무 직원 5명·탐지관리자 2명으로 제한합니다. 고객 API는 customerId 소유권을, 운영 API는 `PROTECTION_STAFF` 또는 `DETECTION_ADMIN` 권한을 다시 검증합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
 
-`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 2026-09-01 기준 정적 집계는 237개 중 127개(53.6%)이며, 동적 데모 경로처럼 문자열을 조립하는 호출은 보수적으로 누락될 수 있습니다. API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않으며, 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하고 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다. 남은 계약은 거래·정기납부 상세, 직원 사건 명령, 관리자 정책·감사처럼 해당 역할의 상세 화면과 명시적 사용자 동작으로 단계적으로 연결합니다.
+`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 2026-09-01 기준 정적 집계는 237개 중 153개(64.6%)이며, 동적 데모 경로처럼 문자열을 조립하는 호출은 보수적으로 누락될 수 있습니다. API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않으며, 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하고 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다. 역할별 운영 원칙과 서버 전용·간접 연결 분류는 `../docs/FRONTEND_API_ROLE_MATRIX.md`를 따릅니다.
 
 고객 알림의 `나중에 확인`은 `POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer`를 호출하며 `{ expectedVersion, deferredUntil }`, `Idempotency-Key`, 데모 capability/run ID를 전달합니다. 백엔드는 같은 세션·run·알림의 version을 검증하고 `DEFERRED` 상태 및 변경된 알림 데이터를 반환해야 합니다.
 

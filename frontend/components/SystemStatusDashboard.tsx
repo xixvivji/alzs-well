@@ -26,7 +26,7 @@ export function SystemStatusDashboard() {
 
   if (!snapshot) return <section className="panel system-status-empty"><div className={loading ? "bank-spinner" : "status-outage"}>{loading ? "" : "!"}</div><h2>{loading ? "서비스 준비상태를 확인하고 있습니다." : "상태 API에 연결할 수 없습니다."}</h2><p>{error || "잠시 기다려 주세요."}</p>{!loading && <button className="primary-button" onClick={() => void refresh()}>다시 확인</button>}</section>;
 
-  const { health, readiness, config, versions } = snapshot;
+  const { health, readiness, coreReadiness, aiReadiness, config, versions } = snapshot;
   const aiReady = readiness.checks.aiRetrieval === "UP";
   const fallbackReady = config.featureFlags.templateFallbackEnabled;
   return <div className="system-status-dashboard">
@@ -35,6 +35,7 @@ export function SystemStatusDashboard() {
       <div className="system-score"><strong>{Object.values(readiness.checks).filter((value) => value === "UP").length}/{Object.keys(readiness.checks).length}</strong><small>준비상태 통과</small></div>
     </section>
     <section className="status-check-grid">{Object.entries(readiness.checks).map(([key, value]) => <article className="panel" key={key}><span className={`check-indicator ${value === "UP" ? "up" : "down"}`}>{value === "UP" ? "✓" : "!"}</span><div><strong>{CHECK_LABELS[key] ?? key}</strong><small>{value === "UP" ? "정상 연결" : value}</small></div></article>)}</section>
+    <section className="panel readiness-boundary"><div><span>핵심 금융 API</span><strong>{coreReadiness.ready ? "READY" : coreReadiness.status}</strong></div><div><span>AI 보조 기능</span><strong>{aiReadiness.ready ? "READY" : aiReadiness.status}</strong></div><small>AI가 중단돼도 핵심 금융 조회와 사람 검토 흐름은 별도로 확인합니다.</small></section>
     <div className="status-two-column">
       <section className="panel fallback-status-card"><div className="section-heading"><div><p className="label">AI 장애 안전망</p><h2>검색 중단 시 템플릿 폴백</h2></div><span className={`status-pill ${fallbackReady ? "safe" : "warning"}`}>{fallbackReady ? "사용 가능" : "설정 확인"}</span></div><div className="fallback-flow"><span className={aiReady ? "active" : "disabled"}>승인 근거 검색<small>{aiReady ? "정상" : "중단"}</small></span><i>→</i><span className={!aiReady && fallbackReady ? "active" : ""}>안전 템플릿<small>추측 없음</small></span><i>→</i><span>행원 검토<small>최종 승인</small></span></div><ul><li>citation이 없으면 근거가 있다고 표현하지 않습니다.</li><li>모델·검색 장애가 금융 실행으로 이어지지 않습니다.</li><li>실제 폴백 결과는 사건 코파일럿 응답의 fallbackUsed로 확인합니다.</li></ul><Link className="plain-link" href="/staff/cases">사건 코파일럿에서 확인 →</Link></section>
       <section className="panel guardrail-card"><p className="label">런타임 안전 경계</p><h2>{health.service}</h2><dl><div><dt>데이터 모드</dt><dd>{config.dataMode}</dd></div><div><dt>외부 금융 실행</dt><dd>{config.externalActionsEnabled ? "활성" : "비활성"}</dd></div><div><dt>외부 네트워크</dt><dd>{config.externalEgressEnabled ? "허용" : "차단"}</dd></div><div><dt>원격 모델</dt><dd>{config.remoteModelEnabled ? "활성" : "비활성"}</dd></div><div><dt>지원 시나리오</dt><dd>{config.supportedScenarioIds.join(", ")}</dd></div></dl></section>

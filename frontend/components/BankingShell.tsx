@@ -24,9 +24,9 @@ export function BankingShell({ title, description, children }: { title: string; 
     </header>
     <div className="banking-mobile-nav">{mobileLinks.map(([href, label, icon]) => <Link className={active(href) ? "active" : ""} href={href} key={href}><span>{icon}</span>{label}</Link>)}</div>
     <main className="banking-main">
-      <section className="banking-title"><div><p>SYNTHETIC PERSONAL BANKING</p><h1>{title}</h1><span>{description}</span></div><aside><i /> 합성데이터 전용 · 실제 금융 실행 없음</aside></section>
+      <section className="banking-title"><div><p>PERSONAL BANKING</p><h1>{title}</h1><span>{description}</span></div><aside><i /> 운영형 합성 데이터 · 외부 금융 실행 없음</aside></section>
       {children}
     </main>
-    <footer className="banking-footer"><p>ALZ&apos;s well 합성 금융서비스</p><span>회원가입 없이 제공된 300개 합성 회원 계정으로만 이용합니다.</span><Link href="/">서비스 홈</Link></footer>
+    <footer className="banking-footer"><p>ALZ&apos;s well 금융생활 서비스</p><span>300개 합성 회원을 실제 운영과 같은 인증·권한·감사 흐름으로 분리합니다.</span><Link href="/">서비스 홈</Link></footer>
   </div>;
 }
