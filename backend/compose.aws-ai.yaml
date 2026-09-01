@@ -27,7 +27,7 @@ services:
         awslogs-group: ${AI_LOG_GROUP:?AI_LOG_GROUP must be set}
         awslogs-stream: gateway
         awslogs-create-group: "false"
-    networks: [ai-internal]
+    networks: [ai-ingress, ai-internal]
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE, CHOWN, DAC_OVERRIDE, SETGID, SETUID]
     security_opt: [no-new-privileges:true]
@@ -117,6 +117,7 @@ services:
     networks: [egress]
 
 networks:
+  ai-ingress:
   ai-internal:
     internal: true
   egress:
