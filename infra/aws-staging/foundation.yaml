@@ -31,6 +31,11 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Temporarily allow one-time DB role provisioning and AI ingestion secrets
+  AppMigrationDeploymentEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Temporarily allow the app host to read only the migration database secret during deployment
   DatabaseDeletionProtectionEnabled:
     Type: String
     Default: "false"
@@ -44,6 +49,7 @@ Parameters:
 
 Conditions:
   EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
+  EnableAppMigrationDeployment: !Equals [!Ref AppMigrationDeploymentEnabled, "true"]
   ProtectDatabase: !Equals [!Ref DatabaseDeletionProtectionEnabled, "true"]
   ProtectAlb: !Equals [!Ref AlbDeletionProtectionEnabled, "true"]
 
@@ -562,6 +568,18 @@ Resources:
           - Effect: Allow
             Action: "secretsmanager:PutSecretValue"
             Resource: [!Ref AppTlsSecret, !Ref AiTlsSecret, !Ref ProxySharedSecret]
+  AppMigrationDeploymentPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableAppMigrationDeployment
+    Properties:
+      PolicyName: AppMigrationDeployment
+      Roles: [!Ref AppRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "secretsmanager:GetSecretValue"
+            Resource: !Ref MigrationDatabaseSecret
   AiIngestionPolicy:
     Type: AWS::IAM::Policy
     Condition: EnableDatabaseBootstrap

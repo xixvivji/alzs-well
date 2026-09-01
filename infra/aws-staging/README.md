@@ -92,6 +92,9 @@ App·AI mTLS 개인키는 각각 `/alzs-well-staging/tls-app`,
 재생하고 `demo001`~`demo300`, `staff001`~`staff005`, `admin001`~`admin002`를
 멱등 프로비저닝한다. 실행이 끝나면 고객·직원·관리자 각각의 로그인과 역할 간 403을
 확인해야 한다.
+일반 앱 재배포에는 전체 `DatabaseBootstrapEnabled`를 다시 켜지 않는다.
+`AppMigrationDeploymentEnabled=true`로 migration DB 비밀 읽기만 잠시 허용하고,
+배포와 Flyway 완료 직후 `false`로 되돌려 런타임 역할에서 해당 정책을 제거한다.
 
 ## 운영 종료와 수동 철거
 

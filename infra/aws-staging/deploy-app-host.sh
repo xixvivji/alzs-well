@@ -27,7 +27,7 @@ if [[ $synthetic_member_auth_enabled != "true" && $synthetic_member_auth_enabled
   echo "SYNTHETIC_MEMBER_AUTH_ENABLED must be true or false" >&2
   exit 64
 fi
-trap 'unset app_db_json migration_db_json tls_json proxy_secret staff_token internal_token member_password_hash' EXIT
+trap 'unset app_db_json migration_db_json tls_json proxy_secret staff_token internal_token member_password_hash member_password_hash_compose' EXIT
 install -d -m 0700 "$runtime_root" "$certificate_root"
 
 secret_value() {
@@ -41,9 +41,11 @@ proxy_secret="$(secret_value /alzs-well-staging/proxy-shared-secret)"
 staff_token="$(secret_value /alzs-well-staging/staff-bootstrap-token)"
 internal_token="$(secret_value /alzs-well-staging/internal-ai-token)"
 member_password_hash=""
+member_password_hash_compose=""
 if [[ $synthetic_member_auth_enabled == "true" ]]; then
   member_password_hash="$(secret_value /alzs-well-staging/synthetic-member-password-hash)"
   [[ $member_password_hash =~ ^\$2[ayb]\$1[012]\$[./A-Za-z0-9]{53}$ ]]
+  member_password_hash_compose="${member_password_hash//\$/\$\$}"
 fi
 [[ $proxy_secret =~ ^[0-9a-f]{64}$ ]]
 printf '%s' "$tls_json" | jq -er '.clientKeystoreBase64' | base64 -d >"$certificate_root/ai-client.p12"
@@ -84,7 +86,7 @@ SYNTHETIC_MEMBER_AUTH_ENABLED=${synthetic_member_auth_enabled}
 SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.0.0
 SYNTHETIC_SEED_VALUE=20260901
 SYNTHETIC_SEED_BATCH_SIZE=50
-SYNTHETIC_MEMBER_PASSWORD_HASH=${member_password_hash}
+SYNTHETIC_MEMBER_PASSWORD_HASH=${member_password_hash_compose}
 EOF
 chmod 0600 "$runtime_root/.env.aws-app"
 aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin 982689564927.dkr.ecr.ap-northeast-2.amazonaws.com >/dev/null
