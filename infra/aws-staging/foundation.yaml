@@ -395,7 +395,7 @@ Resources:
       VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
       PubliclyAccessible: false
       MultiAZ: false
-      BackupRetentionPeriod: 7
+      BackupRetentionPeriod: 1
       CopyTagsToSnapshot: true
       DeletionProtection: true
       AutoMinorVersionUpgrade: true
