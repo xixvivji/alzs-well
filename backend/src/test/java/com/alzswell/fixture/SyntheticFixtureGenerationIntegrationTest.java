@@ -179,6 +179,18 @@ class SyntheticFixtureGenerationIntegrationTest {
                 """, Integer.class, result.runId())).isEqualTo(300);
         assertThat(jdbc.queryForObject("select customer_id from auth_principal where login_id='demo001'", String.class))
                 .isNotEqualTo(jdbc.queryForObject("select customer_id from auth_principal where login_id='demo300'", String.class));
+        assertThat(jdbc.queryForObject("""
+                select count(*) from customer_detection_signal s join synthetic_fixture_customer f on f.customer_id=s.customer_id
+                where f.run_id=?
+                """, Integer.class, result.runId())).isEqualTo(225);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from operational_alert a join synthetic_fixture_customer f on f.customer_id=a.customer_id
+                where f.run_id=? and a.state='AWAITING_CONTEXT'
+                """, Integer.class, result.runId())).isEqualTo(225);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from staff_access_grant g join synthetic_fixture_customer f on f.customer_id=g.customer_id
+                where f.run_id=? and g.status='ACTIVE' and g.purpose_code='PROTECTION_CASE_MANAGEMENT'
+                """, Integer.class, result.runId())).isEqualTo(300);
     }
 
     @Test

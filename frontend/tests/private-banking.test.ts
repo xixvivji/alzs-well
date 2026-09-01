@@ -4,6 +4,7 @@ import { evaluateTransfer, loadBankingOverview, loadRecurringInsight, loadStatem
 import { loadLifeServices, searchKnowledge } from "../lib/private-life-services";
 import { loadSafetyCenter, respondToSafetyAlert } from "../lib/private-safety-center";
 import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
+import { loadOperationalCaseBundle, loadOperationalCaseQueue } from "../lib/private-staff-cases";
 import { loadPrivateHelpOverview } from "../lib/private-help";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
 
@@ -154,4 +155,23 @@ test("보호업무와 관리자는 서로 다른 Bearer 역할의 운영 조회 
   assert.ok(paths.includes("/api/v1/audit/events?limit=25"));
   await assert.rejects(() => loadAdminOperations(staff), /역할/);
   await assert.rejects(() => loadStaffOperations(admin), /역할/);
+});
+
+test("로그인 행원 사건 화면은 데모 capability가 아닌 운영 Bearer 큐와 상세를 조회한다", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); paths.push(path);
+    assert.equal(new Headers(init?.headers).get("X-Demo-Capability"), null);
+    if (path === "/api/v1/staff/cases?limit=100") return response({ items: [{ caseId: "case-1", customerId: "customer-1", reviewPriority: "HIGH", taskStatus: "PENDING", version: 1 }] });
+    if (path.endsWith("/timeline") || path.endsWith("/notes") || path.endsWith("/follow-ups")) return response({ items: [] });
+    if (path.endsWith("/evidence")) return response({ count: 1, items: [] });
+    return response({ caseSummary: { caseId: "case-1" }, customerResponseCode: "NOT_SURE" });
+  });
+  const staff = { ...session, roles: ["PROTECTION_STAFF"] };
+  const queue = await loadOperationalCaseQueue(staff);
+  const bundle = await loadOperationalCaseBundle(staff, "case-1");
+  assert.equal(queue[0]?.caseId, "case-1");
+  assert.equal(bundle.timeline.length, 0);
+  assert.equal(paths.length, 6);
+  assert.ok(paths.every((path) => path.startsWith("/api/v1/staff/cases")));
 });
