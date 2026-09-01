@@ -19,6 +19,7 @@ export function PrivateLifeServices() {
   async function act(key: string, operation: () => Promise<void>) { if (!session) return; setBusy(key); setError(""); setNotice(""); try { await operation(); await refresh(session); } catch (reason) { setError(message(reason)); } finally { setBusy(""); } }
   if (!session && !error) return <section className="bank-panel banking-loading"><div className="bank-spinner" /><p>생활금융 서비스를 준비하고 있습니다.</p></section>;
   if (!session) return <LoginRequired message={error} />;
+  if (!bundle && !error) return <section className="bank-panel banking-loading"><div className="bank-spinner" /><p>생활금융 정보를 안전하게 불러오고 있습니다.</p></section>;
   if (!bundle) return <section className="bank-panel login-required"><h2>생활금융 정보를 불러오지 못했습니다.</h2><p>{error}</p></section>;
   const currentIntent = draft ?? bundle.preparation.latestApproved ?? bundle.intents[0] ?? null;
   return <div className="private-life-services">
