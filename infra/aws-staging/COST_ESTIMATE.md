@@ -12,7 +12,7 @@
 | 항목 | 단가 | 12일 추정 |
 |---|---:|---:|
 | 업무 EC2 `t3.small` | $0.026/시간 | $7.49 |
-| AI EC2 `t3.large` | $0.104/시간 | $29.95 |
+| AI EC2 `m7i-flex.large` | $0.11771/시간 | $33.90 |
 | RDS `db.t4g.micro` | $0.025/시간 | $7.20 |
 | NAT Gateway | $0.059/시간 | $16.99 |
 | Application Load Balancer | $0.0225/시간 | $6.48 |
@@ -24,8 +24,10 @@
 | WAF Web ACL 1개·규칙 2개 | $5+$1/규칙·월 | 약 $2.80 |
 | Route 53 private hosted zone 1개 | $0.50/월 | 약 $0.20 |
 
-주요 고정비 합계는 약 **$80.63**이다. ALB LCU, NAT 처리량, CloudFront 요청·전송,
-ECR, RDS backup 초과분과 기타 소액 항목을 포함해 **$90~105**를 안전 상한으로
+주요 고정비 합계는 약 **$84.58**이다. `m7i-flex.large`는 현재 계정·서울 리전의
+Free Tier eligible 유형이지만, 비용 표는 혜택 적용 전 온디맨드 총액으로 계산했다.
+ALB LCU, NAT 처리량, CloudFront 요청·전송, ECR, RDS backup 초과분과 기타 소액
+항목을 포함해 **$95~110**를 안전 상한으로
 잡는다.
 
 ## 크레딧 판단

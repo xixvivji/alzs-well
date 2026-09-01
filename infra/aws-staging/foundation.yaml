@@ -20,8 +20,8 @@ Parameters:
     AllowedValues: [t3.small, t3.medium]
   AiInstanceType:
     Type: String
-    Default: t3.large
-    AllowedValues: [t3.medium, t3.large, m7i.large]
+    Default: m7i-flex.large
+    AllowedValues: [t3.medium, t3.large, m7i-flex.large, m7i.large]
   DatabaseInstanceClass:
     Type: String
     Default: db.t4g.micro
