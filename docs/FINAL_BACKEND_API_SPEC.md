@@ -1683,7 +1683,7 @@ GET /api/v1/system/health
 GET /api/v1/system/core-readiness
 ```
 
-DB 연결, Flyway V75, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
+DB 연결, Flyway V76, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
 
 ```json
 {
@@ -2351,7 +2351,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "75",
+        "schemaVersion": "76",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2893,7 +2893,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V75와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V76과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
 
 #### 공개 설정
 
@@ -2946,7 +2946,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "75",
+    "schemaVersion": "76",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

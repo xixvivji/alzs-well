@@ -30,15 +30,23 @@ const required = <T>(response: { body: { data: T | null } }, label: string): T =
 export async function loadLifeServices(session: PrivateCustomerSession): Promise<LifeServiceBundle> {
   return withPrivateCustomerSession(session, async (accessToken) => {
     const customer = { customerId: session.customerId }; const auth = { accessToken };
-    const [preparation, intents, inbox, preference, institutions, connections, actions, enrollments, faqs, notices, documents, sessions] = await Promise.all([
+    // 공개 BFF의 요청 제한을 존중한다. 이 화면은 서로 다른 보호 도메인을 묶으므로
+    // 로그인 직후 12개 요청을 한꺼번에 보내지 않고 작은 묶음으로 순차 조회한다.
+    const [preparation, intents, inbox, preference] = await Promise.all([
       invokeApiOperation<LifeServiceBundle["preparation"]>("GET /api/v1/customers/{customerId}/continuity-preparation", { path: customer, ...auth }),
       invokeApiOperation<{ items: FinancialIntent[] }>("GET /api/v1/customers/{customerId}/financial-intents/versions", { path: customer, ...auth }),
       invokeApiOperation<{ items: InboxMessage[] }>("GET /api/v1/customers/{customerId}/inbox", { path: customer, ...auth }),
       invokeApiOperation<NotificationPreference>("GET /api/v1/customers/{customerId}/notification-preferences", { path: customer, ...auth }),
+    ]);
+    await requestPacingDelay();
+    const [institutions, connections, actions, enrollments] = await Promise.all([
       invokeApiOperation<{ items: Institution[] }>("GET /api/v1/financial-institutions", auth),
       invokeApiOperation<{ items: Connection[] }>("GET /api/v1/customers/{customerId}/connections", { path: customer, ...auth }),
       invokeApiOperation<{ items: ProtectionAction[] }>("GET /api/v1/protection-actions", auth),
       invokeApiOperation<{ items: Enrollment[] }>("GET /api/v1/customers/{customerId}/protection-enrollments", { path: customer, ...auth }),
+    ]);
+    await requestPacingDelay();
+    const [faqs, notices, documents, sessions] = await Promise.all([
       invokeApiOperation<{ items: Faq[] }>("GET /api/v1/support/faqs", auth),
       invokeApiOperation<{ items: Notice[] }>("GET /api/v1/support/notices", auth),
       invokeApiOperation<{ items: Document[] }>("GET /api/v1/knowledge/documents", { query: { audience: "CUSTOMER" }, ...auth }),
@@ -53,6 +61,10 @@ export async function loadLifeServices(session: PrivateCustomerSession): Promise
       documents: required(documents, "공식 근거").items, sessions: required(sessions, "로그인 세션").items,
     };
   });
+}
+
+function requestPacingDelay(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 350));
 }
 
 export async function createIntent(session: PrivateCustomerSession, values: Omit<FinancialIntent, "intentId" | "status" | "version" | "disclaimerAccepted" | "updatedAt" | "legallyBinding">): Promise<FinancialIntent> {

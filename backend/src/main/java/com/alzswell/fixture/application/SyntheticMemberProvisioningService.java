@@ -83,6 +83,7 @@ public class SyntheticMemberProvisioningService {
                 """, runId);
         principals += provisionOperationalPrincipals(runId, passwordHash, now);
         roles += provisionOperationalRoles(runId);
+        provisionOperationalProtectionWorkflow(runId, now);
         provisionFinancialProducts(runId);
         Integer active = jdbc.queryForObject("""
                 select count(*) from auth_principal p
@@ -158,6 +159,142 @@ public class SyntheticMemberProvisioningService {
         if (staff == null || staff != 5 || admins == null || admins != 2) {
             throw new IllegalStateException("공개 합성 직원·관리자 역할 프로비저닝 결과가 계약과 다릅니다.");
         }
+    }
+
+    private void provisionOperationalProtectionWorkflow(UUID runId, OffsetDateTime now) {
+        jdbc.update("""
+                insert into customer_detection_signal(
+                    signal_id,customer_id,baseline_id,signal_type,severity,baseline_value,
+                    current_value,unit,reason_code,status,algorithm_version,detected_at,snapshot_hash
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-signal:'||f.customer_index),
+                    f.customer_id,synthetic_fixture_uuid(r.dataset_key||':baseline:'||f.customer_index),
+                    'BEHAVIOR_CHANGE',case when f.scenario_code='REPEATED_CONFIRMATION' then 'MEDIUM' else 'HIGH' end,
+                    case when f.scenario_code='REPEATED_CONFIRMATION' then 1 else 0 end,
+                    case f.scenario_code when 'MISSED_PAYMENT' then 1 when 'DUPLICATE_TRANSFER' then 2 else 5 end,
+                    'COUNT',case when f.scenario_code='MISSED_PAYMENT' then 'MISSED_RECURRING_PAYMENT'
+                                 else f.scenario_code end,
+                    'OPEN','baseline-rules-v2.0.0',timestamptz '2026-08-31T09:00:00Z',
+                    'sha256:'||encode(digest(convert_to(r.dataset_key||':member-signal:'||f.customer_index,'UTF8'),'sha256'),'hex')
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                where f.run_id=? and f.scenario_code<>'NORMAL'
+                on conflict(signal_id) do nothing
+                """, runId);
+        jdbc.update("""
+                insert into customer_signal_evidence_snapshot(
+                    evidence_id,signal_id,evidence_type,source_reference,occurred_at,
+                    amount,currency,description,integrity_hash
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-evidence:'||f.customer_index),
+                    synthetic_fixture_uuid(r.dataset_key||':member-signal:'||f.customer_index),
+                    case when f.scenario_code='REPEATED_CONFIRMATION' then 'INTERACTION' else 'TRANSACTION' end,
+                    synthetic_fixture_uuid(r.dataset_key||':transaction:'||f.customer_index||':1')::text,
+                    timestamptz '2026-08-31T08:30:00Z',
+                    case when f.scenario_code='DUPLICATE_TRANSFER' then 500000 else null end,
+                    case when f.scenario_code='DUPLICATE_TRANSFER' then 'KRW' else null end,
+                    case f.scenario_code when 'MISSED_PAYMENT' then '예정된 정기납부가 확인되지 않은 합성 근거입니다.'
+                         when 'DUPLICATE_TRANSFER' then '같은 수취인과 금액이 반복된 합성 거래 근거입니다.'
+                         else '같은 거래 결과를 반복 확인한 합성 상호작용 근거입니다.' end,
+                    'sha256:'||encode(digest(convert_to(r.dataset_key||':member-evidence:'||f.customer_index,'UTF8'),'sha256'),'hex')
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                where f.run_id=? and f.scenario_code<>'NORMAL'
+                on conflict(evidence_id) do nothing
+                """, runId);
+        jdbc.update("""
+                insert into operational_alert(
+                    alert_id,signal_id,customer_id,state,severity,reason_code,
+                    alert_version,created_at,updated_at
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-alert:'||f.customer_index),
+                    synthetic_fixture_uuid(r.dataset_key||':member-signal:'||f.customer_index),f.customer_id,
+                    'AWAITING_CONTEXT',case when f.scenario_code='REPEATED_CONFIRMATION' then 'MEDIUM' else 'HIGH' end,
+                    case when f.scenario_code='MISSED_PAYMENT' then 'MISSED_RECURRING_PAYMENT' else f.scenario_code end,
+                    1,timestamptz '2026-08-31T09:01:00Z',timestamptz '2026-08-31T09:01:00Z'
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                where f.run_id=? and f.scenario_code<>'NORMAL'
+                on conflict(signal_id) do nothing
+                """, runId);
+        jdbc.update("""
+                insert into operational_alert_audit_event(
+                    audit_event_id,alert_id,event_type,previous_state,resulting_state,
+                    detail,integrity_hash,created_at
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-alert-audit:'||f.customer_index),
+                    synthetic_fixture_uuid(r.dataset_key||':member-alert:'||f.customer_index),
+                    'ALERT_CREATED',null,'AWAITING_CONTEXT',
+                    jsonb_build_object('syntheticData',true,'fixtureRunId',f.run_id),
+                    encode(digest(convert_to(r.dataset_key||':member-alert-audit:'||f.customer_index,'UTF8'),'sha256'),'hex'),
+                    timestamptz '2026-08-31T09:01:00Z'
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                where f.run_id=? and f.scenario_code<>'NORMAL'
+                on conflict(audit_event_id) do nothing
+                """, runId);
+        jdbc.update("""
+                insert into staff_access_grant(
+                    grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
+                    granted_at,expires_at,idempotency_key_hash,request_hash,row_version
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-staff-grant:'||f.customer_index),
+                    p.principal_id,f.customer_id,'PROTECTION_CASE_MANAGEMENT',
+                    array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
+                          'CASE_NOTE','CASE_FOLLOW_UP']::varchar[],
+                    'ACTIVE',?,?,
+                    encode(digest(convert_to(r.dataset_key||':member-staff-grant-idempotency:'||f.customer_index,'UTF8'),'sha256'),'hex'),
+                    encode(digest(convert_to(r.dataset_key||':member-staff-grant-request:'||f.customer_index,'UTF8'),'sha256'),'hex'),1
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                join auth_principal p on p.login_id='staff'||lpad((((f.customer_index-1)%5)+1)::text,3,'0')
+                where f.run_id=?
+                on conflict do nothing
+                """, now, now.plusDays(30), runId);
+        jdbc.update("""
+                insert into staff_access_grant(
+                    grant_id,staff_principal_id,customer_id,purpose_code,scopes,status,
+                    granted_at,expires_at,idempotency_key_hash,request_hash,row_version
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-intent-grant:'||f.customer_index),
+                    p.principal_id,f.customer_id,'FINANCIAL_INTENT_REVIEW',
+                    array['FINANCIAL_INTENT_READ']::varchar[],'ACTIVE',?,?,
+                    encode(digest(convert_to(r.dataset_key||':member-intent-grant-idempotency:'||f.customer_index,'UTF8'),'sha256'),'hex'),
+                    encode(digest(convert_to(r.dataset_key||':member-intent-grant-request:'||f.customer_index,'UTF8'),'sha256'),'hex'),1
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                join auth_principal p on p.login_id='staff'||lpad((((f.customer_index-1)%5)+1)::text,3,'0')
+                where f.run_id=?
+                on conflict do nothing
+                """, now, now.plusDays(30), runId);
+        jdbc.update("""
+                insert into staff_access_grant_event(
+                    event_id,grant_id,event_type,status_snapshot,scopes_snapshot,
+                    actor_type,detail,occurred_at,customer_id_snapshot,purpose_code_snapshot,
+                    staff_principal_id_snapshot,snapshot_accuracy
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-staff-grant-event:'||f.customer_index),
+                    synthetic_fixture_uuid(r.dataset_key||':member-staff-grant:'||f.customer_index),
+                    'GRANTED','ACTIVE',
+                    array['CASE_READ','CASE_ASSIGN','CASE_REVIEW','CASE_GUIDANCE',
+                          'CASE_NOTE','CASE_FOLLOW_UP']::varchar[],
+                    'SYSTEM',jsonb_build_object('syntheticData',true,'fixtureRunId',f.run_id),?,
+                    f.customer_id,'PROTECTION_CASE_MANAGEMENT',p.principal_id,'EXACT'
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                join auth_principal p on p.login_id='staff'||lpad((((f.customer_index-1)%5)+1)::text,3,'0')
+                where f.run_id=?
+                on conflict(event_id) do nothing
+                """, now, runId);
+        jdbc.update("""
+                insert into staff_access_grant_event(
+                    event_id,grant_id,event_type,status_snapshot,scopes_snapshot,
+                    actor_type,detail,occurred_at,customer_id_snapshot,purpose_code_snapshot,
+                    staff_principal_id_snapshot,snapshot_accuracy
+                )
+                select synthetic_fixture_uuid(r.dataset_key||':member-intent-grant-event:'||f.customer_index),
+                    synthetic_fixture_uuid(r.dataset_key||':member-intent-grant:'||f.customer_index),
+                    'GRANTED','ACTIVE',array['FINANCIAL_INTENT_READ']::varchar[],
+                    'SYSTEM',jsonb_build_object('syntheticData',true,'fixtureRunId',f.run_id),?,
+                    f.customer_id,'FINANCIAL_INTENT_REVIEW',p.principal_id,'EXACT'
+                from synthetic_fixture_customer f join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                join auth_principal p on p.login_id='staff'||lpad((((f.customer_index-1)%5)+1)::text,3,'0')
+                where f.run_id=?
+                on conflict(event_id) do nothing
+                """, now, runId);
     }
 
     private void provisionFinancialProducts(UUID runId) {

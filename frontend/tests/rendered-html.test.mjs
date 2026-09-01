@@ -74,13 +74,17 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);
   assert.match(operations, /고객의 확인 요청을/);
-  assert.match(operations, /현재 데모 세션 사건/);
+  assert.match(operations, /로그인 회원 보호사건/);
   assert.match(operations, /aria-label="모바일 행원 서비스"/);
-  for (const href of ["/staff/cases", "/staff/operations", "/staff/control-center", "/staff/system-status"]) {
+  for (const href of ["/staff/cases", "/staff/operations", "/staff/system-status"]) {
     assert.match(operations, new RegExp(`href="${href}"`));
   }
+  assert.doesNotMatch(operations, /href="\/staff\/control-center"/);
   assert.match(control, /정책과 AI가 안전 경계 안에서/);
   assert.match(control, /관리 기능은 운영자 인증 후에만 실행/);
+  assert.match(control, /href="\/staff\/control-center"/);
+  assert.doesNotMatch(control, /href="\/staff\/operations"/);
+  assert.doesNotMatch(control, /href="\/staff\/cases"/);
   assert.match(systemStatus, /서비스 준비상태를 확인하고 있습니다/);
   for (const html of [services, operations, control]) {
     assert.match(html, /사설 인증 필요|인증 필요/);

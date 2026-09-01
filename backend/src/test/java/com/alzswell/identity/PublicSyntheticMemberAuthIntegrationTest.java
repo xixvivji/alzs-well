@@ -11,6 +11,7 @@ import com.alzswell.fixture.application.SyntheticFixtureProfile;
 import com.alzswell.fixture.application.SyntheticMemberProvisioningService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -77,6 +78,14 @@ class PublicSyntheticMemberAuthIntegrationTest {
         mockMvc.perform(get("/api/v1/customers/" + ownCustomerId)
                         .header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/knowledge/documents?audience=CUSTOMER")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/knowledge/search")
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"query\":\"금융거래 안심차단\",\"audience\":\"CUSTOMER\",\"limit\":5}"))
+                .andExpect(status().isOk());
 
         String otherCustomerId = jdbcTemplate.queryForObject(
                 "select customer_id from auth_principal where login_id='demo002'", String.class);
@@ -112,6 +121,30 @@ class PublicSyntheticMemberAuthIntegrationTest {
         String customerAccess = login("demo001");
         mockMvc.perform(get("/api/v1/admin/rules").header("Authorization", "Bearer " + customerAccess))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void connectsCustomerContextResponseToAssignedStaffBearerQueue() throws Exception {
+        String customerAccess = login("demo009");
+        String customerId = jdbcTemplate.queryForObject(
+                "select customer_id from auth_principal where login_id='demo009'", String.class);
+        UUID alertId = jdbcTemplate.queryForObject(
+                "select alert_id from operational_alert where customer_id=? and state='AWAITING_CONTEXT'",
+                UUID.class, customerId);
+
+        mockMvc.perform(post("/api/v1/alerts/" + alertId + "/context-responses")
+                        .header("Authorization", "Bearer " + customerAccess)
+                        .header("Idempotency-Key", "member-staff-closed-loop-0009")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"responseCode\":\"NOT_SURE\",\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentState").value("BANK_REVIEW"));
+
+        String staffAccess = login("staff004");
+        mockMvc.perform(get("/api/v1/staff/cases?limit=20")
+                        .header("Authorization", "Bearer " + staffAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].customerId").value(customerId));
     }
 
     private String login(String loginId) throws Exception {

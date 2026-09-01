@@ -4,7 +4,7 @@ import { SystemStatusDashboard } from "../../../components/SystemStatusDashboard
 import { OperationalRoleDashboard } from "../../../components/OperationalRoleDashboard";
 
 export default function ControlCenterPage() {
-  return <AppShell mode="staff" title="관리·준법 통제센터"><div className="control-center-portal">
+  return <AppShell mode="staff" staffRole="admin" title="관리·준법 통제센터"><div className="control-center-portal">
     <section className="control-center-banner"><div><p>ADMIN &amp; COMPLIANCE</p><h2>정책과 AI가 안전 경계 안에서<br />작동하는지 확인합니다.</h2></div><ul><li>탐지 정책·알고리즘 버전 고정</li><li>합성데이터 출처와 감사 무결성</li><li>AI 검색 장애 시 안전 템플릿 폴백</li></ul></section>
     <SystemStatusDashboard />
     <OperationalRoleDashboard mode="admin" />

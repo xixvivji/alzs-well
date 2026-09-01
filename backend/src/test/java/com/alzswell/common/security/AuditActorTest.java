@@ -42,4 +42,15 @@ class AuditActorTest {
         assertThat(actor.actorType()).isEqualTo("CUSTOMER");
         assertThat(actor.legacyActorId()).isEqualTo("SYN_CUSTOMER_FIN_MGMT_001");
     }
+
+    @Test
+    void approvedKnowledgeReadDoesNotTurnCustomerIntoStaffActor() {
+        var authentication = UsernamePasswordAuthenticationToken.authenticated(
+                "SYN_CUSTOMER_FIN_MGMT_001", null,
+                List.of(new SimpleGrantedAuthority("ALERT_RESPOND"),
+                        new SimpleGrantedAuthority("KNOWLEDGE_READ"),
+                        new SimpleGrantedAuthority("KNOWLEDGE_SEARCH")));
+
+        assertThat(AuditActor.from(authentication).actorType()).isEqualTo("CUSTOMER");
+    }
 }
