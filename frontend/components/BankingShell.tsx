@@ -9,7 +9,8 @@ import { MemberSessionStatus } from "./MemberSessionStatus";
 const links = [
   ["/banking", "MY 금융", "⌂"], ["/banking/accounts", "계좌·거래", "₩"],
   ["/banking/transfer", "이체", "↗"], ["/banking/products", "금융상품·자산", "◇"],
-  ["/banking/life", "생활금융·고객센터", "▤"], ["/banking/settings", "내 정보·보호", "◎"],
+  ["/banking/life", "생활금융·고객센터", "▤"], ["/banking/safety", "금융생활 안심관리", "✓"],
+  ["/banking/settings", "내 정보·보호", "◎"],
   ["/demo", "금융생활 도움받기", "?"],
 ] as const;
 
