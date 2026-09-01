@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateTransfer, loadBankingOverview, loadTransferWorkspace } from "../lib/private-banking";
+import { evaluateTransfer, loadBankingOverview, loadRecurringInsight, loadStatementDetail, loadTransactionInsight, loadTransferWorkspace } from "../lib/private-banking";
 import { loadLifeServices, searchKnowledge } from "../lib/private-life-services";
 import { loadSafetyCenter, respondToSafetyAlert } from "../lib/private-safety-center";
 import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
@@ -43,6 +43,28 @@ test("이체 화면은 회원별 계좌·수취인·한도·양식과 실행 없
   assert.equal(result.validation.authorizationCreated, false);
   assert.ok(calls.some((call) => call.path === "/api/v1/transfer-simulations"));
   assert.ok(calls.some((call) => call.path === "/api/v1/transfer-validations"));
+});
+
+test("계좌 화면은 거래·거래처·정기납부·명세서 상세를 고객 요청 시 조회한다", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const path = String(input); paths.push(path);
+    if (path.endsWith("/enrichment")) return response({ normalizedDescription: "공과금", inferredCategory: "UTILITIES", effectiveCategory: "UTILITIES", recurringCandidate: true, newCounterparty: false, confidence: 0.95, reasonCodes: ["RECURRING_PATTERN"], deterministic: true });
+    if (path.includes("/transaction-history")) return response({ items: [] });
+    if (path.includes("/transactions/transaction-1")) return response({ transaction: { transactionId: "transaction-1" }, originalDescriptionAvailable: false, cancellationAvailable: false, correctionAvailable: true });
+    if (path.endsWith("/occurrences")) return response({ items: [] });
+    if (path.includes("/recurring-payments/")) return response({ payment: { recurringPaymentId: "recurring-1" }, latestOccurrence: null, cancellationAvailable: false, externalActionExecuted: false });
+    return response({ accountId: "account-1", statement: { statementId: "statement-1" }, transactionRowsIncluded: false, externalDownloadAvailable: false });
+  });
+  const transaction = { transactionId: "transaction-1", accountId: "account-1", accountDisplayName: "생활비", institutionName: "합성은행", counterpartyId: "counterparty-1", counterpartyName: "공과금", occurredAt: "2026-08-31T00:00:00Z", direction: "DEBIT", transactionType: "TRANSFER", status: "POSTED", amount: 10000, currency: "KRW", balanceAfter: 100000, description: "공과금", category: "UTILITIES", preferenceVersion: 1 };
+  const insight = await loadTransactionInsight(session, transaction);
+  await loadRecurringInsight(session, "recurring-1");
+  await loadStatementDetail(session, "account-1", "statement-1");
+  assert.equal(insight.enrichment.deterministic, true);
+  assert.equal(paths.length, 6);
+  assert.ok(paths.includes("/api/v1/transactions/transaction-1/enrichment"));
+  assert.ok(paths.includes("/api/v1/counterparties/counterparty-1/transaction-history?limit=10"));
+  assert.ok(paths.includes("/api/v1/accounts/account-1/statements/statement-1"));
 });
 
 test("생활금융 화면은 의향·알림·연결·보호·근거·세션 API를 한 회원 범위로 조회한다", async (t) => {

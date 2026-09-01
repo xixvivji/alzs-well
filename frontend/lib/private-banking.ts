@@ -52,6 +52,17 @@ export type AccountWorkspace = {
   recurringCounterparties: Array<Record<string, unknown>>; groups: Array<Record<string, unknown>>;
 };
 
+export type TransactionInsight = {
+  detail: { transaction: Transaction; originalDescriptionAvailable: boolean; cancellationAvailable: false; correctionAvailable: boolean };
+  enrichment: { normalizedDescription: string; inferredCategory: string; effectiveCategory: string; recurringCandidate: boolean; newCounterparty: boolean; confidence: number; reasonCodes: string[]; deterministic: boolean };
+  counterpartyHistory: Transaction[];
+};
+
+export type RecurringInsight = {
+  detail: { payment: RecurringPayment; latestOccurrence: Record<string, unknown> | null; cancellationAvailable: false; externalActionExecuted: false };
+  occurrences: Array<Record<string, unknown>>;
+};
+
 export type TransferWorkspace = { accounts: Account[]; beneficiaries: Beneficiary[]; limit: TransferLimit; templates: TransferTemplate[] };
 
 const data = <T>(response: { body: { data: T | null } }, label: string): T => {
@@ -117,6 +128,39 @@ export async function loadAccountWorkspace(session: PrivateCustomerSession, acco
       recurringCounterparties: detailCalls ? data(detailCalls[6], "반복 거래처").items : [],
     };
   });
+}
+
+export async function loadTransactionInsight(session: PrivateCustomerSession, transaction: Transaction): Promise<TransactionInsight> {
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const [detail, enrichment, history] = await Promise.all([
+      invokeApiOperation<TransactionInsight["detail"]>("GET /api/v1/transactions/{transactionId}", { path: { transactionId: transaction.transactionId }, accessToken }),
+      invokeApiOperation<TransactionInsight["enrichment"]>("GET /api/v1/transactions/{transactionId}/enrichment", { path: { transactionId: transaction.transactionId }, accessToken }),
+      transaction.counterpartyId
+        ? invokeApiOperation<{ items: Transaction[] }>("GET /api/v1/counterparties/{counterpartyId}/transaction-history", { path: { counterpartyId: transaction.counterpartyId }, query: { limit: 10 }, accessToken })
+        : null,
+    ]);
+    return {
+      detail: data(detail, "거래 상세"), enrichment: data(enrichment, "거래 분석"),
+      counterpartyHistory: history ? data(history, "거래처 이력").items : [],
+    };
+  });
+}
+
+export async function loadRecurringInsight(session: PrivateCustomerSession, recurringPaymentId: string): Promise<RecurringInsight> {
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const [detail, occurrences] = await Promise.all([
+      invokeApiOperation<RecurringInsight["detail"]>("GET /api/v1/recurring-payments/{recurringPaymentId}", { path: { recurringPaymentId }, accessToken }),
+      invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/recurring-payments/{recurringPaymentId}/occurrences", { path: { recurringPaymentId }, accessToken }),
+    ]);
+    return { detail: data(detail, "정기납부 상세"), occurrences: data(occurrences, "정기납부 발생 이력").items };
+  });
+}
+
+export async function loadStatementDetail(session: PrivateCustomerSession, accountId: string, statementId: string): Promise<Record<string, unknown>> {
+  return withPrivateCustomerSession(session, async (accessToken) => data(
+    await invokeApiOperation<Record<string, unknown>>("GET /api/v1/accounts/{accountId}/statements/{statementId}", { path: { accountId, statementId }, accessToken }),
+    "거래명세서 상세",
+  ));
 }
 
 export async function loadTransferWorkspace(session: PrivateCustomerSession): Promise<TransferWorkspace> {
