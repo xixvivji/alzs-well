@@ -312,6 +312,18 @@ Resources:
       Name: !Sub "/${EnvironmentName}/tls-ai"
       SecretString: '{"status":"BOOTSTRAP_REQUIRED"}'
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  MasterDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: RetainExceptOnCreate
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/db-master"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"alzswell_admin"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AppDatabaseSecret:
     Type: AWS::SecretsManager::Secret
     DeletionPolicy: RetainExceptOnCreate
@@ -390,7 +402,7 @@ Resources:
       KmsKeyId: alias/aws/rds
       DBName: alzswell
       MasterUsername: alzswell_admin
-      ManageMasterUserPassword: true
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${MasterDatabaseSecret}:SecretString:password}}"
       DBSubnetGroupName: !Ref DatabaseSubnetGroup
       DBParameterGroupName: !Ref DatabaseParameterGroup
       VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
@@ -522,7 +534,7 @@ Resources:
           - Effect: Allow
             Action: "secretsmanager:GetSecretValue"
             Resource:
-              - !GetAtt Database.MasterUserSecret.SecretArn
+              - !Ref MasterDatabaseSecret
               - !Ref MigrationDatabaseSecret
               - !Ref AiIngestionDatabaseSecret
               - !Ref AiRuntimeDatabaseSecret
@@ -794,7 +806,7 @@ Outputs:
   AppInstanceId: {Value: !Ref AppInstance}
   AiInstanceId: {Value: !Ref AiInstance}
   DatabaseEndpoint: {Value: !GetAtt Database.Endpoint.Address}
-  DatabaseMasterSecretArn: {Value: !GetAtt Database.MasterUserSecret.SecretArn}
+  DatabaseMasterSecretArn: {Value: !Ref MasterDatabaseSecret}
   AppDatabaseSecretArn: {Value: !Ref AppDatabaseSecret}
   MigrationDatabaseSecretArn: {Value: !Ref MigrationDatabaseSecret}
   AiIngestionDatabaseSecretArn: {Value: !Ref AiIngestionDatabaseSecret}
