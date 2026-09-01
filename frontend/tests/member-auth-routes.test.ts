@@ -38,6 +38,29 @@ test("generic BFF blocks raw token issuance and overwrites browser Authorization
   assert.equal(response.status, 200);
 });
 
+test("회원 로그인 중에도 격리 demo capability 요청에는 Bearer를 섞지 않는다", async (t) => {
+  const previousOrigin = process.env.BACKEND_API_ORIGIN;
+  const previousSecret = process.env.BACKEND_PROXY_SHARED_SECRET;
+  process.env.BACKEND_API_ORIGIN = "http://127.0.0.1:8080";
+  process.env.BACKEND_PROXY_SHARED_SECRET = "d".repeat(64);
+  t.after(() => {
+    if (previousOrigin === undefined) delete process.env.BACKEND_API_ORIGIN; else process.env.BACKEND_API_ORIGIN = previousOrigin;
+    if (previousSecret === undefined) delete process.env.BACKEND_PROXY_SHARED_SECRET; else process.env.BACKEND_PROXY_SHARED_SECRET = previousSecret;
+  });
+  t.mock.method(globalThis, "fetch", async (request: Request) => {
+    assert.equal(request.headers.get("authorization"), null);
+    assert.equal(new URL(request.url).pathname, "/api/v1/demo/sessions");
+    return new Response(envelope({ sessionId: "98000000-0000-4000-8000-000000000001" }), {
+      headers: { "content-type": "application/json", "X-Demo-Customer-Capability": "temporary-capability" },
+    });
+  });
+  const response = await proxyPost(new Request("http://localhost:3000/api/v1/demo/sessions", {
+    method: "POST", headers: { cookie: `alzs-member-access=${"a".repeat(43)}` },
+  }));
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("set-cookie") ?? "", /alzs-demo-capability=/);
+});
+
 test("login BFF converts backend tokens to HttpOnly cookies and removes them from the response body", async (t) => {
   const previousOrigin = process.env.BACKEND_API_ORIGIN;
   const previousSecret = process.env.BACKEND_PROXY_SHARED_SECRET;
