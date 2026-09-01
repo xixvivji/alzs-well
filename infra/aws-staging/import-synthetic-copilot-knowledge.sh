@@ -86,7 +86,9 @@ docker compose --env-file "$runtime_root/.env.aws-app" -f backend/compose.aws-ap
   backend --server.address=0.0.0.0 >/dev/null
 
 for attempt in $(seq 1 30); do
-  if curl --fail --silent "$bootstrap_url/actuator/health" >/dev/null; then
+  bootstrap_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+    "$bootstrap_url/actuator/health" || true)"
+  if [[ "$bootstrap_status" =~ ^[1-5][0-9][0-9]$ && "$bootstrap_status" != "000" ]]; then
     break
   fi
   if [[ "$attempt" == "30" ]]; then
