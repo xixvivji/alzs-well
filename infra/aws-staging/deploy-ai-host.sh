@@ -6,7 +6,7 @@ runtime_root="/opt/alzs-well/runtime"
 environment_file="$runtime_root/.env.aws-ai"
 compose_file="$repository_root/backend/compose.aws-ai.yaml"
 
-docker compose --env-file "$environment_file" -f "$compose_file" up --detach ai-service ai-gateway
+docker compose --env-file "$environment_file" -f "$compose_file" up --detach --force-recreate ai-service ai-gateway
 for attempt in $(seq 1 60); do
   health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' alzs-well-ai-ai-gateway-1 2>/dev/null || true)"
   if [[ $health == "healthy" ]]; then
