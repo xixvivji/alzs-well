@@ -28,7 +28,7 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/demo/alerts`: 고객 변화 확인, 맥락 응답, 알림 감사이력
 - `/login`: `demo001`~`demo300` 합성 회원 전용 로그인. 회원가입은 없고 token은 Vercel Secure·HttpOnly 쿠키에만 저장
 - `/banking`: 로그인 회원의 통합자산·현금흐름·지출·금융일정 대시보드
-- `/banking/accounts`: 계좌 상세·잔액 추세·거래 검색·정기납부 누락/중복 후보
+- `/banking/accounts`: 계좌 상세·잔액 추세·거래 검색, 거래 분석·거래처 이력, 정기납부·발생 이력, 월별 명세서 상세
 - `/banking/transfer`: 등록 수취인·한도·이체 양식과 실제 실행 없는 이체 사전검증
 - `/banking/products`: 회원별 카드·예금·대출·투자·외환·연금·신탁 조회와 실행 없는 모의계산
 - `/banking/life`: 금융생활 의향서·인앱 알림·기관 연결·보호수단·승인 근거·보안 세션
