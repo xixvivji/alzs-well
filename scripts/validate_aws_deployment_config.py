@@ -19,6 +19,7 @@ AI_SERVICE_ENV = ROOT / "ai-service" / ".env.example"
 LOCAL_COMPOSE = ROOT / "backend" / "compose.yaml"
 MIGRATION_ROOT = ROOT / "backend" / "src" / "main" / "resources" / "db" / "migration"
 AWS_FOUNDATION = ROOT / "infra" / "aws-staging" / "foundation.yaml"
+APP_GATEWAY = ROOT / "backend" / "docker" / "nginx.conf.template"
 
 EXPECTED_INGESTION_ROLE = "alzswell_ai_ingestor"
 EXPECTED_RUNTIME_ROLE = "alzswell_ai_runtime"
@@ -60,6 +61,7 @@ def main() -> int:
     role_script = read(ROLE_SCRIPT)
     ai_service_env = read(AI_SERVICE_ENV)
     aws_foundation = read(AWS_FOUNDATION)
+    app_gateway = read(APP_GATEWAY)
     errors: list[str] = []
 
     contracts = {
@@ -135,6 +137,23 @@ def main() -> int:
     for label, pattern in forbidden_foundation_contracts.items():
         if re.search(pattern, aws_foundation, re.MULTILINE):
             errors.append(f"AWS foundation still contains {label}")
+
+    read_rate_contracts = {
+        "network read rate": "zone=demo_read:10m rate=300r/m;",
+        "capability read rate": "zone=demo_capability_read:10m rate=300r/m;",
+        "network read burst": "limit_req zone=demo_read burst=80 nodelay;",
+        "capability read burst": "limit_req zone=demo_capability_read burst=80 nodelay;",
+    }
+    for label, marker in read_rate_contracts.items():
+        if marker not in app_gateway:
+            errors.append(f"AWS app gateway is missing {label}: {marker!r}")
+    for marker in (
+        "zone=demo_session_create:10m rate=10r/m;",
+        "zone=demo_mutation:10m rate=30r/m;",
+        "zone=demo_capability_mutation:10m rate=30r/m;",
+    ):
+        if marker not in app_gateway:
+            errors.append(f"AWS app gateway mutation/session limit changed unexpectedly: {marker!r}")
 
     bootstrap_policy = aws_foundation.split("  AiIngestionPolicy:\n", 1)[-1].split("\n  AppInstance:\n", 1)[0]
     for repository in ("AppRepository.Arn", "AiRepository.Arn"):
