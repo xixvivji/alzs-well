@@ -26,17 +26,27 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/demo/finance`: 통합자산, 계좌, 거래, 기준선, 동의, 보호 안내
 - `/demo/ai-assistant`: AI 금융생활 의향서 현재 상태·초안·승인, 장기 변화, 쉬운말·음성
 - `/demo/alerts`: 고객 변화 확인, 맥락 응답, 알림 감사이력
-- `/demo/products`: 사설 Bearer 인증 기반 합성 카드·예금·대출·투자·외환·연금·신탁 조회, 동의관리, 실행 없는 이자·상환·환전 모의계산. 공개 production에서는 메뉴와 직접 URL 모두 잠김
-- `/demo/settings`: 고객 프로필·알림 채널·접근성 설정, 최소정보 신뢰 연락처, 사람 재검토 이의신청. 공개 production에서는 메뉴와 직접 URL 모두 잠김
+- `/login`: `demo001`~`demo300` 합성 회원 전용 로그인. 회원가입은 없고 token은 Vercel Secure·HttpOnly 쿠키에만 저장
+- `/banking`: 로그인 회원의 통합자산·현금흐름·지출·금융일정 대시보드
+- `/banking/accounts`: 계좌 상세·잔액 추세·거래 검색·정기납부 누락/중복 후보
+- `/banking/transfer`: 등록 수취인·한도·이체 양식과 실제 실행 없는 이체 사전검증
+- `/banking/products`: 회원별 카드·예금·대출·투자·외환·연금·신탁 조회와 실행 없는 모의계산
+- `/banking/life`: 금융생활 의향서·인앱 알림·기관 연결·보호수단·승인 근거·보안 세션
+- `/banking/settings`: 프로필·접근성·신뢰 연락처·이의신청
+- `/demo/products`: 로그인 회원 본인의 합성 카드·예금·대출·투자·외환·연금·신탁 조회, 동의관리, 실행 없는 이자·상환·환전 모의계산
+- `/demo/settings`: 로그인 회원 본인의 프로필·알림 채널·접근성 설정, 최소정보 신뢰 연락처, 사람 재검토 이의신청
 - `/demo/services`: 고객 금융서비스 전체 계약과 연결 상태
 - `/staff/cases`: 합성 사건 큐, 타임라인·내부 메모·후속관리, 근거 기반 코파일럿, 행원 검토 폐루프
 - `/staff/operations`: 실제 데모 사건 큐와 행원 처리 단계, 추가 행원 API 계약
 - `/staff/control-center`: 실제 readiness·버전·AI 폴백 상태와 감사·준법·정책 API 계약
+- `/staff/login`: `staff001`~`staff005` 보호업무 역할과 `admin001`~`admin002` 탐지관리 역할의 합성 운영 로그인
 - `/staff/system-status`: health·readiness·공개 설정·버전과 AI 검색 장애 폴백 상태
 
 `scripts/generate-api-catalog.mjs`는 최종 API 명세 281개와 Spring Controller 237개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 236개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 237개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
 
-생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 공개 Vercel 화면이 운영용 Bearer API를 임의로 호출하지는 않습니다. 금융상품 및 고객 설정 화면은 `NEXT_PUBLIC_PRIVATE_POC_ENABLED=true`와 서버 전용 `PRIVATE_POC_DEPLOYMENT_ALLOWED=true`가 모두 설정된 development 또는 사설 staging에서만 열립니다. 공개 production에서는 둘 다 false로 고정합니다. 표시 gate 자체가 인증 경계는 아니며 실제 서비스에서는 기업 IdP·MFA·RBAC가 별도로 필요합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
+생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 브라우저는 Bearer token을 받지 않으며 같은 origin의 `/api/member-auth/*` BFF가 로그인·회전·로그아웃을 처리합니다. 나머지 고객·운영 API에는 BFF가 HttpOnly access token을 서버에서 주입하고, 직접 `/api/v1/auth/login`·`token/refresh`를 호출해 원문 token을 받는 경로는 차단합니다. 공개 계정은 성공한 `PUBLIC` fixture의 고객 300명·보호업무 직원 5명·탐지관리자 2명으로 제한합니다. 고객 API는 customerId 소유권을, 운영 API는 `PROTECTION_STAFF` 또는 `DETECTION_ADMIN` 권한을 다시 검증합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
+
+`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 이 수치는 동적 데모 경로처럼 문자열을 조립하는 호출을 보수적으로 누락할 수 있으므로, API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않습니다. 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하며 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다.
 
 고객 알림의 `나중에 확인`은 `POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer`를 호출하며 `{ expectedVersion, deferredUntil }`, `Idempotency-Key`, 데모 capability/run ID를 전달합니다. 백엔드는 같은 세션·run·알림의 version을 검증하고 `DEFERRED` 상태 및 변경된 알림 데이터를 반환해야 합니다.
 
@@ -50,7 +60,7 @@ npm run lint
 npm test
 ```
 
-로컬에서 Spring을 직접 호출하려면 `.env.local`에 `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`을 설정합니다. Vercel 동작과 동일한 BFF를 확인하려면 이 값을 비우고 `BACKEND_API_ORIGIN`, `BACKEND_PROXY_SHARED_SECRET`, `DEMO_STAFF_BOOTSTRAP_TOKEN`, `DEMO_PUBLIC_STAFF_MODE`를 설정합니다. 사설 고객 PoC 화면을 열 때만 `NEXT_PUBLIC_PRIVATE_POC_ENABLED=true`와 `PRIVATE_POC_DEPLOYMENT_ALLOWED=true`를 함께 추가합니다. 운영 직원 모드(`DEMO_PUBLIC_STAFF_MODE=false`)에서는 `.env.example`의 `STAFF_IDENTITY_JWT_*` 항목이 모두 필요합니다.
+합성 회원 인증은 항상 BFF를 거쳐야 하므로 `.env.local`의 `NEXT_PUBLIC_API_BASE_URL`을 비우고 `BACKEND_API_ORIGIN`, `BACKEND_PROXY_SHARED_SECRET`, `DEMO_STAFF_BOOTSTRAP_TOKEN`, `DEMO_PUBLIC_STAFF_MODE`를 설정합니다. 운영 직원 모드(`DEMO_PUBLIC_STAFF_MODE=false`)에서는 `.env.example`의 `STAFF_IDENTITY_JWT_*` 항목이 모두 필요합니다.
 
 ## Vercel 설정
 

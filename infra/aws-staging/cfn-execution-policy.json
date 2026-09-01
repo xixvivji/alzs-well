@@ -47,6 +47,7 @@
         "ec2:DescribeVpcs",
         "ec2:DetachInternetGateway",
         "ec2:DisassociateRouteTable",
+        "ec2:GetSecurityGroupsForVpc",
         "ec2:ModifySubnetAttribute",
         "ec2:ModifyVpcAttribute",
         "ec2:ModifyVpcEndpoint",
@@ -75,6 +76,7 @@
         "elasticloadbalancing:ModifyTargetGroupAttributes",
         "elasticloadbalancing:RegisterTargets",
         "elasticloadbalancing:RemoveTags",
+        "elasticloadbalancing:SetWebACL",
         "rds:AddTagsToResource",
         "rds:CreateDBInstance",
         "rds:CreateDBParameterGroup",
@@ -113,6 +115,33 @@
       }
     },
     {
+      "Sid": "DescribeRdsEncryptionKey",
+      "Effect": "Allow",
+      "Action": "kms:DescribeKey",
+      "Resource": "arn:aws:kms:ap-northeast-2:__AWS_ACCOUNT_ID__:key/*",
+      "Condition": {
+        "StringEquals": {
+          "kms:CallerAccount": "__AWS_ACCOUNT_ID__",
+          "kms:ViaService": "rds.ap-northeast-2.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "GrantRdsEncryptionKeyToService",
+      "Effect": "Allow",
+      "Action": "kms:CreateGrant",
+      "Resource": "arn:aws:kms:ap-northeast-2:__AWS_ACCOUNT_ID__:key/*",
+      "Condition": {
+        "StringEquals": {
+          "kms:CallerAccount": "__AWS_ACCOUNT_ID__",
+          "kms:ViaService": "rds.ap-northeast-2.amazonaws.com"
+        },
+        "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+        }
+      }
+    },
+    {
       "Sid": "NamedRepositories",
       "Effect": "Allow",
       "Action": [
@@ -140,6 +169,7 @@
         "secretsmanager:CreateSecret",
         "secretsmanager:DeleteSecret",
         "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
         "secretsmanager:GetResourcePolicy",
         "secretsmanager:ListSecretVersionIds",
         "secretsmanager:PutSecretValue",
@@ -262,13 +292,23 @@
         "logs:CreateLogGroup",
         "logs:DeleteLogGroup",
         "logs:DeleteRetentionPolicy",
-        "logs:DescribeLogGroups",
         "logs:ListTagsForResource",
         "logs:PutRetentionPolicy",
         "logs:TagResource",
         "logs:UntagResource"
       ],
       "Resource": "arn:aws:logs:ap-northeast-2:__AWS_ACCOUNT_ID__:log-group:/alzs-well-staging/*"
+    },
+    {
+      "Sid": "DescribeStagingLogGroups",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
     },
     {
       "Sid": "PublicAmiParameter",

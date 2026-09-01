@@ -7,6 +7,7 @@ import {
   demoCapabilityCookie,
   readDemoCapabilityCookie,
 } from "../../../worker/demo-capability-cookie";
+import { readMemberAccessCookie } from "../../../worker/member-auth-cookie";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,8 +15,14 @@ export const maxDuration = 15;
 
 async function handler(request: Request): Promise<Response> {
   const requestUrl = new URL(request.url);
+  if (requestUrl.pathname === "/api/v1/auth/login" || requestUrl.pathname === "/api/v1/auth/token/refresh") {
+    return Response.json({ success: false, status: 404, code: "API_NOT_FOUND", message: "요청한 API를 찾을 수 없습니다.", data: null, errors: [] }, { status: 404 });
+  }
   const capability = request.headers.get("X-Demo-Capability") ?? readDemoCapabilityCookie(request);
   const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.delete("Authorization");
+  const memberAccess = readMemberAccessCookie(request);
+  if (memberAccess) forwardedHeaders.set("Authorization", `Bearer ${memberAccess}`);
   if (capability && !forwardedHeaders.has("X-Demo-Capability")) forwardedHeaders.set("X-Demo-Capability", capability);
   const upstreamRequest = new Request(request, { headers: forwardedHeaders });
   const clientRateIdentity = await resolveClientRateIdentity(

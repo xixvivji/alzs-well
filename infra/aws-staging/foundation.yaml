@@ -20,8 +20,8 @@ Parameters:
     AllowedValues: [t3.small, t3.medium]
   AiInstanceType:
     Type: String
-    Default: t3.large
-    AllowedValues: [t3.medium, t3.large, m7i.large]
+    Default: m7i-flex.large
+    AllowedValues: [t3.medium, t3.large, m7i-flex.large, m7i.large]
   DatabaseInstanceClass:
     Type: String
     Default: db.t4g.micro
@@ -31,9 +31,21 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Temporarily allow one-time DB role provisioning and AI ingestion secrets
+  DatabaseDeletionProtectionEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable only after initial provisioning and rehearsal verification
+  AlbDeletionProtectionEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable only after initial provisioning and rehearsal verification
 
 Conditions:
   EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
+  ProtectDatabase: !Equals [!Ref DatabaseDeletionProtectionEnabled, "true"]
+  ProtectAlb: !Equals [!Ref AlbDeletionProtectionEnabled, "true"]
 
 Mappings:
   Network:
@@ -312,6 +324,18 @@ Resources:
       Name: !Sub "/${EnvironmentName}/tls-ai"
       SecretString: '{"status":"BOOTSTRAP_REQUIRED"}'
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
+  MasterDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: RetainExceptOnCreate
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/db-master-runtime"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"alzswell_admin"}'
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AppDatabaseSecret:
     Type: AWS::SecretsManager::Secret
     DeletionPolicy: RetainExceptOnCreate
@@ -376,7 +400,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   Database:
     Type: AWS::RDS::DBInstance
-    DeletionPolicy: Snapshot
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Snapshot
     Properties:
       DBInstanceIdentifier: !Sub "${EnvironmentName}-postgres"
@@ -387,17 +411,18 @@ Resources:
       MaxAllocatedStorage: 100
       StorageType: gp3
       StorageEncrypted: true
+      KmsKeyId: alias/aws/rds
       DBName: alzswell
       MasterUsername: alzswell_admin
-      ManageMasterUserPassword: true
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${MasterDatabaseSecret}:SecretString:password}}"
       DBSubnetGroupName: !Ref DatabaseSubnetGroup
       DBParameterGroupName: !Ref DatabaseParameterGroup
       VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
       PubliclyAccessible: false
       MultiAZ: false
-      BackupRetentionPeriod: 7
+      BackupRetentionPeriod: 1
       CopyTagsToSnapshot: true
-      DeletionProtection: true
+      DeletionProtection: !If [ProtectDatabase, true, false]
       AutoMinorVersionUpgrade: true
       EnablePerformanceInsights: false
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
@@ -521,10 +546,13 @@ Resources:
           - Effect: Allow
             Action: "secretsmanager:GetSecretValue"
             Resource:
-              - !GetAtt Database.MasterUserSecret.SecretArn
+              - !Ref MasterDatabaseSecret
               - !Ref MigrationDatabaseSecret
               - !Ref AiIngestionDatabaseSecret
               - !Ref AiRuntimeDatabaseSecret
+          - Effect: Allow
+            Action: "secretsmanager:PutSecretValue"
+            Resource: [!Ref AppTlsSecret, !Ref AiTlsSecret, !Ref ProxySharedSecret]
   AiIngestionPolicy:
     Type: AWS::IAM::Policy
     Condition: EnableDatabaseBootstrap
@@ -624,7 +652,8 @@ Resources:
       SecurityGroups: [!Ref AlbSecurityGroup]
       Subnets: [!Ref PublicSubnetA, !Ref PublicSubnetC]
       LoadBalancerAttributes:
-        - {Key: deletion_protection.enabled, Value: "true"}
+        - Key: deletion_protection.enabled
+          Value: !If [ProtectAlb, "true", "false"]
         - {Key: routing.http.drop_invalid_header_fields.enabled, Value: "true"}
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   HttpOriginListener:
@@ -793,7 +822,7 @@ Outputs:
   AppInstanceId: {Value: !Ref AppInstance}
   AiInstanceId: {Value: !Ref AiInstance}
   DatabaseEndpoint: {Value: !GetAtt Database.Endpoint.Address}
-  DatabaseMasterSecretArn: {Value: !GetAtt Database.MasterUserSecret.SecretArn}
+  DatabaseMasterSecretArn: {Value: !Ref MasterDatabaseSecret}
   AppDatabaseSecretArn: {Value: !Ref AppDatabaseSecret}
   MigrationDatabaseSecretArn: {Value: !Ref MigrationDatabaseSecret}
   AiIngestionDatabaseSecretArn: {Value: !Ref AiIngestionDatabaseSecret}

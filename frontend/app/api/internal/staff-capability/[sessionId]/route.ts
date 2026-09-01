@@ -4,7 +4,7 @@ import { resolveClientRateIdentity } from "../../../../../worker/client-rate-ide
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 15;
+export const maxDuration = 30;
 
 export async function POST(
   request: Request,

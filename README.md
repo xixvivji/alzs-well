@@ -12,7 +12,7 @@
 - Arctic-ko는 `STAGED_APPROVED`이며 AWS staging에서 승인값·revision·artifact/golden-set hash가 모두 일치할 때만 로드한다. 기본 embedding은 계속 Hash다.
 - 최종 staging은 업무 EC2 + AI EC2 + Private RDS다. 로컬 개발은 단일 Docker Compose를 사용한다.
 - 공개 행원 시연은 현재 고객 capability로 같은 합성 세션을 먼저 검증한 후 단기 직원 capability를 발급한다. 사설 운영 모드는 서버가 서명·issuer·audience·만료·직원 역할을 검증한 RS256 IdP JWT만 신뢰한다.
-- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 237개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 고객 안심 보호센터는 알림·AI 의향서·장기 변화·감사이력을 한 화면에 묶는다. AI 의향서 현재 상태, 사건 메모·후속관리, 시스템·AI 폴백, 카드·예금·대출·투자·외환·연금·신탁·동의관리, 고객 프로필·접근성·신뢰연락처·이의신청 화면도 실제 API에 연결했다. 공개 화면은 capability 범위의 합성데이터 API만 실행하고 운영 고객정보 조회는 사설 Bearer 인증을 요구한다.
+- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 237개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 고객 안심 보호센터는 알림·AI 의향서·장기 변화·감사이력을 한 화면에 묶는다. 공개 금융서비스는 회원가입 없이 `demo001`~`demo300` 합성 회원만 로그인하며, 회원별 계좌·거래·정기납부·수취인·카드·예금·대출·투자·외환·연금·신탁 데이터를 분리한다. 합성 직원 5명과 관리자 2명은 고객과 다른 최소권한 역할로 운영 조회 화면에 로그인한다. Bearer token은 Vercel Secure·HttpOnly 쿠키로만 관리하고 고객 API는 customerId 소유권을 다시 검증한다.
 
 ```bash
 cd backend && ./gradlew check

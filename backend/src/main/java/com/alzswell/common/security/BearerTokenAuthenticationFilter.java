@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,10 +25,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final boolean publicSyntheticMembersOnly;
 
-    public BearerTokenAuthenticationFilter(JdbcTemplate jdbcTemplate, Clock clock) {
+    public BearerTokenAuthenticationFilter(JdbcTemplate jdbcTemplate, Clock clock,
+            @Value("${app.auth.public-synthetic-members-only:false}") boolean publicSyntheticMembersOnly) {
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
+        this.publicSyntheticMembersOnly = publicSyntheticMembersOnly;
     }
 
     @Override
@@ -50,10 +54,16 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
                   from auth_session s join auth_principal p on p.principal_id = s.principal_id
                  where s.access_token_hash = ? and s.revoked_at is null
                    and s.access_expires_at > ? and p.status = 'ACTIVE'
+                   and (? = false or exists(
+                       select 1 from synthetic_fixture_customer f
+                       join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                       where f.customer_id=p.customer_id and r.profile='PUBLIC' and r.status='SUCCEEDED'
+                   ))
                 """, (rs, rowNum) -> new SessionRow(rs.getObject("session_id", UUID.class),
                         rs.getObject("principal_id", UUID.class), rs.getString("customer_id"),
                         (String[]) rs.getArray("permissions").getArray(),
-                        (String[]) rs.getArray("roles").getArray()), hash, OffsetDateTime.now(clock));
+                        (String[]) rs.getArray("roles").getArray()), hash, OffsetDateTime.now(clock),
+                        publicSyntheticMembersOnly);
         if (rows.size() == 1) {
             SessionRow row = rows.getFirst();
             var authorities = java.util.stream.Stream.concat(

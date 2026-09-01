@@ -1,16 +1,6 @@
 import { ApiClientError } from "./api";
-import { invokeApiOperation } from "./api-operation-client";
 import type { PrivateCustomerSession } from "./private-financial-products";
-
-type TokenPair = {
-  accessToken: string;
-  accessExpiresAt: string;
-  refreshToken: string;
-  refreshExpiresAt: string;
-};
-
-const EXPIRY_SKEW_MS = 30_000;
-const refreshInFlight = new WeakMap<PrivateCustomerSession, Promise<string>>();
+const refreshInFlight = new WeakMap<PrivateCustomerSession, Promise<void>>();
 
 export class PrivateSessionExpiredError extends Error {
   constructor() {
@@ -27,17 +17,15 @@ export async function withPrivateCustomerSession<T>(
   session: PrivateCustomerSession,
   operation: (accessToken: string) => Promise<T>,
 ): Promise<T> {
-  const accessToken = await currentAccessToken(session);
+  if (session.invalidated) throw new PrivateSessionExpiredError();
   try {
-    return await operation(accessToken);
+    return await operation("");
   } catch (reason) {
     if (!(reason instanceof ApiClientError) || reason.status !== 401) throw reason;
     if (session.invalidated) throw new PrivateSessionExpiredError();
-    const retryToken = session.accessToken !== accessToken
-      ? session.accessToken
-      : await refreshAccessToken(session);
+    await refreshAccessToken(session);
     try {
-      return await operation(retryToken);
+      return await operation("");
     } catch (retryReason) {
       if (retryReason instanceof ApiClientError && retryReason.status === 401) {
         invalidatePrivateCustomerSession(session);
@@ -49,26 +37,10 @@ export async function withPrivateCustomerSession<T>(
 }
 
 export function invalidatePrivateCustomerSession(session: PrivateCustomerSession): void {
-  session.accessToken = "";
-  session.refreshToken = "";
-  session.accessExpiresAt = "";
-  session.refreshExpiresAt = "";
   session.invalidated = true;
 }
 
-async function currentAccessToken(session: PrivateCustomerSession): Promise<string> {
-  if (session.invalidated || !session.accessToken || !session.refreshToken) {
-    invalidatePrivateCustomerSession(session);
-    throw new PrivateSessionExpiredError();
-  }
-  const expiry = Date.parse(session.accessExpiresAt);
-  if (!Number.isNaN(expiry) && expiry <= Date.now() + EXPIRY_SKEW_MS) {
-    return refreshAccessToken(session);
-  }
-  return session.accessToken;
-}
-
-async function refreshAccessToken(session: PrivateCustomerSession): Promise<string> {
+async function refreshAccessToken(session: PrivateCustomerSession): Promise<void> {
   const active = refreshInFlight.get(session);
   if (active) return active;
   const refresh = performRefresh(session);
@@ -77,31 +49,11 @@ async function refreshAccessToken(session: PrivateCustomerSession): Promise<stri
   finally { refreshInFlight.delete(session); }
 }
 
-async function performRefresh(session: PrivateCustomerSession): Promise<string> {
-  const refreshExpiry = Date.parse(session.refreshExpiresAt);
-  if (!session.refreshToken || (!Number.isNaN(refreshExpiry) && refreshExpiry <= Date.now())) {
-    invalidatePrivateCustomerSession(session);
-    throw new PrivateSessionExpiredError();
-  }
+async function performRefresh(session: PrivateCustomerSession): Promise<void> {
   try {
-    const response = await invokeApiOperation<TokenPair>("POST /api/v1/auth/token/refresh", {
-      body: { refreshToken: session.refreshToken },
-      timeoutMs: 8_000,
-    });
-    const pair = response.body.data;
-    const accessExpiry = Date.parse(pair?.accessExpiresAt ?? "");
-    const refreshExpiry = Date.parse(pair?.refreshExpiresAt ?? "");
-    if (
-      !pair?.accessToken || !pair.refreshToken
-      || Number.isNaN(accessExpiry) || Number.isNaN(refreshExpiry)
-      || accessExpiry <= Date.now() || refreshExpiry <= accessExpiry
-    ) throw new Error("token refresh response invalid");
-    session.accessToken = pair.accessToken;
-    session.accessExpiresAt = pair.accessExpiresAt;
-    session.refreshToken = pair.refreshToken;
-    session.refreshExpiresAt = pair.refreshExpiresAt;
+    const response = await fetch("/api/member-auth/refresh", { method: "POST", headers: { "Content-Type": "application/json" } });
+    if (!response.ok) throw new Error("member session refresh failed");
     session.invalidated = false;
-    return pair.accessToken;
   } catch {
     invalidatePrivateCustomerSession(session);
     throw new PrivateSessionExpiredError();

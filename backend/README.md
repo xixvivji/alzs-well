@@ -110,7 +110,7 @@ GET   /api/v1/customers/{customerId}/accessibility-settings
 PUT   /api/v1/customers/{customerId}/accessibility-settings
 GET   /api/v1/customers/{customerId}/data-summary
 
-# P1 로컬 합성 인증 6 (development 전용, production 강제 비활성화)
+# P1 합성 인증 6 (기본 비활성, 공개 환경은 PUBLIC 300명 전용 제한)
 POST /api/v1/auth/login
 POST /api/v1/auth/token/refresh
 POST /api/v1/auth/logout
@@ -192,11 +192,15 @@ SYNTHETIC_SEED_VALUE=20260825
 SYNTHETIC_SEED_BATCH_SIZE=10
 SYNTHETIC_SEED_RESUME=false
 SYNTHETIC_SEED_VERIFY_DETECTION=false
+SYNTHETIC_SEED_PROVISION_MEMBERS=false
 ```
 
 동일 버전·profile·seed의 완료 실행은 중복 적재하지 않고 기존 manifest를 재생한다. 중단된 `RUNNING` 실행만 운영자가 원인을 확인한 후 `SYNTHETIC_SEED_RESUME=true`로 재개할 수 있다. 상세 절차는 [`../docs/runbooks/SYNTHETIC_DATASET_V3.md`](../docs/runbooks/SYNTHETIC_DATASET_V3.md)를 따른다.
 `LOAD`는 고객 250명·거래 75,000건의 중간 규모이며 `SYNTHETIC_SEED_VERIFY_DETECTION=true`로
 활성 정책의 전체 고객 오탐·미탐 검증까지 실행할 수 있다.
+`PUBLIC`은 고객 300명·계좌 600개·거래 72,000건이며
+`SYNTHETIC_SEED_PROVISION_MEMBERS=true`와 비밀 저장소의 `SYNTHETIC_MEMBER_PASSWORD_HASH`를
+함께 지정하면 `demo001`~`demo300` 인증 주체와 회원별 카드·예금·대출·투자 snapshot을 만든다.
 
 ## AWS 백엔드 데모 배포
 

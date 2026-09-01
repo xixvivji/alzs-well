@@ -7,26 +7,26 @@
 서비스 유지 기한은 **2026-09-11 23:59 KST**이며 자동 삭제하지 않는다. 기한
 이후 소유자가 아래 순서로 수동 철거한다.
 
-## 2026-08-31 사전점검
+## 2026-09-01 배포 현황
 
 | 영역 | 상태 | 다음 게이트 |
 |---|---|---|
-| 코드·CI | 완료 | `main`·`develop` 동일 트리, CI·CodeQL·Gitleaks 통과 |
-| Vercel 프로젝트 | 생성 | `alzs-well` 프로젝트 연결, GitHub App 저장소 권한 필요 |
-| Vercel 환경변수 | 미등록 | CloudFront 기본 HTTPS origin과 공유 비밀값 확정 후 Preview·Production 분리 등록 |
+| 코드·CI | 완료 | PR #130 UI head `1e666aa`, CI·CodeQL·Gitleaks 전체 통과. 보호 규칙상 독립 승인 전 병합 차단 |
+| Vercel 프로젝트 | 운영 배포 | 고객 `https://alzs-well.vercel.app`, 직원 `https://alzs-well-staff.vercel.app` |
+| Vercel 환경변수 | Production 완료 | AWS origin은 Config, 공유 비밀·직원 bootstrap 토큰은 Secret. 브라우저 공개 변수에 비밀값 없음 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
-| AWS 배포 주체 | 사전검증 완료 | 일회용 비루트 bootstrap으로 deployer AssumeRole 확인 후 사용자·키 즉시 삭제 |
-| AWS IaC | change set 준비 | `alzs-well-staging-20260831-preflight` 55개 추가, 미실행 `AVAILABLE` 상태 |
-| AWS ALZ's well 리소스 | 미생성 | 기존 다른 서비스의 RDS를 재사용하지 않음 |
-| 배포 이미지 빌드 | 대기 | CI 스캔 통과 후 AI EC2에서 AMD64로 빌드·ECR digest 고정 |
+| AWS 배포 주체 | 완료 | 일회용 bootstrap 사용자로 태그 제한 operator 역할을 AssumeRole하고 사용자·키 즉시 삭제 |
+| AWS IaC | `UPDATE_COMPLETE` | `alzs-well-staging`, CloudFront·ALB·WAF·EC2 2대·Private RDS 생성 완료 |
+| AWS 보호 상태 | 완료 | `DatabaseBootstrapEnabled=false`, ALB·RDS 삭제 방지 활성화 |
+| 배포 이미지 | 완료 | backend·AI·gateway AMD64 이미지를 immutable ECR digest로 실행 |
 
 ## 1. 배포 권한 게이트
 
 - [ ] AWS 루트 MFA·복구 수단을 확인하고 일상 배포에서 제외한다.
-- [x] `alzswell-staging-deployer`와 별도 CloudFormation execution 역할을 생성한다.
+- [x] 초기 배포에 일회용 deployer 주체와 별도 CloudFormation execution 정책을 사용한다.
 - [x] CloudFormation execution 역할의 템플릿 전용 정책을 작성하고 Access Analyzer 경고 0건을 확인한다.
 - [x] 고위험 IAM 변경을 승인받고 기존 렌더링·검증 execution 정책을 적용한다.
-- [ ] 최초 ALB 생성용 서비스 연결 역할 권한 보완을 별도 승인 후 적용한다.
+- [x] 최초 ALB 생성용 서비스 연결 역할을 생성하고 배포를 완료한다.
 - [x] 일회용 비루트 주체로 deployer AssumeRole을 확인하고 사용자·Access Key를 즉시 삭제한다.
 - [x] 배포 역할과 App·AI EC2 instance profile, Spring·AI DB secret 경계를 분리한다.
 - [x] 태그가 일치하는 staging EC2에만 SSM 명령을 보낼 수 있는 별도 운영 역할을 정의한다.
@@ -39,34 +39,53 @@
 - [x] ECR immutable tag, Secrets Manager, SSM instance profile, 백업·삭제 방지를 정의한다.
 - [x] EC2 상태·RDS CPU·RDS 여유 공간 경보를 정의한다.
 - [x] App·AI 컨테이너 CloudWatch 로그 그룹과 14일 보존 기간을 정의한다.
-- [ ] 55개 추가 change set과 12일 안전 상한 `$90~105`를 검토하고 실제 실행을 승인한다.
-- [ ] IaC 적용 전 public IP, `0.0.0.0/0`, 원본 비밀값, 데이터베이스 삭제 위험을 검토한다.
+- [x] 12일 안전 상한 `$90~105`를 검토하고 사용자 비용 승인을 받은 뒤 change set을 실행한다.
+- [x] EC2·RDS public IP 없음, ALB는 CloudFront origin-facing prefix list만 허용, 인증 API 캐시 비활성화를 확인한다.
 
 ## 3. 이미지·데이터 게이트
 
 - [x] CI에서 Spring Boot·AI runtime image 빌드와 취약점 스캔을 통과한다.
-- [ ] AI EC2의 bootstrap 기간에 동일 커밋을 AMD64로 빌드·ECR에 게시하고 bootstrap 권한을 제거한다.
-- [ ] ECR digest를 `compose.aws-app.yaml`·`compose.aws-ai.yaml`에 고정한다.
-- [ ] App·AI mTLS 인증서를 생성해 분리된 Secrets Manager 비밀에 저장하고 각 인스턴스에만 배치한다.
-- [ ] Flyway를 runtime과 분리된 migration 역할로 1회 실행한다.
-- [ ] 승인 문서·Arctic-ko artifact·golden-set hash를 반입 증적과 대조한다.
+- [x] AI EC2 bootstrap 기간에 AMD64 이미지를 ECR에 게시하고 검증 뒤 bootstrap·ingestion IAM 정책을 제거한다.
+- [x] backend `sha256:d9c80af558fd7ea40610b7cd4f68d044e32db00a8e207df57d2f01438281cb79`, AI `sha256:256be42ce56a874347d72799c722b83147dbef6407843b631823e3ccd0f3af4c`, gateway `sha256:53e6bfd81099eaa3ab9f01153292ef418dcdac73ba001be2879daffee1571b5d`를 고정한다.
+- [x] App·AI mTLS 인증서를 분리된 Secrets Manager 비밀에 저장하고 상대 EC2의 개인키를 읽을 수 없게 배치한다.
+- [x] Flyway 74개 migration을 분리된 migration 역할로 적용하고 Spring runtime은 제한 역할로 실행한다.
+- [x] Arctic-ko revision·artifact·golden-set hash와 `STAGED_APPROVED`, 1024차원, `hybrid-arctic-ko-v1`을 readiness에서 대조한다.
+- [x] `DOC-SYN-COPILOT-001`을 Spring governance 등록·게시·AI DB proof 검증 import하고 binding 1:1을 확인한다.
 
 ## 4. Vercel 게이트
 
 - [ ] Vercel GitHub App에 `xixvivji/alzs-well` 저장소 권한을 부여한다.
-- [ ] Root Directory를 `frontend`로 설정한다.
-- [ ] 프론트 주소는 Vercel 기본 `*.vercel.app` 도메인을 사용한다.
-- [ ] Preview·Production 서버 환경변수를 분리하고 `NEXT_PUBLIC_` 비밀값을 금지한다.
-- [ ] WAF rate rule, Bot Protection, Preview Deployment Protection을 적용한다.
-- [ ] Vercel BFF에서만 AWS HTTPS origin을 호출하는지 확인한다.
+- [x] 같은 `frontend` 빌드를 고객·직원 프로젝트에 독립적으로 배포한다.
+- [x] 고객·직원 프론트는 서로 다른 Vercel 기본 `*.vercel.app` 도메인을 사용한다.
+- [x] Production의 AWS origin·서버 비밀을 등록하고 `NEXT_PUBLIC_` 비밀값을 금지한다.
+- [ ] Preview 환경변수와 Preview Deployment Protection을 별도로 확정한다.
+- [x] AWS WAF managed rule과 IP rate rule을 적용한다.
+- [x] Vercel BFF만 CloudFront AWS HTTPS origin을 호출하며 고객 capability는 `Secure`·`HttpOnly` cookie로 보관한다.
 
 ## 5. 배포 후 증적
 
-- [ ] 정상·주의·오탐 3개 시나리오를 고객→행원 폐루프로 실행한다.
-- [ ] citation·문서 hash·승인 상태를 확인한다.
-- [ ] AI 중단 시 core readiness와 결정론적 폴백을 확인한다.
+- [x] 운영 Vercel→AWS 경로에서 정상·주의·오탐 3개 시나리오를 고객→행원 폐루프로 실행한다.
+- [x] 주의 흐름 `RAG_GROUNDED_TEMPLATE`, citation 1건, `fallbackUsed=false`와 문서 proof를 확인한다.
+- [x] AI 컨테이너를 실제 중단해 core `READY`·`aiRetrieval=DOWN`·`DETERMINISTIC_TEMPLATE` 폴백을 확인하고, 재기동 뒤 citation 복귀를 확인한다.
 - [ ] RDS 장애, 이전 image digest 롤백, 백업 복원을 훈련한다.
-- [ ] 배포 digest·환경·시간·실행자·결과를 변조 방지 감사증적에 연결한다.
+- [x] 정상은 사건 미생성·`CLOSED_NORMAL`, 주의는 `GUIDANCE_PLAN_APPROVED`, 오탐은 `CLOSED_FALSE_POSITIVE`이며 외부 실행 0건임을 확인한다.
+- [x] 배포 digest·모델 hash·ingestion run·Spring proof·실행 결과를 CloudWatch와 추가 전용 감사 테이블에 남긴다.
+
+### 2026-09-01 운영 증적
+
+- CloudFront: `https://dastgcm2hgbnl.cloudfront.net`
+- App EC2: `i-0a156c169fe294152`, private `10.42.10.110`, `t3.small`
+- AI EC2: `i-0663b523093db2d19`, private `10.42.11.12`, `m7i-flex.large`
+- RDS: `alzs-well-staging-postgres`, PostgreSQL 17, private, 삭제 방지 활성화
+- Vercel frontend UI artifact: `1e666aa61dcd123419cd35598cf71a3c684d8646`
+- 고객 Vercel production: `dpl_3b8VH4Up1siPHDMjUb2GF8bbyuhA` → `https://alzs-well.vercel.app`
+- 직원 Vercel production: `dpl_7psw8Qq126NCrVhXW2k8ULvHYbRz` → `https://alzs-well-staff.vercel.app`
+- 운영 UI 검증: 일반 금융 홈 → 금융생활 도움받기 진입, 고객 화면 직원 전환 숨김, 시나리오·합성데이터 기본 접힘 확인
+- 운영 BFF 검증: Vercel→CloudFront→AWS 세션 생성·`FIN_MGMT_AB_001` 적재 성공 후 검증 세션 즉시 폐기
+- Spring·AI image 기준 코드: `1c14ab071c35b41054e16c213d4074a2d2946e98` (`backend-1c14ab0`, `ai-1c14ab0`)
+- 운영 리허설 결과: 정상 `CLOSED_NORMAL`, 주의 `GUIDANCE_PLAN_APPROVED`+citation 1, 오탐 `CLOSED_FALSE_POSITIVE`
+- AI 장애 리허설 결과: core `READY`, AI `DOWN`, 주의 `DETERMINISTIC_TEMPLATE`·citation 0·`fallbackUsed=true`; 복구 후 RAG citation 1
+- 두 EC2의 `/root/.docker/config.json` ECR 로그인 파일 제거 완료
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
 

@@ -274,6 +274,23 @@ jobs:
           ignore-unfixed: false
           exit-code: "1"
           format: table
+      - name: Build the hardened gateway image
+        run: >-
+          docker build
+          --file backend/docker/Dockerfile.gateway
+          --tag alzs-well-gateway:ci
+          backend/docker
+      - name: Scan OS packages in the gateway image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: alzs-well-gateway:ci
+          scanners: vuln
+          vuln-type: os
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
 
   quality-gate:
     name: CI quality gate

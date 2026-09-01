@@ -23,6 +23,9 @@ public class SyntheticFixtureSeedJob {
     private final int batchSize;
     private final boolean resume;
     private final boolean verifyDetection;
+    private final boolean provisionMembers;
+    private final String memberPasswordHash;
+    private final SyntheticMemberProvisioningService memberProvisioningService;
 
     public SyntheticFixtureSeedJob(
             SyntheticFixtureGenerationService service,
@@ -33,7 +36,10 @@ public class SyntheticFixtureSeedJob {
             @Value("${app.synthetic-seed.seed:20260825}") long seed,
             @Value("${app.synthetic-seed.batch-size:10}") int batchSize,
             @Value("${app.synthetic-seed.resume:false}") boolean resume,
-            @Value("${app.synthetic-seed.verify-detection:false}") boolean verifyDetection
+            @Value("${app.synthetic-seed.verify-detection:false}") boolean verifyDetection,
+            @Value("${app.synthetic-seed.provision-members:false}") boolean provisionMembers,
+            @Value("${app.synthetic-seed.member-password-hash:}") String memberPasswordHash,
+            SyntheticMemberProvisioningService memberProvisioningService
     ) {
         this.service = service;
         this.applicationContext = applicationContext;
@@ -44,6 +50,9 @@ public class SyntheticFixtureSeedJob {
         this.batchSize = batchSize;
         this.resume = resume;
         this.verifyDetection = verifyDetection;
+        this.provisionMembers = provisionMembers;
+        this.memberPasswordHash = memberPasswordHash;
+        this.memberProvisioningService = memberProvisioningService;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -67,6 +76,12 @@ public class SyntheticFixtureSeedJob {
             if (!"PASSED".equals(quality.status())) {
                 throw new IllegalStateException("합성 fixture 탐지 품질 검증을 통과하지 못했습니다.");
             }
+        }
+        if (provisionMembers) {
+            SyntheticMemberProvisioningService.ProvisioningResult members =
+                    memberProvisioningService.provision(result.runId(), memberPasswordHash);
+            LOG.info("public synthetic member provisioning completed: runId=" + members.runId()
+                    + ", activeMembers=" + members.activeMembers());
         }
         applicationContext.close();
     }
