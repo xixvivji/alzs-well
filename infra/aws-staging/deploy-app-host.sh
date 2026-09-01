@@ -5,6 +5,8 @@ set -Eeuo pipefail
 : "${APP_BIND_ADDRESS:?APP_BIND_ADDRESS must be set}"
 : "${CUSTOMER_FRONTEND_ORIGIN:?CUSTOMER_FRONTEND_ORIGIN must be set}"
 : "${STAFF_FRONTEND_ORIGIN:?STAFF_FRONTEND_ORIGIN must be set}"
+: "${BACKEND_IMAGE:?BACKEND_IMAGE must be an immutable ECR digest}"
+: "${NGINX_IMAGE:?NGINX_IMAGE must be an immutable ECR digest}"
 if [[ $CUSTOMER_FRONTEND_ORIGIN == "$STAFF_FRONTEND_ORIGIN" ]]; then
   echo "customer and staff frontend origins must be different" >&2
   exit 64
@@ -20,7 +22,12 @@ repository_root="/opt/alzs-well/repository"
 certificate_root="/opt/alzs-well/certs"
 runtime_root="/opt/alzs-well/runtime"
 umask 077
-trap 'unset app_db_json migration_db_json tls_json proxy_secret staff_token internal_token' EXIT
+synthetic_member_auth_enabled="${SYNTHETIC_MEMBER_AUTH_ENABLED:-false}"
+if [[ $synthetic_member_auth_enabled != "true" && $synthetic_member_auth_enabled != "false" ]]; then
+  echo "SYNTHETIC_MEMBER_AUTH_ENABLED must be true or false" >&2
+  exit 64
+fi
+trap 'unset app_db_json migration_db_json tls_json proxy_secret staff_token internal_token member_password_hash' EXIT
 install -d -m 0700 "$runtime_root" "$certificate_root"
 
 secret_value() {
@@ -33,6 +40,11 @@ tls_json="$(secret_value /alzs-well-staging/tls-app)"
 proxy_secret="$(secret_value /alzs-well-staging/proxy-shared-secret)"
 staff_token="$(secret_value /alzs-well-staging/staff-bootstrap-token)"
 internal_token="$(secret_value /alzs-well-staging/internal-ai-token)"
+member_password_hash=""
+if [[ $synthetic_member_auth_enabled == "true" ]]; then
+  member_password_hash="$(secret_value /alzs-well-staging/synthetic-member-password-hash)"
+  [[ $member_password_hash =~ ^\$2[ayb]\$1[012]\$[./A-Za-z0-9]{53}$ ]]
+fi
 [[ $proxy_secret =~ ^[0-9a-f]{64}$ ]]
 printf '%s' "$tls_json" | jq -er '.clientKeystoreBase64' | base64 -d >"$certificate_root/ai-client.p12"
 printf '%s' "$tls_json" | jq -er '.truststoreBase64' | base64 -d >"$certificate_root/ai-truststore.p12"
@@ -40,10 +52,10 @@ chown 10001:10001 "$certificate_root/ai-client.p12" "$certificate_root/ai-trusts
 chmod 0400 "$certificate_root/ai-client.p12" "$certificate_root/ai-truststore.p12"
 
 cat >"$runtime_root/.env.aws-app" <<EOF
-NGINX_IMAGE=982689564927.dkr.ecr.ap-northeast-2.amazonaws.com/alzs-well/backend@sha256:53e6bfd81099eaa3ab9f01153292ef418dcdac73ba001be2879daffee1571b5d
+NGINX_IMAGE=${NGINX_IMAGE}
 AWS_REGION=ap-northeast-2
 APP_LOG_GROUP=/alzs-well-staging/app
-BACKEND_IMAGE=982689564927.dkr.ecr.ap-northeast-2.amazonaws.com/alzs-well/backend@sha256:d9c80af558fd7ea40610b7cd4f68d044e32db00a8e207df57d2f01438281cb79
+BACKEND_IMAGE=${BACKEND_IMAGE}
 GATEWAY_BIND_ADDRESS=${APP_BIND_ADDRESS}
 TRUSTED_PROXY_CIDR=10.42.0.0/23
 FRONTEND_PROXY_SHARED_SECRET=${proxy_secret}
@@ -68,6 +80,11 @@ AI_EXPECTED_EMBEDDING_DIMENSIONS=1024
 AI_EXPECTED_MODEL_REVISION=55ec6e9358a56d56af759bc8372e970caf8c305f
 AI_EXPECTED_ARTIFACT_SHA256=sha256:0b874517f0fd02dd9510fa2733aacaad1def6086387c88d1a21f4041351e15b0
 AI_EXPECTED_GOLDEN_SET_SHA256=sha256:3fddb047d75674a64ac56467675959c0cee90615572f9eac2ed07dd491c989d3
+SYNTHETIC_MEMBER_AUTH_ENABLED=${synthetic_member_auth_enabled}
+SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.0.0
+SYNTHETIC_SEED_VALUE=20260901
+SYNTHETIC_SEED_BATCH_SIZE=50
+SYNTHETIC_MEMBER_PASSWORD_HASH=${member_password_hash}
 EOF
 chmod 0600 "$runtime_root/.env.aws-app"
 aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin 982689564927.dkr.ecr.ap-northeast-2.amazonaws.com >/dev/null
@@ -77,7 +94,12 @@ docker compose --env-file "$runtime_root/.env.aws-app" -f "$repository_root/back
 
 for attempt in $(seq 1 30); do
   if curl --fail --silent "http://${APP_BIND_ADDRESS}:8080/api/v1/system/readiness" >/dev/null; then
-    echo "app readiness succeeded"
+    if [[ $synthetic_member_auth_enabled == "true" ]]; then
+      docker compose --env-file "$runtime_root/.env.aws-app" \
+        -f "$repository_root/backend/compose.aws-app.yaml" --profile synthetic-member-seed \
+        run --rm synthetic-member-seed
+    fi
+    echo "app readiness and optional synthetic member provisioning succeeded"
     exit 0
   fi
   sleep 10

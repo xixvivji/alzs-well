@@ -85,6 +85,14 @@ App·AI mTLS 개인키는 각각 `/alzs-well-staging/tls-app`,
 모두 일치하는 EC2와 AWS 관리 `AWS-RunShellScript` 문서로 제한하며 Secrets Manager
 직접 읽기 권한은 두지 않는다.
 
+공개 합성 회원 로그인을 활성화할 때는 평문 비밀번호를 저장하지 않고
+`/alzs-well-staging/synthetic-member-password-hash`에 BCrypt hash만 보관한다.
+`deploy-app-host.sh`에 immutable `BACKEND_IMAGE`·`NGINX_IMAGE` digest와
+`SYNTHETIC_MEMBER_AUTH_ENABLED=true`를 전달하면 최신 앱 기동 후 `PUBLIC` fixture를
+재생하고 `demo001`~`demo300`, `staff001`~`staff005`, `admin001`~`admin002`를
+멱등 프로비저닝한다. 실행이 끝나면 고객·직원·관리자 각각의 로그인과 역할 간 403을
+확인해야 한다.
+
 ## 운영 종료와 수동 철거
 
 - 서비스 유지 기한: **2026-09-11 23:59 KST**

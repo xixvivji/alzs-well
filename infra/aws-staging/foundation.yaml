@@ -295,6 +295,15 @@ Resources:
     Properties:
       Name: !Sub "/${EnvironmentName}/staff-bootstrap-token"
       GenerateSecretString: {PasswordLength: 80, ExcludePunctuation: true}
+
+  SyntheticMemberPasswordHashSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: RetainExceptOnCreate
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "/${EnvironmentName}/synthetic-member-password-hash"
+      Description: BCrypt hash only for public synthetic member, staff and admin accounts
+      SecretString: INVALID_REPLACE_BEFORE_ENABLING_PUBLIC_SYNTHETIC_AUTH
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   InternalAiSecret:
     Type: AWS::SecretsManager::Secret
@@ -463,7 +472,7 @@ Resources:
                 Resource: !GetAtt AppRepository.Arn
               - Effect: Allow
                 Action: "secretsmanager:GetSecretValue"
-                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref InternalAiSecret, !Ref AppTlsSecret, !Ref AppDatabaseSecret]
+                Resource: [!Ref ProxySharedSecret, !Ref StaffBootstrapSecret, !Ref SyntheticMemberPasswordHashSecret, !Ref InternalAiSecret, !Ref AppTlsSecret, !Ref AppDatabaseSecret]
               - Effect: Allow
                 Action: ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
                 Resource: !Sub "${AppLogGroup.Arn}:*"
@@ -829,6 +838,7 @@ Outputs:
   AiRuntimeDatabaseSecretArn: {Value: !Ref AiRuntimeDatabaseSecret}
   AppTlsSecretArn: {Value: !Ref AppTlsSecret}
   AiTlsSecretArn: {Value: !Ref AiTlsSecret}
+  SyntheticMemberPasswordHashSecretArn: {Value: !Ref SyntheticMemberPasswordHashSecret}
   AppLogGroupName: {Value: !Ref AppLogGroup}
   AiLogGroupName: {Value: !Ref AiLogGroup}
   StagingOperatorRoleArn: {Value: !GetAtt StagingOperatorRole.Arn}
