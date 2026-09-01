@@ -1,4 +1,5 @@
-import { ApiClientError, apiRequest } from "./api";
+import { ApiClientError } from "./api";
+import { invokeApiOperation } from "./api-operation-client";
 
 export type SystemHealth = { status: string; service: string; syntheticDataOnly: boolean; externalActionsEnabled: boolean };
 export type SystemReadiness = { ready: boolean; status: string; checks: Record<string, string> };
@@ -12,25 +13,27 @@ export type SystemVersions = {
   applicationVersion: string; apiVersion: string; schemaVersion: string; fixtureVersion: string;
   algorithmVersion: string; policyVersion: string; sourceCatalogCheckedAt: string;
 };
-export type SystemStatusSnapshot = { health: SystemHealth; readiness: SystemReadiness; config: PublicConfig; versions: SystemVersions; checkedAt: string };
+export type SystemStatusSnapshot = { health: SystemHealth; readiness: SystemReadiness; coreReadiness: SystemReadiness; aiReadiness: SystemReadiness; config: PublicConfig; versions: SystemVersions; checkedAt: string };
 
 export async function loadSystemStatus(): Promise<SystemStatusSnapshot> {
-  const [health, readiness, config, versions] = await Promise.all([
-    apiRequest<SystemHealth>("/api/v1/system/health", { timeoutMs: 5_000 }),
-    loadReadiness(),
-    apiRequest<PublicConfig>("/api/v1/system/public-config", { timeoutMs: 5_000 }),
-    apiRequest<SystemVersions>("/api/v1/system/versions", { timeoutMs: 5_000 }),
+  const [health, readiness, coreReadiness, aiReadiness, config, versions] = await Promise.all([
+    invokeApiOperation<SystemHealth>("GET /api/v1/system/health", { timeoutMs: 5_000 }),
+    loadReadiness("GET /api/v1/system/readiness"),
+    loadReadiness("GET /api/v1/system/core-readiness"),
+    loadReadiness("GET /api/v1/system/ai-readiness"),
+    invokeApiOperation<PublicConfig>("GET /api/v1/system/public-config", { timeoutMs: 5_000 }),
+    invokeApiOperation<SystemVersions>("GET /api/v1/system/versions", { timeoutMs: 5_000 }),
   ]);
   return {
-    health: required(health.body.data, "상태"), readiness,
+    health: required(health.body.data, "상태"), readiness, coreReadiness, aiReadiness,
     config: required(config.body.data, "공개 설정"), versions: required(versions.body.data, "버전"),
     checkedAt: new Date().toISOString(),
   };
 }
 
-async function loadReadiness(): Promise<SystemReadiness> {
+async function loadReadiness(operation: "GET /api/v1/system/readiness" | "GET /api/v1/system/core-readiness" | "GET /api/v1/system/ai-readiness"): Promise<SystemReadiness> {
   try {
-    const response = await apiRequest<SystemReadiness>("/api/v1/system/readiness", { timeoutMs: 8_000 });
+    const response = await invokeApiOperation<SystemReadiness>(operation, { timeoutMs: 8_000 });
     return required(response.body.data, "준비상태");
   } catch (error) {
     // readiness는 장애를 설명하는 data와 함께 503을 반환한다. 화면에서 그 상세를 숨기지 않는다.

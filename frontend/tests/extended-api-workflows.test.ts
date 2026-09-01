@@ -94,7 +94,7 @@ test("keeps readiness details visible when the readiness API correctly returns 5
   const snapshot = await loadSystemStatus();
   assert.equal(snapshot.readiness.ready, false);
   assert.equal(snapshot.readiness.checks.aiRetrieval, "DOWN");
-  assert.deepEqual(paths.sort(), ["/api/v1/system/health", "/api/v1/system/public-config", "/api/v1/system/readiness", "/api/v1/system/versions"]);
+  assert.deepEqual(paths.sort(), ["/api/v1/system/ai-readiness", "/api/v1/system/core-readiness", "/api/v1/system/health", "/api/v1/system/public-config", "/api/v1/system/readiness", "/api/v1/system/versions"]);
 });
 
 test("uses the HttpOnly BFF session for the private card, loan and investment dashboard", async (t) => {
@@ -118,6 +118,9 @@ test("uses the HttpOnly BFF session for the private card, loan and investment da
     else if (path.endsWith("/investment-accounts/account-1/portfolio")) data = { allocations: [] };
     else if (path.endsWith("/investment-accounts/account-1/positions")) data = { items: [] };
     else if (path.endsWith("/investment-accounts/account-1/orders")) data = { items: [] };
+    else if (path.endsWith("/customers/customer-1/watchlist")) data = { customerId: "customer-1", items: [{ instrumentId: "instrument-1", instrumentName: "안심전자", maskedInstrumentCode: "00****" }], total: 1, version: 1 };
+    else if (path.endsWith("/market-instruments/instrument-1/quote")) data = { instrumentId: "instrument-1", currentPrice: 10000 };
+    else if (path.endsWith("/market-instruments/instrument-1/chart")) data = { instrumentId: "instrument-1", items: [] };
     else data = null;
     return new Response(envelope(data), { headers: { "content-type": "application/json" } });
   });
@@ -125,6 +128,8 @@ test("uses the HttpOnly BFF session for the private card, loan and investment da
   const session = await loginPrivateCustomer("demo001", "a-secure-demo-password");
   const overview = await loadPrivateProductOverview(session);
   assert.equal(overview.cards[0]?.cardId, "card-1");
+  assert.equal(overview.watchlist?.total, 1);
+  assert.equal(overview.selectedQuote?.instrumentId, "instrument-1");
   const loginCall = calls.find((call) => call.path.endsWith("/member-auth/login"));
   assert.equal(new Headers(loginCall?.init?.headers).get("Authorization"), null);
   const protectedCalls = calls.filter((call) => !call.path.endsWith("/member-auth/login"));

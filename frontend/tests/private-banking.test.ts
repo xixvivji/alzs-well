@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateTransfer, loadBankingOverview, loadRecurringInsight, loadStatementDetail, loadTransactionInsight, loadTransferWorkspace } from "../lib/private-banking";
+import { evaluateTransfer, loadBankingOverview, loadRecurringInsight, loadStatementDetail, loadTransactionInsight, loadTransferWorkspace, updateRecurringReminder, updateTransactionCategory, updateTransactionNote } from "../lib/private-banking";
 import { loadLifeServices, searchKnowledge } from "../lib/private-life-services";
 import { loadSafetyCenter, respondToSafetyAlert } from "../lib/private-safety-center";
 import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
@@ -81,6 +81,24 @@ test("계좌 화면은 거래·거래처·정기납부·명세서 상세를 고�
   assert.ok(paths.includes("/api/v1/transactions/transaction-1/enrichment"));
   assert.ok(paths.includes("/api/v1/counterparties/counterparty-1/transaction-history?limit=10"));
   assert.ok(paths.includes("/api/v1/accounts/account-1/statements/statement-1"));
+});
+
+test("거래 분류·기억 메모·납부 알림은 버전과 멱등키를 가진 회원 수정 API를 사용한다", async (t) => {
+  const calls: Array<{ path: string; method?: string; body?: string; idempotency?: string | null }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    calls.push({ path: String(input), method: init?.method, body: init?.body?.toString(), idempotency: new Headers(init?.headers).get("Idempotency-Key") });
+    return response({ rowVersion: 2 });
+  });
+  const transaction = { transactionId: "transaction-1", accountId: "account-1", accountDisplayName: "생활비", institutionName: "합성은행", occurredAt: "2026-08-31T00:00:00Z", direction: "DEBIT", transactionType: "TRANSFER", status: "POSTED", amount: 10000, currency: "KRW", balanceAfter: 100000, description: "공과금", category: "UTILITIES", preferenceVersion: 3 };
+  const payment = { recurringPaymentId: "payment-1", institutionName: "합성은행", displayName: "통신비", paymentType: "AUTOPAY", categoryCode: "COMMUNICATION", cadence: "MONTHLY", expectedAmount: 50000, currency: "KRW", nextExpectedDate: "2026-09-10", status: "ACTIVE", observationStatus: "ON_TRACK", version: 4, reminderSettings: { enabled: true, leadDays: 2, channels: ["IN_APP"] } };
+  await updateTransactionCategory(session, transaction, "FINANCE");
+  await updateTransactionNote(session, transaction, "정기 생활비");
+  await updateRecurringReminder(session, payment, false, 1);
+  assert.equal(calls.length, 3);
+  assert.ok(calls.every((call) => call.method === "PUT" && Boolean(call.idempotency)));
+  assert.match(calls[0]?.body ?? "", /"expectedVersion":3/);
+  assert.match(calls[1]?.body ?? "", /"note":"정기 생활비"/);
+  assert.match(calls[2]?.body ?? "", /"expectedVersion":4/);
 });
 
 test("생활금융 화면은 의향·알림·연결·보호·근거·세션 API를 한 회원 범위로 조회한다", async (t) => {
