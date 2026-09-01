@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { POST as login } from "../app/api/member-auth/login/route";
+import { POST as refresh } from "../app/api/member-auth/refresh/route";
 import { GET as proxyGet, POST as proxyPost } from "../app/api/[...path]/route";
 
 const envelope = (data: unknown) => JSON.stringify({
@@ -67,4 +68,15 @@ test("login BFF converts backend tokens to HttpOnly cookies and removes them fro
   assert.match(cookies, /alzs-member-access=/);
   assert.match(cookies, /alzs-member-refresh=/);
   assert.match(cookies, /HttpOnly/);
+});
+
+test("refresh cookie가 없으면 남은 access cookie도 함께 제거한다", async () => {
+  const response = await refresh(new Request("https://alzs-well.vercel.app/api/member-auth/refresh", {
+    method: "POST", headers: { cookie: `__Host-alzs-member-access=${"a".repeat(43)}` },
+  }));
+  assert.equal(response.status, 401);
+  const cookies = response.headers.get("set-cookie") ?? "";
+  assert.match(cookies, /__Host-alzs-member-access=;/);
+  assert.match(cookies, /__Host-alzs-member-refresh=;/);
+  assert.match(cookies, /Max-Age=0/);
 });

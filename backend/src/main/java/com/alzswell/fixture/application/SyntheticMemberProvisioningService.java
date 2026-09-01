@@ -517,8 +517,14 @@ public class SyntheticMemberProvisioningService {
                   and (select count(*) from customer_foreign_currency_account_snapshot x where x.customer_id=f.customer_id)=1
                   and (select count(*) from overseas_remittance_snapshot o where o.customer_id=f.customer_id)=1
                   and (select count(*) from customer_pension_holding_snapshot p where p.customer_id=f.customer_id)=1
+                  and (select count(*) from pension_projection_snapshot p
+                       join customer_pension_holding_snapshot h on h.holding_id=p.holding_id
+                       where h.customer_id=f.customer_id)=2
                   and (select count(*) from customer_trust_holding_snapshot t where t.customer_id=f.customer_id)=1
                   and (select count(*) from recurring_payment p where p.customer_id=f.customer_id)=3
+                  and (select count(*) from recurring_payment_occurrence o
+                       join recurring_payment p on p.recurring_payment_id=o.recurring_payment_id
+                       where p.customer_id=f.customer_id)=9
                   and (select count(*) from customer_beneficiary_snapshot b where b.customer_id=f.customer_id)=3
                   and (select count(*) from customer_transfer_limit_snapshot t where t.customer_id=f.customer_id)=1
                   and (select count(*) from customer_inbox_message m where m.customer_id=f.customer_id)=3

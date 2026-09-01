@@ -85,10 +85,13 @@ if [[ "$run_count" != "1" ]]; then
   exit 1
 fi
 
-psql --set=ON_ERROR_STOP=1 -c "
+role_inserted="$(psql --set=ON_ERROR_STOP=1 -qAt -c "
   insert into auth_principal_role(principal_id,role_code)
-  values('${principal_id}'::uuid,'DETECTION_ADMIN') on conflict do nothing" >/dev/null
-role_added=true
+  values('${principal_id}'::uuid,'DETECTION_ADMIN') on conflict do nothing
+  returning 1")"
+if [[ "$role_inserted" == "1" ]]; then
+  role_added=true
+fi
 
 cd "$repository_root"
 docker rm --force "$container_name" >/dev/null 2>&1 || true

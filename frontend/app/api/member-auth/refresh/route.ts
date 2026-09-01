@@ -6,7 +6,11 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request): Promise<Response> {
   const refreshToken = readMemberRefreshCookie(request);
-  if (!refreshToken) return Response.json({ success: false, status: 401, code: "MEMBER_SESSION_EXPIRED", message: "로그인이 필요합니다.", data: null, errors: [] }, { status: 401 });
+  if (!refreshToken) {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    for (const cookie of clearMemberTokenCookies(request.url)) headers.append("Set-Cookie", cookie);
+    return new Response(JSON.stringify({ success: false, status: 401, code: "MEMBER_SESSION_EXPIRED", message: "로그인이 필요합니다.", data: null, errors: [] }), { status: 401, headers });
+  }
   const response = await proxyMemberAuth(request, "/api/v1/auth/token/refresh", { refreshToken });
   if (!response.ok) {
     const headers = new Headers(response.headers);
