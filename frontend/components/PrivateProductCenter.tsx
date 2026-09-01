@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  loadPrivateProductOverview, loginPrivateCustomer, logoutPrivateCustomer, simulateLoanRepayment,
+  loadPrivateProductOverview, loginPrivateCustomer, logoutPrivateCustomer, restorePrivateCustomerSession, simulateLoanRepayment,
   type PrivateCustomerSession, type PrivateProductOverview, type RepaymentSimulation,
 } from "../lib/private-financial-products";
 import { isPrivateSessionExpiredError } from "../lib/private-auth-session";
@@ -11,7 +11,7 @@ import { PrivateCustomerAssets, type AssetTab } from "./PrivateCustomerAssets";
 type ProductTab = "card" | "loan" | "investment" | AssetTab;
 
 export function PrivateProductCenter() {
-  const [loginId, setLoginId] = useState("synthetic-customer");
+  const [loginId, setLoginId] = useState("demo001");
   const [password, setPassword] = useState("");
   const [session, setSession] = useState<PrivateCustomerSession | null>(null);
   const [overview, setOverview] = useState<PrivateProductOverview | null>(null);
@@ -24,6 +24,17 @@ export function PrivateProductCenter() {
   const [simulation, setSimulation] = useState<RepaymentSimulation | null>(null);
   const expireSession = useCallback((message: string) => {
     setSession(null); setOverview(null); setSimulation(null); setError(message); setBusy(null);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void restorePrivateCustomerSession().then(async (restored) => {
+      if (!active) return;
+      setSession(restored); setBusy("load");
+      const loaded = await loadPrivateProductOverview(restored);
+      if (active) setOverview(loaded);
+    }).catch(() => undefined).finally(() => { if (active) setBusy(null); });
+    return () => { active = false; };
   }, []);
 
   async function login() {
@@ -61,13 +72,13 @@ export function PrivateProductCenter() {
   }
 
   if (!session || !overview) return <section className="panel private-login-panel">
-    <div className="private-login-copy"><p className="label">사설 PoC 인증</p><h2>운영 금융정보는 로그인 후 조회합니다.</h2><p>카드·예금·대출·투자·외환·연금·신탁·동의 API는 공개 데모 capability로 우회하지 않습니다. 로컬 또는 사설 staging에서만 합성 고객 Bearer 인증을 활성화하세요.</p><ul><li>비밀번호와 token은 브라우저 저장소에 보관하지 않음</li><li>production의 로컬 합성 로그인 API는 강제 비활성화</li><li>실제 서비스 전환 시 기업 IdP·MFA로 교체</li></ul></div>
-    <form onSubmit={(event) => { event.preventDefault(); void login(); }}><label><span>합성 계정 ID</span><input autoComplete="username" value={loginId} maxLength={80} onChange={(event) => setLoginId(event.target.value)} /></label><label><span>비밀번호</span><input type="password" autoComplete="current-password" value={password} minLength={12} maxLength={200} onChange={(event) => setPassword(event.target.value)} /></label><button className="primary-button" disabled={busy !== null || !loginId.trim() || password.length < 12}>{busy === "login" || busy === "load" ? "인증·조회 중…" : "사설 PoC 로그인"}</button>{error && <p className="api-error" role="alert">{error}</p>}</form>
+    <div className="private-login-copy"><p className="label">합성 금융서비스 인증</p><h2>내 금융정보는 로그인 후 조회합니다.</h2><p>300명의 합성 회원은 각자 분리된 계좌·거래·설정만 조회합니다. 실제 고객정보와 금융 실행은 포함하지 않습니다.</p><ul><li>인증 token은 HttpOnly 쿠키에만 저장</li><li>회원별 소유권 검사로 다른 고객 데이터 차단</li><li>실서비스 전환 시 기업 IdP·MFA로 교체</li></ul></div>
+    <form onSubmit={(event) => { event.preventDefault(); void login(); }}><label><span>합성 회원 ID</span><input autoComplete="username" value={loginId} pattern="demo[0-9]{3}" maxLength={80} onChange={(event) => setLoginId(event.target.value)} /></label><label><span>비밀번호</span><input type="password" autoComplete="current-password" value={password} minLength={12} maxLength={200} onChange={(event) => setPassword(event.target.value)} /></label><button className="primary-button" disabled={busy !== null || !/^demo[0-9]{3}$/.test(loginId.trim()) || password.length < 12}>{busy === "login" || busy === "load" ? "인증·조회 중…" : "금융서비스 로그인"}</button>{error && <p className="api-error" role="alert">{error}</p>}</form>
   </section>;
 
   const card = overview.cards[0]; const loan = overview.loans[0]; const investment = overview.investments[0];
   return <div className="private-product-center">
-    <section className="private-session-bar"><div><span>{session.displayName.slice(0, 1)}</span><p><strong>{session.displayName}</strong><small>합성 고객 · {session.customerId}</small></p></div><div><small>접근권한 {session.permissions.length}개 · token 메모리 전용</small><button onClick={() => void logout()} disabled={busy !== null}>{busy === "logout" ? "종료 중…" : "안전하게 로그아웃"}</button></div></section>
+    <section className="private-session-bar"><div><span>{session.displayName.slice(0, 1)}</span><p><strong>{session.displayName}</strong><small>합성 고객 · {session.customerId}</small></p></div><div><small>접근권한 {session.permissions.length}개 · HttpOnly 보안 세션</small><button onClick={() => void logout()} disabled={busy !== null}>{busy === "logout" ? "종료 중…" : "안전하게 로그아웃"}</button></div></section>
     <nav className="product-tabs" aria-label="금융상품 화면"><button className={tab === "card" ? "active" : ""} onClick={() => setTab("card")}>카드</button><button className={tab === "deposit" ? "active" : ""} onClick={() => setTab("deposit")}>예금</button><button className={tab === "loan" ? "active" : ""} onClick={() => setTab("loan")}>대출</button><button className={tab === "investment" ? "active" : ""} onClick={() => setTab("investment")}>투자</button><button className={tab === "fx" ? "active" : ""} onClick={() => setTab("fx")}>외환</button><button className={tab === "future" ? "active" : ""} onClick={() => setTab("future")}>연금·신탁</button><button className={tab === "consent" ? "active" : ""} onClick={() => setTab("consent")}>동의관리</button></nav>
     {tab === "card" && <section className="product-screen card-screen">
       <div className="product-balance-card"><p>{card?.institutionName ?? "카드"}<span>{card?.status ?? "-"}</span></p><h2>{card?.displayName ?? "보유 카드 없음"}</h2><small>{card?.maskedCardNumber}</small><div><span>이번 달 이용금액<strong>{money(card?.currentUsageAmount, card?.currency)}</strong></span><span>결제 예정<strong>{money(overview.paymentDue?.amount, overview.paymentDue?.currency)}</strong></span></div><p className="no-action">잠금·한도변경·결제 실행 없음 · 합성 상세 {overview.cardDetail?.syntheticData ? "검증" : "미확인"}</p></div>

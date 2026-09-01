@@ -28,6 +28,9 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   assert.doesNotMatch(routesManifest, /unsafe-eval/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
+  for (const route of ["/api/member-auth/login/route", "/api/member-auth/refresh/route", "/api/member-auth/logout/route", "/login/page"]) {
+    assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
+  }
   for (const route of ["/demo/protection/page", "/demo/finance/page", "/demo/products/page", "/demo/settings/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
     assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
   }
@@ -56,12 +59,12 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   for (const href of ["/demo/protection", "/demo/finance", "/demo/ai-assistant", "/demo/alerts", "/demo/services"]) {
     assert.match(protection, new RegExp(`href="${href}"`));
   }
-  assert.match(products, /금융상품·자산(?:<!-- -->)?은 공개 서비스에서 잠겨 있습니다/);
-  assert.match(products, /URL로 직접 접근해도 API를 호출하지 않습니다/);
-  assert.doesNotMatch(products, /href="\/demo\/products"/);
-  assert.match(settings, /내 정보·도움 설정(?:<!-- -->)?은 공개 서비스에서 잠겨 있습니다/);
-  assert.match(settings, /기업 IdP·MFA가 연결된 사설 staging/);
-  assert.doesNotMatch(settings, /href="\/demo\/settings"/);
+  assert.match(products, /합성 금융서비스 인증/);
+  assert.match(products, /금융서비스 로그인/);
+  assert.match(products, /href="\/demo\/products"/);
+  assert.match(settings, /고객 보호 설정/);
+  assert.match(settings, /본인 인증 후 관리합니다/);
+  assert.match(settings, /href="\/demo\/settings"/);
   assert.match(services, /필요한 금융생활을 한곳에서/);
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);

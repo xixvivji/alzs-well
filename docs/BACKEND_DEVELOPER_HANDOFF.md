@@ -11,7 +11,7 @@
 - API 카탈로그는 281개이며 문서화된 업무 API는 236개다. 직원 capability 발급 경로까지 포함한 전체 코드 operation은 237개다.
 - 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이다. 코드 전용 직원 capability 1개는 281개 업무 카탈로그에 포함하지 않는다.
 - 공개 데모는 완전 합성데이터만 사용한다. 실제 금융기관, 마이데이터, 가족 연락, 송금, 주문, 차단, 외부 LLM을 호출하지 않는다.
-- 기존 Flyway V1~V74는 수정하지 않는다. 다음 스키마 변경은 반드시 V75부터 추가한다.
+- 기존 Flyway V1~V75는 수정하지 않는다. 다음 스키마 변경은 반드시 V76부터 추가한다.
 - V48은 직원 접근 목적·scope 매트릭스, 만료·거부 감사, 고객 변경 멱등 명령, 복합 소유권 FK를 추가했고 V49는 목적별 수임 역할, grant 핵심필드 불변성, 사건 배정 snapshot, 완료 멱등 응답 불변성, 탐지정책 DB 상태전이를 강화한다.
 - V50은 기존 계좌·부채 원장에 연결된 예금·대출·투자 보유 읽기 projection을 추가하며 모든 원본은 합성 데이터이고 외부 금융기관 호출·주문·상환을 실행하지 않는다.
 - V51은 안심은행 합성 예금·대출 상품, 금리, 만기 선택지 snapshot과 실행 없는 결정론적 이자·상환 모의계산을 추가한다.
@@ -32,6 +32,7 @@
 - V72는 AI ingestion 역할의 `chunk`, `chunk_embedding` UPDATE 권한을 전부 회수하고 `chunk_embedding` 직접 DELETE도 회수한다. 임베딩 정리는 부모 chunk cascade로만 수행한다. AI ingestion과 Spring publish/import는 같은 문서 단위 advisory lock을 사용한다. 검증 import 전에는 기존 chunk와 cascade embedding을 삭제한 뒤 완전한 파생 snapshot을 INSERT-only로 교체하지만, `AI_DB_SNAPSHOT_V1` proof가 만들어진 문서·버전의 chunk·`document_snapshot`과 proof가 참조하는 terminal `ingestion_run`은 DB trigger가 이후 변경을 모두 거부한다. UPDATE 시 OLD와 NEW 키를 모두 검사하므로 검증 행을 다른 키로 옮길 수도 없다. 이후 내용 변경은 새 `versionLabel`로 적재해야 한다. 미검증·신규 버전의 `document_snapshot` upsert에 필요한 UPDATE 권한과 검색 runtime의 두 파생 테이블 SELECT는 유지한다.
 - V73은 익명 합성 데모의 고객 확인형 금융생활 의향 초안·승인 상태를 세션과 run에 귀속해 저장한다. 의향은 법적 효력이 없고 금융 실행·건강 추론에 사용하지 않으며 세션 폐기 시 함께 삭제된다. 내부 FastAPI는 구조화 초안, EWMA·CUSUM 장기 변화, 제한된 쉬운말 생성을 담당하고 Spring이 capability·버전·승인·폴백 경계를 소유한다.
 - V74는 고객 확인 유예와 추가 전용 감사이력을 추가하고, 탐지 dataset·실행·결과·승격 증적 및 AI retrieval terminal run의 변경·삭제를 DB trigger와 최소권한으로 제한한다. 승격 전에는 dataset·입력·결과 hash를 재계산하며, 지식 keyword 후보 검색에는 표현식 GIN index를 사용한다.
+- V75는 공개 시연용 `PUBLIC` 합성 profile을 추가한다. 일회성 seed Job이 300명의 인증 주체와 회원별 금융 snapshot을 만들며 평문 비밀번호는 저장하지 않는다.
 - 감사 해시에 시각을 포함할 때는 반드시 `AuditTimestamp.canonical`로 UTC·PostgreSQL 마이크로초 정밀도를 먼저 고정하고, 그 동일 객체를 해시와 `timestamptz` INSERT에 사용한다. 나노초나 원래 offset 문자열을 직접 해시에 넣으면 DB 재조회 후 검증할 수 없다.
 - V64는 검증된 AI ingestion import와 `chunkId ↔ passageId` 추가 전용 binding을 추가한다. Spring만 문서 권위·ACL·효력기간을 판정하며 AI 계정은 권위 테이블을 수정하지 않는다.
 - V65는 `local-hash-ngram-ko-v1` 384차원 임베딩과 pgvector HNSW 인덱스를 추가하고, 내부 FastAPI가 전문검색과 cosine 유사도를 결합한 하이브리드 검색을 제공한다. 외부 모델 다운로드와 LLM 호출은 없다.
@@ -274,7 +275,7 @@ Vercel 공개 배포에서는 BFF가 고객 capability를 `Secure`·`HttpOnly`·
 
 ### 11.3 합성 인증 한계
 
-`/api/v1/auth/**`는 development 전용 로컬 합성 인증이다. production에서는 비활성화된다. 실제 고객·행원 인증은 `IdentityProviderPort` 뒤에 기업 IdP·MFA adapter를 구현한 후 별도 보안검토를 받아야 한다.
+`/api/v1/auth/**`는 기본적으로 development 로컬 합성 인증이다. production에서는 성공한 `PUBLIC` fixture의 `demo001`~`demo300`과 합성 전용 가드레일을 만족할 때만 활성화하며, Vercel BFF가 token을 Secure·HttpOnly 쿠키로 변환한다. 실제 고객·행원 인증은 `IdentityProviderPort` 뒤에 기업 IdP·MFA adapter를 구현한 후 별도 보안검토를 받아야 한다.
 
 ### 11.4 미구현 카탈로그 45개
 

@@ -2,17 +2,12 @@ import { invokeApiOperation } from "./api-operation-client";
 import { invalidatePrivateCustomerSession, withPrivateCustomerSession } from "./private-auth-session";
 
 export type PrivateCustomerSession = {
-  accessToken: string;
-  accessExpiresAt: string;
-  refreshToken: string;
-  refreshExpiresAt: string;
   customerId: string;
   displayName: string;
   roles: string[];
   permissions: string[];
   invalidated?: boolean;
 };
-type TokenPair = { accessToken: string; accessExpiresAt: string; refreshToken: string; refreshExpiresAt: string };
 type CurrentUser = { customerId: string; displayName: string; roles: string[] };
 type PermissionList = { permissions: string[] };
 export type CardSummary = { cardId: string; institutionName: string; displayName: string; maskedCardNumber: string; cardType: string; brandCode: string; status: string; paymentDay: number; currentUsageAmount: number; currency: string; dataAsOf: string };
@@ -38,26 +33,41 @@ export type PrivateProductOverview = {
 };
 
 export async function loginPrivateCustomer(loginId: string, password: string): Promise<PrivateCustomerSession> {
-  const login = await invokeApiOperation<TokenPair>("POST /api/v1/auth/login", { body: { loginId, password }, timeoutMs: 8_000 });
-  const tokens = required(login.body.data, "로그인");
+  await memberAuthRequest("/api/member-auth/login", { loginId, password });
   try {
-    const [me, permissions] = await Promise.all([
-      invokeApiOperation<CurrentUser>("GET /api/v1/auth/me", { accessToken: tokens.accessToken }),
-      invokeApiOperation<PermissionList>("GET /api/v1/auth/me/permissions", { accessToken: tokens.accessToken }),
-    ]);
-    const user = required(me.body.data, "현재 사용자");
-    return { ...tokens, customerId: user.customerId, displayName: user.displayName, roles: user.roles, permissions: required(permissions.body.data, "권한").permissions };
+    return await restorePrivateCustomerSession();
   } catch (error) {
-    await invokeApiOperation("POST /api/v1/auth/logout", { accessToken: tokens.accessToken }).catch(() => undefined);
+    await memberAuthRequest("/api/member-auth/logout").catch(() => undefined);
     throw error;
   }
 }
 
+export async function restorePrivateCustomerSession(): Promise<PrivateCustomerSession> {
+  const [me, permissions] = await Promise.all([
+    invokeApiOperation<CurrentUser>("GET /api/v1/auth/me"),
+    invokeApiOperation<PermissionList>("GET /api/v1/auth/me/permissions"),
+  ]);
+  const user = required(me.body.data, "현재 사용자");
+  return { customerId: user.customerId, displayName: user.displayName, roles: user.roles, permissions: required(permissions.body.data, "권한").permissions };
+}
+
 export async function logoutPrivateCustomer(session: PrivateCustomerSession): Promise<void> {
   try {
-    if (session.accessToken) await invokeApiOperation("POST /api/v1/auth/logout", { accessToken: session.accessToken });
+    await memberAuthRequest("/api/member-auth/logout");
   } finally {
     invalidatePrivateCustomerSession(session);
+  }
+}
+
+async function memberAuthRequest(path: string, body?: unknown): Promise<void> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { message?: string } | null;
+    throw new Error(payload?.message ?? "로그인 요청을 처리하지 못했습니다.");
   }
 }
 

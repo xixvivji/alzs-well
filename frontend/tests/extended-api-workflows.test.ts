@@ -97,12 +97,12 @@ test("keeps readiness details visible when the readiness API correctly returns 5
   assert.deepEqual(paths.sort(), ["/api/v1/system/health", "/api/v1/system/public-config", "/api/v1/system/readiness", "/api/v1/system/versions"]);
 });
 
-test("uses Bearer authentication for the private card, loan and investment dashboard", async (t) => {
+test("uses the HttpOnly BFF session for the private card, loan and investment dashboard", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); calls.push({ path, init });
     let data: unknown;
-    if (path.endsWith("/auth/login")) data = { accessToken: "access-secret", accessExpiresAt: "2099-08-30T01:00:00Z", refreshToken: "refresh-secret", refreshExpiresAt: "2099-08-31T00:00:00Z" };
+    if (path.endsWith("/member-auth/login")) data = null;
     else if (path.endsWith("/auth/me/permissions")) data = { permissions: ["CARD_READ", "FINANCIAL_OVERVIEW_READ"] };
     else if (path.endsWith("/auth/me")) data = { customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"] };
     else if (path.endsWith("/customers/customer-1/cards")) data = { items: [{ cardId: "card-1", currency: "KRW" }] };
@@ -122,17 +122,17 @@ test("uses Bearer authentication for the private card, loan and investment dashb
     return new Response(envelope(data), { headers: { "content-type": "application/json" } });
   });
 
-  const session = await loginPrivateCustomer("synthetic-customer", "a-secure-demo-password");
+  const session = await loginPrivateCustomer("demo001", "a-secure-demo-password");
   const overview = await loadPrivateProductOverview(session);
   assert.equal(overview.cards[0]?.cardId, "card-1");
-  const loginCall = calls.find((call) => call.path.endsWith("/auth/login"));
+  const loginCall = calls.find((call) => call.path.endsWith("/member-auth/login"));
   assert.equal(new Headers(loginCall?.init?.headers).get("Authorization"), null);
-  const protectedCalls = calls.filter((call) => !call.path.endsWith("/auth/login"));
+  const protectedCalls = calls.filter((call) => !call.path.endsWith("/member-auth/login"));
   assert.ok(protectedCalls.length >= 10);
-  assert.ok(protectedCalls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+  assert.ok(protectedCalls.every((call) => new Headers(call.init?.headers).get("Authorization") === null));
 });
 
-test("loan simulation and logout remain explicit non-persistent Bearer calls", async (t) => {
+test("loan simulation and logout remain same-origin HttpOnly session calls", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     calls.push({ path: String(input), init });
@@ -141,19 +141,19 @@ test("loan simulation and logout remain explicit non-persistent Bearer calls", a
       : null;
     return new Response(envelope(data), { headers: { "content-type": "application/json" } });
   });
-  const session = { accessToken: "access-secret", accessExpiresAt: "", refreshToken: "refresh-secret", refreshExpiresAt: "", customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
+  const session = privateSession();
   const result = await simulateLoanRepayment(session, "product-1", 30000000, 60, 4.5);
   await logoutPrivateCustomer(session);
   assert.equal(result.applicationAvailable, false);
   assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), { principalAmount: 30000000, termMonths: 60, annualInterestRate: 4.5 });
-  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === null));
 });
 
 test("loads deposit, FX, pension, trust and consent contracts under one customer Bearer session", async (t) => {
   const paths: string[] = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); paths.push(path);
-    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer access-secret");
+    assert.equal(new Headers(init?.headers).get("Authorization"), null);
     let data: unknown;
     if (path.endsWith("/customers/customer-1/deposit-holdings")) data = { items: [{ holdingId: "holding-1", currentBalance: 10000000, currency: "KRW" }] };
     else if (path.endsWith("/deposit-products")) data = { items: [{ productId: "deposit-product-1" }] };
@@ -211,14 +211,14 @@ test("connects safe simulations and consent lifecycle commands without external 
   assert.ok(new Headers(calls[2]?.init?.headers).get("Idempotency-Key"));
   assert.deepEqual(calls[3]?.body, { expectedVersion: 1, reason: "범위를 재검토합니다." });
   assert.ok(new Headers(calls[3]?.init?.headers).get("Idempotency-Key"));
-  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === null));
 });
 
 test("loads customer profile, accessibility, trusted contacts and appeal targets in one Bearer session", async (t) => {
   const paths: string[] = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); paths.push(path);
-    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer access-secret");
+    assert.equal(new Headers(init?.headers).get("Authorization"), null);
     let data: unknown;
     if (path.endsWith("/customers/customer-1")) data = { customerId: "customer-1", displayName: "합성고객", organization: "보호센터", region: "KR-11", status: "ACTIVE", version: 1, createdAt: "2026-08-30T00:00:00Z", updatedAt: "2026-08-30T00:00:00Z" };
     else if (path.endsWith("/preferences")) data = { customerId: "customer-1", smsNotificationEnabled: false, pushNotificationEnabled: false, inAppNotificationEnabled: true, version: 1, updatedAt: "2026-08-30T00:00:00Z" };
@@ -258,58 +258,45 @@ test("connects customer settings, trusted-contact consent and human appeal mutat
   await revokeTrustedContact(session, contact, "고객 직접 철회");
   const appeal = await submitAlertAppeal(session, { alertId: "alert-1", signalId: "signal-1", customerId: "customer-1", state: "AWAITING_CONTEXT", severity: "MEDIUM", reasonCode: "DUPLICATE_TRANSFER", version: 1, deferredUntil: null, createdAt: "", updatedAt: "" }, "REQUEST_HUMAN_REVIEW", "사람의 재검토를 요청합니다.");
   assert.equal(appeal.financialActionExecuted, false);
-  assert.ok(calls.every((call) => call.headers.get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => call.headers.get("Authorization") === null));
   assert.ok(calls.every((call) => call.headers.get("Idempotency-Key")));
   assert.deepEqual(calls[0]?.body, { expectedVersion: 1, displayName: "안심 고객" });
   assert.deepEqual(calls.at(-1)?.body, { reasonCode: "REQUEST_HUMAN_REVIEW", statement: "사람의 재검토를 요청합니다.", expectedVersion: 1 });
 });
 
 function privateSession() {
-  return { accessToken: "access-secret", accessExpiresAt: "", refreshToken: "refresh-secret", refreshExpiresAt: "", customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
+  return { customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
 }
 
-test("401이면 access token을 자동 갱신하고 한 번만 재시도한다", async (t) => {
+test("401이면 HttpOnly 세션을 자동 갱신하고 한 번만 재시도한다", async (t) => {
   let refreshCalls = 0;
   t.mock.method(globalThis, "fetch", async (input, init) => {
-    assert.equal(String(input), "/api/v1/auth/token/refresh");
-    assert.deepEqual(JSON.parse(String(init?.body)), { refreshToken: "refresh-old" });
+    assert.equal(String(input), "/api/member-auth/refresh");
+    assert.equal(init?.body, undefined);
     refreshCalls += 1;
-    return new Response(envelope({
-      accessToken: "access-new", accessExpiresAt: "2099-01-01T00:00:00Z",
-      refreshToken: "refresh-new", refreshExpiresAt: "2099-02-01T00:00:00Z",
-    }), { headers: { "content-type": "application/json" } });
+    return new Response(envelope(null), { headers: { "content-type": "application/json" } });
   });
-  const session = {
-    ...privateSession(), accessToken: "access-old", accessExpiresAt: "2099-01-01T00:00:00Z",
-    refreshToken: "refresh-old", refreshExpiresAt: "2099-01-01T00:00:00Z",
-  };
+  const session = privateSession();
   let operationCalls = 0;
-  const token = await withPrivateCustomerSession(session, async (accessToken) => {
+  const result = await withPrivateCustomerSession(session, async () => {
     operationCalls += 1;
-    if (operationCalls === 1 && accessToken === "access-old") {
-      throw new ApiClientError("http", "expired upstream", 401);
-    }
-    return accessToken;
+    if (operationCalls === 1) throw new ApiClientError("http", "expired upstream", 401);
+    return "retried";
   });
-  assert.equal(token, "access-new");
+  assert.equal(result, "retried");
   assert.equal(refreshCalls, 1);
   assert.equal(operationCalls, 2);
-  assert.equal(session.refreshToken, "refresh-new");
+  assert.equal(session.invalidated, false);
 });
 
 test("refresh 실패 시 token을 메모리에서 폐기하고 안전 로그아웃한다", async (t) => {
   t.mock.method(globalThis, "fetch", async () => new Response(envelope(null, 401), {
     status: 401, headers: { "content-type": "application/json" },
   }));
-  const session = {
-    ...privateSession(), accessExpiresAt: "2000-01-01T00:00:00Z",
-    refreshExpiresAt: "2099-01-01T00:00:00Z",
-  };
+  const session = privateSession();
   await assert.rejects(
-    withPrivateCustomerSession(session, async () => "unused"),
+    withPrivateCustomerSession(session, async () => { throw new ApiClientError("http", "expired", 401); }),
     (reason: unknown) => reason instanceof PrivateSessionExpiredError,
   );
-  assert.equal(session.accessToken, "");
-  assert.equal(session.refreshToken, "");
   assert.equal(session.invalidated, true);
 });

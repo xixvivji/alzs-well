@@ -8,7 +8,7 @@ import {
   type AlertAppeal, type CustomerCareBundle, type TrustedContact,
 } from "../lib/private-customer-care";
 import {
-  loginPrivateCustomer, logoutPrivateCustomer, type PrivateCustomerSession,
+  loginPrivateCustomer, logoutPrivateCustomer, restorePrivateCustomerSession, type PrivateCustomerSession,
 } from "../lib/private-financial-products";
 import { isPrivateSessionExpiredError } from "../lib/private-auth-session";
 
@@ -16,7 +16,7 @@ type CareTab = "profile" | "contact" | "appeal";
 type Busy = "login" | "load" | "profile" | "preferences" | "accessibility" | "consent" | "contact" | "logout" | string | null;
 
 export function PrivateCustomerCare() {
-  const [loginId, setLoginId] = useState("synthetic-customer");
+  const [loginId, setLoginId] = useState("demo001");
   const [password, setPassword] = useState("");
   const [session, setSession] = useState<PrivateCustomerSession | null>(null);
   const [bundle, setBundle] = useState<CustomerCareBundle | null>(null);
@@ -36,6 +36,17 @@ export function PrivateCustomerCare() {
     setDisplayName(bundle.summary.displayName);
     applyAccessibility(bundle.accessibility.largeFont, bundle.accessibility.highContrast);
   }, [bundle]);
+
+  useEffect(() => {
+    let active = true;
+    void restorePrivateCustomerSession().then(async (restored) => {
+      if (!active) return;
+      setSession(restored); setBusy("load");
+      const loaded = await loadPrivateCustomerCare(restored);
+      if (active) setBundle(loaded);
+    }).catch(() => undefined).finally(() => { if (active) setBusy(null); });
+    return () => { active = false; };
+  }, []);
 
   async function refresh(active = session) {
     if (!active) return;
@@ -138,13 +149,13 @@ export function PrivateCustomerCare() {
   function clearNotice() { setError(""); setMessage(""); }
 
   if (!session || !bundle) return <section className="panel private-login-panel customer-care-login">
-    <div className="private-login-copy"><p className="label">고객 보호 설정</p><h2>프로필과 도움 요청 범위는<br />본인 인증 후 관리합니다.</h2><p>공개 데모 capability와 운영 고객 Bearer 권한을 분리합니다. 합성 고객의 설정만 조회하며 token은 브라우저 저장소에 남기지 않습니다.</p><ul><li>큰 글씨·고대비·음성안내 계정 저장</li><li>신뢰 연락처는 대리권 없이 최소정보만 지정</li><li>AI 결과에 이의가 있으면 사람의 재검토 요청</li></ul></div>
-    <form onSubmit={(event) => { event.preventDefault(); void login(); }}><label><span>합성 계정 ID</span><input autoComplete="username" value={loginId} maxLength={80} onChange={(event) => setLoginId(event.target.value)} /></label><label><span>비밀번호</span><input type="password" autoComplete="current-password" value={password} minLength={12} maxLength={200} onChange={(event) => setPassword(event.target.value)} /></label><button className="primary-button" disabled={busy !== null || !loginId.trim() || password.length < 12}>{busy === "login" || busy === "load" ? "인증·설정 조회 중…" : "사설 PoC 로그인"}</button>{error && <p className="api-error" role="alert">{error}</p>}</form>
+    <div className="private-login-copy"><p className="label">고객 보호 설정</p><h2>프로필과 도움 요청 범위는<br />본인 인증 후 관리합니다.</h2><p>회원별 합성 고객 설정만 조회하며 인증 token은 브라우저 JavaScript에 노출하지 않습니다.</p><ul><li>큰 글씨·고대비·음성안내 계정 저장</li><li>신뢰 연락처는 대리권 없이 최소정보만 지정</li><li>AI 결과에 이의가 있으면 사람의 재검토 요청</li></ul></div>
+    <form onSubmit={(event) => { event.preventDefault(); void login(); }}><label><span>합성 회원 ID</span><input autoComplete="username" value={loginId} pattern="demo[0-9]{3}" maxLength={80} onChange={(event) => setLoginId(event.target.value)} /></label><label><span>비밀번호</span><input type="password" autoComplete="current-password" value={password} minLength={12} maxLength={200} onChange={(event) => setPassword(event.target.value)} /></label><button className="primary-button" disabled={busy !== null || !/^demo[0-9]{3}$/.test(loginId.trim()) || password.length < 12}>{busy === "login" || busy === "load" ? "인증·설정 조회 중…" : "금융서비스 로그인"}</button>{error && <p className="api-error" role="alert">{error}</p>}</form>
   </section>;
 
   const eligibleConsent = bundle.consents.find((item) => item.purposeCode === "TRUSTED_CONTACT_DISCLOSURE" && item.status === "GRANTED" && item.scopes.includes("CONTACT_MINIMUM"));
   return <div className="customer-care-center">
-    <section className="private-session-bar"><div><span>{bundle.summary.displayName.slice(0, 1)}</span><p><strong>{bundle.summary.displayName}</strong><small>{bundle.summary.organization} · {bundle.summary.customerId}</small></p></div><div><small>접근권한 {session.permissions.length}개 · token 메모리 전용</small><button onClick={() => void logout()} disabled={busy !== null}>{busy === "logout" ? "종료 중…" : "안전하게 로그아웃"}</button></div></section>
+    <section className="private-session-bar"><div><span>{bundle.summary.displayName.slice(0, 1)}</span><p><strong>{bundle.summary.displayName}</strong><small>{bundle.summary.organization} · {bundle.summary.customerId}</small></p></div><div><small>접근권한 {session.permissions.length}개 · HttpOnly 보안 세션</small><button onClick={() => void logout()} disabled={busy !== null}>{busy === "logout" ? "종료 중…" : "안전하게 로그아웃"}</button></div></section>
     <nav className="product-tabs care-tabs" aria-label="고객 보호 설정"><button className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}>프로필·접근성</button><button className={tab === "contact" ? "active" : ""} onClick={() => setTab("contact")}>신뢰 연락처</button><button className={tab === "appeal" ? "active" : ""} onClick={() => setTab("appeal")}>이의신청</button></nav>
 
     {tab === "profile" && <div className="care-screen">

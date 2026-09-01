@@ -2,9 +2,9 @@ import Link from "next/link";
 
 const primaryNavigation = ["조회", "이체", "금융상품", "자산관리", "생활금융", "고객센터"];
 const quickServices = [
-  { icon: "₩", title: "계좌조회", description: "내 계좌와 잔액을 한눈에", href: "#login" },
-  { icon: "↗", title: "이체", description: "안전하고 간편하게 보내기", href: "#login" },
-  { icon: "▤", title: "거래내역", description: "입출금 내역을 빠르게 확인", href: "#login" },
+  { icon: "₩", title: "계좌조회", description: "내 계좌와 잔액을 한눈에", href: "/login" },
+  { icon: "↗", title: "이체", description: "안전하고 간편하게 보내기", href: "/login" },
+  { icon: "▤", title: "거래내역", description: "입출금 내역을 빠르게 확인", href: "/login" },
   { icon: "◇", title: "금융상품", description: "예금·대출·투자 상품 찾기", href: "#products" },
   { icon: "?", title: "금융생활 도움받기", description: "큰 글씨와 쉬운 말로 확인", href: "/demo", featured: true },
 ];
@@ -30,7 +30,7 @@ export default function Home() {
 
     <section className="bank-hero">
       <div className="bank-hero-copy"><p>매일 쓰는 금융을 더 편안하게</p><h1>내 생활에 맞춘 금융,<br/><em>안심하고 이어가세요.</em></h1><span>조회부터 자산관리까지 필요한 금융서비스를 한곳에서 확인하세요.</span><div><a className="bank-button primary" href="#quick">자주 쓰는 서비스</a><a className="bank-button ghost" href="#products">금융상품 보기</a></div></div>
-      <aside className="bank-login-card" id="login" aria-label="금융서비스 이용 안내"><div><span aria-hidden="true">◎</span><p><strong>안전한 금융서비스</strong><small>인증 후 내 금융정보를 확인할 수 있어요.</small></p></div><button type="button" aria-disabled="true">로그인</button><p>공개 서비스에서는 실제 금융기관 로그인을 제공하지 않습니다.</p></aside>
+      <aside className="bank-login-card" id="login" aria-label="금융서비스 이용 안내"><div><span aria-hidden="true">◎</span><p><strong>안전한 금융서비스</strong><small>인증 후 내 합성 금융정보를 확인할 수 있어요.</small></p></div><Link href="/login">금융서비스 로그인</Link><p>회원가입 없이 제공된 합성 회원 계정으로 이용합니다.</p></aside>
       <div className="bank-hero-shape" aria-hidden="true"><i/><i/><i/></div>
     </section>
 
