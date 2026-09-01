@@ -22,7 +22,11 @@ async function handler(request: Request): Promise<Response> {
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.delete("Authorization");
   const memberAccess = readMemberAccessCookie(request);
-  if (memberAccess) forwardedHeaders.set("Authorization", `Bearer ${memberAccess}`);
+  const demoCapabilityPath = requestUrl.pathname === "/api/v1/demo/sessions"
+    || requestUrl.pathname.startsWith("/api/v1/demo/sessions/");
+  // 한 브라우저에 회원 세션과 격리 데모 세션이 함께 있어도 인증 방식을 섞지 않는다.
+  // demo capability endpoint에 Bearer를 붙이면 Spring이 고객 역할을 우선 인증해 capability 요청을 거부한다.
+  if (memberAccess && !demoCapabilityPath) forwardedHeaders.set("Authorization", `Bearer ${memberAccess}`);
   if (capability && !forwardedHeaders.has("X-Demo-Capability")) forwardedHeaders.set("X-Demo-Capability", capability);
   const upstreamRequest = new Request(request, { headers: forwardedHeaders });
   const clientRateIdentity = await resolveClientRateIdentity(
