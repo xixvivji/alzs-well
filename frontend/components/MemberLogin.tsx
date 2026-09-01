@@ -8,7 +8,7 @@ import { loginPrivateCustomer, restorePrivateCustomerSession } from "../lib/priv
 export function MemberLogin() {
   const router = useRouter();
   const [loginId, setLoginId] = useState("demo001");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("local-synthetic-customer-password");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,7 +37,7 @@ export function MemberLogin() {
         <button disabled={busy || !/^demo[0-9]{3}$/.test(loginId) || password.length < 12}>{busy ? "안전하게 확인 중…" : "금융서비스 로그인"}</button>
         {error && <p className="api-error" role="alert">{error}</p>}
       </form>
-      <aside><strong>체험 계정 안내</strong><p>운영자가 제공한 demo001~demo300 계정만 이용할 수 있습니다. 회원가입과 실제 금융거래는 제공하지 않습니다.</p></aside>
+      <aside><strong>공개 합성 체험 계정</strong><p><b>demo001 ~ demo300</b> 중 하나와 공통 비밀번호 <b>local-synthetic-customer-password</b>를 이용하세요. 300명은 계좌·거래·설정이 서로 분리되어 있습니다.</p></aside>
       <Link className="member-login-help" href="/demo">로그인 없이 금융생활 도움받기 →</Link>
     </section>
   </main>;
