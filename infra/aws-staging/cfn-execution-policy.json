@@ -88,6 +88,7 @@
         "rds:DescribeDBParameters",
         "rds:DescribeDBSnapshots",
         "rds:DescribeDBSubnetGroups",
+        "rds:DescribeEngineDefaultParameters",
         "rds:ListTagsForResource",
         "rds:ModifyDBInstance",
         "rds:ModifyDBParameterGroup",
