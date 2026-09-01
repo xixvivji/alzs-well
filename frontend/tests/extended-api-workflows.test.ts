@@ -15,12 +15,29 @@ import {
 } from "../lib/private-financial-products";
 import { PrivateSessionExpiredError, withPrivateCustomerSession } from "../lib/private-auth-session";
 import { loadSystemStatus } from "../lib/system-status";
+import { suggestPrivateFinancialIntent } from "../lib/private-ai-intent";
 
 const envelope = <T>(data: T, status = 200) => JSON.stringify({
   success: status < 400, status, code: status === 503 ? "SYSTEM_NOT_READY" : "OK", message: "ok", data,
   errors: [], timestamp: "2026-08-30T00:00:00Z", traceId: "trace",
 });
 const demoContext = { sessionId: "session-1", capability: "customer-cap", demoRunId: "run-1", customerId: "customer-1", alertId: "alert-1" };
+
+test("로그인 회원 AI 의향 구조화는 문장만 격리 세션에 전달하고 세션을 회수한다", async (t) => {
+  const calls: Array<{ path: string; method: string; body?: string }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); calls.push({ path, method: init?.method ?? "GET", body: init?.body?.toString() });
+    if (path === "/api/v1/demo/sessions") return new Response(envelope({ sessionId: "session-member-ai" }), { headers: { "content-type": "application/json", "X-Demo-Customer-Capability": "temporary-cap" } });
+    if (path.endsWith("/ingest")) return new Response(envelope({ demoRunId: "run-member-ai", customerId: "isolated-ai-customer", alertId: "alert-member-ai" }), { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/intent-suggestions")) return new Response(envelope({ suggestion: { paymentContinuity: "KEEP_ESSENTIAL_PAYMENTS", explanationMode: "STAFF_EXPLANATION", helpCondition: "ON_REPEATED_CHANGE", shareScopes: [] }, summary: "필수 납부를 유지하고 반복 변화 때 도움을 요청합니다.", evidence: [], needsClarification: false, clarifyingQuestions: [], generatedBy: "FASTAPI", modelInvoked: true, fallbackUsed: false, healthInferenceUsed: false, financialActionExecuted: false }), { headers: { "content-type": "application/json" } });
+    return new Response(envelope(null), { headers: { "content-type": "application/json" } });
+  });
+  const result = await suggestPrivateFinancialIntent("공과금은 유지하고 반복 변화 때 알려주세요.");
+  assert.equal(result.suggestion.helpCondition, "ON_REPEATED_CHANGE");
+  assert.equal(calls.filter((call) => call.method === "DELETE").length, 1);
+  assert.match(calls.find((call) => call.path.endsWith("/intent-suggestions"))?.body ?? "", /공과금은 유지/);
+  assert.ok(calls.every((call) => !String(call.body).includes("customer-1")));
+});
 
 test("loads the customer protection center from five scoped read APIs", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];

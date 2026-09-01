@@ -40,21 +40,20 @@ export async function loadAdminOperations(session: PrivateCustomerSession): Prom
   requireRole(session, "DETECTION_ADMIN");
   return withPrivateCustomerSession(session, async (accessToken) => {
     const auth = { accessToken };
-    const [rules, policies, algorithms, flags, audit, retention] = await Promise.all([
-      invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/rules", auth),
-      invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/policies/versions", auth),
-      invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/algorithms/versions", auth),
-      invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/feature-flags", auth),
-      invokeApiOperation<Record<string, unknown>>("GET /api/v1/audit/events", { query: { limit: 25 }, ...auth }),
-      invokeApiOperation<Record<string, unknown>>("GET /api/v1/compliance/retention-policies", auth),
-    ]);
-    const ruleItems = items(rules.body.data); const auditItems = items(audit.body.data);
+    // 로그인 직후 인증·상태 조회와 겹쳐 rate-limit burst가 발생하지 않도록 순차 조회한다.
+    const rules = await invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/rules", auth);
+    const policies = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/policies/versions", auth));
+    const algorithms = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/algorithms/versions", auth));
+    const flags = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/feature-flags", auth));
+    const audit = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/audit/events", { query: { limit: 25 }, ...auth }));
+    const retention = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/compliance/retention-policies", auth));
+    const ruleItems = items(rules.body.data); const auditItems = items(audit?.body.data);
     const ruleId = stringValue(ruleItems[0], "ruleId"); const eventId = stringValue(auditItems[0], "eventId");
     const [ruleDetail, auditDetail] = await Promise.all([
       ruleId ? optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/rules/{ruleId}", { path: { ruleId }, ...auth })) : null,
       eventId ? optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/audit/events/{eventId}", { path: { eventId }, ...auth })) : null,
     ]);
-    return { cases: [], rules: ruleItems, policies: items(policies.body.data), algorithms: items(algorithms.body.data), flags: items(flags.body.data), audit: auditItems, retention: items(retention.body.data), ...emptyDetails, ruleDetail: ruleDetail?.body.data ?? null, auditDetail: auditDetail?.body.data ?? null };
+    return { cases: [], rules: ruleItems, policies: items(policies?.body.data), algorithms: items(algorithms?.body.data), flags: items(flags?.body.data), audit: auditItems, retention: items(retention?.body.data), ...emptyDetails, ruleDetail: ruleDetail?.body.data ?? null, auditDetail: auditDetail?.body.data ?? null };
   });
 }
 

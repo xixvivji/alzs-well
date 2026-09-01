@@ -1,0 +1,54 @@
+.help-member-analysis {
+  display: grid;
+  gap: 16px;
+}
+
+.help-member-analysis header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.help-member-analysis header p {
+  margin: 0 0 6px;
+  color: #23715b;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.help-member-analysis h3 { margin: 0; }
+.help-member-analysis header a { color: #256f59; font-size: 11px; font-weight: 800; }
+.help-member-analysis > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.help-member-analysis article { display: grid; gap: 7px; padding: 16px; border-radius: 10px; background: #f3f7f5; }
+.help-member-analysis article span,
+.help-member-analysis article small,
+.help-member-analysis footer,
+.help-analysis-empty { color: #718079; font-size: 10px; }
+.help-member-analysis article strong { font-size: 17px; }
+.help-member-analysis footer { padding-top: 3px; }
+
+.member-ai-intent { display: grid; gap: 14px; }
+.member-ai-intent header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.member-ai-intent header p { margin: 0 0 5px; color: #23715b; font-size: 10px; font-weight: 900; }
+.member-ai-intent header h3 { margin: 0; }
+.member-ai-intent header > span { padding: 7px 10px; border-radius: 999px; background: #e5f2ed; color: #225f4d; font-size: 10px; font-weight: 800; }
+.member-ai-boundary { margin: 0; padding: 11px 13px; border-radius: 8px; background: #f3f7f5; color: #5e6d66; font-size: 11px; }
+.member-ai-intent > label { display: grid; gap: 7px; font-size: 12px; font-weight: 800; }
+.member-ai-intent textarea { min-height: 90px; padding: 13px; border: 1px solid #bdc9c3; border-radius: 8px; font: inherit; line-height: 1.6; resize: vertical; }
+.member-ai-intent > .secondary-button { justify-self: start; }
+.member-ai-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.member-ai-fields label { display: grid; gap: 7px; color: #52625b; font-size: 11px; font-weight: 800; }
+.member-ai-fields select { padding: 11px; border: 1px solid #bdc9c3; border-radius: 7px; background: #fff; }
+.member-ai-actions { display: flex; justify-content: flex-end; }
+.member-ai-actions button { padding: 12px 16px; border: 0; border-radius: 7px; background: #234c3d; color: #fff; font-weight: 800; cursor: pointer; }
+.member-ai-actions button:disabled { opacity: .5; }
+
+@media (max-width: 900px) {
+  .help-member-analysis > div { grid-template-columns: 1fr; }
+  .member-ai-fields { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 650px) {
+  .help-member-analysis header { align-items: flex-start; flex-direction: column; }
+}
