@@ -115,6 +115,9 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   for (const label of ["예금", "외환", "연금·신탁", "동의관리"]) assert.match(productCenter, new RegExp(label));
   assert.match(customerAssets, /가입·해지·외부 호출 없음/);
   assert.match(customerAssets, /외부 제공 자동 실행 없음/);
+  assert.match(customerAssets, /useState\(1_000_000\)/);
+  assert.match(customerAssets, /min=\{product\?\.minPrincipal/);
+  assert.match(customerAssets, /max=\{product\?\.maxPrincipal/);
   assert.match(customerCare, /사람의 재검토를 요청/);
   assert.match(customerCare, /금융행위 대리권은 부여하지 않습니다/);
   assert.match(protectionCenter, /결정은 언제나 고객과 사람에게 있습니다/);
