@@ -119,6 +119,8 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   assert.match(customerAssets, /useState\(1_000_000\)/);
   assert.match(customerAssets, /min=\{product\?\.minPrincipal/);
   assert.match(customerAssets, /max=\{product\?\.maxPrincipal/);
+  assert.match(customerAssets, /월 납입액/);
+  assert.match(customerAssets, /총 납입원금/);
   assert.match(customerCare, /사람의 재검토를 요청/);
   assert.match(customerCare, /금융행위 대리권은 부여하지 않습니다/);
   assert.match(privateLifeServices, /생활금융 정보를 안전하게 불러오고 있습니다/);
