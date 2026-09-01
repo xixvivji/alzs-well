@@ -28,8 +28,9 @@ NAT Gateway, ALB, WAF, EC2 2대, RDS, EBS, Secrets Manager는 스택 실행 즉�
 3. `cfn-lint` 및 AWS `validate-template`을 통과한다.
 4. change set은 생성만 하고 자동 실행하지 않는다.
 5. 생성·교체·삭제 리소스와 월 예상 비용을 검토한 후에만 실행한다.
-6. 초기 생성·데이터 적재·리허설 성공 후 `DatabaseDeletionProtectionEnabled=true`로
-   갱신하고, 최종 철거 전에는 다시 `false`로 변경한다.
+6. 초기 생성·데이터 적재·리허설 성공 후 `DatabaseDeletionProtectionEnabled=true`,
+   `AlbDeletionProtectionEnabled=true`로 갱신하고, 최종 철거 전에는 다시
+   `false`로 변경한다.
 
 ## 검증 명령
 
