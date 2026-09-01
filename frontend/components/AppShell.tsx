@@ -47,7 +47,7 @@ export function AppShell({ mode, title, children }: { mode: "customer" | "staff"
       </div>
       <header>
         <div><p className="app-kicker"><span>{mode === "customer" ? "CUSTOMER" : "STAFF"}</span> {mode === "customer" ? "금융생활 도움 서비스" : "보호업무 운영 채널"}</p><h1>{title}</h1><p className="app-subtitle">{mode === "customer" ? "평소와 달라진 금융생활을 쉬운 말로 확인합니다." : "고객 응답과 승인된 근거를 바탕으로 사람이 최종 결정합니다."}</p></div>
-        {mode === "customer" ? <div className="customer-header-actions"><MemberSessionStatus /><AccessibilityControls /></div> : <div className="service-status"><i /><span><small>안전 운영</small><strong>검증 데이터 연결</strong></span></div>}
+        {mode === "customer" ? <div className="customer-header-actions"><MemberSessionStatus /><AccessibilityControls /></div> : <div className="customer-header-actions"><MemberSessionStatus /><div className="service-status"><i /><span><small>안전 운영</small><strong>검증 데이터 연결</strong></span></div></div>}
       </header>
       {mode === "staff" && <div className="channel-switch" aria-label="화면 전환"><Link href="/demo">고객 안내</Link><Link className="active" href="/staff/cases">행원 업무</Link></div>}
       {children}

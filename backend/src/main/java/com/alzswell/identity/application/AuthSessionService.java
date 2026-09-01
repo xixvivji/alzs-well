@@ -82,7 +82,7 @@ public class AuthSessionService {
         }
         IdentityProviderPort.AuthenticatedPrincipal principal;
         try {
-            if (publicSyntheticMembersOnly && !isPublicSyntheticMember(normalizedLoginId)) {
+            if (publicSyntheticMembersOnly && !isAllowedPublicSyntheticPrincipal(normalizedLoginId)) {
                 throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
             }
             principal = identityProvider.authenticate(normalizedLoginId, password);
@@ -99,14 +99,19 @@ public class AuthSessionService {
         return pair;
     }
 
-    private boolean isPublicSyntheticMember(String loginId) {
-        if (!loginId.matches("^demo[0-9]{3}$")) return false;
+    private boolean isAllowedPublicSyntheticPrincipal(String loginId) {
+        String requiredRole = loginId.matches("^demo[0-9]{3}$") ? "CUSTOMER"
+                : loginId.matches("^staff[0-9]{3}$") ? "PROTECTION_STAFF"
+                : loginId.matches("^admin[0-9]{3}$") ? "DETECTION_ADMIN" : null;
+        if (requiredRole == null) return false;
         Integer matches = jdbcTemplate.queryForObject("""
                 select count(*) from auth_principal p
                 join synthetic_fixture_customer f on f.customer_id=p.customer_id
                 join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                join auth_principal_role pr on pr.principal_id=p.principal_id
                 where p.login_id=? and p.status='ACTIVE' and r.profile='PUBLIC' and r.status='SUCCEEDED'
-                """, Integer.class, loginId);
+                  and pr.role_code=?
+                """, Integer.class, loginId, requiredRole);
         return matches != null && matches == 1;
     }
 

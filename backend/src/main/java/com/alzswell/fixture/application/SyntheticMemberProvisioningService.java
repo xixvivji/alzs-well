@@ -37,13 +37,14 @@ public class SyntheticMemberProvisioningService {
         jdbc.update("""
                 update auth_refresh_token set revoked_at=? where revoked_at is null and session_id in (
                     select s.session_id from auth_session s join auth_principal p on p.principal_id=s.principal_id
-                    where p.login_id ~ '^demo[0-9]{3}$'
+                    where p.login_id ~ '^(demo[0-9]{3}|staff[0-9]{3}|admin[0-9]{3})$'
                 )
                 """, now);
         jdbc.update("""
                 update auth_session set revoked_at=?,revoke_reason='MEMBER_REPROVISIONED'
                 where revoked_at is null and principal_id in (
-                    select principal_id from auth_principal where login_id ~ '^demo[0-9]{3}$'
+                    select principal_id from auth_principal
+                    where login_id ~ '^(demo[0-9]{3}|staff[0-9]{3}|admin[0-9]{3})$'
                 )
                 """, now);
         int principals = jdbc.update("""
@@ -80,6 +81,8 @@ public class SyntheticMemberProvisioningService {
                 where f.run_id=?
                 on conflict do nothing
                 """, runId);
+        principals += provisionOperationalPrincipals(runId, passwordHash, now);
+        roles += provisionOperationalRoles(runId);
         provisionFinancialProducts(runId);
         Integer active = jdbc.queryForObject("""
                 select count(*) from auth_principal p
@@ -89,7 +92,72 @@ public class SyntheticMemberProvisioningService {
         if (active == null || active != 300) {
             throw new IllegalStateException("공개 합성 회원 300명 프로비저닝 결과가 계약과 다릅니다.");
         }
+        verifyOperationalPrincipals(runId);
         return new ProvisioningResult(runId, active, principals, roles);
+    }
+
+    private int provisionOperationalPrincipals(UUID runId, String passwordHash, OffsetDateTime now) {
+        int changed = 0;
+        for (int index = 1; index <= 5; index++) {
+            changed += upsertOperationalPrincipal(runId, passwordHash, now, "staff%03d".formatted(index),
+                    "합성 보호업무 행원 %02d".formatted(index), index, "staff");
+        }
+        for (int index = 1; index <= 2; index++) {
+            changed += upsertOperationalPrincipal(runId, passwordHash, now, "admin%03d".formatted(index),
+                    "합성 탐지관리자 %02d".formatted(index), index, "admin");
+        }
+        return changed;
+    }
+
+    private int upsertOperationalPrincipal(UUID runId, String passwordHash, OffsetDateTime now,
+            String loginId, String displayName, int customerIndex, String kind) {
+        return jdbc.update("""
+                insert into auth_principal(
+                    principal_id,login_id,customer_id,display_name,password_hash,status,created_at,updated_at
+                )
+                select ?,?,f.customer_id,?,?,'ACTIVE',?,?
+                  from synthetic_fixture_customer f where f.run_id=? and f.customer_index=?
+                on conflict(login_id) do update set customer_id=excluded.customer_id,
+                    display_name=excluded.display_name,password_hash=excluded.password_hash,
+                    status='ACTIVE',updated_at=excluded.updated_at
+                """, operationalPrincipalId(runId, kind, customerIndex), loginId, displayName,
+                passwordHash, now, now, runId, customerIndex);
+    }
+
+    private int provisionOperationalRoles(UUID runId) {
+        int roles = jdbc.update("""
+                insert into auth_principal_role(principal_id,role_code)
+                select p.principal_id,'PROTECTION_STAFF' from auth_principal p
+                join synthetic_fixture_customer f on f.customer_id=p.customer_id
+                where f.run_id=? and p.login_id ~ '^staff[0-9]{3}$'
+                on conflict do nothing
+                """, runId);
+        roles += jdbc.update("""
+                insert into auth_principal_role(principal_id,role_code)
+                select p.principal_id,'DETECTION_ADMIN' from auth_principal p
+                join synthetic_fixture_customer f on f.customer_id=p.customer_id
+                where f.run_id=? and p.login_id ~ '^admin[0-9]{3}$'
+                on conflict do nothing
+                """, runId);
+        return roles;
+    }
+
+    private void verifyOperationalPrincipals(UUID runId) {
+        Integer staff = jdbc.queryForObject("""
+                select count(*) from auth_principal p join auth_principal_role pr on pr.principal_id=p.principal_id
+                join synthetic_fixture_customer f on f.customer_id=p.customer_id
+                where f.run_id=? and p.status='ACTIVE' and p.login_id ~ '^staff[0-9]{3}$'
+                  and pr.role_code='PROTECTION_STAFF'
+                """, Integer.class, runId);
+        Integer admins = jdbc.queryForObject("""
+                select count(*) from auth_principal p join auth_principal_role pr on pr.principal_id=p.principal_id
+                join synthetic_fixture_customer f on f.customer_id=p.customer_id
+                where f.run_id=? and p.status='ACTIVE' and p.login_id ~ '^admin[0-9]{3}$'
+                  and pr.role_code='DETECTION_ADMIN'
+                """, Integer.class, runId);
+        if (staff == null || staff != 5 || admins == null || admins != 2) {
+            throw new IllegalStateException("공개 합성 직원·관리자 역할 프로비저닝 결과가 계약과 다릅니다.");
+        }
     }
 
     private void provisionFinancialProducts(UUID runId) {
@@ -464,6 +532,10 @@ public class SyntheticMemberProvisioningService {
 
     private UUID principalId(UUID runId, int index) {
         return UUID.nameUUIDFromBytes((runId + ":member:" + index).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private UUID operationalPrincipalId(UUID runId, String kind, int index) {
+        return UUID.nameUUIDFromBytes((runId + ":" + kind + ":" + index).getBytes(StandardCharsets.UTF_8));
     }
 
     private record RunContract(String profile, String status, int expectedCustomerCount) {}

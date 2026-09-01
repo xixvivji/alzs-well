@@ -21,7 +21,7 @@ const notices = [
 
 export default function Home() {
   return <main className="bank-home">
-    <div className="bank-utility"><div><span>개인</span><span>기업</span></div><div><Link href="/staff/cases">직원업무</Link><a href="#notices">새소식</a><a href="#support">고객센터</a><button type="button" aria-label="화면 언어 선택">한국어⌄</button></div></div>
+    <div className="bank-utility"><div><span>개인</span><span>기업</span></div><div><Link href="/staff/login">직원업무</Link><a href="#notices">새소식</a><a href="#support">고객센터</a><button type="button" aria-label="화면 언어 선택">한국어⌄</button></div></div>
     <header className="bank-header">
       <Link className="bank-brand" href="/" aria-label="ALZ's well 홈"><span aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
       <nav aria-label="주요 금융 메뉴">{primaryNavigation.map((item) => <a href={item === "생활금융" ? "#life" : item === "고객센터" ? "#support" : "#products"} key={item}>{item}</a>)}</nav>

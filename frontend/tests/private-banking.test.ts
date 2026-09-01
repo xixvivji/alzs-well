@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { evaluateTransfer, loadBankingOverview, loadTransferWorkspace } from "../lib/private-banking";
 import { loadLifeServices, searchKnowledge } from "../lib/private-life-services";
+import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
 
 const session: PrivateCustomerSession = { customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"], permissions: [] };
@@ -58,4 +59,18 @@ test("생활금융 화면은 의향·알림·연결·보호·근거·세션 API�
   assert.equal(hits[0]?.passage.heading, "확인");
   assert.equal(paths.length, 13);
   assert.ok(paths.filter((path) => path.includes("customer-1")).length >= 6);
+});
+
+test("보호업무와 관리자는 서로 다른 Bearer 역할의 운영 조회 API만 사용한다", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input) => { paths.push(String(input)); return response({ items: [] }); });
+  const staff = { ...session, roles: ["PROTECTION_STAFF"] };
+  const admin = { ...session, roles: ["DETECTION_ADMIN"] };
+  await loadStaffOperations(staff);
+  await loadAdminOperations(admin);
+  assert.ok(paths.includes("/api/v1/staff/cases?limit=50"));
+  assert.ok(paths.includes("/api/v1/admin/rules"));
+  assert.ok(paths.includes("/api/v1/audit/events?limit=25"));
+  await assert.rejects(() => loadAdminOperations(staff), /역할/);
+  await assert.rejects(() => loadStaffOperations(admin), /역할/);
 });

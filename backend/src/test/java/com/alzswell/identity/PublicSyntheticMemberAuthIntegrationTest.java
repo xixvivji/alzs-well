@@ -92,4 +92,33 @@ class PublicSyntheticMemberAuthIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"));
     }
+
+    @Test
+    void separatesPublicCustomerStaffAndAdminRoles() throws Exception {
+        String staffAccess = login("staff001");
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + staffAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roles[0]").value("PROTECTION_STAFF"));
+        mockMvc.perform(get("/api/v1/admin/rules").header("Authorization", "Bearer " + staffAccess))
+                .andExpect(status().isForbidden());
+
+        String adminAccess = login("admin001");
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + adminAccess))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roles[0]").value("DETECTION_ADMIN"));
+        mockMvc.perform(get("/api/v1/admin/rules").header("Authorization", "Bearer " + adminAccess))
+                .andExpect(status().isOk());
+
+        String customerAccess = login("demo001");
+        mockMvc.perform(get("/api/v1/admin/rules").header("Authorization", "Bearer " + customerAccess))
+                .andExpect(status().isForbidden());
+    }
+
+    private String login(String loginId) throws Exception {
+        JsonNode response = objectMapper.readTree(mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"loginId\":\"" + loginId + "\",\"password\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        return response.at("/data/accessToken").asText();
+    }
 }
