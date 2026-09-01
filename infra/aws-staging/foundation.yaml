@@ -247,7 +247,7 @@ Resources:
 
   AppRepository:
     Type: AWS::ECR::Repository
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       RepositoryName: alzs-well/backend
@@ -258,7 +258,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AiRepository:
     Type: AWS::ECR::Repository
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       RepositoryName: alzs-well/ai-service
@@ -270,7 +270,7 @@ Resources:
 
   ProxySharedSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/proxy-shared-secret"
@@ -278,7 +278,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   StaffBootstrapSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/staff-bootstrap-token"
@@ -286,7 +286,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   InternalAiSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/internal-ai-token"
@@ -294,7 +294,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AppTlsSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/tls-app"
@@ -306,7 +306,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AiTlsSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/tls-ai"
@@ -314,7 +314,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AppDatabaseSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/db-app"
@@ -326,7 +326,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   MigrationDatabaseSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/db-migration"
@@ -338,7 +338,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AiIngestionDatabaseSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/db-ai-ingestion"
@@ -350,7 +350,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AiRuntimeDatabaseSecret:
     Type: AWS::SecretsManager::Secret
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub "/${EnvironmentName}/db-ai-runtime"
@@ -404,7 +404,7 @@ Resources:
 
   AppLogGroup:
     Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub "/${EnvironmentName}/app"
@@ -412,7 +412,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   AiLogGroup:
     Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub "/${EnvironmentName}/ai"
