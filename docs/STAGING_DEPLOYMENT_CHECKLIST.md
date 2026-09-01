@@ -12,7 +12,7 @@
 | 영역 | 상태 | 다음 게이트 |
 |---|---|---|
 | 코드·CI | 완료 | `main`·`develop` 동일 트리, CI·CodeQL·Gitleaks 통과 |
-| Vercel 프로젝트 | 생성 | `alzs-well` 프로젝트 연결, GitHub App 저장소 권한 필요 |
+| Vercel 프로젝트 | 고객용 생성 | `alzs-well` 고객용과 별도 직원용 프로젝트를 같은 `frontend` 빌드로 배포 |
 | Vercel 환경변수 | 미등록 | CloudFront 기본 HTTPS origin과 공유 비밀값 확정 후 Preview·Production 분리 등록 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
 | AWS 배포 주체 | 사전검증 완료 | 일회용 비루트 bootstrap으로 deployer AssumeRole 확인 후 사용자·키 즉시 삭제 |
@@ -55,7 +55,7 @@
 
 - [ ] Vercel GitHub App에 `xixvivji/alzs-well` 저장소 권한을 부여한다.
 - [ ] Root Directory를 `frontend`로 설정한다.
-- [ ] 프론트 주소는 Vercel 기본 `*.vercel.app` 도메인을 사용한다.
+- [ ] 고객·직원 프론트는 서로 다른 Vercel 기본 `*.vercel.app` 도메인을 사용한다.
 - [ ] Preview·Production 서버 환경변수를 분리하고 `NEXT_PUBLIC_` 비밀값을 금지한다.
 - [ ] WAF rate rule, Bot Protection, Preview Deployment Protection을 적용한다.
 - [ ] Vercel BFF에서만 AWS HTTPS origin을 호출하는지 확인한다.
