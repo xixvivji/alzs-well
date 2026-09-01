@@ -12,7 +12,7 @@ HTTPS 도메인을 통해 AWS API를 호출한다. 실제 생성 전까지는 �
 - AWS WAF managed rule, IP rate rule
 - private 업무 EC2 1대·AI EC2 1대, SSM 전용 접근, IMDSv2
 - 단일 NAT Gateway 1개와 무료 S3 gateway endpoint
-- Single-AZ PostgreSQL 17 RDS, TLS 강제, `alias/aws/rds` 암호화, 일일 자동 백업 1일 보존, 삭제 방지
+- Single-AZ PostgreSQL 17 RDS, TLS 강제, `alias/aws/rds` 암호화, 일일 자동 백업 1일 보존
 - immutable ECR repository 2개·용도별 Secrets Manager 비밀
 
 NAT Gateway, ALB, WAF, EC2 2대, RDS, EBS, Secrets Manager는 스택 실행 즉시
@@ -28,6 +28,8 @@ NAT Gateway, ALB, WAF, EC2 2대, RDS, EBS, Secrets Manager는 스택 실행 즉�
 3. `cfn-lint` 및 AWS `validate-template`을 통과한다.
 4. change set은 생성만 하고 자동 실행하지 않는다.
 5. 생성·교체·삭제 리소스와 월 예상 비용을 검토한 후에만 실행한다.
+6. 초기 생성·데이터 적재·리허설 성공 후 `DatabaseDeletionProtectionEnabled=true`로
+   갱신하고, 최종 철거 전에는 다시 `false`로 변경한다.
 
 ## 검증 명령
 

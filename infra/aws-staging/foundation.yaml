@@ -31,9 +31,15 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: Temporarily allow one-time DB role provisioning and AI ingestion secrets
+  DatabaseDeletionProtectionEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable only after initial provisioning and rehearsal verification
 
 Conditions:
   EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
+  ProtectDatabase: !Equals [!Ref DatabaseDeletionProtectionEnabled, "true"]
 
 Mappings:
   Network:
@@ -388,7 +394,7 @@ Resources:
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
   Database:
     Type: AWS::RDS::DBInstance
-    DeletionPolicy: Snapshot
+    DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Snapshot
     Properties:
       DBInstanceIdentifier: !Sub "${EnvironmentName}-postgres"
@@ -410,7 +416,7 @@ Resources:
       MultiAZ: false
       BackupRetentionPeriod: 1
       CopyTagsToSnapshot: true
-      DeletionProtection: true
+      DeletionProtection: !If [ProtectDatabase, true, false]
       AutoMinorVersionUpgrade: true
       EnablePerformanceInsights: false
       Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
