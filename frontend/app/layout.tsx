@@ -17,6 +17,7 @@ import "./operations-portal.css";
 import "./scenario-dataset.css";
 import "./customer-protection-center.css";
 import "./member-login.css";
+import "./help-entry.css";
 
 function metadataOrigin(): URL {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;

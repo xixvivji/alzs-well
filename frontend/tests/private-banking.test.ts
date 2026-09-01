@@ -4,6 +4,7 @@ import { evaluateTransfer, loadBankingOverview, loadRecurringInsight, loadStatem
 import { loadLifeServices, searchKnowledge } from "../lib/private-life-services";
 import { loadSafetyCenter, respondToSafetyAlert } from "../lib/private-safety-center";
 import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
+import { loadPrivateHelpOverview } from "../lib/private-help";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
 
 const session: PrivateCustomerSession = { customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"], permissions: [] };
@@ -24,6 +25,21 @@ test("회원 통합금융 화면은 8개 운영 조회 API를 HttpOnly BFF로 �
   assert.equal(overview.summary.netAssets, 80);
   assert.equal(paths.length, 8);
   assert.ok(paths.every((path) => path.startsWith("/api/v1/")));
+});
+
+test("로그인 도움 허브는 같은 회원의 의향·알림·기준선·신호·확인 API를 연결한다", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const path = String(input); paths.push(path);
+    if (path.endsWith("/continuity-preparation")) return response({ readiness: "READY", latestApproved: null, legalDisclaimerRequired: true });
+    return response({ items: [] });
+  });
+  const overview = await loadPrivateHelpOverview(session);
+  assert.equal(overview.preparation.readiness, "READY");
+  assert.equal(paths.length, 6);
+  assert.ok(paths.every((path) => path.includes("customer-1")));
+  assert.ok(paths.some((path) => path.endsWith("/baselines")));
+  assert.ok(paths.some((path) => path.endsWith("/alerts")));
 });
 
 test("이체 화면은 회원별 계좌·수취인·한도·양식과 실행 없는 사전검증만 사용한다", async (t) => {

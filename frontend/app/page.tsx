@@ -1,12 +1,19 @@
 import Link from "next/link";
 
-const primaryNavigation = ["조회", "이체", "금융상품", "자산관리", "생활금융", "고객센터"];
+const primaryNavigation = [
+  { label: "조회", href: "/login?next=/banking/accounts" },
+  { label: "이체 사전확인", href: "/login?next=/banking/transfer" },
+  { label: "금융상품", href: "/login?next=/banking/products" },
+  { label: "자산관리", href: "/login?next=/banking" },
+  { label: "생활금융", href: "/login?next=/banking/life" },
+  { label: "고객센터", href: "#support" },
+];
 const quickServices = [
-  { icon: "₩", title: "계좌조회", description: "내 계좌와 잔액을 한눈에", href: "/login" },
-  { icon: "↗", title: "이체", description: "안전하고 간편하게 보내기", href: "/login" },
-  { icon: "▤", title: "거래내역", description: "입출금 내역을 빠르게 확인", href: "/login" },
-  { icon: "◇", title: "금융상품", description: "예금·대출·투자 상품 찾기", href: "#products" },
-  { icon: "?", title: "금융생활 도움받기", description: "큰 글씨와 쉬운 말로 확인", href: "/demo", featured: true },
+  { icon: "₩", title: "계좌조회", description: "내 계좌와 잔액을 한눈에", href: "/login?next=/banking/accounts" },
+  { icon: "↗", title: "이체 사전확인", description: "실행 전 한도와 조건 확인", href: "/login?next=/banking/transfer" },
+  { icon: "▤", title: "거래내역", description: "입출금 내역을 빠르게 확인", href: "/login?next=/banking/accounts" },
+  { icon: "◇", title: "금융상품", description: "예금·대출·투자 상품 확인", href: "/login?next=/banking/products" },
+  { icon: "?", title: "금융생활 도움받기", description: "로그인 상태에 맞춰 도움 연결", href: "/help", featured: true },
 ];
 const productCards = [
   { eyebrow: "목돈 마련", title: "차곡차곡 안심적금", description: "생활 계획에 맞춰 부담 없이 시작하는 저축", rate: "최고 연 4.10%", tone: "mint" },
@@ -24,8 +31,8 @@ export default function Home() {
     <div className="bank-utility"><div><span>개인</span><span>기업</span></div><div><Link href="/staff/login">직원업무</Link><a href="#notices">새소식</a><a href="#support">고객센터</a><button type="button" aria-label="화면 언어 선택">한국어⌄</button></div></div>
     <header className="bank-header">
       <Link className="bank-brand" href="/" aria-label="ALZ's well 홈"><span aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
-      <nav aria-label="주요 금융 메뉴">{primaryNavigation.map((item) => <a href={item === "생활금융" ? "#life" : item === "고객센터" ? "#support" : "#products"} key={item}>{item}</a>)}</nav>
-      <div className="bank-header-actions"><button type="button" aria-label="전체 메뉴">☰</button><Link href="/demo">도움받기</Link></div>
+      <nav aria-label="주요 금융 메뉴">{primaryNavigation.map((item) => <Link href={item.href} key={item.label}>{item.label}</Link>)}</nav>
+      <div className="bank-header-actions"><Link className="header-login" href="/login">로그인</Link><Link className="header-help" href="/help">도움받기</Link></div>
     </header>
 
     <section className="bank-hero">
@@ -36,9 +43,9 @@ export default function Home() {
 
     <section className="bank-quick" id="quick" aria-labelledby="quick-title"><div className="bank-section-heading"><div><p>QUICK SERVICE</p><h2 id="quick-title">자주 찾는 서비스</h2></div><span>필요한 업무를 바로 시작하세요.</span></div><div className="bank-quick-grid">{quickServices.map((service) => <Link className={service.featured ? "featured" : ""} href={service.href} key={service.title}><span aria-hidden="true">{service.icon}</span><div><strong>{service.title}</strong><small>{service.description}</small></div>{service.featured && <b>추천</b>}</Link>)}</div></section>
 
-    <section className="bank-life" id="life"><div className="bank-life-copy"><p>생활금융 안심 서비스</p><h2>금융생활이 복잡하게 느껴질 때,<br/>쉽게 설명해 드릴게요.</h2><span>평소와 달라진 금융생활을 쉬운 말로 확인하고, 잘 모르겠을 때는 필요한 도움을 받을 수 있습니다.</span><ul><li>큰 글씨와 선명한 화면</li><li>평소와 달라진 점 설명</li><li>고객에게 먼저 확인</li></ul><Link href="/demo">금융생활 도움받기 <b aria-hidden="true">→</b></Link></div><div className="bank-life-preview" aria-label="금융생활 도움 화면 미리보기"><div><small>오늘의 금융생활</small><strong>확인할 변화가 1개 있어요</strong></div><article><span>!</span><p><small>쉬운 설명</small><strong>최근 송금 결과를 다시 확인한 횟수가 늘었어요.</strong></p></article><div className="bank-life-actions"><span>알고 있어요</span><span>잘 모르겠어요</span></div><p>질병이나 사기로 단정하지 않고 고객에게 먼저 확인합니다.</p></div></section>
+    <section className="bank-life" id="life"><div className="bank-life-copy"><p>생활금융 안심 서비스</p><h2>금융생활이 복잡하게 느껴질 때,<br/>쉽게 설명해 드릴게요.</h2><span>평소와 달라진 금융생활을 쉬운 말로 확인하고, 잘 모르겠을 때는 필요한 도움을 받을 수 있습니다.</span><ul><li>큰 글씨와 선명한 화면</li><li>평소와 달라진 점 설명</li><li>고객에게 먼저 확인</li></ul><Link href="/help">금융생활 도움받기 <b aria-hidden="true">→</b></Link></div><div className="bank-life-preview" aria-label="금융생활 도움 화면 미리보기"><div><small>오늘의 금융생활</small><strong>확인할 변화가 1개 있어요</strong></div><article><span>!</span><p><small>쉬운 설명</small><strong>최근 송금 결과를 다시 확인한 횟수가 늘었어요.</strong></p></article><div className="bank-life-actions"><span>알고 있어요</span><span>잘 모르겠어요</span></div><p>질병이나 사기로 단정하지 않고 고객에게 먼저 확인합니다.</p></div></section>
 
-    <section className="bank-products" id="products"><div className="bank-section-heading"><div><p>FINANCIAL PRODUCTS</p><h2>나에게 맞는 금융상품</h2></div><a href="#support">상품 전체보기 →</a></div><div className="bank-product-grid">{productCards.map((product) => <article className={product.tone} key={product.title}><p>{product.eyebrow}</p><h3>{product.title}</h3><span>{product.description}</span><strong>{product.rate}</strong><button type="button" aria-label={`${product.title} 상세보기`}>＋</button></article>)}</div></section>
+    <section className="bank-products" id="products"><div className="bank-section-heading"><div><p>FINANCIAL PRODUCTS</p><h2>나에게 맞는 금융상품</h2></div><Link href="/login?next=/banking/products">상품 전체보기 →</Link></div><div className="bank-product-grid">{productCards.map((product) => <article className={product.tone} key={product.title}><p>{product.eyebrow}</p><h3>{product.title}</h3><span>{product.description}</span><strong>{product.rate}</strong><Link href="/login?next=/banking/products" aria-label={`${product.title} 상세보기`}>＋</Link></article>)}</div></section>
 
     <section className="bank-info" id="notices"><div><div className="bank-section-heading compact"><h2>새소식</h2><a href="#notices">더보기 ＋</a></div><ul>{notices.map(([type,title,date]) => <li key={title}><span>{type}</span><strong>{title}</strong><time>{date}</time></li>)}</ul></div><aside id="support"><p>고객센터</p><strong>1588-0000</strong><span>평일 09:00~18:00</span><div><a href="#support">자주 묻는 질문</a><a href="#support">금융사고 신고</a><a href="#support">이용안내</a></div></aside></section>
 

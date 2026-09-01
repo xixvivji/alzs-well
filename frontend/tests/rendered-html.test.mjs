@@ -10,7 +10,11 @@ test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링�
   assert.match(html, /2026 금융 AI Challenge 참가 프로젝트/);
   assert.match(html, /자주 찾는 서비스/);
   assert.match(html, /금융생활 도움받기/);
-  assert.match(html, /href="\/demo"/);
+  assert.match(html, /href="\/login\?next=\/banking\/accounts"/);
+  assert.match(html, /href="\/login\?next=\/banking\/transfer"/);
+  assert.match(html, /이체 사전확인/);
+  assert.match(html, /href="\/help"/);
+  assert.match(html, /href="\/help"/);
   assert.match(html, /href="\/staff\/login"/);
   assert.match(html, /합성데이터/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Building your site/i);
@@ -28,7 +32,7 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   assert.doesNotMatch(routesManifest, /unsafe-eval/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
-  for (const route of ["/api/member-auth/login/route", "/api/member-auth/refresh/route", "/api/member-auth/logout/route", "/login/page", "/staff/login/page"]) {
+  for (const route of ["/api/member-auth/login/route", "/api/member-auth/refresh/route", "/api/member-auth/logout/route", "/login/page", "/help/page", "/banking/help/page", "/staff/login/page"]) {
     assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
   }
   for (const route of ["/demo/protection/page", "/demo/finance/page", "/demo/products/page", "/demo/settings/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
@@ -65,7 +69,8 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   assert.match(settings, /고객 보호 설정/);
   assert.match(settings, /본인 인증 후 관리합니다/);
   assert.match(settings, /href="\/demo\/settings"/);
-  assert.match(services, /필요한 금융생활을 한곳에서/);
+  assert.match(services, /백엔드 서비스 연결 현황/);
+  assert.match(services, /실제 금융업무 메뉴가 아닙니다/);
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);
   assert.match(operations, /고객의 확인 요청을/);

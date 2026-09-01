@@ -14,7 +14,7 @@ const customerLinks = [
   ["/demo/alerts", "확인할 알림", "05"],
   ["/demo/products", "금융상품·자산", "06"],
   ["/demo/settings", "내 정보·도움 설정", "07"],
-  ["/demo/services", "전체 금융서비스", "08"],
+  ["/demo/services", "서비스 연결 현황", "08"],
 ] as const;
 const staffLinks = [
   ["/staff/cases", "보호업무 사건", "01"],
