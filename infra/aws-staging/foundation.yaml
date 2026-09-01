@@ -552,7 +552,7 @@ Resources:
               - !Ref AiRuntimeDatabaseSecret
           - Effect: Allow
             Action: "secretsmanager:PutSecretValue"
-            Resource: [!Ref AppTlsSecret, !Ref AiTlsSecret]
+            Resource: [!Ref AppTlsSecret, !Ref AiTlsSecret, !Ref ProxySharedSecret]
   AiIngestionPolicy:
     Type: AWS::IAM::Policy
     Condition: EnableDatabaseBootstrap
