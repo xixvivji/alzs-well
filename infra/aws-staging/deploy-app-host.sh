@@ -31,6 +31,7 @@ internal_token="$(secret_value /alzs-well-staging/internal-ai-token)"
 [[ $proxy_secret =~ ^[0-9a-f]{64}$ ]]
 printf '%s' "$tls_json" | jq -er '.clientKeystoreBase64' | base64 -d >"$certificate_root/ai-client.p12"
 printf '%s' "$tls_json" | jq -er '.truststoreBase64' | base64 -d >"$certificate_root/ai-truststore.p12"
+chown 10001:10001 "$certificate_root/ai-client.p12" "$certificate_root/ai-truststore.p12"
 chmod 0400 "$certificate_root/ai-client.p12" "$certificate_root/ai-truststore.p12"
 
 cat >"$runtime_root/.env.aws-app" <<EOF
