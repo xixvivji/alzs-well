@@ -11,7 +11,8 @@
     "start": "next start",
     "catalog:generate": "node scripts/generate-api-catalog.mjs",
     "catalog:check": "node scripts/generate-api-catalog.mjs --check",
-    "test": "npm run catalog:check && npm run build && node --test tests/rendered-html.test.mjs && node --import tsx --test tests/api-client.test.ts tests/api-proxy.test.ts tests/api-operation-catalog.test.ts tests/demo-capability-cookie.test.ts tests/member-auth-cookie.test.ts tests/member-auth-routes.test.ts tests/demo-rehearsal.test.ts tests/demo-session.test.ts tests/demo-workflow.test.ts tests/staff-case-workflow.test.ts tests/ai-financial-assistance.test.ts tests/extended-api-workflows.test.ts",
+    "catalog:ui-coverage": "node scripts/check-api-ui-coverage.mjs",
+    "test": "npm run catalog:check && npm run build && node --test tests/rendered-html.test.mjs && node --import tsx --test tests/api-client.test.ts tests/api-proxy.test.ts tests/api-operation-catalog.test.ts tests/demo-capability-cookie.test.ts tests/member-auth-cookie.test.ts tests/member-auth-routes.test.ts tests/demo-rehearsal.test.ts tests/demo-session.test.ts tests/demo-workflow.test.ts tests/staff-case-workflow.test.ts tests/ai-financial-assistance.test.ts tests/extended-api-workflows.test.ts tests/private-banking.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit"
   },

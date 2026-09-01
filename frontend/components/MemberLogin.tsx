@@ -13,14 +13,14 @@ export function MemberLogin() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void restorePrivateCustomerSession().then(() => router.replace("/demo/products")).catch(() => undefined);
+    void restorePrivateCustomerSession().then(() => router.replace("/banking")).catch(() => undefined);
   }, [router]);
 
   async function login() {
     setBusy(true); setError("");
     try {
       await loginPrivateCustomer(loginId.trim(), password);
-      router.replace("/demo/products");
+      router.replace("/banking");
       router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "로그인하지 못했습니다.");
