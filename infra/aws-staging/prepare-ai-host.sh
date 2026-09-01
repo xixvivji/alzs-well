@@ -49,6 +49,9 @@ python3 "$repository_root/infra/aws-staging/download-approved-model.py" \
   --catalog "$repository_root/ai-service/evaluation/model-artifacts-v1.json" \
   --model snowflake-arctic-embed-l-v2.0-ko \
   --destination "$model_root"
+chown -R 10001:10001 "$model_root"
+find "$model_root" -type d -exec chmod 0500 {} +
+find "$model_root" -type f -exec chmod 0400 {} +
 
 cat >"$runtime_root/.env.aws-ai" <<EOF
 AI_IMAGE=982689564927.dkr.ecr.ap-northeast-2.amazonaws.com/alzs-well/ai-service@sha256:256be42ce56a874347d72799c722b83147dbef6407843b631823e3ccd0f3af4c
