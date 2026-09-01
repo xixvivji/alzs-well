@@ -11,7 +11,7 @@
 
 | 영역 | 상태 | 다음 게이트 |
 |---|---|---|
-| 코드·CI | 완료 | PR #130 head `f9019c0`, CI·CodeQL·Gitleaks 전체 통과. 보호 규칙상 독립 승인 전 병합 차단 |
+| 코드·CI | 완료 | PR #130 UI head `1e666aa`, CI·CodeQL·Gitleaks 전체 통과. 보호 규칙상 독립 승인 전 병합 차단 |
 | Vercel 프로젝트 | 운영 배포 | 고객 `https://alzs-well.vercel.app`, 직원 `https://alzs-well-staff.vercel.app` |
 | Vercel 환경변수 | Production 완료 | AWS origin은 Config, 공유 비밀·직원 bootstrap 토큰은 Secret. 브라우저 공개 변수에 비밀값 없음 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
@@ -77,7 +77,11 @@
 - App EC2: `i-0a156c169fe294152`, private `10.42.10.110`, `t3.small`
 - AI EC2: `i-0663b523093db2d19`, private `10.42.11.12`, `m7i-flex.large`
 - RDS: `alzs-well-staging-postgres`, PostgreSQL 17, private, 삭제 방지 활성화
-- Vercel frontend artifact: `9d458f0560734ecfa469b92cd5b781ec23550a05`
+- Vercel frontend UI artifact: `1e666aa61dcd123419cd35598cf71a3c684d8646`
+- 고객 Vercel production: `dpl_3b8VH4Up1siPHDMjUb2GF8bbyuhA` → `https://alzs-well.vercel.app`
+- 직원 Vercel production: `dpl_7psw8Qq126NCrVhXW2k8ULvHYbRz` → `https://alzs-well-staff.vercel.app`
+- 운영 UI 검증: 일반 금융 홈 → 금융생활 도움받기 진입, 고객 화면 직원 전환 숨김, 시나리오·합성데이터 기본 접힘 확인
+- 운영 BFF 검증: Vercel→CloudFront→AWS 세션 생성·`FIN_MGMT_AB_001` 적재 성공 후 검증 세션 즉시 폐기
 - Spring·AI image 기준 코드: `1c14ab071c35b41054e16c213d4074a2d2946e98` (`backend-1c14ab0`, `ai-1c14ab0`)
 - 운영 리허설 결과: 정상 `CLOSED_NORMAL`, 주의 `GUIDANCE_PLAN_APPROVED`+citation 1, 오탐 `CLOSED_FALSE_POSITIVE`
 - AI 장애 리허설 결과: core `READY`, AI `DOWN`, 주의 `DETERMINISTIC_TEMPLATE`·citation 0·`fallbackUsed=true`; 복구 후 RAG citation 1
