@@ -262,13 +262,23 @@
         "logs:CreateLogGroup",
         "logs:DeleteLogGroup",
         "logs:DeleteRetentionPolicy",
-        "logs:DescribeLogGroups",
         "logs:ListTagsForResource",
         "logs:PutRetentionPolicy",
         "logs:TagResource",
         "logs:UntagResource"
       ],
       "Resource": "arn:aws:logs:ap-northeast-2:__AWS_ACCOUNT_ID__:log-group:/alzs-well-staging/*"
+    },
+    {
+      "Sid": "DescribeStagingLogGroups",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
     },
     {
       "Sid": "PublicAmiParameter",

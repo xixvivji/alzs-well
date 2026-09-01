@@ -59,6 +59,8 @@ RDS 파라미터 그룹 생성 시 CloudFormation이 엔진 기본값을 비교�
 `DescribeEngineDefaultParameters` 읽기 권한도 같은 서울 리전 조건 안에서 허용한다.
 ECR·배포 비밀·로그 그룹은 정상 스택 삭제 시 보존하지만 최초 생성 실패 롤백에서는
 자동 제거되도록 `RetainExceptOnCreate`를 사용한다.
+CloudWatch Logs의 `DescribeLogGroups`도 리소스 수준 권한을 지원하지 않으므로
+별도 읽기 문장에서 서울 리전 요청만 허용한다.
 AWS CLI `aws login`으로 생성된 루트 세션은 역할을 AssumeRole할 수 없으므로,
 Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다. 장기 access key를
 새로 발급해 우회하지 않는다.
