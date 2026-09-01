@@ -82,7 +82,7 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   }
 });
 
-test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 남는다", async () => {
+test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 제외한다", async () => {
   const [page, staffCaseDetail, staffCaseQueue, alertDetail, productCenter, customerAssets, customerCare, protectionCenter, scenarioData] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
@@ -94,8 +94,8 @@ test("제품 안전 경계와 대회 참여 기관 표기가 화면 소스에 �
     readFile(new URL("../components/CustomerProtectionCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../data/rehearsal-scenarios-v1.json", import.meta.url), "utf8"),
   ]);
-  for (const name of ["금융보안원", "금융위원회", "하나은행", "신한은행", "카카오뱅크", "KB증권", "생명보험협회"]) assert.match(page, new RegExp(name));
-  assert.match(page, /각 기관의 공식 서비스가 아닙니다/);
+  for (const name of ["금융보안원", "금융위원회", "하나은행", "신한은행", "카카오뱅크", "KB증권", "생명보험협회"]) assert.doesNotMatch(page, new RegExp(name));
+  assert.doesNotMatch(page, /각 기관의 공식 서비스가 아닙니다/);
   assert.match(staffCaseDetail, /AI는 검토 초안과 승인된 근거를 제시할 뿐/);
   assert.match(staffCaseDetail, /사람 검토 필수/);
   assert.match(staffCaseQueue, /먼저 확인할 사건부터/);
