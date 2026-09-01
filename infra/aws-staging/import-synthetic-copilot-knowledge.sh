@@ -22,8 +22,8 @@ role_added=false
 cleanup() {
   docker rm --force "$container_name" >/dev/null 2>&1 || true
   if [[ "$role_added" == true ]]; then
-    psql --set=ON_ERROR_STOP=1 --set=principal_id="$principal_id" \
-      -c "delete from auth_principal_role where principal_id=:'principal_id'::uuid and role_code='DETECTION_ADMIN'" \
+    psql --set=ON_ERROR_STOP=1 \
+      -c "delete from auth_principal_role where principal_id='${principal_id}'::uuid and role_code='DETECTION_ADMIN'" \
       >/dev/null 2>&1 || true
   fi
   rm -rf "$work_root"
@@ -46,8 +46,8 @@ export PGPASSWORD="$(jq -er '.password' <<<"$migration_json")"
 export PGSSLMODE=verify-full
 export PGSSLROOTCERT="$certificate_root/global-bundle.pem"
 
-existing_imports="$(psql -At --set=document_id="$document_id" --set=version_label="$version_label" \
-  -c "select count(*) from knowledge_ingestion_import where document_id=:'document_id' and version_label=:'version_label'")"
+existing_imports="$(psql -At \
+  -c "select count(*) from knowledge_ingestion_import where document_id='${document_id}' and version_label='${version_label}'")"
 if [[ "$existing_imports" == "1" ]]; then
   echo "synthetic copilot knowledge already imported"
   exit 0
@@ -57,24 +57,24 @@ if [[ "$existing_imports" != "0" ]]; then
   exit 1
 fi
 
-governance_count="$(psql -At --set=document_id="$document_id" --set=version_label="$version_label" \
-  -c "select count(*) from knowledge_document_governance where document_id=:'document_id' and version_label=:'version_label'")"
+governance_count="$(psql -At \
+  -c "select count(*) from knowledge_document_governance where document_id='${document_id}' and version_label='${version_label}'")"
 if [[ "$governance_count" != "0" ]]; then
   echo "partial knowledge governance state requires manual review" >&2
   exit 1
 fi
 
-run_count="$(psql -At --set=document_id="$document_id" --set=version_label="$version_label" -c "
+run_count="$(psql -At -c "
   select count(*) from ai_knowledge.ingestion_run
-  where document_id=:'document_id' and version_label=:'version_label' and status='SUCCEEDED'")"
+  where document_id='${document_id}' and version_label='${version_label}' and status='SUCCEEDED'")"
 if [[ "$run_count" != "1" ]]; then
   echo "exactly one successful synthetic ingestion run is required" >&2
   exit 1
 fi
 
-psql --set=ON_ERROR_STOP=1 --set=principal_id="$principal_id" -c "
+psql --set=ON_ERROR_STOP=1 -c "
   insert into auth_principal_role(principal_id,role_code)
-  values(:'principal_id'::uuid,'DETECTION_ADMIN') on conflict do nothing" >/dev/null
+  values('${principal_id}'::uuid,'DETECTION_ADMIN') on conflict do nothing" >/dev/null
 role_added=true
 
 cd "$repository_root"
@@ -129,10 +129,10 @@ publish_code="$(curl --fail --silent --show-error \
   "$bootstrap_url/api/v1/admin/knowledge/documents/$document_id/publish" | jq -er '.code')"
 [[ "$publish_code" == "KNOWLEDGE_DOCUMENT_PUBLISHED" ]]
 
-import_payload="$(psql -At --set=document_id="$document_id" --set=version_label="$version_label" -c "
+import_payload="$(psql -At -c "
   with selected_run as (
     select * from ai_knowledge.ingestion_run
-    where document_id=:'document_id' and version_label=:'version_label' and status='SUCCEEDED'
+    where document_id='${document_id}' and version_label='${version_label}' and status='SUCCEEDED'
   )
   select jsonb_build_object(
     'contractVersion','1.0.0','ingestionRunId',r.run_id,'documentId',r.document_id,
@@ -156,9 +156,9 @@ import_code="$(curl --fail --silent --show-error \
 curl --fail --silent --show-error --request POST \
   --header "Authorization: Bearer $access_token" "$bootstrap_url/api/v1/auth/logout" >/dev/null
 
-verified="$(psql -At --set=document_id="$document_id" --set=version_label="$version_label" -c "
+verified="$(psql -At -c "
   select count(*)=1 and min(passage_count)>0 and bool_and(ai_proof_version='AI_DB_SNAPSHOT_V1')
-  from knowledge_ingestion_import where document_id=:'document_id' and version_label=:'version_label'")"
+  from knowledge_ingestion_import where document_id='${document_id}' and version_label='${version_label}'")"
 if [[ "$verified" != "t" ]]; then
   echo "Spring knowledge import proof verification failed" >&2
   exit 1
