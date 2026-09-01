@@ -77,11 +77,13 @@
 - App EC2: `i-0a156c169fe294152`, private `10.42.10.110`, `t3.small`
 - AI EC2: `i-0663b523093db2d19`, private `10.42.11.12`, `m7i-flex.large`
 - RDS: `alzs-well-staging-postgres`, PostgreSQL 17, private, 삭제 방지 활성화
-- Vercel frontend UI artifact: `1e666aa61dcd123419cd35598cf71a3c684d8646`
-- 고객 Vercel production: `dpl_3b8VH4Up1siPHDMjUb2GF8bbyuhA` → `https://alzs-well.vercel.app`
+- Vercel frontend UI 기준 코드: `07c72e69307429f11d2e8f924bda055a599fc4f4`
+- 고객 Vercel production: `dpl_EJSDmxZdF8P1bQFrwNJJvtL9kW6A` → `https://alzs-well.vercel.app`
 - 직원 Vercel production: `dpl_7psw8Qq126NCrVhXW2k8ULvHYbRz` → `https://alzs-well-staff.vercel.app`
-- 운영 UI 검증: 일반 금융 홈 → 금융생활 도움받기 진입, 고객 화면 직원 전환 숨김, 시나리오·합성데이터 기본 접힘 확인
-- 운영 BFF 검증: Vercel→CloudFront→AWS 세션 생성·`FIN_MGMT_AB_001` 적재 성공 후 검증 세션 즉시 폐기
+- 운영 UI 검증: 일반 금융 홈의 조회·이체 사전확인·금융상품 메뉴가 목적 화면을 보존한 로그인으로 연결되고, `/help`는 비로그인 사용자를 공개 시나리오로 분리함을 확인
+- 합성 회원 BFF 검증: `demo001` 로그인 후 `auth/me`가 `SYN_V3_PUBLIC_4393bb3d_000001`을 반환하고 계좌·거래·수취인·한도·이체 양식과 의향·알림·기준선·신호·확인 알림 API가 모두 200 응답
+- 이체 안전 경계 검증: 모의계산 `SIMULATION_ALLOWED`, 사전검증 `PREVIEW_VALID`, `transferCreated=false`, `authorizationCreated=false`
+- 공개 데모 BFF 검증: Vercel→CloudFront→AWS 세션 생성·`FIN_MGMT_AB_001` 적재 성공 후 검증 세션 즉시 폐기
 - Spring·AI image 기준 코드: `1c14ab071c35b41054e16c213d4074a2d2946e98` (`backend-1c14ab0`, `ai-1c14ab0`)
 - 운영 리허설 결과: 정상 `CLOSED_NORMAL`, 주의 `GUIDANCE_PLAN_APPROVED`+citation 1, 오탐 `CLOSED_FALSE_POSITIVE`
 - AI 장애 리허설 결과: core `READY`, AI `DOWN`, 주의 `DETERMINISTIC_TEMPLATE`·citation 0·`fallbackUsed=true`; 복구 후 RAG citation 1
