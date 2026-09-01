@@ -227,7 +227,9 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request' && vars.DEPENDENCY_REVIEW_ENABLED == 'true'
+    # GitHub Dependency Review is unavailable for a private repository without GHAS.
+    # Independent Java, Python, npm and container SCA jobs remain mandatory.
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public' && vars.DEPENDENCY_REVIEW_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
