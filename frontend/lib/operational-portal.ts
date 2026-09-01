@@ -9,6 +9,7 @@ export type OperationalBundle = {
   timeline: Record<string, unknown>[]; evidence: Record<string, unknown>[]; notes: Record<string, unknown>[];
   followUps: Record<string, unknown>[]; intentSummary: Record<string, unknown> | null;
   ruleDetail: Record<string, unknown> | null; auditDetail: Record<string, unknown> | null;
+  auditAuthorized: boolean;
 };
 
 const emptyDetails = { selected: null, timeline: [], evidence: [], notes: [], followUps: [], intentSummary: null, ruleDetail: null, auditDetail: null };
@@ -29,7 +30,7 @@ export async function loadStaffOperations(session: PrivateCustomerSession): Prom
     ]);
     return {
       cases, rules: [], policies: [], algorithms: [], flags: [], audit: [], retention: [],
-      ...emptyDetails, selected: selected?.body.data ?? null, timeline: items(timeline?.body.data),
+      ...emptyDetails, auditAuthorized: false, selected: selected?.body.data ?? null, timeline: items(timeline?.body.data),
       evidence: items(evidence?.body.data), notes: items(notes?.body.data), followUps: items(followUps?.body.data),
       intentSummary: intentSummary?.body.data ?? null,
     };
@@ -45,7 +46,10 @@ export async function loadAdminOperations(session: PrivateCustomerSession): Prom
     const policies = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/policies/versions", auth));
     const algorithms = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/algorithms/versions", auth));
     const flags = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/feature-flags", auth));
-    const audit = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/audit/events", { query: { limit: 25 }, ...auth }));
+    const auditAuthorized = session.permissions.includes("AUDIT_READ_ALL");
+    const audit = auditAuthorized
+      ? await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/audit/events", { query: { limit: 25 }, ...auth }))
+      : null;
     const retention = await optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/compliance/retention-policies", auth));
     const ruleItems = items(rules.body.data); const auditItems = items(audit?.body.data);
     const ruleId = stringValue(ruleItems[0], "ruleId"); const eventId = stringValue(auditItems[0], "eventId");
@@ -53,7 +57,7 @@ export async function loadAdminOperations(session: PrivateCustomerSession): Prom
       ruleId ? optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/admin/rules/{ruleId}", { path: { ruleId }, ...auth })) : null,
       eventId ? optional(() => invokeApiOperation<Record<string, unknown>>("GET /api/v1/audit/events/{eventId}", { path: { eventId }, ...auth })) : null,
     ]);
-    return { cases: [], rules: ruleItems, policies: items(policies?.body.data), algorithms: items(algorithms?.body.data), flags: items(flags?.body.data), audit: auditItems, retention: items(retention?.body.data), ...emptyDetails, ruleDetail: ruleDetail?.body.data ?? null, auditDetail: auditDetail?.body.data ?? null };
+    return { cases: [], rules: ruleItems, policies: items(policies?.body.data), algorithms: items(algorithms?.body.data), flags: items(flags?.body.data), audit: auditItems, retention: items(retention?.body.data), ...emptyDetails, auditAuthorized, ruleDetail: ruleDetail?.body.data ?? null, auditDetail: auditDetail?.body.data ?? null };
   });
 }
 
