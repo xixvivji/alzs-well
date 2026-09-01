@@ -114,6 +114,33 @@
       }
     },
     {
+      "Sid": "DescribeRdsEncryptionKey",
+      "Effect": "Allow",
+      "Action": "kms:DescribeKey",
+      "Resource": "arn:aws:kms:ap-northeast-2:__AWS_ACCOUNT_ID__:key/*",
+      "Condition": {
+        "StringEquals": {
+          "kms:CallerAccount": "__AWS_ACCOUNT_ID__",
+          "kms:ViaService": "rds.ap-northeast-2.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "GrantRdsEncryptionKeyToService",
+      "Effect": "Allow",
+      "Action": "kms:CreateGrant",
+      "Resource": "arn:aws:kms:ap-northeast-2:__AWS_ACCOUNT_ID__:key/*",
+      "Condition": {
+        "StringEquals": {
+          "kms:CallerAccount": "__AWS_ACCOUNT_ID__",
+          "kms:ViaService": "rds.ap-northeast-2.amazonaws.com"
+        },
+        "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+        }
+      }
+    },
+    {
       "Sid": "NamedRepositories",
       "Effect": "Allow",
       "Action": [

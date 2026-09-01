@@ -387,6 +387,7 @@ Resources:
       MaxAllocatedStorage: 100
       StorageType: gp3
       StorageEncrypted: true
+      KmsKeyId: alias/aws/rds
       DBName: alzswell
       MasterUsername: alzswell_admin
       ManageMasterUserPassword: true

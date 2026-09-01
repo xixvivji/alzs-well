@@ -12,7 +12,7 @@ HTTPS 도메인을 통해 AWS API를 호출한다. 실제 생성 전까지는 �
 - AWS WAF managed rule, IP rate rule
 - private 업무 EC2 1대·AI EC2 1대, SSM 전용 접근, IMDSv2
 - 단일 NAT Gateway 1개와 무료 S3 gateway endpoint
-- Single-AZ PostgreSQL 17 RDS, TLS 강제, 암호화, 일일 자동 백업 1일 보존, 삭제 방지
+- Single-AZ PostgreSQL 17 RDS, TLS 강제, `alias/aws/rds` 암호화, 일일 자동 백업 1일 보존, 삭제 방지
 - immutable ECR repository 2개·Secrets Manager 3개
 
 NAT Gateway, ALB, WAF, EC2 2대, RDS, EBS, Secrets Manager는 스택 실행 즉시
