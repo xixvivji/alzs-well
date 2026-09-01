@@ -550,6 +550,9 @@ Resources:
               - !Ref MigrationDatabaseSecret
               - !Ref AiIngestionDatabaseSecret
               - !Ref AiRuntimeDatabaseSecret
+          - Effect: Allow
+            Action: "secretsmanager:PutSecretValue"
+            Resource: [!Ref AppTlsSecret, !Ref AiTlsSecret]
   AiIngestionPolicy:
     Type: AWS::IAM::Policy
     Condition: EnableDatabaseBootstrap
