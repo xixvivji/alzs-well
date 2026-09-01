@@ -323,7 +323,7 @@ Resources:
     DeletionPolicy: RetainExceptOnCreate
     UpdateReplacePolicy: Retain
     Properties:
-      Name: !Sub "/${EnvironmentName}/db-master"
+      Name: !Sub "/${EnvironmentName}/db-master-runtime"
       GenerateSecretString:
         SecretStringTemplate: '{"username":"alzswell_admin"}'
         GenerateStringKey: password
