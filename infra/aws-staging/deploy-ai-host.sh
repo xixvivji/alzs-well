@@ -10,8 +10,19 @@ docker compose --env-file "$environment_file" -f "$compose_file" up --detach ai-
 for attempt in $(seq 1 60); do
   health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' alzs-well-ai-ai-gateway-1 2>/dev/null || true)"
   if [[ $health == "healthy" ]]; then
-    docker compose --env-file "$environment_file" -f "$compose_file" exec -T ai-service \
-      python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/readiness', timeout=5).read().decode())"
+    break
+  fi
+  sleep 10
+done
+if [[ $health != "healthy" ]]; then
+  docker compose --env-file "$environment_file" -f "$compose_file" ps
+  echo "AI gateway health timed out" >&2
+  exit 1
+fi
+for attempt in $(seq 1 30); do
+  if readiness="$(docker compose --env-file "$environment_file" -f "$compose_file" exec -T ai-service \
+      python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/readiness', timeout=30).read().decode())" 2>/dev/null)"; then
+    printf '%s\n' "$readiness"
     exit 0
   fi
   sleep 10
