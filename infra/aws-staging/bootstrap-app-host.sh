@@ -94,7 +94,7 @@ openssl pkcs12 -export -name alzs-well-app-client \
   -inkey "$bootstrap_root/client.key" -in "$bootstrap_root/client.crt" \
   -certfile "$bootstrap_root/ca.crt" -out "$bootstrap_root/ai-client.p12" \
   -passout "pass:$keystore_password"
-openssl pkcs12 -export -nokeys -name alzs-well-ai-ca \
+openssl pkcs12 -export -nokeys -jdktrust anyExtendedKeyUsage -name alzs-well-ai-ca \
   -in "$bootstrap_root/ca.crt" -out "$bootstrap_root/ai-truststore.p12" \
   -passout "pass:$truststore_password"
 

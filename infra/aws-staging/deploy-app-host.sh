@@ -73,7 +73,7 @@ chmod 0600 "$runtime_root/.env.aws-app"
 aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin 982689564927.dkr.ecr.ap-northeast-2.amazonaws.com >/dev/null
 docker compose --env-file "$runtime_root/.env.aws-app" -f "$repository_root/backend/compose.aws-app.yaml" config --quiet
 docker compose --env-file "$runtime_root/.env.aws-app" -f "$repository_root/backend/compose.aws-app.yaml" pull >/dev/null
-docker compose --env-file "$runtime_root/.env.aws-app" -f "$repository_root/backend/compose.aws-app.yaml" up --detach
+docker compose --env-file "$runtime_root/.env.aws-app" -f "$repository_root/backend/compose.aws-app.yaml" up --detach --force-recreate
 
 for attempt in $(seq 1 30); do
   if curl --fail --silent "http://${APP_BIND_ADDRESS}:8080/api/v1/system/readiness" >/dev/null; then
