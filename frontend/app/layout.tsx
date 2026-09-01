@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./bank-home.css";
+import "./assistance-start.css";
 import "./app-shell.css";
 import "./hero-video.css";
 import "./demo-flow.css";
@@ -24,8 +26,8 @@ function metadataOrigin(): URL {
 
 export const metadata: Metadata = {
   metadataBase: metadataOrigin(),
-  title: "ALZ's well | 금융생활의 작은 변화, 먼저 알아차리도록",
-  description: "고령 금융소비자의 생활 변화를 설명하고 고객 확인에서 행원 보호업무까지 연결하는 금융 AI 서비스",
+  title: "ALZ's well | 금융생활 안심 동행",
+  description: "일상 금융서비스와 쉬운 금융생활 도움을 한곳에서 제공하는 금융생활 안심 동행 서비스",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -1,129 +1,47 @@
 import Link from "next/link";
 
-const aiCapabilities = [
-  {
-    number: "01", label: "의향을 구조로", title: "AI 금융생활 의향서",
-    description: "고객의 쉬운 문장을 납부·설명·도움 요청·공유 범위로 정리하고 고객이 직접 승인합니다.",
-    meta: "고객 승인 전 저장되지 않음",
-  },
-  {
-    number: "02", label: "변화를 근거로", title: "장기 변화 탐지",
-    description: "최근 30일을 이전 60일 기준선과 비교해 EWMA·CUSUM 보조 신호를 이해하기 쉬운 문장으로 보여줍니다.",
-    meta: "진단·사기 판정에 사용하지 않음",
-  },
-  {
-    number: "03", label: "설명을 접근 가능하게", title: "쉬운말·음성 안내",
-    description: "복잡한 알림을 짧은 문장과 큰 글씨, 느린 음성으로 바꿔 고객이 스스로 확인할 시간을 만듭니다.",
-    meta: "브라우저 내 음성 읽기",
-  },
-  {
-    number: "04", label: "행원의 판단을 지원", title: "근거 기반 AI 코파일럿",
-    description: "승인된 문서만 검색해 질문과 체크리스트를 만들고, 출처를 함께 제시해 행원이 최종 판단합니다.",
-    meta: "citation·장애 폴백 검증",
-  },
+const primaryNavigation = ["조회", "이체", "금융상품", "자산관리", "생활금융", "고객센터"];
+const quickServices = [
+  { icon: "₩", title: "계좌조회", description: "내 계좌와 잔액을 한눈에", href: "#login" },
+  { icon: "↗", title: "이체", description: "안전하고 간편하게 보내기", href: "#login" },
+  { icon: "▤", title: "거래내역", description: "입출금 내역을 빠르게 확인", href: "#login" },
+  { icon: "◇", title: "금융상품", description: "예금·대출·투자 상품 찾기", href: "#products" },
+  { icon: "?", title: "금융생활 도움받기", description: "큰 글씨와 쉬운 말로 확인", href: "/demo", featured: true },
 ];
-
-const scenarios = [
-  { kind: "정상", title: "알고 있는 생활 변화", result: "고객 확인 후 사건 없이 종결", tone: "normal" },
-  { kind: "주의", title: "확인하기 어려운 변화", result: "행원 보호업무와 안내계획 연결", tone: "caution" },
-  { kind: "오탐", title: "사실확인 결과 정상", result: "행원이 근거를 기록하고 종결", tone: "false" },
+const productCards = [
+  { eyebrow: "목돈 마련", title: "차곡차곡 안심적금", description: "생활 계획에 맞춰 부담 없이 시작하는 저축", rate: "최고 연 4.10%", tone: "mint" },
+  { eyebrow: "생활 안정", title: "든든 생활비 통장", description: "공과금과 정기지출을 한곳에서 편리하게 관리", rate: "수수료 우대", tone: "navy" },
+  { eyebrow: "노후 준비", title: "함께 보는 연금관리", description: "흩어진 노후자산을 보기 쉽게 모아 확인", rate: "맞춤형 조회", tone: "sand" },
 ];
-
-const organizers = [
-  ["주최·주관", "금융보안원"],
-  ["후원", "금융위원회"],
-  ["공동개최", "하나은행 · 신한은행 · 카카오뱅크 · KB증권 · 생명보험협회"],
-  ["운영", "데이콘"],
+const notices = [
+  ["안내", "금융생활 안심 서비스 이용 안내", "2026.09.01"],
+  ["보안", "전자금융 이용 시 안전수칙을 확인해 주세요", "2026.08.29"],
+  ["소식", "고령 고객을 위한 쉬운 금융 안내 확대", "2026.08.27"],
 ];
 
 export default function Home() {
-  return <main className="landing-page">
-    <header className="site-header">
-      <Link className="brand-lockup" href="/" aria-label="ALZ's well 홈">
-        <span className="brand-mark" aria-hidden="true">A</span>
-        <span><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></span>
-      </Link>
-      <nav aria-label="주요 메뉴">
-        <a href="#problem">문제와 해법</a><a href="#ai">AI 기능</a><a href="#safety">안전 원칙</a>
-        <Link className="header-cta" href="/demo">MVP 체험하기</Link>
-      </nav>
+  return <main className="bank-home">
+    <div className="bank-utility"><div><span>개인</span><span>기업</span></div><div><Link href="/staff/cases">직원업무</Link><a href="#notices">새소식</a><a href="#support">고객센터</a><button type="button" aria-label="화면 언어 선택">한국어⌄</button></div></div>
+    <header className="bank-header">
+      <Link className="bank-brand" href="/" aria-label="ALZ's well 홈"><span aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
+      <nav aria-label="주요 금융 메뉴">{primaryNavigation.map((item) => <a href={item === "생활금융" ? "#life" : item === "고객센터" ? "#support" : "#products"} key={item}>{item}</a>)}</nav>
+      <div className="bank-header-actions"><button type="button" aria-label="전체 메뉴">☰</button><Link href="/demo">도움받기</Link></div>
     </header>
 
-    <section className="hero" aria-labelledby="hero-title">
-      <div className="hero-atmosphere" aria-hidden="true"><i /><i /><i /></div>
-      <div className="hero-copy">
-        <p className="challenge-badge"><span>2026</span> 금융 AI Challenge 참가 프로젝트</p>
-        <h1 id="hero-title">금융생활의 작은 변화,<br /><em>먼저 확인하고 함께 지킵니다.</em></h1>
-        <p className="hero-description">치매머니는 고객의 금융행동을 감시하거나 질병을 진단하지 않습니다. 평소와 달라진 생활 신호를 설명하고, 고객에게 먼저 묻고, 필요한 경우에만 행원의 보호업무로 연결합니다.</p>
-        <div className="hero-actions">
-          <Link className="button button-primary" href="/demo">고객 흐름 체험하기 <span aria-hidden="true">→</span></Link>
-          <Link className="button button-secondary" href="/staff/cases">행원 화면 보기</Link>
-        </div>
-        <ul className="hero-boundaries" aria-label="서비스 안전 원칙">
-          <li><span aria-hidden="true">✓</span> 합성데이터만 사용</li><li><span aria-hidden="true">✓</span> 실제 금융 실행 없음</li><li><span aria-hidden="true">✓</span> 사람 최종 승인</li>
-        </ul>
-      </div>
-
-      <div className="hero-product" aria-label="장기 변화 탐지 화면 예시">
-        <div className="product-topline"><span>금융생활 변화 브리핑</span><b><i /> 안전 체험</b></div>
-        <div className="product-heading"><div><small>최근 90일 기준선</small><h2>설명이 필요한 변화가 있어요.</h2></div><span className="product-date">오늘</span></div>
-        <div className="signal-card signal-primary">
-          <div><span className="signal-icon">01</span><p><small>거래결과 재확인</small><strong>평소보다 4배 증가</strong></p></div>
-          <div className="mini-chart" aria-label="이전 60일 월 2회, 최근 30일 8회"><i style={{height:"22%"}} /><i style={{height:"31%"}} /><i style={{height:"28%"}} /><i className="active" style={{height:"88%"}} /></div>
-        </div>
-        <div className="signal-card"><div><span className="signal-icon">02</span><p><small>새로운 수취인</small><strong>최근 30일 2건</strong></p></div><span className="signal-status">맥락 확인</span></div>
-        <div className="product-question"><span>AI 쉬운 설명</span><p>최근 한 달 동안 송금 결과를 다시 확인한 횟수가 이전보다 늘었어요. 알고 계신 활동인가요?</p><div><button type="button">알고 있어요</button><button type="button">잘 모르겠어요</button></div></div>
-        <p className="product-caption">예시 화면 · 질병 또는 사기 여부를 자동 판단하지 않습니다.</p>
-      </div>
+    <section className="bank-hero">
+      <div className="bank-hero-copy"><p>매일 쓰는 금융을 더 편안하게</p><h1>내 생활에 맞춘 금융,<br/><em>안심하고 이어가세요.</em></h1><span>조회부터 자산관리까지 필요한 금융서비스를 한곳에서 확인하세요.</span><div><a className="bank-button primary" href="#quick">자주 쓰는 서비스</a><a className="bank-button ghost" href="#products">금융상품 보기</a></div></div>
+      <aside className="bank-login-card" id="login" aria-label="금융서비스 이용 안내"><div><span aria-hidden="true">◎</span><p><strong>안전한 금융서비스</strong><small>인증 후 내 금융정보를 확인할 수 있어요.</small></p></div><button type="button" aria-disabled="true">로그인</button><p>공개 서비스에서는 실제 금융기관 로그인을 제공하지 않습니다.</p></aside>
+      <div className="bank-hero-shape" aria-hidden="true"><i/><i/><i/></div>
     </section>
 
-    <section className="proof-strip" aria-label="서비스 핵심 수치">
-      <div><strong>30·60·90일</strong><span>개인 기준선 비교</span></div><div><strong>3개</strong><span>정상·주의·오탐 시나리오</span></div><div><strong>4단계</strong><span>고객 확인부터 행원 승인까지</span></div><div><strong>0건</strong><span>자동 연락·지급정지·거래 실행</span></div>
-    </section>
+    <section className="bank-quick" id="quick" aria-labelledby="quick-title"><div className="bank-section-heading"><div><p>QUICK SERVICE</p><h2 id="quick-title">자주 찾는 서비스</h2></div><span>필요한 업무를 바로 시작하세요.</span></div><div className="bank-quick-grid">{quickServices.map((service) => <Link className={service.featured ? "featured" : ""} href={service.href} key={service.title}><span aria-hidden="true">{service.icon}</span><div><strong>{service.title}</strong><small>{service.description}</small></div>{service.featured && <b>추천</b>}</Link>)}</div></section>
 
-    <section className="section problem-section" id="problem">
-      <div className="section-intro"><p className="section-label">THE PROBLEM</p><h2>이상거래를 찾는 것보다,<br />고객이 이해하고 답할 수 있게 만드는 일.</h2><p>고령 금융소비자에게 필요한 것은 더 강한 경고가 아니라, 평소와 무엇이 달라졌는지 이해하고 자신의 맥락을 말할 수 있는 안전한 확인 과정입니다.</p></div>
-      <div className="principle-list">
-        <article><span>발견</span><div><h3>개인별 생활 기준선</h3><p>모두에게 같은 위험 점수를 적용하지 않고 본인의 이전 금융생활과 비교합니다.</p></div></article>
-        <article><span>확인</span><div><h3>고객에게 먼저 질문</h3><p>이상·치매·사기로 단정하지 않고 알고 있는 변화인지 쉬운 말로 묻습니다.</p></div></article>
-        <article><span>연결</span><div><h3>사람이 완성하는 보호업무</h3><p>확인이 어려운 사건만 승인된 근거와 함께 행원 검토로 전달합니다.</p></div></article>
-      </div>
-    </section>
+    <section className="bank-life" id="life"><div className="bank-life-copy"><p>생활금융 안심 서비스</p><h2>금융생활이 복잡하게 느껴질 때,<br/>쉽게 설명해 드릴게요.</h2><span>평소와 달라진 금융생활을 쉬운 말로 확인하고, 잘 모르겠을 때는 필요한 도움을 받을 수 있습니다.</span><ul><li>큰 글씨와 선명한 화면</li><li>평소와 달라진 점 설명</li><li>고객에게 먼저 확인</li></ul><Link href="/demo">금융생활 도움받기 <b aria-hidden="true">→</b></Link></div><div className="bank-life-preview" aria-label="금융생활 도움 화면 미리보기"><div><small>오늘의 금융생활</small><strong>확인할 변화가 1개 있어요</strong></div><article><span>!</span><p><small>쉬운 설명</small><strong>최근 송금 결과를 다시 확인한 횟수가 늘었어요.</strong></p></article><div className="bank-life-actions"><span>알고 있어요</span><span>잘 모르겠어요</span></div><p>질병이나 사기로 단정하지 않고 고객에게 먼저 확인합니다.</p></div></section>
 
-    <section className="section ai-section" id="ai">
-      <div className="section-heading-row"><div><p className="section-label">AI, WITH BOUNDARIES</p><h2>AI는 결정하지 않고,<br />이해와 확인을 돕습니다.</h2></div><p>생성 결과보다 근거, 자동화보다 통제, 위험 점수보다 설명 가능한 변화를 우선합니다.</p></div>
-      <div className="capability-grid">{aiCapabilities.map((item) => <article key={item.number}><div className="capability-number">{item.number}</div><p className="capability-label">{item.label}</p><h3>{item.title}</h3><p>{item.description}</p><span>{item.meta}</span></article>)}</div>
-    </section>
+    <section className="bank-products" id="products"><div className="bank-section-heading"><div><p>FINANCIAL PRODUCTS</p><h2>나에게 맞는 금융상품</h2></div><a href="#support">상품 전체보기 →</a></div><div className="bank-product-grid">{productCards.map((product) => <article className={product.tone} key={product.title}><p>{product.eyebrow}</p><h3>{product.title}</h3><span>{product.description}</span><strong>{product.rate}</strong><button type="button" aria-label={`${product.title} 상세보기`}>＋</button></article>)}</div></section>
 
-    <section className="section journey-section">
-      <div className="journey-copy"><p className="section-label">ONE CLOSED LOOP</p><h2>한 번의 시연으로<br />고객에서 행원까지.</h2><p>심사 화면에서 핵심 흐름을 끊김 없이 확인할 수 있도록 합성 시나리오를 고정했습니다.</p><Link className="text-link" href="/demo">세 가지 시나리오 시작하기 →</Link></div>
-      <ol className="journey-steps">
-        <li><span>1</span><div><small>AI SIGNAL</small><h3>장기 변화 발견</h3><p>30·60·90일 기준선과 최근 구간을 비교합니다.</p></div></li>
-        <li><span>2</span><div><small>CUSTOMER FIRST</small><h3>고객 맥락 확인</h3><p>알고 있음·도움 필요·나중에 확인 중 하나를 선택합니다.</p></div></li>
-        <li><span>3</span><div><small>HUMAN REVIEW</small><h3>행원 검토 연결</h3><p>승인 문서 citation과 사실확인 질문을 함께 봅니다.</p></div></li>
-        <li><span>4</span><div><small>CONTROLLED CLOSE</small><h3>안내계획 승인 또는 종결</h3><p>모든 최종 판단과 기록은 행원이 수행합니다.</p></div></li>
-      </ol>
-    </section>
+    <section className="bank-info" id="notices"><div><div className="bank-section-heading compact"><h2>새소식</h2><a href="#notices">더보기 ＋</a></div><ul>{notices.map(([type,title,date]) => <li key={title}><span>{type}</span><strong>{title}</strong><time>{date}</time></li>)}</ul></div><aside id="support"><p>고객센터</p><strong>1588-0000</strong><span>평일 09:00~18:00</span><div><a href="#support">자주 묻는 질문</a><a href="#support">금융사고 신고</a><a href="#support">이용안내</a></div></aside></section>
 
-    <section className="section scenario-section">
-      <div className="section-heading-row"><div><p className="section-label">DEMO SCENARIOS</p><h2>정상도, 주의도, 오탐도<br />끝까지 보여드립니다.</h2></div><Link className="button button-dark" href="/demo">발표 리허설 열기</Link></div>
-      <div className="scenario-grid">{scenarios.map((scenario, index) => <article className={scenario.tone} key={scenario.kind}><span>0{index + 1}</span><div><small>{scenario.kind} 시나리오</small><h3>{scenario.title}</h3><p>{scenario.result}</p></div><b aria-hidden="true">↗</b></article>)}</div>
-    </section>
-
-    <section className="section safety-section" id="safety">
-      <div className="safety-statement"><p className="section-label">SAFETY BY DESIGN</p><h2>금융권에서 쓸 수 있는 AI는<br />멈출 줄 알아야 합니다.</h2><p>승인된 지식이 없거나 AI 서비스가 중단되면 추측하지 않고, 출처 없는 결정론적 안전 문구로 전환합니다.</p></div>
-      <div className="safety-columns"><article><p>AI가 하는 일</p><ul><li>개인 기준선의 변화 설명</li><li>고객 의향 구조화 초안</li><li>승인된 문서 검색과 인용</li><li>행원 질문·체크리스트 제안</li></ul></article><article className="not"><p>AI가 하지 않는 일</p><ul><li>치매 또는 사기 판정</li><li>고객 대신 의향서 승인</li><li>지급정지·송금·외부 연락</li><li>행원 대신 최종 결정</li></ul></article></div>
-    </section>
-
-    <section className="section entry-section">
-      <Link className="entry-card customer-entry" href="/demo"><span>고객용 MVP</span><div><p>큰 글씨와 쉬운 문장으로</p><h2>내 금융생활 확인하기</h2></div><b>체험 시작 <i aria-hidden="true">→</i></b></Link>
-      <Link className="entry-card staff-entry" href="/staff/cases"><span>행원용 MVP</span><div><p>근거와 안전 경계를 한 화면에서</p><h2>보호업무 검토하기</h2></div><b>화면 보기 <i aria-hidden="true">→</i></b></Link>
-    </section>
-
-    <footer id="support">
-      <div className="footer-brand"><span className="brand-mark" aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><p>고령 금융소비자의 자기결정권을 지키는 금융생활 안심 동행</p></div></div>
-      <div className="organizer-grid">{organizers.map(([role, names]) => <div key={role}><small>{role}</small><span>{names}</span></div>)}</div>
-      <div className="footer-bottom"><p>본 화면은 2026 금융 AI Challenge 참가 프로젝트이며 각 기관의 공식 서비스가 아닙니다.</p><p>합성데이터 전용 · 실제 금융 실행 없음 · 의료 진단 아님</p></div>
-    </footer>
+    <footer className="bank-footer"><div><Link className="bank-brand inverse" href="/"><span>A</span><strong>ALZ&apos;s well</strong></Link><p>고령 금융소비자의 자기결정권을 지키는 금융생활 안심 동행</p></div><nav><a href="#support">개인정보처리방침</a><a href="#support">전자금융거래약관</a><a href="#support">보안센터</a></nav><p>2026 금융 AI Challenge 참가 프로젝트 · 합성데이터 전용 · 실제 금융 실행 없음</p><small>주최·주관 금융보안원 · 후원 금융위원회 · 공동개최 하나은행, 신한은행, 카카오뱅크, KB증권, 생명보험협회<br/>각 기관의 공식 서비스가 아닙니다.</small></footer>
   </main>;
 }

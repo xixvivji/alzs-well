@@ -6,9 +6,10 @@ test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링�
   const html = await readFile(new URL("../.next/server/app/index.html", import.meta.url), "utf8");
   assert.match(html, /<html lang="ko"(?:\s[^>]*)?>/i);
   assert.match(html, /ALZ(?:&#x27;|')s well/);
-  assert.match(html, /금융생활의 작은 변화/);
+  assert.match(html, /내 생활에 맞춘 금융/);
   assert.match(html, /2026 금융 AI Challenge 참가 프로젝트/);
-  assert.match(html, /고객 흐름 체험하기/);
+  assert.match(html, /자주 찾는 서비스/);
+  assert.match(html, /금융생활 도움받기/);
   assert.match(html, /href="\/demo"/);
   assert.match(html, /href="\/staff\/cases"/);
   assert.match(html, /합성데이터/);
@@ -33,7 +34,8 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
 });
 
 test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링된다", async () => {
-  const [protection, products, settings, services, operations, control, systemStatus] = await Promise.all([
+  const [demo, protection, products, settings, services, operations, control, systemStatus] = await Promise.all([
+    readFile(new URL("../.next/server/app/demo.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/demo/protection.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/demo/products.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/demo/settings.html", import.meta.url), "utf8"),
@@ -42,6 +44,11 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
     readFile(new URL("../.next/server/app/staff/control-center.html", import.meta.url), "utf8"),
     readFile(new URL("../.next/server/app/staff/system-status.html", import.meta.url), "utf8"),
   ]);
+  assert.match(demo, /복잡한 금융생활/);
+  assert.match(demo, /내 금융생활 한눈에 보기/);
+  assert.match(demo, /큰 글씨와 쉬운 문장/);
+  assert.match(demo, /서비스 확인용 메뉴/);
+  assert.doesNotMatch(demo, /행원 화면으로/);
   assert.match(protection, /오늘 확인할 금융생활을/);
   assert.match(protection, /보호센터 안전 체험 시작/);
   assert.match(protection, /외부 금융 실행 0건/);
