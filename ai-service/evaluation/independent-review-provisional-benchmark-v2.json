@@ -1,0 +1,47 @@
+{
+  "benchmarkVersion": "independent-review-provisional-v2",
+  "officialPerformanceClaim": false,
+  "humanReviewCompleted": false,
+  "sourceCommit": "468b064",
+  "change": "policy evasion hardening only; ranking configuration unchanged",
+  "embeddingModel": {
+    "name": "snowflake-arctic-embed-l-v2.0-ko",
+    "revision": "55ec6e9358a56d56af759bc8372e970caf8c305f",
+    "status": "STAGED_APPROVED"
+  },
+  "inputs": {
+    "candidateSha256": "sha256:14d36610aa96cacea729d8cc93e5c31fd13ba37094cafc907f48ba46f01014fa",
+    "provisionalDatasetSha256": "sha256:1c1331d0873aefc82fbfca5e13620ad82e89c8303c23270f531e04061142c0c5",
+    "corpusSha256": "sha256:5f630c71ba0c18ccc251b196a88aab1cf53dea47125bb1eeb6a8c10448e0f830",
+    "rawRankingReportSha256": "sha256:6f321ecb99adfe09cb40c7db4dc2bf21308b36df8e6bdf1dd80492e2f158985e"
+  },
+  "summary": {
+    "caseCount": 150,
+    "answerableCount": 105,
+    "noAnswerCount": 45,
+    "top1PassCount": 69,
+    "top3PassCount": 95,
+    "noAnswerPassCount": 45,
+    "reviewTop2Or3Count": 26,
+    "failureCount": 10
+  },
+  "regressionComparison": {
+    "top1Delta": 0,
+    "top3Delta": 0,
+    "noAnswerPassDelta": 3,
+    "failureDelta": -3
+  },
+  "remainingAnswerFailures": [
+    "IRC-011",
+    "IRC-082",
+    "IRC-083",
+    "IRC-084",
+    "IRC-085",
+    "IRC-101",
+    "IRC-102",
+    "IRC-103",
+    "IRC-104",
+    "IRC-105"
+  ],
+  "remainingNoAnswerFalsePositives": []
+}
