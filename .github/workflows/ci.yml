@@ -107,6 +107,9 @@ jobs:
             --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
             --dataset evaluation/datasets/retrieval-v1.jsonl \
             --output-json data/derived/evaluation/tuning-v1.json
+          uv run python -m app.evaluation.safety_cli \
+            --dataset evaluation/datasets/ai-safety-policy-v1.jsonl \
+            --output-json data/derived/evaluation/ai-safety-policy-v1.json
       - name: Upload retrieval evaluation reports
         if: always()
         uses: actions/upload-artifact@v7
