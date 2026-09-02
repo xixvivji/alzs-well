@@ -21,7 +21,9 @@ permissions:
 jobs:
   analyze:
     name: Analyze ${{ matrix.language }}
-    if: vars.CODEQL_ENABLED == 'true'
+    # SARIF upload requires GitHub Advanced Security for private repositories.
+    # The public competition repository runs the full language matrix.
+    if: github.event.repository.visibility == 'public' && vars.CODEQL_ENABLED == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -62,7 +64,7 @@ jobs:
         env:
           ANALYZE_RESULT: ${{ needs.analyze.result }}
         run: |
-          if [ "$ANALYZE_RESULT" != "success" ]; then
+          if [ "$ANALYZE_RESULT" != "success" ] && [ "$ANALYZE_RESULT" != "skipped" ]; then
             echo "CodeQL 분석이 통과하지 못했습니다: $ANALYZE_RESULT" >&2
             exit 1
           fi
