@@ -155,10 +155,17 @@ def main() -> int:
         if marker not in app_gateway:
             errors.append(f"AWS app gateway mutation/session limit changed unexpectedly: {marker!r}")
 
-    bootstrap_policy = aws_foundation.split("  AiIngestionPolicy:\n", 1)[-1].split("\n  AppInstance:\n", 1)[0]
+    bootstrap_policy = aws_foundation.split("  ImagePublishDeploymentPolicy:\n", 1)[-1].split("\n  AppInstance:\n", 1)[0]
     for repository in ("AppRepository.Arn", "AiRepository.Arn"):
         if repository not in bootstrap_policy:
             errors.append(f"temporary image publisher is missing {repository}")
+    if "Condition: EnableImagePublishDeployment" not in bootstrap_policy:
+        errors.append("temporary image publisher must have its own deployment condition")
+    ingestion_policy = aws_foundation.split("  AiIngestionPolicy:\n", 1)[-1].split(
+        "\n  ImagePublishDeploymentPolicy:\n", 1
+    )[0]
+    if "ecr:PutImage" in ingestion_policy:
+        errors.append("AI ingestion policy must not publish ECR images")
     permanent_ai_policy = aws_foundation.split("  AiRuntimeRole:\n", 1)[-1].split(
         "\n  AiRuntimeInstanceProfile:\n", 1
     )[0]
