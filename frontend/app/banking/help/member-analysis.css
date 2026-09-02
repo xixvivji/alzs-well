@@ -52,11 +52,19 @@
 .member-ai-evidence span { font-weight: 800; }
 .member-ai-evidence q { overflow-wrap: anywhere; color: #4d5c56; }
 .member-ai-evidence small { color: #66756f; }
+.help-member-analysis header button { flex: 0 0 auto; }
+.member-window-analysis { grid-column: 1 / -1; display: grid; gap: 12px; padding: 14px; border-radius: 9px; background: #f2f7f5; }
+.member-window-analysis > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.member-window-analysis article { display: grid; gap: 4px; padding: 12px; border: 1px solid #d6e4de; border-radius: 8px; background: #fff; }
+.member-window-analysis article span, .member-window-analysis article small { color: #607069; font-size: 11px; }
+.member-window-analysis p { display: grid; gap: 4px; margin: 0; padding: 10px 0; border-top: 1px solid #dce7e2; }
+.member-window-analysis p span { color: #4d5d56; font-size: 12px; line-height: 1.6; }
 
 @media (max-width: 900px) {
   .help-member-analysis > div { grid-template-columns: 1fr; }
   .member-ai-fields { grid-template-columns: 1fr; }
   .member-ai-evidence p { grid-template-columns: 1fr; gap: 3px; }
+  .member-window-analysis > div { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 650px) {

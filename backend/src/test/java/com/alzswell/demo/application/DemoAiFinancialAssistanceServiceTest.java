@@ -8,6 +8,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +31,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -267,6 +270,35 @@ class DemoAiFinancialAssistanceServiceTest {
         verify(assistanceAuditWriter, never()).fallback(any(), any(), anyString(), anyString());
         verify(assistanceAuditWriter).accepted(
                 SESSION_ID, RUN_ID, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void analyzesOnlyTheAuthenticatedMembersStoredSyntheticBaseline() throws Exception {
+        ResultSet resultSet = mock(ResultSet.class);
+        when(resultSet.getString("feature_code")).thenReturn("REPEATED_CONFIRMATION");
+        when(resultSet.getBigDecimal("baseline_value")).thenReturn(BigDecimal.ONE);
+        when(resultSet.getBigDecimal("current_value")).thenReturn(BigDecimal.valueOf(5));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenAnswer(invocation -> List.of(
+                        ((RowMapper) invocation.getArgument(1)).mapRow(resultSet, 0)));
+        when(aiClient.analyzeChanges(any(ChangeAnalysisRequest.class))).thenAnswer(invocation -> {
+            ChangeAnalysisRequest request = invocation.getArgument(0);
+            var signal = new ChangeSignal("REPEATED_CONFIRMATION_COUNT", 1, 5, 4,
+                    "INCREASE", 1.5003, 7.8303, true, true, true, "EWMA_CUSUM_V1",
+                    "최근 30일 동안 거래결과 재확인이 평소 1회에서 5회로 지속적으로 증가했습니다.");
+            return new ChangeAnalysisResponse("1.0.0", request.requestId(),
+                    request.baselineDays(), 30, List.of(signal), false, false);
+        });
+
+        var result = service.analyzeMember("SYN_V3_PUBLIC_MEMBER_000001");
+
+        assertThat(result.windowComparisons()).hasSize(3);
+        assertThat(result.changes()).singleElement().satisfies(change -> {
+            assertThat(change.featureCode()).isEqualTo("REPEATED_CONFIRMATION_COUNT");
+            assertThat(change.recentValue()).isEqualTo(5);
+        });
+        verify(aiClient, times(3)).analyzeChanges(any(ChangeAnalysisRequest.class));
     }
 
     @Test

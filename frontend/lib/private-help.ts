@@ -3,6 +3,7 @@ import { withPrivateCustomerSession } from "./private-auth-session";
 import type { PrivateCustomerSession } from "./private-financial-products";
 import type { FinancialIntent, InboxMessage } from "./private-life-services";
 import type { Baseline, ChangeSignal, SafetyAlert } from "./private-safety-center";
+import type { ChangeAnalysis } from "./ai-financial-assistance";
 
 export type PrivateHelpOverview = {
   preparation: { readiness: string; latestApproved: FinancialIntent | null; legalDisclaimerRequired: boolean };
@@ -26,5 +27,17 @@ export async function loadPrivateHelpOverview(session: PrivateCustomerSession): 
       invokeApiOperation<{ items: SafetyAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, ...auth }),
     ]);
     return { preparation: required(preparation, "금융생활 의향"), intents: required(intents, "의향 이력").items, inbox: required(inbox, "알림함").items, baselines: required(baselines, "개인 기준선").items, signals: required(signals, "변화 신호").items, alerts: required(alerts, "확인 알림").items };
+  });
+}
+
+export async function loadPrivateLongitudinalAnalysis(
+  session: PrivateCustomerSession,
+): Promise<ChangeAnalysis> {
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const response = await invokeApiOperation<ChangeAnalysis>(
+      "POST /api/v1/customers/{customerId}/ai-financial-assistance/change-analysis",
+      { path: { customerId: session.customerId }, accessToken },
+    );
+    return required(response, "AI 장기 변화 분석");
   });
 }

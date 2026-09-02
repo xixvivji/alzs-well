@@ -67,7 +67,7 @@ export function ApiServiceCatalog({ mode }: { mode: PortalMode }) {
     </section>)}</div>}
 
     <section className="catalog-boundary">
-      <span aria-hidden="true">i</span><p><strong>표시 범위</strong> 237개는 Spring Controller와 명세를 대조한 백엔드 구현 계약 수이며, 모든 API가 현재 화면에서 호출된다는 뜻은 아닙니다. 공개 데모 화면은 합성데이터와 capability 범위의 시연 동선만 호출합니다. Bearer 인증 업무는 사설 IdP 연결 전까지 잠기며, 미구현·외부 참고 API에는 실행 버튼을 만들지 않습니다.</p>
+      <span aria-hidden="true">i</span><p><strong>표시 범위</strong> 238개는 Spring Controller와 명세를 대조한 백엔드 구현 계약 수이며, 모든 API가 현재 화면에서 호출된다는 뜻은 아닙니다. 공개 데모 화면은 합성데이터와 capability 범위의 시연 동선만 호출합니다. Bearer 인증 업무는 사설 IdP 연결 전까지 잠기며, 미구현·외부 참고 API에는 실행 버튼을 만들지 않습니다.</p>
     </section>
   </div>;
 }

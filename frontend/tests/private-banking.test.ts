@@ -5,7 +5,7 @@ import { loadLifeServices, searchKnowledge } from "../lib/private-life-services"
 import { loadSafetyCenter, respondToSafetyAlert } from "../lib/private-safety-center";
 import { loadAdminOperations, loadStaffOperations } from "../lib/operational-portal";
 import { loadOperationalCaseBundle, loadOperationalCaseQueue, startOperationalCaseReview } from "../lib/private-staff-cases";
-import { loadPrivateHelpOverview } from "../lib/private-help";
+import { loadPrivateHelpOverview, loadPrivateLongitudinalAnalysis } from "../lib/private-help";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
 
 const session: PrivateCustomerSession = { principalId: "00000000-0000-0000-0000-000000000001", customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"], permissions: [] };
@@ -41,6 +41,20 @@ test("로그인 도움 허브는 같은 회원의 의향·알림·기준선·신
   assert.ok(paths.every((path) => path.includes("customer-1")));
   assert.ok(paths.some((path) => path.endsWith("/baselines")));
   assert.ok(paths.some((path) => path.endsWith("/alerts")));
+});
+
+test("회원 장기 변화는 같은 customerId의 30·60·90일 서버 분석만 요청한다", async (t) => {
+  let method = "";
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    assert.ok(String(input).endsWith("/customers/customer-1/ai-financial-assistance/change-analysis"));
+    method = init?.method ?? "GET";
+    return response({ baselineDays: 60, recentDays: 30, analysisWindowDays: 90, changes: [], windowComparisons: [{ baselineDays: 30, recentDays: 30, changes: [] }, { baselineDays: 60, recentDays: 30, changes: [] }, { baselineDays: 90, recentDays: 30, changes: [] }], analysisMode: "FASTAPI_EWMA_CUSUM", fallbackUsed: false, syntheticData: true, diagnosisInferred: false, financialActionExecuted: false });
+  });
+
+  const analysis = await loadPrivateLongitudinalAnalysis(session);
+
+  assert.equal(method, "POST");
+  assert.deepEqual(analysis.windowComparisons.map((item) => item.baselineDays), [30, 60, 90]);
 });
 
 test("이체 화면은 회원별 계좌·수취인·한도·양식과 실행 없는 사전검증만 사용한다", async (t) => {
