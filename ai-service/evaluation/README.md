@@ -135,10 +135,17 @@ Arctic-ko 기본 설정의 검수 전 임시 측정과 실패 우선순위는
 v2에서 Top-1 또는 정상 무응답이 아니었던 36건은
 `reviews/independent-review-ai-triage-v1.csv`와
 `independent-review-ai-triage-v1.md`에서 검수 우선순위별로 기술 분류한다. 이 분류는
-기대 근거와 실제 Top-5의 문서·절 위치를 비교해 근접 중복 chunk, 일반 Top-3 검토,
+기대 근거와 실제 Top-5의 문서·절 위치를 비교해 동일 문서·제목 상세 검토, 일반 Top-3 검토,
 문맥 민감, 정의 절 불일치, 법률과 세부 시행령의 순위 경합을 구분한다. AI가 만든 검수
 보조자료일 뿐 질문-근거 쌍을 승인하거나 공식 성능을 확정하지 않으며, 모든 행은 독립
 검수자가 확인할 때까지 `PENDING`을 유지한다.
+
+동일 문서·제목으로 자동 분류됐던 12건은 2026-09-02 대회 팀 소유자가 원문을 대조했다.
+Top-1 청크는 질문의 답을 포함하지 않거나 질의 기준일 이후 시행 예정 문구를 포함해 대체
+relevance를 12건 모두 `REJECTED`했다. 이 결정은 대체 청크 추가 여부에만 적용되며 원본
+150개 후보의 질문·기대 근거 상태는 계속 `PENDING`이다. 상세 기록은
+`reviews/independent-review-near-match-human-v1.csv`와
+`independent-review-near-match-human-v1.md`에 고정한다.
 
 파생 corpus와 v2 순위 결과가 준비된 환경에서는 다음 명령으로 표를 재현한다.
 
