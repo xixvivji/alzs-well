@@ -132,6 +132,26 @@ Arctic-ko 기본 설정의 검수 전 임시 측정과 실패 우선순위는
 정책 우회 3건을 보완한 동일 조건 재측정은
 `independent-review-provisional-benchmark-v2.md`에 기록한다.
 
+v2에서 Top-1 또는 정상 무응답이 아니었던 36건은
+`reviews/independent-review-ai-triage-v1.csv`와
+`independent-review-ai-triage-v1.md`에서 검수 우선순위별로 기술 분류한다. 이 분류는
+기대 근거와 실제 Top-5의 문서·절 위치를 비교해 근접 중복 chunk, 일반 Top-3 검토,
+문맥 민감, 정의 절 불일치, 법률과 세부 시행령의 순위 경합을 구분한다. AI가 만든 검수
+보조자료일 뿐 질문-근거 쌍을 승인하거나 공식 성능을 확정하지 않으며, 모든 행은 독립
+검수자가 확인할 때까지 `PENDING`을 유지한다.
+
+파생 corpus와 v2 순위 결과가 준비된 환경에서는 다음 명령으로 표를 재현한다.
+
+```bash
+uv run python -m app.evaluation.triage_cli \
+  --corpus data/derived/evaluation/retrieval-official-corpus-2026-08-28.jsonl \
+  --candidates evaluation/reviews/independent-review-candidates-v1.jsonl \
+  --ranking-json data/derived/evaluation/independent-review-arctic-ko-v2.json \
+  --output-csv evaluation/reviews/independent-review-ai-triage-v1.csv \
+  --output-json evaluation/independent-review-ai-triage-v1.json \
+  --output-markdown evaluation/independent-review-ai-triage-v1.md
+```
+
 공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
 2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
 운영 ingestion 경로와 분리해
