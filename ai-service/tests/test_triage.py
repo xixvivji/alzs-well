@@ -8,7 +8,11 @@ from pathlib import Path
 import pytest
 
 from app.evaluation.models import EvaluationChunk
-from app.evaluation.review import ReviewCandidate, validate_review_candidates
+from app.evaluation.review import (
+    ReviewCandidate,
+    load_review_candidates,
+    validate_review_candidates,
+)
 from app.evaluation.triage import triage_ranking_review, write_triage_outputs
 from app.evaluation.triage_cli import main
 
@@ -57,12 +61,19 @@ def _review(
     document_id: str,
     heading: str,
     rank: int | None,
+    chunk_id: str = "TOP",
 ) -> dict[str, object]:
     return {
         "query_id": candidate_id,
         "verdict": verdict,
         "first_relevant_rank": rank,
-        "results": [{"document_id": document_id, "heading": heading}],
+        "results": [
+            {
+                "chunk_id": chunk_id,
+                "document_id": document_id,
+                "heading": heading,
+            }
+        ],
     }
 
 
@@ -92,7 +103,7 @@ def test_triage_classifies_all_non_pass_patterns() -> None:
     rows = triage_ranking_review(candidates, corpus, ranking)
 
     assert [row["classification"] for row in rows] == [
-        "DUPLICATE_CHUNK_NEAR_MATCH",
+        "SAME_DOCUMENT_HEADING_REVIEW_REQUIRED",
         "TOP3_RELEVANT_REVIEW",
         "SECTION_INTENT_MISMATCH",
         "AUTHORITY_OVER_SPECIFIC_REGULATION",
@@ -109,8 +120,10 @@ def test_writes_machine_triage_outputs_without_approval_claim(tmp_path: Path) ->
             "seedId": "ORC-1",
             "verdict": "FAIL_BELOW_TOP_3",
             "firstRelevantRank": "",
+            "expectedChunkIds": "C1",
             "expectedDocument": "DOC-A",
             "expectedHeading": "근거",
+            "topChunkId": "C2",
             "topDocument": "DOC-B",
             "topHeading": "다른 근거",
             "classification": "CONTEXT_SENSITIVITY",
@@ -237,9 +250,62 @@ def test_committed_triage_keeps_review_boundary(repo_root: Path) -> None:
     assert report["classificationCounts"] == {
         "AUTHORITY_OVER_SPECIFIC_REGULATION": 5,
         "CONTEXT_SENSITIVITY": 1,
-        "DUPLICATE_CHUNK_NEAR_MATCH": 12,
+        "SAME_DOCUMENT_HEADING_REVIEW_REQUIRED": 12,
         "SECTION_INTENT_MISMATCH": 4,
         "TOP3_RELEVANT_REVIEW": 14,
     }
     assert report["humanReviewCompleted"] is False
     assert report["officialPerformanceClaim"] is False
+
+
+def test_human_review_rejects_only_alternative_relevance(repo_root: Path) -> None:
+    service_root = repo_root / "ai-service"
+    review_path = (
+        service_root
+        / "evaluation/reviews/independent-review-near-match-human-v1.csv"
+    )
+    with review_path.open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    with (
+        service_root / "evaluation/reviews/independent-review-ai-triage-v1.csv"
+    ).open(encoding="utf-8-sig", newline="") as stream:
+        triage_rows = list(csv.DictReader(stream))
+    report = json.loads(
+        (
+            service_root
+            / "evaluation/independent-review-near-match-human-v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    candidates = {
+        candidate.candidate_id: candidate
+        for candidate in load_review_candidates(
+            service_root
+            / "evaluation/reviews/independent-review-candidates-v1.jsonl"
+        )
+    }
+
+    assert len(rows) == 12
+    assert len({row["candidateId"] for row in rows}) == 12
+    assert {row["candidateId"] for row in rows} == {
+        row["candidateId"]
+        for row in triage_rows
+        if row["classification"] == "SAME_DOCUMENT_HEADING_REVIEW_REQUIRED"
+    }
+    assert all(row["alternativeRelevanceDecision"] == "REJECTED" for row in rows)
+    assert all(row["reviewedBy"] == "competition-team-owner" for row in rows)
+    assert all(row["reviewedAt"] == "2026-09-02" for row in rows)
+    for row in rows:
+        candidate = candidates[row["candidateId"]]
+        assert candidate.review_decision == "PENDING"
+        assert row["expectedChunkId"] in candidate.relevant_chunk_ids
+        assert row["alternativeTopChunkId"] not in candidate.relevant_chunk_ids
+
+    assert report["scope"] == "alternative-top-chunk-relevance-only"
+    assert report["humanReviewCompleted"] is True
+    assert report["allIndependentCandidatesReviewed"] is False
+    assert report["officialPerformanceClaim"] is False
+    assert report["acceptedAlternativeCount"] == 0
+    assert report["rejectedAlternativeCount"] == 12
+    assert report["candidateDecisionChanged"] is False
+    assert report["rankingConfigurationChanged"] is False
+    assert sum(report["reasonCounts"].values()) == 12

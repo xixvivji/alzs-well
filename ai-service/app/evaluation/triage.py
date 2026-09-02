@@ -42,8 +42,10 @@ def triage_ranking_review(
                 "seedId": seed_id,
                 "verdict": verdict,
                 "firstRelevantRank": str(review["first_relevant_rank"] or ""),
+                "expectedChunkIds": "|".join(candidate.relevant_chunk_ids),
                 "expectedDocument": "|".join(chunk.document_id for chunk in expected),
                 "expectedHeading": "|".join(chunk.heading for chunk in expected),
+                "topChunkId": "" if top is None else str(top["chunk_id"]),
                 "topDocument": "" if top is None else str(top["document_id"]),
                 "topHeading": "" if top is None else str(top["heading"]),
                 "classification": classification,
@@ -115,7 +117,7 @@ def _classification(
             and top["heading"] == chunk.heading
             for chunk in expected
         ):
-            return "DUPLICATE_CHUNK_NEAR_MATCH"
+            return "SAME_DOCUMENT_HEADING_REVIEW_REQUIRED"
         return "TOP3_RELEVANT_REVIEW"
     if top is not None and any(chunk.document_type == "REGULATION" for chunk in expected):
         if str(top["document_id"]).startswith("DOC-LAW-"):
@@ -127,8 +129,8 @@ def _classification(
 
 
 def _recommended_action(classification: str) -> str:
-    if classification == "DUPLICATE_CHUNK_NEAR_MATCH":
-        return "HUMAN_CONFIRM_RELEVANCE_EXPANSION"
+    if classification == "SAME_DOCUMENT_HEADING_REVIEW_REQUIRED":
+        return "HUMAN_COMPARE_CHUNK_CONTENT"
     if classification == "TOP3_RELEVANT_REVIEW":
         return "HUMAN_REVIEW_KEEP_TOP3"
     return "HUMAN_CONFIRM_BEFORE_RANKING_CHANGE"
