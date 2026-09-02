@@ -301,6 +301,7 @@ Resources:
     Properties:
       Name: !Sub "/${EnvironmentName}/staff-bootstrap-token"
       GenerateSecretString: {PasswordLength: 80, ExcludePunctuation: true}
+      Tags: [{Key: Project, Value: alzs-well}, {Key: Environment, Value: staging}]
 
   SyntheticMemberPasswordHashSecret:
     Type: AWS::SecretsManager::Secret

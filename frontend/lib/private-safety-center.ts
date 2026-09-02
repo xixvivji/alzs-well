@@ -41,13 +41,17 @@ const body = <T>(response: { body: { data: T | null } }, label: string): T => {
   return response.body.data;
 };
 
-export async function loadSafetyCenter(session: PrivateCustomerSession, alertId?: string): Promise<SafetyCenterBundle> {
+export async function loadSafetyCenter(
+  session: PrivateCustomerSession,
+  alertId?: string,
+  signal?: AbortSignal,
+): Promise<SafetyCenterBundle> {
   return withPrivateCustomerSession(session, async (accessToken) => {
     const path = { customerId: session.customerId };
     const [baselineResponse, signalResponse, alertResponse] = await Promise.all([
-      invokeApiOperation<{ items: Baseline[] }>("GET /api/v1/customers/{customerId}/baselines", { path, accessToken }),
-      invokeApiOperation<{ items: ChangeSignal[] }>("GET /api/v1/customers/{customerId}/signals", { path, accessToken }),
-      invokeApiOperation<{ items: SafetyAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, accessToken }),
+      invokeApiOperation<{ items: Baseline[] }>("GET /api/v1/customers/{customerId}/baselines", { path, accessToken, signal }),
+      invokeApiOperation<{ items: ChangeSignal[] }>("GET /api/v1/customers/{customerId}/signals", { path, accessToken, signal }),
+      invokeApiOperation<{ items: SafetyAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, accessToken, signal }),
     ]);
     const baselines = body(baselineResponse, "개인 기준선").items;
     const signals = body(signalResponse, "변화신호").items;
@@ -56,11 +60,11 @@ export async function loadSafetyCenter(session: PrivateCustomerSession, alertId?
     const selectedSignal = signals[0];
     const selectedAlert = alerts.find((item) => item.alertId === alertId) ?? alerts[0] ?? null;
     const [featureResponse, evidenceResponse, alertDetailResponse, optionResponse, auditResponse] = await Promise.all([
-      selectedBaseline ? invokeApiOperation<{ items: BaselineFeature[] }>("GET /api/v1/customers/{customerId}/baselines/{baselineId}/features", { path: { ...path, baselineId: selectedBaseline.baselineId }, accessToken }) : null,
-      selectedSignal ? invokeApiOperation<{ items: SignalEvidence[] }>("GET /api/v1/signals/{signalId}/evidence", { path: { signalId: selectedSignal.signalId }, accessToken }) : null,
-      selectedAlert ? invokeApiOperation<{ alert: SafetyAlert }>("GET /api/v1/alerts/{alertId}", { path: { alertId: selectedAlert.alertId }, accessToken }) : null,
-      selectedAlert ? invokeApiOperation<{ question: string; options: AlertContextOption[] }>("GET /api/v1/alerts/{alertId}/context-options", { path: { alertId: selectedAlert.alertId }, accessToken }) : null,
-      selectedAlert ? invokeApiOperation<{ items: AlertAuditEvent[] }>("GET /api/v1/alerts/{alertId}/audit", { path: { alertId: selectedAlert.alertId }, accessToken }) : null,
+      selectedBaseline ? invokeApiOperation<{ items: BaselineFeature[] }>("GET /api/v1/customers/{customerId}/baselines/{baselineId}/features", { path: { ...path, baselineId: selectedBaseline.baselineId }, accessToken, signal }) : null,
+      selectedSignal ? invokeApiOperation<{ items: SignalEvidence[] }>("GET /api/v1/signals/{signalId}/evidence", { path: { signalId: selectedSignal.signalId }, accessToken, signal }) : null,
+      selectedAlert ? invokeApiOperation<{ alert: SafetyAlert }>("GET /api/v1/alerts/{alertId}", { path: { alertId: selectedAlert.alertId }, accessToken, signal }) : null,
+      selectedAlert ? invokeApiOperation<{ question: string; options: AlertContextOption[] }>("GET /api/v1/alerts/{alertId}/context-options", { path: { alertId: selectedAlert.alertId }, accessToken, signal }) : null,
+      selectedAlert ? invokeApiOperation<{ items: AlertAuditEvent[] }>("GET /api/v1/alerts/{alertId}/audit", { path: { alertId: selectedAlert.alertId }, accessToken, signal }) : null,
     ]);
     return {
       baselines,
