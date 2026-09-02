@@ -147,6 +147,13 @@ relevance를 12건 모두 `REJECTED`했다. 이 결정은 대체 청크 추가 �
 `reviews/independent-review-near-match-human-v1.csv`와
 `independent-review-near-match-human-v1.md`에 고정한다.
 
+이 검수에서 발견된 현재 조문과 미래 시행 예정 개정문의 혼재는 청크 본문의 명시적
+`[시행일: YYYY. M. D.]`를 기준으로 분리했다. 분할된 조문은 시행일 표기가 있는 마지막
+청크에서 같은 조문의 `①` 시작 청크까지 효력일을 전파한다. 2026-08-28 기준 corpus 재생성과
+Arctic-ko 재측정 결과는 `independent-review-temporal-filter-v1.md`에 기록한다. 사전 승인된
+6건은 모두 현행 조문 Top-1을 확인했지만, 이는 150건 전체의 사람 검수 완료나 공식 성능
+승격을 의미하지 않는다.
+
 파생 corpus와 v2 순위 결과가 준비된 환경에서는 다음 명령으로 표를 재현한다.
 
 ```bash

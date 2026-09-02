@@ -7,6 +7,7 @@ from app.embedding.base import EmbeddingProvider
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.evaluation.models import EvaluationCase, EvaluationChunk
 from app.retrieval.query import keyword_terms, normalize, requires_abstention
+from app.retrieval.temporal import is_content_effective
 
 
 DOCUMENT_AUTHORITY = {
@@ -104,7 +105,9 @@ def is_eligible(chunk: EvaluationChunk, case: EvaluationCase) -> bool:
         return False
     if chunk.effective_from > case.as_of:
         return False
-    return chunk.effective_to is None or chunk.effective_to >= case.as_of
+    if chunk.effective_to is not None and chunk.effective_to < case.as_of:
+        return False
+    return is_content_effective(chunk.content, case.as_of)
 
 
 def _keyword_score(query: str, text: str) -> float:

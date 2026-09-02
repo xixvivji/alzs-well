@@ -17,6 +17,7 @@ from app.ingestion.manifest_loader import load_and_validate_manifest
 from app.ingestion.pdf_extractor import extract_pdf_document
 from app.ingestion.pdf_validator import validate_pdf_source
 from app.ingestion.source_validator import validate_source
+from app.retrieval.temporal import effective_dates_for_chunks
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +54,17 @@ def build_official_review_corpus(
         _ensure_review_corpus_manifest(manifest)
         document = _extract_document(repository_root, manifest)
         chunks = chunk_document(document)
-        for chunk in chunks:
+        content_dates = effective_dates_for_chunks(
+            [chunk.text for chunk in chunks],
+            [chunk.section_path for chunk in chunks],
+            [chunk.chunk_order for chunk in chunks],
+        )
+        effective_chunks = tuple(
+            chunk
+            for chunk, content_effective_from in zip(chunks, content_dates, strict=True)
+            if content_effective_from is None or content_effective_from <= as_of
+        )
+        for chunk in effective_chunks:
             if chunk.chunk_id in chunk_ids:
                 raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
             chunk_ids.add(chunk.chunk_id)
@@ -62,7 +73,7 @@ def build_official_review_corpus(
             ReviewDocumentSummary(
                 document_id=manifest.document_id,
                 version_label=manifest.version_label,
-                chunk_count=len(chunks),
+                chunk_count=len(effective_chunks),
                 warnings=document.warnings,
             )
         )

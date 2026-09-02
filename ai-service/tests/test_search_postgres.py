@@ -135,7 +135,7 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
         "local-hash-ngram-ko", "local-hash-ngram-ko-v1", 384,
         ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
         date(2026, 8, 25), MAX_VECTOR_CANDIDATES,
-        KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD, 10,
+        KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD, 100,
     )
     assert "e.embedding_model_id = %s" in statement
     assert "e.embedding_model_version = %s" in statement
@@ -144,6 +144,42 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert RESULT_THRESHOLD == 0.35
     assert results[0].chunk_id == "chk_" + "1" * 64
     assert results[0].score == 0.5
+
+
+def test_search_excludes_future_effective_chunk_and_backfills_current_result() -> None:
+    future = list(_row())
+    future[2] = "chk_" + "4" * 64
+    future[12] = "개정 조문 [시행일: 2026. 10. 1.]"
+    current = list(_row())
+    current[2] = "chk_" + "5" * 64
+    cursor = FakeCursor([tuple(future), tuple(current)])
+    repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
+
+    results = repository.search(_request().model_copy(update={"limit": 1}))
+
+    assert [result.chunk_id for result in results] == ["chk_" + "5" * 64]
+    _, parameters = cursor.executions[0]
+    assert parameters[-1] == 100  # type: ignore[index]
+
+
+def test_search_propagates_future_marker_to_preceding_split_chunk() -> None:
+    future_start = list(_row())
+    future_start[2] = "chk_" + "6" * 64
+    future_start[3] = 20
+    future_start[12] = "① 미래 개정 조문의 시작"
+    current = list(_row())
+    current[2] = "chk_" + "7" * 64
+    current[3] = 10
+    marker = list(_row())
+    marker[2] = "chk_" + "8" * 64
+    marker[3] = 21
+    marker[12] = "4. 미래 개정 조문의 끝 [시행일: 2026. 10. 1.]"
+    cursor = FakeCursor([tuple(future_start), tuple(current), tuple(marker)])
+    repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
+
+    results = repository.search(_request())
+
+    assert [result.chunk_id for result in results] == ["chk_" + "7" * 64]
 
 
 def test_search_uses_injected_model_but_keeps_other_models_for_keyword_score() -> None:

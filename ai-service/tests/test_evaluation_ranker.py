@@ -61,6 +61,10 @@ def test_eligibility_blocks_acl_audience_lifecycle_and_effective_date() -> None:
     assert not is_eligible(corpus[9], staff_case)
     assert not is_eligible(corpus[10], staff_case)
     assert not is_eligible(replace(corpus[0], allowed_roles=("CUSTOMER",)), staff_case)
+    assert not is_eligible(
+        replace(corpus[0], content="개정 조문 [시행일: 2026. 10. 1.]"),
+        staff_case,
+    )
 
 
 def test_search_configuration_rejects_invalid_weights_and_negative_threshold() -> None:
