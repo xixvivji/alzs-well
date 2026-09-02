@@ -1,4 +1,10 @@
-from app.retrieval.query import keyword_query, keyword_terms, requires_abstention
+from app.retrieval.query import (
+    has_definition_intent,
+    keyword_query,
+    keyword_terms,
+    requires_abstention,
+    retrieval_query,
+)
 
 
 def test_keyword_terms_strip_common_korean_particles_and_endings() -> None:
@@ -8,6 +14,20 @@ def test_keyword_terms_strip_common_korean_particles_and_endings() -> None:
         "돈",
         "뜻",
     )
+
+
+def test_retrieval_query_removes_presentation_prefix_but_preserves_question() -> None:
+    question = "피해환급금은 어떤 돈을 뜻하나요?"
+
+    assert retrieval_query(f"행원 검토용으로 공식 근거와 함께 답변해 주세요. {question}") == (
+        "피해환급금은 어떤 돈을 뜻하나요?"
+    )
+    assert keyword_query(f"어려운 표현 없이 쉽게 설명해 주세요. {question}") == (
+        "피해환급금 어떤 돈 뜻"
+    )
+    assert retrieval_query(question) == "피해환급금은 어떤 돈을 뜻하나요?"
+    assert has_definition_intent(question)
+    assert not has_definition_intent("피해환급금은 언제 지급하나요?")
     assert keyword_query("사기정보이용기관은 정보를 파기해야 하나요?") == (
         "사기정보이용기관 정보 파기 하나요"
     )
