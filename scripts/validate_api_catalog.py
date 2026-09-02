@@ -11,9 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "docs" / "FINAL_BACKEND_API_SPEC.md"
-EXPECTED_PRIORITIES = {"P0-A": 15, "P0-B": 11, "P1": 176, "P2": 79}
+EXPECTED_PRIORITIES = {"P0-A": 15, "P0-B": 11, "P1": 177, "P2": 79}
 EXPECTED_BOUNDARIES = {
-    "OWNED": 192,
+    "OWNED": 193,
     "EXTERNAL_INTEGRATION": 67,
     "REFERENCE_ONLY": 22,
 }
@@ -44,8 +44,8 @@ def main() -> None:
             priority, method, path, boundary = match.groups()
             rows.append((priority, method, path.strip(), boundary))
 
-    if len(rows) != 281:
-        fail(f"operation 수가 281이 아니라 {len(rows)}입니다.")
+    if len(rows) != 282:
+        fail(f"operation 수가 282가 아니라 {len(rows)}입니다.")
 
     operations = Counter((method, path) for _, method, path, _ in rows)
     duplicates = sorted(operation for operation, count in operations.items() if count > 1)

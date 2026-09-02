@@ -39,6 +39,19 @@ class DetectionPolicyIntegrationTest {
     @Autowired JdbcTemplate jdbcTemplate;
 
     @Test
+    void reportsAiQualityWithoutExposingQueryTextOrExternalActions() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/ai-quality/summary").param("hours", "24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("AI_QUALITY_SUMMARY_RETRIEVED"))
+                .andExpect(jsonPath("$.data.windowHours").value(24))
+                .andExpect(jsonPath("$.data.status").value("NO_DATA"))
+                .andExpect(jsonPath("$.data.syntheticDataOnly").value(true))
+                .andExpect(jsonPath("$.data.externalActionsExecuted").value(false));
+        mockMvc.perform(get("/api/v1/admin/ai-quality/summary").param("hours", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void createsUpdatesPublishesAndRollsBackVersionedPolicy() throws Exception {
         mockMvc.perform(get("/api/v1/admin/policies/versions"))
                 .andExpect(status().isOk())
@@ -125,6 +138,7 @@ class DetectionPolicyIntegrationTest {
     @WithMockUser(username = "customer", authorities = "DETECTION_READ")
     void requiresPolicyAdministratorPermission() throws Exception {
         mockMvc.perform(get("/api/v1/admin/rules")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/ai-quality/summary")).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/admin/rules").contentType(APPLICATION_JSON).content(createJson()))
                 .andExpect(status().isForbidden());
     }
