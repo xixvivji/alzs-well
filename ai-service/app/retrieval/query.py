@@ -5,6 +5,16 @@ import unicodedata
 
 
 TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]{2,}")
+_PRESENTATION_PREFIX = re.compile(
+    r"^(?:"
+    r"고객(?:님)?에게\s+안내(?:하려고|하기\s+위해)[^.!?。]{0,20}|"
+    r"행원\s+검토용으로[^.!?。]{0,40}|"
+    r"현재\s+승인된\s+(?:규정|문서)\s+기준으로[^.!?。]{0,30}|"
+    r"어려운\s+표현\s+없이\s+쉽게[^.!?。]{0,20}|"
+    r"핵심\s+(?:조건|내용)만\s+정확히[^.!?。]{0,20}"
+    r")[.!?。]\s*"
+)
+_DEFINITION_INTENT = re.compile(r"(?:뜻|의미|정의|무엇(?:인가요|인지|을\s+말하))")
 _KOREAN_SUFFIXES = (
     "으로부터",
     "에게서",
@@ -101,10 +111,21 @@ def normalize(value: str) -> str:
     return unicodedata.normalize("NFC", " ".join(value.lower().split()))
 
 
+def retrieval_query(value: str) -> str:
+    """Remove a leading presentation request that does not change retrieval intent."""
+    normalized = normalize(value)
+    stripped = _PRESENTATION_PREFIX.sub("", normalized, count=1).strip()
+    return stripped or normalized
+
+
+def has_definition_intent(value: str) -> bool:
+    return bool(_DEFINITION_INTENT.search(retrieval_query(value)))
+
+
 def keyword_terms(value: str) -> tuple[str, ...]:
     """Return deterministic Korean-friendly terms for lexical retrieval."""
     terms: list[str] = []
-    for token in TOKEN_PATTERN.findall(normalize(value)):
+    for token in TOKEN_PATTERN.findall(retrieval_query(value)):
         stemmed = _strip_korean_suffix(token)
         if stemmed not in terms:
             terms.append(stemmed)

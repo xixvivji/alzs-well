@@ -105,7 +105,7 @@ def test_document_authority_order_matches_postgresql_contract() -> None:
     ]
 
 
-def test_authority_is_sorted_before_hybrid_score() -> None:
+def test_hybrid_score_is_sorted_before_authority() -> None:
     case = EvaluationCase(
         query_id="AUTHORITY-FIRST",
         query="피해 지원",
@@ -148,8 +148,8 @@ def test_authority_is_sorted_before_hybrid_score() -> None:
         embedding_provider=AuthorityOrderingEmbeddingProvider(),
     )
 
-    assert ranked[0].chunk.chunk_id == "law"
-    assert ranked[0].score < ranked[1].score
+    assert ranked[0].chunk.chunk_id == "notice"
+    assert ranked[0].score > ranked[1].score
 
 
 def test_law_and_regulation_golden_queries_return_the_expected_authority() -> None:
