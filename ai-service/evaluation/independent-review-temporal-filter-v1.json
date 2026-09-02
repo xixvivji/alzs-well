@@ -1,0 +1,44 @@
+{
+  "reportVersion": "independent-review-temporal-filter-v1",
+  "asOf": "2026-08-28",
+  "humanApprovalScope": "future-effective-exclusion-and-six-case-business-fit",
+  "humanApprovalRecorded": true,
+  "allIndependentCandidatesReviewed": false,
+  "officialPerformanceClaim": false,
+  "embeddingModelVersion": "snowflake-arctic-embed-l-v2.0-ko@55ec6e9358a56d56af759bc8372e970caf8c305f",
+  "configurationChanged": false,
+  "corpusChunkCountBefore": 113,
+  "corpusChunkCountAfter": 83,
+  "excludedFutureChunkCount": 30,
+  "corpusSha256": "sha256:5f3460bebe58de1d2a56999a3353873b55bff9ddf0a193c93c1e1773e1cc0a1a",
+  "rawRankingReportSha256": "sha256:3d064ae39926cf83069bd80e952b758f8079e167790212bedd1961a7fb68e0ca",
+  "before": {
+    "top1": 69,
+    "top3": 95,
+    "review": 26,
+    "failures": 10
+  },
+  "after": {
+    "top1": 82,
+    "top3": 99,
+    "review": 17,
+    "failures": 6
+  },
+  "approvedSixCases": [
+    "IRC-063",
+    "IRC-086",
+    "IRC-087",
+    "IRC-088",
+    "IRC-089",
+    "IRC-090"
+  ],
+  "approvedSixCaseTop1PassCount": 6,
+  "remainingFailureIds": [
+    "IRC-082",
+    "IRC-083",
+    "IRC-084",
+    "IRC-085",
+    "IRC-101",
+    "IRC-104"
+  ]
+}

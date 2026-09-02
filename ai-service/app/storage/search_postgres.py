@@ -14,6 +14,7 @@ from app.embedding.base import EmbeddingProvider, vector_literal
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
 from app.retrieval.query import keyword_query
+from app.retrieval.temporal import effective_dates_for_chunks
 from app.storage.database_config import DatabaseConfig
 from app.storage.embedding_index import vector_type
 
@@ -239,10 +240,15 @@ class PostgresSearchRepository:
                         vector_weight,
                         vector_threshold,
                         result_threshold,
-                        request.limit,
+                        _temporal_fetch_limit(request.limit),
                     ),
                 )
-                return tuple(_stored_result(row) for row in cursor.fetchall())
+                return tuple(
+                    _stored_result(row)
+                    for row in _temporally_eligible_rows(
+                        cursor.fetchall(), request.as_of, request.limit
+                    )
+                )
         except psycopg.errors.QueryCanceled:
             raise KnowledgeContractError("SEARCH_TIMEOUT") from None
         except psycopg.Error:
@@ -420,3 +426,33 @@ def _stored_result(row: tuple[Any, ...]) -> StoredSearchResult:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _temporal_fetch_limit(requested_limit: int) -> int:
+    return min(MAX_VECTOR_CANDIDATES, max(100, requested_limit * 10))
+
+
+def _temporally_eligible_rows(
+    rows: list[tuple[Any, ...]], as_of: date, requested_limit: int
+) -> tuple[tuple[Any, ...], ...]:
+    groups: dict[tuple[object, ...], list[tuple[Any, ...]]] = {}
+    for row in rows:
+        key = (row[0], row[1], tuple(row[7]))
+        groups.setdefault(key, []).append(row)
+
+    future_chunk_ids: set[object] = set()
+    for group in groups.values():
+        ordered = sorted(group, key=lambda row: int(row[3]))
+        dates = effective_dates_for_chunks(
+            [str(row[12]) for row in ordered],
+            [tuple(str(value) for value in row[7]) for row in ordered],
+            [int(row[3]) for row in ordered],
+        )
+        future_chunk_ids.update(
+            row[2]
+            for row, effective_from in zip(ordered, dates, strict=True)
+            if effective_from is not None and effective_from > as_of
+        )
+    return tuple(
+        row for row in rows if row[2] not in future_chunk_ids
+    )[:requested_limit]
