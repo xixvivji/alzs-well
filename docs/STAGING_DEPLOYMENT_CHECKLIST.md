@@ -15,7 +15,7 @@
 | Vercel 프로젝트 | 운영 배포 | 고객 `https://alzs-well.vercel.app`, 직원 `https://alzs-well-staff.vercel.app` |
 | Vercel 환경변수 | Production 완료 | AWS origin은 Config, 공유 비밀·직원 bootstrap 토큰은 Secret. 브라우저 공개 변수에 비밀값 없음 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
-| AWS 배포 주체 | 완료 | 일회용 bootstrap 사용자로 태그 제한 operator 역할을 AssumeRole하고 사용자·키 즉시 삭제 |
+| AWS 배포 주체 | 완료 | `alzs-well-staging-cli`의 access key 없는 `aws login` 단기 세션으로 operator·deployer 역할만 AssumeRole |
 | AWS IaC | `UPDATE_COMPLETE` | `alzs-well-staging`, CloudFront·ALB·WAF·EC2 2대·Private RDS 생성 완료 |
 | AWS 보호 상태 | 완료 | `DatabaseBootstrapEnabled=false`, ALB·RDS 삭제 방지 활성화 |
 | 배포 이미지 | 완료 | backend·AI·gateway AMD64 이미지를 immutable ECR digest로 실행 |
@@ -27,7 +27,10 @@
 - [x] CloudFormation execution 역할의 템플릿 전용 정책을 작성하고 Access Analyzer 경고 0건을 확인한다.
 - [x] 고위험 IAM 변경을 승인받고 기존 렌더링·검증 execution 정책을 적용한다.
 - [x] 최초 ALB 생성용 서비스 연결 역할을 생성하고 배포를 완료한다.
-- [x] 일회용 비루트 주체로 deployer AssumeRole을 확인하고 사용자·Access Key를 즉시 삭제한다.
+- [x] 초기 배포에서는 일회용 비루트 주체로 deployer AssumeRole을 확인하고 사용자·Access Key를 즉시 삭제했다.
+- [x] 후속 운영은 `SignInLocalDevelopmentAccess`가 있는 `alzs-well-staging-cli`로 전환하고 장기 Access Key를 생성하지 않았다.
+- [x] 로컬 `default` 루트 로그인 캐시·설정을 제거하고 `alzswell-cli`를 operator·deployer 역할의 source profile로 사용한다.
+- [x] 기본 사용자의 EC2 직접 조회가 거부되고 operator 역할에서만 태그 제한 staging 인스턴스 조회가 가능한지 검증했다.
 - [x] 배포 역할과 App·AI EC2 instance profile, Spring·AI DB secret 경계를 분리한다.
 - [x] 태그가 일치하는 staging EC2에만 SSM 명령을 보낼 수 있는 별도 운영 역할을 정의한다.
 - [ ] GitHub/Vercel/AWS 배포는 장기 access key 대신 OIDC 또는 단기 세션을 사용한다.
@@ -98,6 +101,15 @@
 - 관리자 `admin001`, `admin002`: 규칙·정책 버전·알고리즘 버전·기능 플래그·보존정책 조회가 모두 200이다. `AUDIT_READ_ALL` 권한이 없어 전체 감사 조회는 403이며, 행원 사건 큐도 403으로 차단됐다.
 - 새 Production 배포 뒤 대표 고객·행원·관리자 흐름을 다시 실행했고, 사용한 합성 세션은 검증 직후 모두 로그아웃했다.
 - AWS CloudFormation 스택은 `UPDATE_COMPLETE`, CloudFront health는 200이다. 실제 인프라 변경에는 루트 세션을 사용하지 않고 전용 운영 역할의 단기 세션만 사용한다.
+
+### 2026-09-02 비루트 AWS CLI 전환
+
+- `default` 프로필의 루트 `login_session`과 캐시를 제거했으며, 호출은 `NoCredentials`로 차단된다.
+- IAM 사용자 `alzs-well-staging-cli`에는 `SignInLocalDevelopmentAccess`, 암호 변경, 두 staging 역할의 `sts:AssumeRole`만 허용한다.
+- `alzswell-cli`는 `aws login` 단기 자격만 사용하며 IAM Access Key는 0개다.
+- `alzswell-operator`는 `alzs-well-staging-operator`, `alzswell-staging`은 `alzswell-staging-deployer` 역할로 전환된다.
+- 실제 STS에서 기본 사용자·operator·deployer ARN을 확인했고, 기본 사용자의 `ec2:DescribeInstances`는 `UnauthorizedOperation`으로 거부됐다.
+- operator로 `alzs-well-staging` 스택 `UPDATE_COMPLETE`와 app·AI EC2 두 대의 `running` 상태를 확인했다.
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
 

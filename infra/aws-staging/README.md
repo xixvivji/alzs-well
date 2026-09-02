@@ -65,8 +65,23 @@ ECR·배포 비밀·로그 그룹은 정상 스택 삭제 시 보존하지만 �
 CloudWatch Logs의 `DescribeLogGroups`도 리소스 수준 권한을 지원하지 않으므로
 별도 읽기 문장에서 서울 리전 요청만 허용한다.
 AWS CLI `aws login`으로 생성된 루트 세션은 역할을 AssumeRole할 수 없으므로,
-Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다. 장기 access key를
-새로 발급해 우회하지 않는다.
+Identity Center 사용자 세션 또는 별도 비루트 주체가 필요하다. 이 staging은
+Organizations 활성화 시 무료 플랜 크레딧이 만료되는 계정 제약 때문에 Identity
+Center를 활성화하지 않았다. 대신 `alzs-well-staging-cli` IAM 사용자의 콘솔 자격과
+AWS 관리형 `SignInLocalDevelopmentAccess`를 사용해 단기 자격을 발급하며, IAM
+Access Key는 만들지 않는다. 해당 사용자는 두 staging 역할의 `sts:AssumeRole`
+외에는 AWS 리소스를 직접 조작할 수 없다.
+
+```bash
+aws login --remote --profile alzswell-cli --region ap-northeast-2
+aws sts get-caller-identity --profile alzswell-cli
+aws sts get-caller-identity --profile alzswell-operator
+aws sts get-caller-identity --profile alzswell-staging
+```
+
+`alzswell-operator`와 `alzswell-staging`의 `source_profile`은 모두
+`alzswell-cli`다. `default`에는 루트 `login_session`을 두지 않는다. 단기 세션
+만료 시에만 `aws login`을 다시 수행한다.
 
 별도 도메인과 ACM 인증서는 필요하지 않다. CloudFront 기본 인증서로 외부 HTTPS를
 종단하고 ALB는 AWS 관리 CloudFront origin-facing 네트워크에서 오는 HTTP만
