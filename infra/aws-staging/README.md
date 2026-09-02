@@ -87,10 +87,10 @@ aws sts get-caller-identity --profile alzswell-staging
 종단하고 ALB는 AWS 관리 CloudFront origin-facing 네트워크에서 오는 HTTP만
 허용한다. EC2는 인프라 기반만 준비하며, 실제 서비스는 ECR image digest·mTLS
 인증서·DB 역할 생성·Secrets 주입을 완료한 후 SSM으로 기동한다.
-최초 bootstrap 동안에만 AI EC2 역할이 backend·AI ECR 저장소에 이미지를 게시할
-수 있다. 현재는 검증된 AMD64 digest를 기록하고 `DatabaseBootstrapEnabled=false`로
-갱신해 이미지 게시·DB bootstrap·ingestion 정책을 제거했다. 상시 런타임 역할에는
-ECR push 권한을 부여하지 않는다.
+이미지 게시가 필요할 때만 `ImagePublishDeploymentEnabled=true`로 AI 빌드 호스트에
+backend·AI ECR 저장소 push 권한만 잠시 부여한다. 검증된 AMD64 digest를 기록한
+직후 다시 `false`로 갱신한다. DB bootstrap·ingestion 권한과 이미지 게시 권한은
+서로 분리하며 상시 런타임 역할에는 ECR push 권한을 부여하지 않는다.
 App·AI mTLS 개인키는 각각 `/alzs-well-staging/tls-app`,
 `/alzs-well-staging/tls-ai` 비밀에 분리하며 상대 인스턴스의 개인키를 읽을 수 없다.
 컨테이너 로그는 `/alzs-well-staging/app`, `/alzs-well-staging/ai` CloudWatch
@@ -111,6 +111,8 @@ App·AI mTLS 개인키는 각각 `/alzs-well-staging/tls-app`,
 network key와 capability key 각각 `300r/m`, burst `80`으로 운영한다. 로그인·변경
 요청 한도는 기존의 낮은 별도 bucket을 유지하며 WAF IP rate rule도 그대로 적용한다.
 일반 앱 재배포에는 전체 `DatabaseBootstrapEnabled`를 다시 켜지 않는다.
+이미지 게시 단계에만 `ImagePublishDeploymentEnabled=true`를 사용하고 digest 확인 후
+즉시 `false`로 되돌린다.
 `AppMigrationDeploymentEnabled=true`로 migration DB 비밀 읽기만 잠시 허용하고,
 배포와 Flyway 완료 직후 `false`로 되돌려 런타임 역할에서 해당 정책을 제거한다.
 

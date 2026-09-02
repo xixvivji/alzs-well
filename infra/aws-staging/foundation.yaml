@@ -36,6 +36,11 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Temporarily allow the app host to read only the migration database secret during deployment
+  ImagePublishDeploymentEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Temporarily allow the AI build host to publish immutable app and AI images only
   DatabaseDeletionProtectionEnabled:
     Type: String
     Default: "false"
@@ -50,6 +55,7 @@ Parameters:
 Conditions:
   EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
   EnableAppMigrationDeployment: !Equals [!Ref AppMigrationDeploymentEnabled, "true"]
+  EnableImagePublishDeployment: !Equals [!Ref ImagePublishDeploymentEnabled, "true"]
   ProtectDatabase: !Equals [!Ref DatabaseDeletionProtectionEnabled, "true"]
   ProtectAlb: !Equals [!Ref AlbDeletionProtectionEnabled, "true"]
 
@@ -593,6 +599,15 @@ Resources:
           - Effect: Allow
             Action: "secretsmanager:GetSecretValue"
             Resource: !Ref AiIngestionDatabaseSecret
+  ImagePublishDeploymentPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableImagePublishDeployment
+    Properties:
+      PolicyName: ImagePublishDeployment
+      Roles: [!Ref AiRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
           - Effect: Allow
             Action:
               - "ecr:BatchCheckLayerAvailability"
