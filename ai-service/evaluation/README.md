@@ -126,6 +126,10 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 지정하면 사람이 검토할 CSV를 만들 수 있다. 검수 후에도 원본이나 공식 골든셋을 덮어쓰지
 않고 새 버전의 별도 데이터셋으로 finalize해야 한다.
 
+Arctic-ko 기본 설정의 검수 전 임시 측정과 실패 우선순위는
+`independent-review-provisional-benchmark-v1.md`에 기록한다. 기계 판정 결과와 재현 입력은
+동명의 JSON에 고정하며, 사람 검수 완료나 공식 검색 성능으로 해석하지 않는다.
+
 공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
 2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
 운영 ingestion 경로와 분리해
