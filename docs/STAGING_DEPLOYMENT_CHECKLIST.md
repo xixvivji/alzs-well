@@ -11,7 +11,7 @@
 
 | 영역 | 상태 | 다음 게이트 |
 |---|---|---|
-| 코드·CI | 완료 | PR #139 merge `fb2d13d`, CI·CodeQL·Gitleaks 전체 통과. 보호 규칙을 우회하지 않고 일반 병합 |
+| 코드·CI | 완료 | PR #149 merge `341fbb9`, private 저장소에서 지원되는 CI·SCA·Gitleaks 전체 통과. Dependency Review·CodeQL 언어 분석은 공개 저장소 전환 시 다시 강제 |
 | Vercel 프로젝트 | 운영 배포 | 고객 `https://alzs-well.vercel.app`, 직원 `https://alzs-well-staff.vercel.app` |
 | Vercel 환경변수 | Production 완료 | AWS origin은 Config, 공유 비밀·직원 bootstrap 토큰은 Secret. 브라우저 공개 변수에 비밀값 없음 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
@@ -77,9 +77,9 @@
 - App EC2: `i-0a156c169fe294152`, private `10.42.10.110`, `t3.small`
 - AI EC2: `i-0663b523093db2d19`, private `10.42.11.12`, `m7i-flex.large`
 - RDS: `alzs-well-staging-postgres`, PostgreSQL 17, private, 삭제 방지 활성화
-- Vercel frontend UI 기준 코드: `fb2d13d64ddb6719a501ae9c7b04a220fefc6eff`
-- 고객 Vercel production: `dpl_4Nqgr24d5Fbrks7DBi517UZcWmE7` → `https://alzs-well.vercel.app`
-- 직원 Vercel production: `dpl_7psw8Qq126NCrVhXW2k8ULvHYbRz` → `https://alzs-well-staff.vercel.app`
+- Vercel frontend UI 기준 코드: `341fbb9b3e30c68d12bb304365e9f4f310c36797`
+- 고객 Vercel production: `dpl_5puVKAeDRKhaiXY7x8xqZznNcLxg` → `https://alzs-well.vercel.app`
+- 직원 Vercel production: `dpl_CEyYJSZ5CdEK2Tua1YdMUA7G2Nkz` → `https://alzs-well-staff.vercel.app`
 - 운영 UI 검증: 일반 금융 홈의 조회·이체 사전확인·금융상품 메뉴가 목적 화면을 보존한 로그인으로 연결되고, `/help`는 비로그인 사용자를 공개 시나리오로 분리함을 확인
 - 합성 회원 BFF 검증: `demo001` 로그인 후 `auth/me`가 `SYN_V3_PUBLIC_4393bb3d_000001`을 반환하고 계좌·거래·수취인·한도·이체 양식과 의향·알림·기준선·신호·확인 알림 API가 모두 200 응답
 - 이체 안전 경계 검증: 모의계산 `SIMULATION_ALLOWED`, 사전검증 `PREVIEW_VALID`, `transferCreated=false`, `authorizationCreated=false`
@@ -89,6 +89,15 @@
 - 운영 리허설 결과: 정상 `CLOSED_NORMAL`, 주의 `GUIDANCE_PLAN_APPROVED`+citation 1, 오탐 `CLOSED_FALSE_POSITIVE`
 - AI 장애 리허설 결과: core `READY`, AI `DOWN`, 주의 `DETERMINISTIC_TEMPLATE`·citation 0·`fallbackUsed=true`; 복구 후 RAG citation 1
 - 두 EC2의 `/root/.docker/config.json` ECR 로그인 파일 제거 완료
+
+### 2026-09-02 역할별 재검증
+
+- 고객 `demo001`: 로그인·`auth/me`·계좌 2건·거래 검색 10건·기준선·변화신호·알림 조회가 모두 200이며, `demo002` 고객 범위 조회는 403으로 차단됐다.
+- 행원 `staff001~staff005`: 모두 로그인과 사건 큐 조회가 200이며, 현재 배정 사건은 `staff004`에 1건 있다.
+- 행원 `staff004`: 사건 상세, 불변 근거 1건, 타임라인 6건, 메모 1건, 후속관리, 금융생활 의향 요약 조회가 모두 200이다. 관리자 규칙 조회는 403으로 차단됐다.
+- 관리자 `admin001`, `admin002`: 규칙·정책 버전·알고리즘 버전·기능 플래그·보존정책 조회가 모두 200이다. `AUDIT_READ_ALL` 권한이 없어 전체 감사 조회는 403이며, 행원 사건 큐도 403으로 차단됐다.
+- 새 Production 배포 뒤 대표 고객·행원·관리자 흐름을 다시 실행했고, 사용한 합성 세션은 검증 직후 모두 로그아웃했다.
+- AWS CloudFormation 스택은 `UPDATE_COMPLETE`, CloudFront health는 200이다. 실제 인프라 변경에는 루트 세션을 사용하지 않고 전용 운영 역할의 단기 세션만 사용한다.
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
 
