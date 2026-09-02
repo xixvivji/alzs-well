@@ -26,6 +26,7 @@ export type ChangeItem = {
 };
 export type ChangeAnalysis = {
   baselineDays: number; recentDays: number; analysisWindowDays: number; changes: ChangeItem[];
+  windowComparisons: Array<{ baselineDays: number; recentDays: number; changes: ChangeItem[] }>;
   analysisMode: string; fallbackUsed: boolean; syntheticData: boolean;
   diagnosisInferred: boolean; financialActionExecuted: boolean;
 };

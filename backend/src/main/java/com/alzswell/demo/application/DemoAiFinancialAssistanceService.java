@@ -43,8 +43,11 @@ public class DemoAiFinancialAssistanceService {
     private static final Set<String> INTENT_CLARIFICATION_QUESTIONS = Set.of(
             "필수 납부를 계속 유지할지, 변경 전에 확인할지 선택해 주세요.",
             "필수 납부를 중단하려는 뜻인지 직접 확인해 주세요.",
+            "필수 납부 유지와 중단 의향이 함께 보여 직접 확인해 주세요.",
             "쉬운 글, 음성 안내, 행원 설명 중 원하는 방식을 선택해 주세요.",
+            "설명 방식이 여러 가지로 들립니다. 가장 원하는 한 가지를 선택해 주세요.",
             "어떤 상황에서 도움을 요청할지 선택해 주세요.",
+            "도움 요청 조건이 서로 다르게 들립니다. 원하는 조건을 선택해 주세요.",
             "행원과 공유할 항목을 직접 선택해 주세요.",
             "공유할 항목을 선택해 주세요."
     );
@@ -212,16 +215,20 @@ public class DemoAiFinancialAssistanceService {
                 baselines.observationPeriod().to()));
         if (enabled) {
             try {
-                UUID requestId = UUID.randomUUID();
-                ChangeAnalysisResponse response = aiClient.analyzeChanges(
-                        new ChangeAnalysisRequest("1.0.0", requestId, 60, 30, features));
-                requireSafeChangeResponse(response, requestId, features);
+                List<ChangeAnalysisResponse> windows = new ArrayList<>();
+                for (int baselineDays : List.of(30, 60, 90)) {
+                    UUID requestId = UUID.randomUUID();
+                    ChangeAnalysisResponse response = aiClient.analyzeChanges(
+                            new ChangeAnalysisRequest("1.0.0", requestId, baselineDays, 30, features));
+                    requireSafeChangeResponse(response, requestId, features, baselineDays);
+                    windows.add(response);
+                }
                 assistanceAuditWriter.accepted(
                         sessionId, demoRunId, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false);
-                return map(response, false, "FASTAPI_EWMA_CUSUM");
+                return map(windows, false, "FASTAPI_EWMA_CUSUM");
             } catch (AiAssistanceException | IllegalArgumentException exception) {
-                log.warn("AI change analysis failed; using baseline fallback: {}",
-                        exception.getClass().getSimpleName());
+                log.warn("AI change analysis failed; using baseline fallback: {} ({})",
+                        exception.getClass().getSimpleName(), exception.getMessage());
                 assistanceAuditWriter.fallback(sessionId, demoRunId, "CHANGE_ANALYSIS",
                         fallbackReason(exception));
             }
@@ -335,12 +342,13 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private void requireSafeChangeResponse(
-            ChangeAnalysisResponse response, UUID requestId, List<FeatureSeries> features
+            ChangeAnalysisResponse response, UUID requestId, List<FeatureSeries> features,
+            int expectedBaselineDays
     ) {
         if (response == null || !"1.0.0".equals(response.contractVersion())
                 || !requestId.equals(response.requestId()) || response.diagnosisInferred()
                 || response.financialActionExecuted() || response.changes() == null
-                || response.baselineDays() != 60 || response.recentDays() != 30
+                || response.baselineDays() != expectedBaselineDays || response.recentDays() != 30
                 || response.changes().size() != features.size()
                 || response.changes().stream().anyMatch(java.util.Objects::isNull)
                 || !response.changes().stream().map(ChangeSignal::featureCode).collect(java.util.stream.Collectors.toSet())
@@ -356,7 +364,7 @@ public class DemoAiFinancialAssistanceService {
         Map<String, FeatureSeries> featureByCode = features.stream().collect(
                 java.util.stream.Collectors.toMap(FeatureSeries::featureCode, feature -> feature));
         for (ChangeSignal item : response.changes()) {
-            ExpectedChange expected = recompute(featureByCode.get(item.featureCode()), 60, 30);
+            ExpectedChange expected = recompute(featureByCode.get(item.featureCode()), expectedBaselineDays, 30);
             if (!close(item.baselineValue(), expected.baselineValue())
                     || !close(item.recentValue(), expected.recentValue())
                     || !close(item.delta(), expected.delta())
@@ -367,7 +375,8 @@ public class DemoAiFinancialAssistanceService {
                     || expected.persistent() != item.persistent()
                     || expected.dataSufficient() != item.dataSufficient()
                     || !expected.explanation().equals(item.explanation())) {
-                throw new IllegalArgumentException("AI change response does not match input series");
+                throw new IllegalArgumentException("AI change response does not match input series: "
+                        + expectedBaselineDays + ":" + item.featureCode());
             }
             requireSafeCustomerText(item.explanation(), "AI change explanation", 300);
         }
@@ -443,16 +452,19 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private FeatureSeries featureSeries(String featureCode, String baseline, String current) {
-        List<Double> values = new ArrayList<>(java.util.Collections.nCopies(90, 0.0));
-        spread(values, 0, 60, count(baseline));
-        spread(values, 60, 90, count(current));
+        List<Double> values = new ArrayList<>(java.util.Collections.nCopies(120, 0.0));
+        int baselineCount = count(baseline);
+        spread(values, 0, 30, baselineCount);
+        spread(values, 30, 60, baselineCount);
+        spread(values, 60, 90, baselineCount);
+        spread(values, 90, 120, count(current));
         return new FeatureSeries(featureCode, List.copyOf(values), "COUNT");
     }
 
     private List<FeatureSeries> transactionFeatureSeries(
             UUID sessionId, UUID runId, String customerId, LocalDate windowEnd
     ) {
-        LocalDate windowStart = windowEnd.minusDays(89);
+        LocalDate windowStart = windowEnd.minusDays(119);
         LocalDate recentStart = windowEnd.minusDays(29);
         List<TransactionObservation> transactions = jdbc.query("""
                 select t.occurred_at,t.amount,t.counterparty_display_name
@@ -483,7 +495,7 @@ public class DemoAiFinancialAssistanceService {
             LocalDate day = transaction.occurredAt().toLocalDate();
             if (day.isBefore(windowStart)) continue;
             int index = (int) java.time.temporal.ChronoUnit.DAYS.between(windowStart, day);
-            if (index < 0 || index >= 90) continue;
+            if (index < 0 || index >= 120) continue;
             if (firstCounterparty) increment(newCounterparties, index);
             int hour = transaction.occurredAt().getHour();
             if (hour < 7 || hour >= 22) increment(unusualTimes, index);
@@ -497,7 +509,7 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private List<Double> emptySeries() {
-        return new ArrayList<>(java.util.Collections.nCopies(90, 0.0));
+        return new ArrayList<>(java.util.Collections.nCopies(120, 0.0));
     }
 
     private void increment(List<Double> values, int index) {
@@ -521,23 +533,45 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private AiFinancialAssistanceResponses.ChangeAnalysis map(
-            ChangeAnalysisResponse response, boolean fallback, String mode
+            List<ChangeAnalysisResponse> responses, boolean fallback, String mode
     ) {
+        ChangeAnalysisResponse response = responses.stream()
+                .filter(item -> item.baselineDays() == 60).findFirst().orElseThrow();
         List<AiFinancialAssistanceResponses.ChangeItem> changes = response.changes().stream().map(item ->
                 new AiFinancialAssistanceResponses.ChangeItem(item.featureCode(), item.baselineValue(),
                         item.recentValue(), item.delta(), item.direction(), item.ewmaScore(), item.cusumScore(),
                         item.changeDetected(), item.persistent(), item.dataSufficient(), item.method(),
                         item.explanation())).toList();
+        List<AiFinancialAssistanceResponses.ChangeWindow> windows = responses.stream().map(item ->
+                new AiFinancialAssistanceResponses.ChangeWindow(item.baselineDays(), item.recentDays(),
+                        item.changes().stream().map(change -> new AiFinancialAssistanceResponses.ChangeItem(
+                                change.featureCode(), change.baselineValue(), change.recentValue(), change.delta(),
+                                change.direction(), change.ewmaScore(), change.cusumScore(), change.changeDetected(),
+                                change.persistent(), change.dataSufficient(), change.method(), change.explanation()
+                        )).toList())).toList();
         return new AiFinancialAssistanceResponses.ChangeAnalysis(response.baselineDays(), response.recentDays(),
-                response.baselineDays() + response.recentDays(), changes, mode, fallback,
+                response.baselineDays() + response.recentDays(), changes, mode, fallback, windows,
                 true, false, false);
     }
 
     private AiFinancialAssistanceResponses.ChangeAnalysis fallbackChanges(List<FeatureSeries> features) {
+        List<AiFinancialAssistanceResponses.ChangeWindow> windows = List.of(30, 60, 90).stream()
+                .map(days -> fallbackWindow(features, days)).toList();
+        List<AiFinancialAssistanceResponses.ChangeItem> items = windows.stream()
+                .filter(window -> window.baselineDays() == 60).findFirst().orElseThrow().changes();
+        return new AiFinancialAssistanceResponses.ChangeAnalysis(60, 30, 90, items,
+                "BASELINE_RULE_FALLBACK", true, windows, true, false, false);
+    }
+
+    private AiFinancialAssistanceResponses.ChangeWindow fallbackWindow(
+            List<FeatureSeries> features, int baselineDays
+    ) {
         List<AiFinancialAssistanceResponses.ChangeItem> items = features.stream().map(feature -> {
-            double baseline = feature.dailyValues().subList(0, 60).stream()
-                    .mapToDouble(Double::doubleValue).sum() / 2.0;
-            double current = feature.dailyValues().subList(60, 90).stream()
+            List<Double> values = feature.dailyValues().subList(
+                    feature.dailyValues().size() - baselineDays - 30, feature.dailyValues().size());
+            double baseline = values.subList(0, baselineDays).stream()
+                    .mapToDouble(Double::doubleValue).sum() * 30.0 / baselineDays;
+            double current = values.subList(baselineDays, baselineDays + 30).stream()
                     .mapToDouble(Double::doubleValue).sum();
             double delta = current - baseline;
             boolean changed = Math.abs(delta) >= Math.max(1, baseline * 0.5);
@@ -550,8 +584,7 @@ public class DemoAiFinancialAssistanceService {
                     delta > 0 ? "INCREASE" : delta < 0 ? "DECREASE" : "STABLE", 0, 0,
                     changed, current >= 3, true, "BASELINE_RULE_FALLBACK", explanation);
         }).toList();
-        return new AiFinancialAssistanceResponses.ChangeAnalysis(60, 30, 90, items,
-                "BASELINE_RULE_FALLBACK", true, true, false, false);
+        return new AiFinancialAssistanceResponses.ChangeWindow(baselineDays, 30, items);
     }
 
     private AiFinancialAssistanceResponses.PlainLanguage fallbackLanguage(

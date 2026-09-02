@@ -72,13 +72,22 @@ def structure_intent(
     scopes, scope_confidence, scope_excerpt, scope_question = _share_scopes(text)
 
     questions: list[str] = []
-    if payment_override is not None and payment_override[3]:
+    payment_values = _explicit_payment_values(text, payment_override)
+    explanation_values = _explicit_values(text, _EXPLANATION)
+    help_values = _explicit_values(text, _HELP)
+    if payment_override is not None and payment_override[3] and "KEEP_ESSENTIAL_PAYMENTS" in payment_values:
+        questions.append("필수 납부 유지와 중단 의향이 함께 보여 직접 확인해 주세요.")
+    elif payment_override is not None and payment_override[3]:
         questions.append(payment_override[3])
-    elif payment_confidence < 0.55:
+    elif not payment_values:
         questions.append("필수 납부를 계속 유지할지, 변경 전에 확인할지 선택해 주세요.")
-    if explanation_confidence < 0.55:
+    if len(explanation_values) > 1:
+        questions.append("설명 방식이 여러 가지로 들립니다. 가장 원하는 한 가지를 선택해 주세요.")
+    elif not explanation_values:
         questions.append("쉬운 글, 음성 안내, 행원 설명 중 원하는 방식을 선택해 주세요.")
-    if help_confidence < 0.55:
+    if len(help_values) > 1:
+        questions.append("도움 요청 조건이 서로 다르게 들립니다. 원하는 조건을 선택해 주세요.")
+    elif not help_values:
         questions.append("어떤 상황에서 도움을 요청할지 선택해 주세요.")
     if scope_question:
         questions.append(scope_question)
@@ -107,6 +116,28 @@ def structure_intent(
         model_invoked=descriptor.backend != "hash",
         fallback_used=descriptor.backend == "hash",
     )
+
+
+def _explicit_values(text: str, candidates: tuple[_Candidate, ...]) -> set[str]:
+    """명시된 표현만 반환해 임베딩 추정값을 고객의 확정 의향과 구분한다."""
+    return {
+        candidate.value
+        for candidate in candidates
+        if any(keyword in text for keyword in candidate.keywords)
+    }
+
+
+def _explicit_payment_values(
+    text: str, override: tuple[str, float, str, str | None] | None
+) -> set[str]:
+    values: set[str] = set()
+    if any(keyword in text for keyword in ("계속", "유지", "그대로")):
+        values.add("KEEP_ESSENTIAL_PAYMENTS")
+    if any(keyword in text for keyword in ("바꾸기 전", "변경 전", "먼저 확인")):
+        values.add("REVIEW_BEFORE_CHANGE")
+    if override is not None and override[3]:
+        values.add("REVIEW_BEFORE_CHANGE")
+    return values
 
 
 def _payment_negation_override(text: str) -> tuple[str, float, str, str | None] | None:

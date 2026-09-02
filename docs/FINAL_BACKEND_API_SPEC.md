@@ -993,7 +993,7 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis | 30·60·90일 설명 가능한 장기 변화 분석 실행 및 감사이력 기록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/plain-language | 고객 선호에 맞는 쉬운말·음성용 문장 생성 | OWNED |
 
-이 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 내부 FastAPI가 구조화 임베딩 보조, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·금지 표현·크기·버전·승인을 다시 검증한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
+이 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 내부 FastAPI가 구조화 임베딩 보조, 명시적 의향 누락·상충 확인 질문, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·허용 질문·금지 표현·크기·버전·계산값을 다시 검증한다. 장기 변화 분석은 최근 30일을 과거 30·60·90일의 세 기준구간과 각각 비교하고, 기존 클라이언트용 대표 결과는 60일 기준으로 유지한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 

@@ -85,6 +85,37 @@ def test_intent_treats_negated_stop_and_change_as_keep(monkeypatch: object) -> N
         assert all("중단하려는 뜻인지" not in question for question in body["clarifyingQuestions"])
 
 
+def test_intent_asks_about_omitted_fields_even_when_embedding_can_guess(monkeypatch: object) -> None:
+    client = _client(monkeypatch)
+    response = client.post(
+        "/internal/v1/intent-structure",
+        headers=_headers(),
+        json={"requestId": str(uuid4()), "utterance": "공과금은 계속 납부해 주세요."},
+    )
+
+    assert response.status_code == 200
+    questions = response.json()["clarifyingQuestions"]
+    assert "쉬운 글, 음성 안내, 행원 설명 중 원하는 방식을 선택해 주세요." in questions
+    assert "어떤 상황에서 도움을 요청할지 선택해 주세요." in questions
+
+
+def test_intent_detects_conflicting_explanation_and_help_preferences(monkeypatch: object) -> None:
+    client = _client(monkeypatch)
+    response = client.post(
+        "/internal/v1/intent-structure",
+        headers=_headers(),
+        json={
+            "requestId": str(uuid4()),
+            "utterance": "공과금은 유지하고 쉬운 글과 음성으로 알려 주세요. 반복되면 돕되 자동 연락은 원하지 않아요.",
+        },
+    )
+
+    assert response.status_code == 200
+    questions = response.json()["clarifyingQuestions"]
+    assert "설명 방식이 여러 가지로 들립니다. 가장 원하는 한 가지를 선택해 주세요." in questions
+    assert "도움 요청 조건이 서로 다르게 들립니다. 원하는 조건을 선택해 주세요." in questions
+
+
 def test_detects_persistent_longitudinal_change(monkeypatch: object) -> None:
     client = _client(monkeypatch)
     values = [0.0] * 60 + [0.0] * 20 + [1.0] * 7 + [0.0] * 3

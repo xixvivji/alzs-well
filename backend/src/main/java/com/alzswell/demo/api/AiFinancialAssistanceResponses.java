@@ -30,8 +30,11 @@ public final class AiFinancialAssistanceResponses {
     public record ChangeAnalysis(
             int baselineDays, int recentDays, int analysisWindowDays,
             List<ChangeItem> changes, String analysisMode, boolean fallbackUsed,
+            List<ChangeWindow> windowComparisons,
             boolean syntheticData, boolean diagnosisInferred, boolean financialActionExecuted
     ) {}
+
+    public record ChangeWindow(int baselineDays, int recentDays, List<ChangeItem> changes) {}
 
     public record ChangeItem(
             String featureCode, double baselineValue, double recentValue, double delta,
