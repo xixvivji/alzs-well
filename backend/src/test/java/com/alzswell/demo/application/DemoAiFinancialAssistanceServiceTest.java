@@ -277,8 +277,8 @@ class DemoAiFinancialAssistanceServiceTest {
     void analyzesOnlyTheAuthenticatedMembersStoredSyntheticBaseline() throws Exception {
         ResultSet resultSet = mock(ResultSet.class);
         when(resultSet.getString("feature_code")).thenReturn("REPEATED_CONFIRMATION");
-        when(resultSet.getBigDecimal("baseline_value")).thenReturn(BigDecimal.ONE);
-        when(resultSet.getBigDecimal("current_value")).thenReturn(BigDecimal.valueOf(5));
+        when(resultSet.getBigDecimal("baseline_value")).thenReturn(new BigDecimal("1.0000"));
+        when(resultSet.getBigDecimal("current_value")).thenReturn(new BigDecimal("5.0000"));
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
                 .thenAnswer(invocation -> List.of(
                         ((RowMapper) invocation.getArgument(1)).mapRow(resultSet, 0)));
