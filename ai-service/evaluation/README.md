@@ -6,6 +6,8 @@
 평가 명령이 고정 SentenceTransformer revision을 사용하고 보고서에 모델 버전을 기록한다.
 현재 측정값과 모델 선택 보류 조건은 `model-comparison-v1.md`에 기록한다.
 Arctic-ko 합성 E2E 부하 게이트의 측정법과 결과는 `arctic-ko-load-test-v1.md`에 기록한다.
+최신 cold-start 예열과 동시성 4 재검증, 동시성 10 포화 탐색 결과는
+`arctic-ko-cold-start-and-load-v2.md`에 기록한다.
 평가에 반입한 모델의 고정 revision·차원·prefix와 SentenceTransformer가 소비하는 모든
 파일의 상대경로·크기·SHA-256은 `model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는
 Git에 커밋하지 않는다.
