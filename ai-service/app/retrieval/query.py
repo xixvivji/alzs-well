@@ -62,6 +62,30 @@ _FUTURE_LAW_CERTAINTY = re.compile(
     r"(?:내일|향후|앞으로|시행\s*전|예정).{0,40}(?:법령|법률|법규|시행령|개정)"
     r".{0,30}(?:확정|단정|보장)"
 )
+_PROMPT_INJECTION = re.compile(
+    r"(?:이전|앞선|위의|기존|시스템|개발자|관리자)\s*(?:지시|명령|규칙|정책|프롬프트)"
+    r".{0,30}(?:무시|삭제|우회|덮어쓰|공개|출력)|"
+    r"(?:ignore|bypass|override|reveal).{0,30}(?:instruction|prompt|policy|system)"
+)
+_PRIVILEGE_ESCALATION = re.compile(
+    r"(?:권한|역할|role|permission).{0,30}(?:관리자|행원|준법|admin|staff).{0,20}"
+    r"(?:변경|상승|추가|부여|가장|위장)|"
+    r"(?:관리자|행원|준법|admin|staff).{0,30}(?:권한|역할).{0,20}(?:우회|획득|부여)"
+)
+_SECRET_EXTRACTION = re.compile(
+    r"(?:비밀번호|암호|api\s*키|access\s*key|secret|토큰|인증키|환경변수|시스템\s*프롬프트)"
+    r".{0,30}(?:알려|보여|출력|공개|노출|복호화|가져와)"
+)
+_PERSONAL_DATA_EXTRACTION = re.compile(
+    r"(?:다른|전체|모든|타인|해당).{0,20}(?:고객|회원|직원).{0,30}"
+    r"(?:주민등록번호|계좌번호|전화번호|주소|거래내역|개인정보).{0,20}"
+    r"(?:알려|보여|출력|공개|내보내|조회)"
+)
+_CITATION_FABRICATION = re.compile(
+    r"(?:근거|인용|출처|문서|조항).{0,20}(?:없|없어도|없이|찾지\s*말고).{0,30}"
+    r"(?:만들|지어|생성|꾸며|답변|확정)|"
+    r"(?:가짜|허위).{0,10}(?:근거|인용|출처|문서|조항)"
+)
 
 
 def normalize(value: str) -> str:
@@ -94,6 +118,11 @@ def requires_abstention(value: str) -> bool:
         or _MEDICAL_DIAGNOSIS.search(normalized)
         or _PERSONALIZED_INVESTMENT.search(normalized)
         or _FUTURE_LAW_CERTAINTY.search(normalized)
+        or _PROMPT_INJECTION.search(normalized)
+        or _PRIVILEGE_ESCALATION.search(normalized)
+        or _SECRET_EXTRACTION.search(normalized)
+        or _PERSONAL_DATA_EXTRACTION.search(normalized)
+        or _CITATION_FABRICATION.search(normalized)
     )
 
 
