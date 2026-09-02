@@ -277,8 +277,10 @@ artifact/golden-set SHA-256·index version·배포 환경을 검사한다. 업�
 readiness는 `/readiness`의 HTTP 200과 `status=READY`를 요구하고 기대값을 다시 비교한다. ingestion은 HTTP로
 공개하지 않고 Session Manager에서 `ingestion` profile의 일회성 CLI로만 실행한다.
 
-Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion한 뒤 FastAPI 내부 검색과 Spring
-검색 API를 각각 동시성 4, 100건으로 측정한다. p95 1초 이하, 오류율 0%, 처리량 2 RPS
+Arctic-ko의 격리 부하 게이트는 합성 문서를 재-ingestion하고 첫 내부 검색으로 모델을
+명시적으로 예열한 뒤 FastAPI 내부 검색과 Spring 검색 API를 각각 동시성 4, 100건으로
+측정한다. 성능 구간은 이미 citation이 확인된 고정 합성 질의를 사용하며 다양한 질문의
+관련성은 별도 골든셋으로 검증한다. p95 1초 이하, 오류율 0%, 처리량 2 RPS
 이상, AI 프로세스 peak RSS 2.5 GiB 이하, 기동 30초 이하를 모두 만족해야 한다. Linux
 `/proc/1/status`의 `VmHWM`을 peak RSS로 사용하며, 모델 파일 page cache가 포함된 cgroup
 `memory.peak`도 별도 증거로 남긴다.
