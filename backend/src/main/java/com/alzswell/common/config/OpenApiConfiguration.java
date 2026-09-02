@@ -283,6 +283,9 @@ public class OpenApiConfiguration {
         if (path.contains("/baseline-calculations")) {
             return List.of("DETECTION_CALCULATE or DETECTION_CALCULATE_ALL");
         }
+        if (path.endsWith("/ai-financial-assistance/change-analysis")) {
+            return List.of("DETECTION_READ or DETECTION_READ_ALL");
+        }
         if (path.contains("/baselines") || path.endsWith("/signals") || path.startsWith("/api/v1/signals")) {
             return List.of(method == PathItem.HttpMethod.POST ? "DETECTION_CALCULATE or DETECTION_CALCULATE_ALL"
                     : "DETECTION_READ or DETECTION_READ_ALL");

@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **282개** |
+| 전체 API operation | **283개** |
 | API 도메인 | **26개** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **26개** |
-| P1 제품 핵심 백로그 | **177개** |
+| P1 제품 핵심 백로그 | **178개** |
 | P2 은행·증권 확장 백로그 | **79개** |
-| ALZ's well 소유 `OWNED` | **193개** |
+| ALZ's well 소유 `OWNED` | **194개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 282개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 283개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 문서화된 업무 API 237개 + staging 직원 발급 API 1개 |
+| `IMPLEMENTED` | 문서화된 업무 API 238개 + staging 직원 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 45개 |
 
-문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 237개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 238개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
+문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 238개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 239개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
 
-여기서 API 282개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 283개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -140,7 +140,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 26개 도메인·282개 API 마스터 카탈로그
+3. 26개 도메인·283개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 15개 상세 계약
 6. P0-B 11개 상세 계약
@@ -854,16 +854,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **282** |
+| 전체 | **283** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **177** |
+| P1 제품 핵심 | **178** |
 | P2 은행·증권 확장 | **79** |
-| OWNED | **193** |
+| OWNED | **194** |
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 총 237개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 238개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
+현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 총 238개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 239개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -982,7 +982,7 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 포함된 항목만 반환하며 철회된 의향은 조회하지 않는다. 모든 응답은 `legallyBinding=false`,
 `healthInferenceUsed=false`이며 의향은 건강상태·위험도·사건 우선순위 산정에 사용하지 않는다.
 
-#### 3.3.3-B 데모 AI 금융생활 지원 — 6개
+#### 3.3.3-B AI 금융생활 지원 — 7개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
@@ -992,8 +992,9 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent | 현재 데모 의향 조회 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis | 30·60·90일 설명 가능한 장기 변화 분석 실행 및 감사이력 기록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/plain-language | 고객 선호에 맞는 쉬운말·음성용 문장 생성 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/ai-financial-assistance/change-analysis | 로그인 합성 회원 기준선의 30·60·90일 변화 분석 | OWNED |
 
-이 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 내부 FastAPI가 구조화 임베딩 보조, 명시적 의향 누락·상충 확인 질문, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·허용 질문·금지 표현·크기·버전·계산값을 다시 검증한다. 장기 변화 분석은 최근 30일을 과거 30·60·90일의 세 기준구간과 각각 비교하고, 기존 클라이언트용 대표 결과는 60일 기준으로 유지한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
+앞의 데모 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 회원 장기 변화 분석은 Bearer 인증 주체와 경로의 `customerId` 일치를 검증한 뒤 서버에 저장된 합성 기준선만 사용한다. 내부 FastAPI가 구조화 임베딩 보조, 명시적 의향 누락·상충 확인 질문, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·허용 질문·금지 표현·크기·버전·계산값을 다시 검증한다. 장기 변화 분석은 최근 30일을 과거 30·60·90일의 세 기준구간과 각각 비교하고, 기존 클라이언트용 대표 결과는 60일 기준으로 유지한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -1502,10 +1503,10 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 |---|---|---:|
 | Wave 1 | P0-A 핵심 A/B 데모·운영 안전성 | 15 |
 | Wave 2 | P0-B 세션 격리 뱅킹 셸 | 26 |
-| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 176 |
-| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 261 |
+| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 177 |
+| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 262 |
 
-발표에서는 “282개 API 카탈로그를 설계했고 238개 코드 operation을 구현했다”고 표현한다. 282개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “283개 API 카탈로그를 설계했고 239개 코드 operation을 구현했다”고 표현한다. 283개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 

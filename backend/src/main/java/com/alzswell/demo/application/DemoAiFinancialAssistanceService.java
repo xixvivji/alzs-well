@@ -10,6 +10,7 @@ import com.alzswell.demo.api.AiFinancialAssistanceResponses;
 import com.alzswell.demo.api.BaselineListResponse;
 import com.alzswell.demo.api.DemoErrorCode;
 import com.alzswell.demo.domain.DemoSession;
+import com.alzswell.detection.api.DetectionErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -213,6 +215,35 @@ public class DemoAiFinancialAssistanceService {
                 .toList());
         features.addAll(transactionFeatureSeries(sessionId, session.getDemoRunId(), customerId,
                 baselines.observationPeriod().to()));
+        return analyzeFeatures(features,
+                () -> assistanceAuditWriter.accepted(
+                        sessionId, demoRunId, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false),
+                reason -> assistanceAuditWriter.fallback(
+                        sessionId, demoRunId, "CHANGE_ANALYSIS", reason));
+    }
+
+    /** 로그인 합성 회원의 불변 기준선 snapshot만 사용해 식별정보 없이 AI 분석을 수행한다. */
+    @Transactional(readOnly = true)
+    public AiFinancialAssistanceResponses.ChangeAnalysis analyzeMember(String customerId) {
+        List<MemberBaseline> baselines = jdbc.query("""
+                select feature_code,baseline_value,current_value
+                  from customer_baseline_snapshot
+                 where customer_id=? and readiness='READY'
+                 order by feature_code
+                """, (rs, row) -> new MemberBaseline(
+                        memberFeatureCode(rs.getString("feature_code")),
+                        rs.getBigDecimal("baseline_value").toPlainString(),
+                        rs.getBigDecimal("current_value").toPlainString()), customerId);
+        if (baselines.isEmpty()) throw new BusinessException(DetectionErrorCode.SNAPSHOT_NOT_READY);
+        List<FeatureSeries> features = baselines.stream()
+                .map(item -> featureSeries(item.featureCode(), item.baselineValue(), item.currentValue()))
+                .toList();
+        return analyzeFeatures(features, () -> {}, reason -> {});
+    }
+
+    private AiFinancialAssistanceResponses.ChangeAnalysis analyzeFeatures(
+            List<FeatureSeries> features, Runnable accepted, Consumer<String> fallback
+    ) {
         if (enabled) {
             try {
                 List<ChangeAnalysisResponse> windows = new ArrayList<>();
@@ -223,19 +254,28 @@ public class DemoAiFinancialAssistanceService {
                     requireSafeChangeResponse(response, requestId, features, baselineDays);
                     windows.add(response);
                 }
-                assistanceAuditWriter.accepted(
-                        sessionId, demoRunId, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false);
+                accepted.run();
                 return map(windows, false, "FASTAPI_EWMA_CUSUM");
             } catch (AiAssistanceException | IllegalArgumentException exception) {
                 log.warn("AI change analysis failed; using baseline fallback: {} ({})",
                         exception.getClass().getSimpleName(), exception.getMessage());
-                assistanceAuditWriter.fallback(sessionId, demoRunId, "CHANGE_ANALYSIS",
-                        fallbackReason(exception));
+                fallback.accept(fallbackReason(exception));
             }
         } else {
-            assistanceAuditWriter.fallback(sessionId, demoRunId, "CHANGE_ANALYSIS", "FEATURE_DISABLED");
+            fallback.accept("FEATURE_DISABLED");
         }
         return fallbackChanges(features);
+    }
+
+    private String memberFeatureCode(String featureCode) {
+        return switch (featureCode) {
+            case "MISSED_PAYMENT", "MISSED_RECURRING_PAYMENT", "MISSED_RECURRING_COUNT" ->
+                    "MISSED_RECURRING_COUNT";
+            case "DUPLICATE_TRANSFER", "DUPLICATE_TRANSFER_COUNT" -> "DUPLICATE_TRANSFER_COUNT";
+            case "REPEATED_CONFIRMATION", "REPEATED_CONFIRMATION_COUNT" ->
+                    "REPEATED_CONFIRMATION_COUNT";
+            default -> throw new IllegalArgumentException("unsupported member baseline feature: " + featureCode);
+        };
     }
 
     public AiFinancialAssistanceResponses.PlainLanguage plainLanguage(
@@ -824,4 +864,5 @@ public class DemoAiFinancialAssistanceService {
     ) {}
 
     private record TransactionObservation(OffsetDateTime occurredAt, double amount, String counterparty) {}
+    private record MemberBaseline(String featureCode, String baselineValue, String currentValue) {}
 }

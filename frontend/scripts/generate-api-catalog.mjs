@@ -24,7 +24,7 @@ for (const line of catalogSection.split("\n")) {
   const [, priority, method, rawPath, purpose, boundary] = row;
   documented.push({ priority, method, path: rawPath.trim(), purpose: purpose.trim(), boundary, domain });
 }
-if (documented.length !== 282) throw new Error(`문서 operation 수가 282가 아니라 ${documented.length}입니다.`);
+if (documented.length !== 283) throw new Error(`문서 operation 수가 283이 아니라 ${documented.length}입니다.`);
 
 const controllers = walk(controllerRoot).filter((path) => path.endsWith("Controller.java"));
 const implemented = [];
@@ -41,14 +41,14 @@ for (const controller of controllers) {
   }
 }
 const implementedKeys = new Set(implemented.map(({ method, path }) => `${method} ${path}`));
-if (implemented.length !== 238 || implementedKeys.size !== 238) {
-  throw new Error(`구현 operation 수가 238이 아닙니다: total=${implemented.length}, unique=${implementedKeys.size}`);
+if (implemented.length !== 239 || implementedKeys.size !== 239) {
+  throw new Error(`구현 operation 수가 239가 아닙니다: total=${implemented.length}, unique=${implementedKeys.size}`);
 }
 
 const documentedKeys = new Set(documented.map(({ method, path }) => `${method} ${path}`));
 const codeOnly = implemented.filter(({ method, path }) => !documentedKeys.has(`${method} ${path}`));
 const implementedDocumented = documented.filter(({ method, path }) => implementedKeys.has(`${method} ${path}`));
-if (implementedDocumented.length !== 237 || codeOnly.length !== 1) {
+if (implementedDocumented.length !== 238 || codeOnly.length !== 1) {
   throw new Error(`카탈로그·코드 교집합이 예상과 다릅니다: documented=${implementedDocumented.length}, codeOnly=${codeOnly.length}`);
 }
 
@@ -66,7 +66,7 @@ if (process.argv.includes("--check")) {
     console.error("생성된 API operation 카탈로그가 최신이 아닙니다. npm run catalog:generate를 실행하세요.");
     process.exit(1);
   }
-  console.log("API operation catalog valid: 282 documented, 238 implemented, 1 code-only operation");
+  console.log("API operation catalog valid: 283 documented, 239 implemented, 1 code-only operation");
 } else {
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, output);
