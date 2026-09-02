@@ -20,6 +20,13 @@ AssumeRole한 세션에서만 실행한다. 루트는 계정 복구·보안 설�
 운영에 사용하지 않는다. 배포 역할과 EC2 runtime instance profile은 서로
 분리한다.
 
+현재 staging의 로컬 운영 진입점은 IAM 사용자 `alzs-well-staging-cli`의
+`aws login` 단기 세션이다. 장기 Access Key는 생성하지 않으며, 이 사용자는
+`alzs-well-staging-operator`와 `alzswell-staging-deployer` 역할만 AssumeRole할
+수 있다. `default` 루트 프로필은 인증 정보가 없는 상태로 유지한다. 일반 상태
+조회·SSM 작업은 `alzswell-operator`, CloudFormation 변경 검토·적용은
+`alzswell-staging` 프로필을 사용한다.
+
 실제 VPC·ALB·WAF·EC2·RDS·ECR·Secrets Manager 리소스는 승인된 IaC
 스택으로만 생성한다. 임시 `aws` CLI 명령으로 수동 생성하지 않으며, change
 set/plan에서 월 예상 비용·공인 IP·암호화·삭제 방지·백업 정책을 검토한 후
