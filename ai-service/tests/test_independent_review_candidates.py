@@ -1,4 +1,6 @@
 import csv
+import hashlib
+import json
 from collections import Counter
 from pathlib import Path
 
@@ -111,3 +113,37 @@ def test_expanded_rag_review_csv_matches_candidate_contract(repo_root: Path) -> 
     )
     assert all(row["evidenceExcerpt"] for row in rows[:105])
     assert all(not row["evidenceExcerpt"] for row in rows[105:])
+
+
+def test_provisional_benchmark_keeps_human_review_boundary(repo_root: Path) -> None:
+    candidate_path = (
+        repo_root
+        / "ai-service/evaluation/reviews/independent-review-candidates-v1.jsonl"
+    )
+    report = json.loads(
+        (
+            repo_root
+            / "ai-service/evaluation/independent-review-provisional-benchmark-v1.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert report["officialPerformanceClaim"] is False
+    assert report["humanReviewCompleted"] is False
+    assert report["inputs"]["candidateSha256"] == (
+        "sha256:" + hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+    )
+    assert report["summary"] == {
+        "caseCount": 150,
+        "answerableCount": 105,
+        "noAnswerCount": 45,
+        "top1PassCount": 69,
+        "top3PassCount": 95,
+        "top1Rate": 0.6571428571,
+        "top3Rate": 0.9047619048,
+        "noAnswerPassCount": 42,
+        "noAnswerPassRate": 0.9333333333,
+        "reviewTop2Or3Count": 26,
+        "failureCount": 13,
+    }
+    assert len(report["answerFailures"]) == 10
+    assert len(report["noAnswerFalsePositives"]) == 3
