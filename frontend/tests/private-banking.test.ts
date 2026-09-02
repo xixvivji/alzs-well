@@ -154,6 +154,7 @@ test("보호업무와 관리자는 서로 다른 Bearer 역할의 운영 조회 
   await loadAdminOperations(admin);
   assert.ok(paths.includes("/api/v1/staff/cases?limit=50"));
   assert.ok(paths.includes("/api/v1/admin/rules"));
+  assert.ok(paths.includes("/api/v1/admin/ai-quality/summary?hours=24"));
   assert.ok(paths.includes("/api/v1/audit/events?limit=25"));
   await assert.rejects(() => loadAdminOperations(staff), /역할/);
   await assert.rejects(() => loadStaffOperations(admin), /역할/);

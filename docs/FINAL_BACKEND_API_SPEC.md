@@ -14,7 +14,7 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **281개** |
+| 전체 API operation | **282개** |
 | API 도메인 | **26개** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
@@ -25,17 +25,17 @@
 | 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 281개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 282개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 문서화된 업무 API 236개 + staging 직원 발급 API 1개 |
+| `IMPLEMENTED` | 문서화된 업무 API 237개 + staging 직원 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 45개 |
 
-문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 236개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 237개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
+문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 237개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 238개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
 
-여기서 API 281개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 282개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -140,7 +140,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 26개 도메인·281개 API 마스터 카탈로그
+3. 26개 도메인·282개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 15개 상세 계약
 6. P0-B 11개 상세 계약
@@ -854,7 +854,7 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **281** |
+| 전체 | **282** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
 | P1 제품 핵심 | **176** |
@@ -863,7 +863,7 @@ OPEN
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 총 236개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 237개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
+현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 총 237개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 238개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1413,6 +1413,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | P2 | POST | /api/v1/admin/rules/{ruleId}/rollback | 이전 규칙으로 복귀 | OWNED |
 | P1 | GET | /api/v1/admin/policies/versions | 정책엔진 버전 | OWNED |
 | P1 | GET | /api/v1/admin/algorithms/versions | 탐지 알고리즘 버전 | OWNED |
+| P1 | GET | /api/v1/admin/ai-quality/summary | 최근 AI 검색·폴백·인용 거부 운영 품질 | OWNED |
 | P1 | GET | /api/v1/admin/feature-flags | 환경별 기능 플래그 | OWNED |
 | P2 | PUT | /api/v1/admin/feature-flags/{flagKey} | 승인된 기능 플래그 변경 | OWNED |
 
@@ -1422,6 +1423,13 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 활성화하지 않고 동일 규칙의 새 ACTIVE 버전을 생성한다. 탐지 실행은 당시의 `policyVersion`과
 `policySnapshotHash`를 `synthetic_detection_run`에 고정해 이후 정책 변경과 무관하게 재현할 수 있다.
 알고리즘 버전 조회는 `advisoryAiUsed=false`, `externalProviderCalled=false`를 명시한다.
+
+AI 운영 품질 요약은 `DETECTION_POLICY_READ` 권한에 한해 최근 1~720시간의 추가 전용
+감사 이벤트를 집계한다. 검색 요청·하이브리드 근거 연결·결정론적 폴백·빈 결과·Spring
+citation 거부와 금융생활 AI 도움의 생성·폴백 건수 및 비율만 반환하며 질의 원문이나
+고객 식별자를 반환하지 않는다. 표본이 없으면 `NO_DATA`, 폴백률 10% 초과 또는 citation
+거부가 있으면 `ATTENTION`, 나머지는 `HEALTHY`다. 이 상태는 운영 점검 신호이며 모델의
+정확도나 고객 위험도를 판정하지 않는다.
 기능 플래그 2개는 Flyway V35의 승인 희망값과 append-only 변경이력으로 구현한다. API는 Spring
 런타임 설정을 동적으로 바꾸지 않으며 `desiredEnabled`, `runtimeEnabled`, `appliedToRuntime`,
 `restartRequired`를 분리해 반환한다. 외부 실행·외부 송신·외부 모델 가드레일은 API 변경 불가이고,
@@ -1497,7 +1505,7 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 | Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 176 |
 | Wave 4 | P2 제품 확장 및 외부 연동 계약 | 261 |
 
-발표에서는 “281개 API 카탈로그를 설계했고 237개 코드 operation을 구현했다”고 표현한다. 281개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “282개 API 카탈로그를 설계했고 238개 코드 operation을 구현했다”고 표현한다. 282개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 

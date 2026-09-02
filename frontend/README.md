@@ -45,11 +45,11 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/staff/login`: `staff001`~`staff005` 보호업무 역할과 `admin001`~`admin002` 탐지관리 역할의 합성 운영 로그인
 - `/staff/system-status`: health·readiness·공개 설정·버전과 AI 검색 장애 폴백 상태
 
-`scripts/generate-api-catalog.mjs`는 최종 API 명세 281개와 Spring Controller 237개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 236개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 237개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
+`scripts/generate-api-catalog.mjs`는 최종 API 명세 282개와 Spring Controller 238개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 237개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 238개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
 
 생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 브라우저는 Bearer token을 받지 않으며 같은 origin의 `/api/member-auth/*` BFF가 로그인·회전·로그아웃을 처리합니다. 나머지 고객·운영 API에는 BFF가 HttpOnly access token을 서버에서 주입하고, 직접 `/api/v1/auth/login`·`token/refresh`를 호출해 원문 token을 받는 경로는 차단합니다. 공개 계정은 성공한 `PUBLIC` fixture의 고객 300명·보호업무 직원 5명·탐지관리자 2명으로 제한합니다. 고객 API는 customerId 소유권을, 운영 API는 `PROTECTION_STAFF` 또는 `DETECTION_ADMIN` 권한을 다시 검증합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
 
-`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 2026-09-01 기준 정적 집계는 237개 중 153개(64.6%)이며, 동적 데모 경로처럼 문자열을 조립하는 호출은 보수적으로 누락될 수 있습니다. API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않으며, 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하고 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다. 역할별 운영 원칙과 서버 전용·간접 연결 분류는 `../docs/FRONTEND_API_ROLE_MATRIX.md`를 따릅니다.
+`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 2026-09-01 기준 정적 집계는 238개 중 154개(64.7%)이며, 동적 데모 경로처럼 문자열을 조립하는 호출은 보수적으로 누락될 수 있습니다. API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않으며, 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하고 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다. 역할별 운영 원칙과 서버 전용·간접 연결 분류는 `../docs/FRONTEND_API_ROLE_MATRIX.md`를 따릅니다.
 
 고객 알림의 `나중에 확인`은 `POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer`를 호출하며 `{ expectedVersion, deferredUntil }`, `Idempotency-Key`, 데모 capability/run ID를 전달합니다. 백엔드는 같은 세션·run·알림의 version을 검증하고 `DEFERRED` 상태 및 변경된 알림 데이터를 반환해야 합니다.
 

@@ -234,7 +234,8 @@ public class OpenApiConfiguration {
             return List.of("COMPLIANCE_TRACE_READ");
         }
         if (path.startsWith("/api/v1/admin/rules") || path.startsWith("/api/v1/admin/policies/versions")
-                || path.startsWith("/api/v1/admin/algorithms/versions")) {
+                || path.startsWith("/api/v1/admin/algorithms/versions")
+                || path.startsWith("/api/v1/admin/ai-quality")) {
             return List.of(method == PathItem.HttpMethod.GET ? "DETECTION_POLICY_READ" : "DETECTION_POLICY_WRITE");
         }
         if (path.startsWith("/api/v1/admin/synthetic-datasets")) return List.of("SYNTHETIC_DATASET_ADMIN");

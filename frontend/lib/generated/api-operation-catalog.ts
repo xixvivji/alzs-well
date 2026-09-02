@@ -4184,6 +4184,21 @@ export const API_OPERATION_CATALOG = [
     "externalActionAllowed": false
   },
   {
+    "key": "GET /api/v1/admin/ai-quality/summary",
+    "method": "GET",
+    "path": "/api/v1/admin/ai-quality/summary",
+    "purpose": "최근 AI 검색·폴백·인용 거부 운영 품질",
+    "domain": "관리자 규칙·정책·모델",
+    "domainId": "관리자-규칙-정책-모델",
+    "priority": "P1",
+    "boundary": "OWNED",
+    "implementation": "IMPLEMENTED",
+    "audience": "ADMIN",
+    "authorityMode": "BEARER",
+    "pathParameters": [],
+    "externalActionAllowed": false
+  },
+  {
     "key": "GET /api/v1/admin/feature-flags",
     "method": "GET",
     "path": "/api/v1/admin/feature-flags",
