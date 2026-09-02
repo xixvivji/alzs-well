@@ -108,6 +108,24 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 의존하는 ORC-004, ORC-005, ORC-013은 `PENDING`을 유지한다. 승인된 27개만
 `datasets/official-operational-golden-v1.jsonl`에 고정한다.
 
+### 독립 검수 후보 150건
+
+`reviews/independent-review-candidates-v1.jsonl`과 사람이 검토할
+`reviews/independent-review-v1.csv`는 공식 운영 골든셋을 변경하지 않고 검색 강건성과
+무응답 경계를 추가 검토하기 위한 별도 후보 팩이다.
+
+- 승인 근거 21개에 고객 안내·행원 검토·규정 확인·쉬운말·핵심 조건 표현을 적용한 답변형 105건
+- ACL, 만료·미래 문서, 미승인 문서, 금융 외 질문, 근거 없음 무응답형 45건
+
+150건은 모두 `PENDING`이고 `MACHINE_AUTHORED_REVIEW_CANDIDATE`로 표시한다. 기존 27건의
+사람 승인 상태를 상속하지 않으며, 데이터 작성자와 다른 검수자가 질문·정답 근거·무응답
+기대값을 확인하기 전에는 공식 검색 성능이나 독립 평가 결과로 사용할 수 없다. 계약 테스트는
+문항 수, 범주 분포, 근거 추적성, `PENDING` 상태를 고정한다.
+
+승인 문서에서 검수 corpus를 재생성한 뒤 기존 `prepare` 명령의 `--candidates`에 이 파일을
+지정하면 사람이 검토할 CSV를 만들 수 있다. 검수 후에도 원본이나 공식 골든셋을 덮어쓰지
+않고 새 버전의 별도 데이터셋으로 finalize해야 한다.
+
 공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
 2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
 운영 ingestion 경로와 분리해
