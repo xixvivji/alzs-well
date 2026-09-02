@@ -206,13 +206,13 @@ class DemoAiFinancialAssistanceServiceTest {
                     false, false, true, "EWMA_CUSUM_V1", "최근 변화가 없습니다."
             )).toList();
             return new ChangeAnalysisResponse(
-                    "1.0.0", request.requestId(), 60, 30, forged, false, false);
+                    "1.0.0", request.requestId(), request.baselineDays(), 30, forged, false, false);
         });
 
         var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
 
         assertThat(result.fallbackUsed()).isTrue();
-        assertThat(result.changes().getFirst().baselineValue()).isEqualTo(1);
+        assertThat(result.changes().getFirst().baselineValue()).isEqualTo(2);
         assertThat(result.changes().getFirst().recentValue()).isEqualTo(8);
         verify(assistanceAuditWriter).fallback(
                 SESSION_ID, RUN_ID, "CHANGE_ANALYSIS", "UPSTREAM_RESPONSE_REJECTED");
@@ -238,12 +238,15 @@ class DemoAiFinancialAssistanceServiceTest {
             List<ChangeSignal> changes = request.features().stream()
                     .map(this::fastApiCompatibleSignal).toList();
             return new ChangeAnalysisResponse(
-                    "1.0.0", request.requestId(), 60, 30, changes, false, false);
+                    "1.0.0", request.requestId(), request.baselineDays(), 30, changes, false, false);
         });
 
         var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
 
         assertThat(result.fallbackUsed()).isFalse();
+        assertThat(result.windowComparisons()).extracting(
+                com.alzswell.demo.api.AiFinancialAssistanceResponses.ChangeWindow::baselineDays)
+                .containsExactly(30, 60, 90);
         assertThat(result.changes()).filteredOn(item -> item.featureCode().equals("MISSED_RECURRING_COUNT"))
                 .singleElement().satisfies(item -> {
                     assertThat(item.direction()).isEqualTo("INCREASE");
@@ -275,6 +278,8 @@ class DemoAiFinancialAssistanceServiceTest {
                 true, true, true, "EWMA_CUSUM_V1", "검증된 변화 설명");
         doReturn(new com.alzswell.demo.api.AiFinancialAssistanceResponses.ChangeAnalysis(
                 60, 30, 90, List.of(change), "FASTAPI_EWMA_CUSUM", false,
+                List.of(new com.alzswell.demo.api.AiFinancialAssistanceResponses.ChangeWindow(
+                        60, 30, List.of(change))),
                 true, false, false))
                 .when(spyService).analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
@@ -311,9 +316,9 @@ class DemoAiFinancialAssistanceServiceTest {
                     true, true, true, "EWMA_CUSUM_V1",
                     "최근 30일 동안 정기납부 누락이 평소 0회에서 8회로 지속적으로 증가했습니다.");
             case "DUPLICATE_TRANSFER_COUNT" -> new ChangeSignal(
-                    feature.featureCode(), 5, 0, -5, "DECREASE", -0.2582, 5.8095,
+                    feature.featureCode(), 10, 0, -10, "DECREASE", -0.4364, 9.8198,
                     true, true, true, "EWMA_CUSUM_V1",
-                    "최근 30일 동안 중복송금이 평소 5회에서 0회로 지속적으로 감소했습니다.");
+                    "최근 30일 동안 중복송금이 평소 10회에서 0회로 지속적으로 감소했습니다.");
             case "REPEATED_CONFIRMATION_COUNT" -> stableSignal(feature.featureCode(), "거래결과 재확인");
             case "NEW_COUNTERPARTY_COUNT" -> stableSignal(feature.featureCode(), "새 수취인 거래");
             case "UNUSUAL_TIME_COUNT" -> stableSignal(feature.featureCode(), "평소와 다른 시간대 거래");
