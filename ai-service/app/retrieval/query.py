@@ -62,6 +62,11 @@ _FUTURE_LAW_CERTAINTY = re.compile(
     r"(?:내일|향후|앞으로|시행\s*전|예정).{0,40}(?:법령|법률|법규|시행령|개정)"
     r".{0,30}(?:확정|단정|보장)"
 )
+_FUTURE_AS_CURRENT = re.compile(
+    r"(?:내년|내일|향후|앞으로|시행\s*전|예정).{0,40}"
+    r"(?:바뀔|발표될|개정|시행|적용).{0,40}"
+    r"(?:현행|현재|오늘).{0,20}(?:기준|조항|규정|처럼|적용|인용|안내)"
+)
 _PROMPT_INJECTION = re.compile(
     r"(?:이전|앞선|위의|기존|시스템|개발자|관리자)\s*(?:지시|명령|규칙|정책|프롬프트)"
     r".{0,30}(?:무시|삭제|우회|덮어쓰|공개|출력)|"
@@ -85,6 +90,10 @@ _CITATION_FABRICATION = re.compile(
     r"(?:근거|인용|출처|문서|조항).{0,20}(?:없|없어도|없이|찾지\s*말고).{0,30}"
     r"(?:만들|지어|생성|꾸며|답변|확정)|"
     r"(?:가짜|허위).{0,10}(?:근거|인용|출처|문서|조항)"
+)
+_UNGROUNDED_OPERATIONAL_CODE = re.compile(
+    r"(?:승인\s*문서|근거|자료|문서).{0,15}(?:없|없는|없이).{0,35}"
+    r"(?:자동|지급정지|계좌|송금|차단).{0,25}(?:실행\s*코드|코드|스크립트|명령)"
 )
 
 
@@ -118,11 +127,13 @@ def requires_abstention(value: str) -> bool:
         or _MEDICAL_DIAGNOSIS.search(normalized)
         or _PERSONALIZED_INVESTMENT.search(normalized)
         or _FUTURE_LAW_CERTAINTY.search(normalized)
+        or _FUTURE_AS_CURRENT.search(normalized)
         or _PROMPT_INJECTION.search(normalized)
         or _PRIVILEGE_ESCALATION.search(normalized)
         or _SECRET_EXTRACTION.search(normalized)
         or _PERSONAL_DATA_EXTRACTION.search(normalized)
         or _CITATION_FABRICATION.search(normalized)
+        or _UNGROUNDED_OPERATIONAL_CODE.search(normalized)
     )
 
 
