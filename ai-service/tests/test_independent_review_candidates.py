@@ -147,3 +147,36 @@ def test_provisional_benchmark_keeps_human_review_boundary(repo_root: Path) -> N
     }
     assert len(report["answerFailures"]) == 10
     assert len(report["noAnswerFalsePositives"]) == 3
+
+
+def test_policy_hardening_report_improves_abstention_without_ranking_tuning(
+    repo_root: Path,
+) -> None:
+    report = json.loads(
+        (
+            repo_root
+            / "ai-service/evaluation/independent-review-provisional-benchmark-v2.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert report["officialPerformanceClaim"] is False
+    assert report["humanReviewCompleted"] is False
+    assert report["sourceCommit"] == "468b064"
+    assert report["summary"] == {
+        "caseCount": 150,
+        "answerableCount": 105,
+        "noAnswerCount": 45,
+        "top1PassCount": 69,
+        "top3PassCount": 95,
+        "noAnswerPassCount": 45,
+        "reviewTop2Or3Count": 26,
+        "failureCount": 10,
+    }
+    assert report["regressionComparison"] == {
+        "top1Delta": 0,
+        "top3Delta": 0,
+        "noAnswerPassDelta": 3,
+        "failureDelta": -3,
+    }
+    assert len(report["remainingAnswerFailures"]) == 10
+    assert report["remainingNoAnswerFalsePositives"] == []

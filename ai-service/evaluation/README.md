@@ -129,6 +129,8 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 Arctic-ko 기본 설정의 검수 전 임시 측정과 실패 우선순위는
 `independent-review-provisional-benchmark-v1.md`에 기록한다. 기계 판정 결과와 재현 입력은
 동명의 JSON에 고정하며, 사람 검수 완료나 공식 검색 성능으로 해석하지 않는다.
+정책 우회 3건을 보완한 동일 조건 재측정은
+`independent-review-provisional-benchmark-v2.md`에 기록한다.
 
 공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
 2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
