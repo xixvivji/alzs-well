@@ -1,5 +1,4 @@
 import csv
-import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -44,6 +43,10 @@ def test_expanded_rag_pack_stays_pending_and_traceable(repo_root: Path) -> None:
 
     style_counts: Counter[str] = Counter()
     seed_counts: Counter[str] = Counter()
+    approved_alternative_ids = {f"IRC-{index:03d}" for index in range(31, 36)}
+    approved_alternative_chunk = (
+        "chk_3980e37444f0402405ca47dbb3434ae754919f186b468681ce07214f04d721e9"
+    )
     for candidate in answer:
         style = next(
             tag
@@ -56,7 +59,14 @@ def test_expanded_rag_pack_stays_pending_and_traceable(repo_root: Path) -> None:
             if tag.startswith("seed:")
         )
         seed = official_answers[seed_id]
-        assert frozenset(candidate.relevant_chunk_ids) == seed.relevant_chunk_ids
+        assert seed.relevant_chunk_ids <= frozenset(candidate.relevant_chunk_ids)
+        added_relevance = (
+            frozenset(candidate.relevant_chunk_ids) - seed.relevant_chunk_ids
+        )
+        if candidate.candidate_id in approved_alternative_ids:
+            assert added_relevance == {approved_alternative_chunk}
+        else:
+            assert not added_relevance
         assert candidate.principal_roles == seed.principal_roles
         assert candidate.requester_audiences == seed.requester_audiences
         style_counts[style] += 1
@@ -116,10 +126,6 @@ def test_expanded_rag_review_csv_matches_candidate_contract(repo_root: Path) -> 
 
 
 def test_provisional_benchmark_keeps_human_review_boundary(repo_root: Path) -> None:
-    candidate_path = (
-        repo_root
-        / "ai-service/evaluation/reviews/independent-review-candidates-v1.jsonl"
-    )
     report = json.loads(
         (
             repo_root
@@ -129,8 +135,10 @@ def test_provisional_benchmark_keeps_human_review_boundary(repo_root: Path) -> N
 
     assert report["officialPerformanceClaim"] is False
     assert report["humanReviewCompleted"] is False
+    # 이 보고서는 승인 전 입력으로 수행한 과거 측정 증적이다. 이후 relevance 승인이
+    # 과거 입력 hash를 소급 변경하지 않는지 고정한다.
     assert report["inputs"]["candidateSha256"] == (
-        "sha256:" + hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+        "sha256:14d36610aa96cacea729d8cc93e5c31fd13ba37094cafc907f48ba46f01014fa"
     )
     assert report["summary"] == {
         "caseCount": 150,

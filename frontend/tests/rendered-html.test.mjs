@@ -6,13 +6,14 @@ test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링�
   const html = await readFile(new URL("../.next/server/app/index.html", import.meta.url), "utf8");
   assert.match(html, /<html lang="ko"(?:\s[^>]*)?>/i);
   assert.match(html, /ALZ(?:&#x27;|')s well/);
-  assert.match(html, /내 생활에 맞춘 금융/);
-  assert.match(html, /2026 금융 AI Challenge 참가 프로젝트/);
-  assert.match(html, /자주 찾는 서비스/);
+  assert.match(html, /내 금융생활을 한눈에/);
+  assert.match(html, /href="#home-main"/);
+  assert.match(html, /합성데이터 전용 체험 서비스/);
+  assert.match(html, /무엇을 하시겠어요/);
   assert.match(html, /금융생활 도움받기/);
   assert.match(html, /href="\/login\?next=\/banking\/accounts"/);
   assert.match(html, /href="\/login\?next=\/banking\/transfer"/);
-  assert.match(html, /이체 사전확인/);
+  assert.match(html, /송금 전 확인/);
   assert.match(html, /href="\/help"/);
   assert.match(html, /href="\/help"/);
   assert.match(html, /href="\/staff\/login"/);

@@ -1,0 +1,29 @@
+/* Accessibility-first visual layer shared by customer, staff and admin surfaces. */
+:root{--focus:#ffbf47;--surface:#fff;--surface-soft:#f4f7f5;--text:#17231f;--muted:#56665f;--primary:#075a47;--primary-dark:#063f34}
+html,body{max-width:100%;overflow-x:hidden}body{background:#f5f7f6;color:var(--text);font-size:16px;line-height:1.6}
+a,button,input,select,textarea,summary{touch-action:manipulation}
+.skip-link{position:fixed;z-index:9999;left:16px;top:10px;transform:translateY(-150%);padding:12px 18px;border-radius:8px;background:#111;color:#fff!important;font-weight:900}.skip-link:focus{transform:none}
+.breadcrumb{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 18px;color:var(--muted);font-size:13px}.breadcrumb a{text-decoration:underline;text-underline-offset:3px}.breadcrumb strong{color:var(--text)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:4px solid var(--focus)!important;outline-offset:3px!important;border-radius:6px}
+button,a[role="button"],input,select,textarea{min-height:44px}button{cursor:pointer}
+.bank-home,.banking-shell,.app-shell{font-family:"Pretendard","Apple SD Gothic Neo",Arial,sans-serif}
+.bank-header,.bank-utility,.bank-hero,.bank-footer{width:100%;padding-left:max(24px,calc((100% - 1180px)/2));padding-right:max(24px,calc((100% - 1180px)/2))}
+.bank-header{grid-template-columns:minmax(190px,230px) minmax(0,1fr) auto}.bank-header nav{gap:clamp(14px,2vw,25px)}
+.bank-header nav a,.bank-header-actions a{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.bank-header>*,.bank-hero>*{min-width:0}
+.bank-hero{grid-template-columns:minmax(0,1fr) minmax(280px,330px);min-height:480px}.bank-hero-copy h1{font-size:clamp(38px,4.2vw,56px)}
+.bank-login-card{box-sizing:border-box;width:100%;max-width:330px}.bank-login-card>a{display:flex;min-height:52px;align-items:center;justify-content:center;margin-top:22px;border-radius:10px;background:var(--primary);color:#fff;font-weight:800}
+.bank-quick,.bank-products,.bank-info{width:min(100%,1180px)}.bank-quick-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.bank-quick-grid>a{min-width:0}.bank-quick-grid strong{font-size:15px}.bank-quick-grid small{font-size:13px}
+.bank-life-copy>span,.bank-product-grid article>span{font-size:15px}.bank-life-preview article strong{font-size:16px}.bank-life-preview>p{font-size:12px}
+.banking-topbar,.banking-main,.banking-footer,.app-content{min-width:0}.banking-main{max-width:1180px}.banking-title h1,.app-content>header h1{line-height:1.25}
+.banking-topbar nav a[aria-current="page"]{color:var(--primary);box-shadow:inset 0 -3px var(--primary)}
+.banking-mobile-nav a[aria-current="page"],.side-nav a[aria-current="page"]{font-weight:900}
+.banking-card small,.banking-panel small,.app-shell small,.staff-shell small{font-size:max(12px,.78rem)!important;line-height:1.5}.banking-card p,.banking-panel p,.app-shell p{line-height:1.65}
+.accessibility-controls button{min-height:44px;padding:10px 13px;border:1px solid #b9c8c2;border-radius:9px;background:#fff;color:#163d33;font-size:13px;font-weight:800}
+.side-nav a{min-height:52px}.side-nav a strong{font-size:14px}.mobile-navigation summary{min-height:44px;display:flex;align-items:center}
+[data-large-text="true"]{font-size:118%}[data-large-text="true"] small{font-size:.82rem!important}[data-large-text="true"] .bank-header nav{gap:12px}
+[data-high-contrast="true"] body{background:#fff;color:#000}[data-high-contrast="true"] a,[data-high-contrast="true"] button{border-color:#000!important}[data-high-contrast="true"] .bank-home,[data-high-contrast="true"] .banking-shell,[data-high-contrast="true"] .app-shell{--primary:#003f32;--bank-green:#003f32}
+@media(max-width:1180px){.bank-header{grid-template-columns:1fr auto}.bank-header nav{display:none}.bank-hero{grid-template-columns:minmax(0,1fr) 300px}.bank-login-card{max-width:300px}}
+@media(max-width:900px){.bank-hero{grid-template-columns:1fr}.bank-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bank-quick-grid .featured{grid-column:1/-1}.bank-login-card{display:block;max-width:none;margin-top:28px}.bank-life{grid-template-columns:1fr;gap:36px}}
+@media(max-width:650px){body{font-size:16px}.bank-header{padding:10px 16px}.bank-header-actions .header-login{display:none}.bank-header-actions a{padding:10px 12px}.bank-hero{padding:38px 18px}.bank-hero-copy h1{font-size:36px}.bank-quick-grid{grid-template-columns:1fr}.bank-quick-grid .featured{grid-column:auto}.bank-quick-grid>a{min-height:88px;flex-direction:row;align-items:center;border-right:0}.bank-section-heading{align-items:flex-start;flex-direction:column;gap:8px}.bank-life,.bank-products,.bank-info{padding-left:18px;padding-right:18px}.bank-life-actions{grid-template-columns:1fr!important}.bank-product-grid article{min-height:210px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

@@ -157,6 +157,9 @@ Arctic-ko 재측정 결과는 `independent-review-temporal-filter-v1.md`에 기�
 v4에서 기대 근거가 Top-2였던 잔여 15건의 질문·기대 청크·Top-1 원문 대조 결과는
 `independent-review-top3-content-v1.md`와
 `reviews/independent-review-top3-content-v1.csv`에 둔다. Codex 검수 보조 결과이므로
+프로젝트 책임자가 승인한 `IRC-031`~`IRC-035`의 대체 Top-1 근거만 relevance에
+추가했다. 반영 후 답변형 검색은 Top-1 `95/105`, Top-3 `105/105`이며, 이 수치는
+내부 승인 기반 회귀평가로 외부 독립 검증 결과와 구분한다.
 사람 승인 전에는 원본 150개 후보의 `PENDING` 상태나 공식 성능 수치를 변경하지 않는다.
 
 파생 corpus와 v2 순위 결과가 준비된 환경에서는 다음 명령으로 표를 재현한다.
