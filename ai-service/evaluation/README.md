@@ -154,6 +154,11 @@ Arctic-ko 재측정 결과는 `independent-review-temporal-filter-v1.md`에 기�
 6건은 모두 현행 조문 Top-1을 확인했지만, 이는 150건 전체의 사람 검수 완료나 공식 성능
 승격을 의미하지 않는다.
 
+v4에서 기대 근거가 Top-2였던 잔여 15건의 질문·기대 청크·Top-1 원문 대조 결과는
+`independent-review-top3-content-v1.md`와
+`reviews/independent-review-top3-content-v1.csv`에 둔다. Codex 검수 보조 결과이므로
+사람 승인 전에는 원본 150개 후보의 `PENDING` 상태나 공식 성능 수치를 변경하지 않는다.
+
 파생 corpus와 v2 순위 결과가 준비된 환경에서는 다음 명령으로 표를 재현한다.
 
 ```bash
