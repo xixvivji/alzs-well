@@ -49,7 +49,7 @@
 
 - [x] CI에서 Spring Boot·AI runtime image 빌드와 취약점 스캔을 통과한다.
 - [x] AI EC2 bootstrap 기간에 AMD64 이미지를 ECR에 게시하고 검증 뒤 bootstrap·ingestion IAM 정책을 제거한다.
-- [x] backend `sha256:a7d351cf6b49f05389a6fe84ad7119b4bb01179e456d740bfb2ce4c3581bbfc6`, AI `sha256:256be42ce56a874347d72799c722b83147dbef6407843b631823e3ccd0f3af4c`, gateway `sha256:53e6bfd81099eaa3ab9f01153292ef418dcdac73ba001be2879daffee1571b5d`를 고정한다.
+- [x] backend `sha256:f7283a03623fe7b1ec286ad435c8c4077728d7c0de8dbbfbe50a75ddfff01b01`, AI `sha256:560237bb3a65a0f0f74de297cc9a6b2beb4ced7ccbf6f8cb194440fb584f6f9a`, gateway `sha256:53e6bfd81099eaa3ab9f01153292ef418dcdac73ba001be2879daffee1571b5d`를 고정한다.
 - [x] App·AI mTLS 인증서를 분리된 Secrets Manager 비밀에 저장하고 상대 EC2의 개인키를 읽을 수 없게 배치한다.
 - [x] Flyway 76개 migration을 분리된 migration 역할로 적용하고 Spring runtime은 제한 역할로 실행한다.
 - [x] Arctic-ko revision·artifact·golden-set hash와 `STAGED_APPROVED`, 1024차원, `hybrid-arctic-ko-v1`을 readiness에서 대조한다.
@@ -124,6 +124,18 @@
 - CloudFront `/api/v1/system/health`는 200·`UP`, 고객 Vercel `/banking/help`는 200을 반환한다.
 - CloudFormation은 `UPDATE_COMPLETE`이며 `DatabaseBootstrapEnabled`, `AppMigrationDeploymentEnabled`, `ImagePublishDeploymentEnabled`가 모두 `false`다.
 - 권한 회수 후 EC2 SSM 재조회가 `AccessDenied`로 거부되는 것을 확인했다. 실행 digest는 배포 명령 성공 기록으로 보존하며 확인만을 위해 권한을 다시 열지 않는다.
+
+### 2026-09-03 설명 가능한 AI 안내 배포 검증
+
+- PR #170의 코드 `552e24d3cf44af5d5b431229221cecea7a0ac007`을 기준으로 설명 요약·본인 확인 질문·행원 검토 체크리스트와 고객·행원 3단계 이용 흐름을 배포했다.
+- backend image는 `backend-552e24d`, digest `sha256:f7283a03623fe7b1ec286ad435c8c4077728d7c0de8dbbfbe50a75ddfff01b01`로 교체했다.
+- AI image는 `ai-552e24d`, digest `sha256:560237bb3a65a0f0f74de297cc9a6b2beb4ced7ccbf6f8cb194440fb584f6f9a`로 교체했다.
+- AI readiness는 `READY`, `local-arctic-ko`, 1024차원, `STAGED_APPROVED`, `hybrid-arctic-ko-v1`, fallback 비활성 상태를 확인했다.
+- Spring 시작 시 Flyway 76개 migration을 검증했고, 합성 고객 300명·계좌 600건·거래 72,000건과 탐지 신호 225/225, 오탐·미탐 0건을 재현했다.
+- Vercel 고객 BFF에서 `demo001` 로그인·본인 확인·AI 변화 분석·로그아웃이 모두 200이고 다른 회원 분석은 403으로 차단됐다.
+- 회원 AI 응답은 `FASTAPI_EWMA_CUSUM`과 `EXPLAINABLE_CHANGE_GUIDANCE_V1`을 사용하며 요약 1건 이상, 확인 질문 1건 이상, 검토 체크리스트 1건 이상을 반환했다.
+- GitHub의 Vercel 앱에는 `xixvivji/alzs-well` 저장소만 추가 허용했고, 기존 Vercel 프로젝트를 해당 저장소에 연결했다.
+- 배포 완료 후 CloudFormation은 `UPDATE_COMPLETE`이며 `DatabaseBootstrapEnabled`, `AppMigrationDeploymentEnabled`, `ImagePublishDeploymentEnabled`가 모두 `false`다.
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
 
