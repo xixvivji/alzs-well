@@ -7,17 +7,17 @@
 서비스 유지 기한은 **2026-09-11 23:59 KST**이며 자동 삭제하지 않는다. 기한
 이후 소유자가 아래 순서로 수동 철거한다.
 
-## 2026-09-01 배포 현황
+## 2026-09-03 배포 현황
 
 | 영역 | 상태 | 다음 게이트 |
 |---|---|---|
-| 코드·CI | 완료 | PR #149 merge `341fbb9`, private 저장소에서 지원되는 CI·SCA·Gitleaks 전체 통과. Dependency Review·CodeQL 언어 분석은 공개 저장소 전환 시 다시 강제 |
+| 코드·CI | 완료 | 공개 저장소 전환 후 PR #165·#166·#168의 CI·SCA·Dependency Review·CodeQL·Gitleaks 전체 통과 |
 | Vercel 프로젝트 | 운영 배포 | 고객 `https://alzs-well.vercel.app`, 직원 `https://alzs-well-staff.vercel.app` |
 | Vercel 환경변수 | Production 완료 | AWS origin은 Config, 공유 비밀·직원 bootstrap 토큰은 Secret. 브라우저 공개 변수에 비밀값 없음 |
 | AWS 리전 | 선택 | `ap-northeast-2` |
 | AWS 배포 주체 | 완료 | `alzs-well-staging-cli`의 access key 없는 `aws login` 단기 세션으로 operator·deployer 역할만 AssumeRole |
 | AWS IaC | `UPDATE_COMPLETE` | `alzs-well-staging`, CloudFront·ALB·WAF·EC2 2대·Private RDS 생성 완료 |
-| AWS 보호 상태 | 완료 | `DatabaseBootstrapEnabled=false`, ALB·RDS 삭제 방지 활성화 |
+| AWS 보호 상태 | 완료 | `DatabaseBootstrapEnabled=false`, `AppMigrationDeploymentEnabled=false`, `ImagePublishDeploymentEnabled=false`, ALB·RDS 삭제 방지 활성화 |
 | 배포 이미지 | 완료 | backend·AI·gateway AMD64 이미지를 immutable ECR digest로 실행 |
 
 ## 1. 배포 권한 게이트
@@ -33,7 +33,7 @@
 - [x] 기본 사용자의 EC2 직접 조회가 거부되고 operator 역할에서만 태그 제한 staging 인스턴스 조회가 가능한지 검증했다.
 - [x] 배포 역할과 App·AI EC2 instance profile, Spring·AI DB secret 경계를 분리한다.
 - [x] 태그가 일치하는 staging EC2에만 SSM 명령을 보낼 수 있는 별도 운영 역할을 정의한다.
-- [ ] GitHub/Vercel/AWS 배포는 장기 access key 대신 OIDC 또는 단기 세션을 사용한다.
+- [x] GitHub/Vercel/AWS 배포는 장기 access key 대신 Git 연동 또는 AWS CLI 단기 세션을 사용한다.
 
 ## 2. IaC 및 비용 게이트
 
@@ -49,15 +49,15 @@
 
 - [x] CI에서 Spring Boot·AI runtime image 빌드와 취약점 스캔을 통과한다.
 - [x] AI EC2 bootstrap 기간에 AMD64 이미지를 ECR에 게시하고 검증 뒤 bootstrap·ingestion IAM 정책을 제거한다.
-- [x] backend `sha256:d9c80af558fd7ea40610b7cd4f68d044e32db00a8e207df57d2f01438281cb79`, AI `sha256:256be42ce56a874347d72799c722b83147dbef6407843b631823e3ccd0f3af4c`, gateway `sha256:53e6bfd81099eaa3ab9f01153292ef418dcdac73ba001be2879daffee1571b5d`를 고정한다.
+- [x] backend `sha256:a7d351cf6b49f05389a6fe84ad7119b4bb01179e456d740bfb2ce4c3581bbfc6`, AI `sha256:256be42ce56a874347d72799c722b83147dbef6407843b631823e3ccd0f3af4c`, gateway `sha256:53e6bfd81099eaa3ab9f01153292ef418dcdac73ba001be2879daffee1571b5d`를 고정한다.
 - [x] App·AI mTLS 인증서를 분리된 Secrets Manager 비밀에 저장하고 상대 EC2의 개인키를 읽을 수 없게 배치한다.
-- [x] Flyway 74개 migration을 분리된 migration 역할로 적용하고 Spring runtime은 제한 역할로 실행한다.
+- [x] Flyway 76개 migration을 분리된 migration 역할로 적용하고 Spring runtime은 제한 역할로 실행한다.
 - [x] Arctic-ko revision·artifact·golden-set hash와 `STAGED_APPROVED`, 1024차원, `hybrid-arctic-ko-v1`을 readiness에서 대조한다.
 - [x] `DOC-SYN-COPILOT-001`을 Spring governance 등록·게시·AI DB proof 검증 import하고 binding 1:1을 확인한다.
 
 ## 4. Vercel 게이트
 
-- [ ] Vercel GitHub App에 `xixvivji/alzs-well` 저장소 권한을 부여한다.
+- [x] `xixvivji/alzs-well` 저장소를 공개 전환하고 고객·직원 Vercel Production의 정상 응답을 확인한다.
 - [x] 같은 `frontend` 빌드를 고객·직원 프로젝트에 독립적으로 배포한다.
 - [x] 고객·직원 프론트는 서로 다른 Vercel 기본 `*.vercel.app` 도메인을 사용한다.
 - [x] Production의 AWS origin·서버 비밀을 등록하고 `NEXT_PUBLIC_` 비밀값을 금지한다.
@@ -110,6 +110,20 @@
 - `alzswell-operator`는 `alzs-well-staging-operator`, `alzswell-staging`은 `alzswell-staging-deployer` 역할로 전환된다.
 - 실제 STS에서 기본 사용자·operator·deployer ARN을 확인했고, 기본 사용자의 `ec2:DescribeInstances`는 `UnauthorizedOperation`으로 거부됐다.
 - operator로 `alzs-well-staging` 스택 `UPDATE_COMPLETE`와 app·AI EC2 두 대의 `running` 상태를 확인했다.
+
+### 2026-09-03 회원 장기 변화 AI 배포 검증
+
+- PR #165에서 로그인 회원의 합성 거래·기준선으로 30·60·90일 변화 분석을 수행하는 고객 API와 화면을 추가했다.
+- PR #166에서 이미지 게시 권한을 DB bootstrap과 분리했고, 배포 완료 후 세 임시 권한을 모두 회수했다.
+- PR #168에서 PostgreSQL `numeric` 건수값의 소수 표기(`0.0000`)를 정규화해 장기 변화 분석의 500 오류를 수정했다.
+- backend는 코드 `a269168f3c23c3e459b5d49e3714a9128a5e2052`, image `backend-a269168`, digest `sha256:a7d351cf6b49f05389a6fe84ad7119b4bb01179e456d740bfb2ce4c3581bbfc6`로 교체했다.
+- Flyway 76개 migration을 검증했고, 공개 합성 fixture는 고객 300명·계좌 600건·거래 72,000건을 재현했다.
+- Vercel 고객 BFF에서 `demo001` 로그인·본인 확인·AI 분석·로그아웃이 모두 200이고, `demo002` 분석 접근은 403으로 차단됐다.
+- 회원 AI 응답은 `FASTAPI_EWMA_CUSUM`, `fallbackUsed=false`이며 30·60·90일 비교 결과를 모두 반환했다.
+- 응답은 `syntheticData=true`, `diagnosisInferred=false`, `financialActionExecuted=false` 안전 경계를 유지한다.
+- CloudFront `/api/v1/system/health`는 200·`UP`, 고객 Vercel `/banking/help`는 200을 반환한다.
+- CloudFormation은 `UPDATE_COMPLETE`이며 `DatabaseBootstrapEnabled`, `AppMigrationDeploymentEnabled`, `ImagePublishDeploymentEnabled`가 모두 `false`다.
+- 권한 회수 후 EC2 SSM 재조회가 `AccessDenied`로 거부되는 것을 확인했다. 실행 digest는 배포 명령 성공 기록으로 보존하며 확인만을 위해 권한을 다시 열지 않는다.
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
 
