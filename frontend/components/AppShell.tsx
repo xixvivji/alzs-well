@@ -34,6 +34,7 @@ export function AppShell({ mode, title, staffRole = "shared", children }: { mode
   const links = mode === "customer" ? customerLinks : staffRole === "protection" ? protectionStaffLinks : staffRole === "admin" ? adminLinks : sharedStaffLinks;
   const staffLabel = staffRole === "admin" ? "관리자 채널" : staffRole === "protection" ? "행원 채널" : "운영 채널";
   const staffTitle = staffRole === "admin" ? "관리·준법 통제" : staffRole === "protection" ? "보호업무 코파일럿" : "시스템 안전 상태";
+  const navigationLabel = mode === "customer" ? "고객 서비스" : staffRole === "admin" ? "관리자 서비스" : staffRole === "protection" ? "행원 서비스" : "운영 서비스";
   const isActive = (href: string) => href === "/demo" ? pathname === href : pathname.startsWith(href);
 
   return <div className={`app-shell ${mode}`}>
@@ -41,15 +42,15 @@ export function AppShell({ mode, title, staffRole = "shared", children }: { mode
     <aside>
       <Link className="app-logo" href="/"><span aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
       <div className="app-mode"><span>{mode === "customer" ? "개인 금융" : staffLabel}</span><b>{mode === "customer" ? "금융생활 도움받기" : staffTitle}</b></div>
-      <nav className="side-nav" aria-label={mode === "customer" ? "고객 서비스" : "행원 서비스"}>{links.map(([href, label, step]) => <Link aria-current={isActive(href) ? "page" : undefined} className={isActive(href) ? "active" : ""} href={href} key={href}><span>{step}</span><strong>{label}</strong></Link>)}</nav>
+      <nav className="side-nav" aria-label={navigationLabel}>{links.map(([href, label, step]) => <Link aria-current={isActive(href) ? "page" : undefined} className={isActive(href) ? "active" : ""} href={href} key={href}><span>{step}</span><strong>{label}</strong></Link>)}</nav>
       <div className="side-safety"><span aria-hidden="true">✓</span><div><strong>개인정보 없는 안전한 안내</strong><p>실제 계좌 조회나 금융 실행은 일어나지 않습니다.</p></div></div>
       <Link className="back-home" href="/">← 금융서비스 홈으로</Link>
     </aside>
     <main className="app-content" id="app-main" tabIndex={-1}>
       <div className="mobile-app-bar">
         <Link className="app-logo" href="/"><span aria-hidden="true">A</span><strong>ALZ&apos;s well</strong></Link>
-        <details className="mobile-navigation"><summary>전체 메뉴</summary><nav aria-label={mode === "customer" ? "모바일 고객 서비스" : "모바일 행원 서비스"}>
-          {links.map(([href, label, step]) => <Link className={isActive(href) ? "active" : ""} href={href} key={href}><span>{step}</span>{label}</Link>)}
+        <details className="mobile-navigation"><summary>전체 메뉴</summary><nav aria-label={`모바일 ${navigationLabel}`}>
+          {links.map(([href, label, step]) => <Link aria-current={isActive(href) ? "page" : undefined} className={isActive(href) ? "active" : ""} href={href} key={href}><span>{step}</span>{label}</Link>)}
           {mode === "staff" && <Link className="mobile-channel-link" href="/demo">고객 안내 화면으로</Link>}
           <Link href="/">금융서비스 홈으로</Link>
         </nav></details>

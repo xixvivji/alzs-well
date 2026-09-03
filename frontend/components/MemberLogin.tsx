@@ -34,9 +34,11 @@ export function MemberLogin() {
     <section className="member-login-card">
       <Link className="member-login-brand" href="/"><span>A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
       <div className="member-login-copy"><p>합성 금융서비스</p><h1>내 금융생활에<br />로그인하세요.</h1><span>실제 개인정보가 아닌 300명의 분리된 합성 회원·계좌·거래 데이터로만 동작합니다.</span></div>
-      <form onSubmit={(event) => { event.preventDefault(); void login(); }}>
-        <label><span>회원 ID</span><input autoComplete="username" value={loginId} pattern="demo[0-9]{3}" onChange={(event) => setLoginId(event.target.value)} /></label>
-        <label><span>비밀번호</span><input type="password" autoComplete="current-password" minLength={12} maxLength={200} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+      <form aria-busy={busy} onSubmit={(event) => { event.preventDefault(); void login(); }}>
+        <label><span>회원 ID</span><input aria-describedby="member-id-help" autoComplete="username" value={loginId} pattern="demo[0-9]{3}" onChange={(event) => setLoginId(event.target.value)} /></label>
+        <small id="member-id-help" className="field-help">demo001부터 demo300까지의 합성 회원 ID를 입력하세요.</small>
+        <label><span>비밀번호</span><input aria-describedby="member-password-help" type="password" autoComplete="current-password" minLength={12} maxLength={200} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        <small id="member-password-help" className="field-help">아래 공개 합성 체험용 비밀번호를 사용합니다.</small>
         <button disabled={busy || !/^demo[0-9]{3}$/.test(loginId) || password.length < 12}>{busy ? "안전하게 확인 중…" : "금융서비스 로그인"}</button>
         {error && <p className="api-error" role="alert">{error}</p>}
       </form>
