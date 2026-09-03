@@ -107,6 +107,9 @@ jobs:
             --corpus evaluation/datasets/retrieval-corpus-v1.jsonl \
             --dataset evaluation/datasets/retrieval-v1.jsonl \
             --output-json data/derived/evaluation/tuning-v1.json
+          uv run python -m app.evaluation.safety_cli \
+            --dataset evaluation/datasets/ai-safety-policy-v1.jsonl \
+            --output-json data/derived/evaluation/ai-safety-policy-v1.json
       - name: Upload retrieval evaluation reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -191,8 +194,23 @@ jobs:
       DEMO_STAFF_BOOTSTRAP_TOKEN: ci-only-demo-staff-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
       - name: Validate AWS deployment Compose and role contracts
         run: python3 scripts/validate_aws_deployment_config.py
+      - name: Install pinned CloudFormation linter
+        run: python3 -m pip install cfn-lint==1.55.1
+      - name: Lint AWS staging CloudFormation
+        run: cfn-lint infra/aws-staging/foundation.yaml
+      - name: Validate AWS execution policy rendering
+        run: |
+          infra/aws-staging/render-cfn-execution-policy.sh 123456789012 \
+            | jq -e '
+                .Version == "2012-10-17"
+                and ([.. | strings | select(contains("__AWS_ACCOUNT_ID__"))] | length) == 0
+                and ([.. | strings | select(contains("123456789012"))] | length) > 0
+              '
       - name: Validate production compose rendering
         run: docker compose --project-directory backend --env-file backend/.env.example config --quiet
       - name: Boot the isolated stack and smoke test core APIs
@@ -212,7 +230,9 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request' && vars.DEPENDENCY_REVIEW_ENABLED == 'true'
+    # GitHub Dependency Review is unavailable for a private repository without GHAS.
+    # Independent Java, Python, npm and container SCA jobs remain mandatory.
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public' && vars.DEPENDENCY_REVIEW_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -255,6 +275,23 @@ jobs:
           image-ref: alzs-well-backend:ci
           scanners: vuln
           vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+      - name: Build the hardened gateway image
+        run: >-
+          docker build
+          --file backend/docker/Dockerfile.gateway
+          --tag alzs-well-gateway:ci
+          backend/docker
+      - name: Scan OS packages in the gateway image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: alzs-well-gateway:ci
+          scanners: vuln
+          vuln-type: os
           severity: HIGH,CRITICAL
           ignore-unfixed: false
           exit-code: "1"

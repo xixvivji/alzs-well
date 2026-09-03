@@ -17,6 +17,7 @@ from app.storage.search_postgres import (
     ARCTIC_VECTOR_THRESHOLD,
     ARCTIC_VECTOR_WEIGHT,
     ARCTIC_INDEX_VERSION,
+    DEFINITION_INTENT_BONUS,
     E5_INDEX_VERSION,
     INDEX_VERSION,
     KEYWORD_WEIGHT,
@@ -121,7 +122,7 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert "RETIRED" not in statement
     assert "d.effective_from <= %s" in statement
     assert "ai_knowledge.document_authority_rank(document_type)" in statement
-    assert "order by authority_rank desc, score desc" in statement
+    assert "order by score desc, authority_rank desc" in statement
     assert "keyword_candidates as materialized" in statement
     assert "vector_candidates as materialized" in statement
     assert "from ai_knowledge.chunk_embedding e" in statement
@@ -135,7 +136,8 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
         "local-hash-ngram-ko", "local-hash-ngram-ko-v1", 384,
         ["PROTECTION_STAFF"], ["STAFF"], date(2026, 8, 25),
         date(2026, 8, 25), MAX_VECTOR_CANDIDATES,
-        KEYWORD_WEIGHT, VECTOR_WEIGHT, VECTOR_THRESHOLD, RESULT_THRESHOLD, 10,
+        KEYWORD_WEIGHT, VECTOR_WEIGHT, False, DEFINITION_INTENT_BONUS,
+        VECTOR_THRESHOLD, RESULT_THRESHOLD, 100,
     )
     assert "e.embedding_model_id = %s" in statement
     assert "e.embedding_model_version = %s" in statement
@@ -144,6 +146,42 @@ def test_search_sql_enforces_acl_audience_lifecycle_and_effective_date() -> None
     assert RESULT_THRESHOLD == 0.35
     assert results[0].chunk_id == "chk_" + "1" * 64
     assert results[0].score == 0.5
+
+
+def test_search_excludes_future_effective_chunk_and_backfills_current_result() -> None:
+    future = list(_row())
+    future[2] = "chk_" + "4" * 64
+    future[12] = "개정 조문 [시행일: 2026. 10. 1.]"
+    current = list(_row())
+    current[2] = "chk_" + "5" * 64
+    cursor = FakeCursor([tuple(future), tuple(current)])
+    repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
+
+    results = repository.search(_request().model_copy(update={"limit": 1}))
+
+    assert [result.chunk_id for result in results] == ["chk_" + "5" * 64]
+    _, parameters = cursor.executions[0]
+    assert parameters[-1] == 100  # type: ignore[index]
+
+
+def test_search_propagates_future_marker_to_preceding_split_chunk() -> None:
+    future_start = list(_row())
+    future_start[2] = "chk_" + "6" * 64
+    future_start[3] = 20
+    future_start[12] = "① 미래 개정 조문의 시작"
+    current = list(_row())
+    current[2] = "chk_" + "7" * 64
+    current[3] = 10
+    marker = list(_row())
+    marker[2] = "chk_" + "8" * 64
+    marker[3] = 21
+    marker[12] = "4. 미래 개정 조문의 끝 [시행일: 2026. 10. 1.]"
+    cursor = FakeCursor([tuple(future_start), tuple(current), tuple(marker)])
+    repository = PostgresSearchRepository(_config(), connect=Connector(cursor))
+
+    results = repository.search(_request())
+
+    assert [result.chunk_id for result in results] == ["chk_" + "7" * 64]
 
 
 def test_search_uses_injected_model_but_keeps_other_models_for_keyword_score() -> None:
@@ -176,6 +214,23 @@ def test_search_uses_korean_particle_normalized_keyword_query() -> None:
     assert parameters[0] == "피해환급금 어떤 돈 뜻"  # type: ignore[index]
 
 
+def test_search_removes_presentation_prefix_from_keyword_and_vector_query() -> None:
+    cursor = FakeCursor([_row()])
+    provider = FakeEmbeddingProvider()
+    repository = PostgresSearchRepository(
+        _config(), connect=Connector(cursor), embedding_provider=provider
+    )
+    request = _request().model_copy(
+        update={"query": "고객에게 안내하려고 합니다. 피해환급금은 어떤 돈을 뜻하나요?"}
+    )
+
+    repository.search(request)
+
+    _, parameters = cursor.executions[0]
+    assert provider.queries == ["피해환급금은 어떤 돈을 뜻하나요?"]
+    assert parameters[0] == "피해환급금 어떤 돈 뜻"  # type: ignore[index]
+
+
 def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:
     class ArcticProvider(FakeEmbeddingProvider):
         descriptor = EmbeddingDescriptor(
@@ -205,9 +260,11 @@ def test_search_uses_1024_vector_cast_for_arctic_provider() -> None:
         1024,
     )
     assert repository.index_version == ARCTIC_INDEX_VERSION
-    assert parameters[15:19] == (  # type: ignore[index]
+    assert parameters[15:21] == (  # type: ignore[index]
         ARCTIC_KEYWORD_WEIGHT,
         ARCTIC_VECTOR_WEIGHT,
+        False,
+        DEFINITION_INTENT_BONUS,
         ARCTIC_VECTOR_THRESHOLD,
         ARCTIC_RESULT_THRESHOLD,
     )

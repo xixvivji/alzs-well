@@ -49,11 +49,11 @@ function requestSignal(signal: AbortSignal | null | undefined, timeoutMs: number
   const timeout = AbortSignal.timeout(timeoutMs);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
-export async function apiRequest<T>(path: string, options: RequestInit & { capability?: string; staffCapability?: string; demoRunId?: string; accessToken?: string; idempotencyKey?: string; timeoutMs?: number } = {}) {
-  const { capability, staffCapability, demoRunId, accessToken, idempotencyKey, timeoutMs = 10_000, headers, signal, ...requestOptions } = options;
+export async function apiRequest<T>(path: string, options: RequestInit & { capability?: string; staffCapability?: string; demoRunId?: string; accessToken?: string; idempotencyKey?: string; timeoutMs?: number; sameOriginOnly?: boolean } = {}) {
+  const { capability, staffCapability, demoRunId, accessToken, idempotencyKey, timeoutMs = 10_000, sameOriginOnly = false, headers, signal, ...requestOptions } = options;
   let response: Response;
   try {
-    response = await fetch(resolveApiUrl(path), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
+    response = await fetch(resolveApiUrl(path, sameOriginOnly ? "" : API_BASE_URL), { ...requestOptions, signal: requestSignal(signal, timeoutMs), headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...((staffCapability ?? capability) ? { "X-Demo-Capability": staffCapability ?? capability } : {}),

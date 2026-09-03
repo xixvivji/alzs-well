@@ -234,7 +234,8 @@ public class OpenApiConfiguration {
             return List.of("COMPLIANCE_TRACE_READ");
         }
         if (path.startsWith("/api/v1/admin/rules") || path.startsWith("/api/v1/admin/policies/versions")
-                || path.startsWith("/api/v1/admin/algorithms/versions")) {
+                || path.startsWith("/api/v1/admin/algorithms/versions")
+                || path.startsWith("/api/v1/admin/ai-quality")) {
             return List.of(method == PathItem.HttpMethod.GET ? "DETECTION_POLICY_READ" : "DETECTION_POLICY_WRITE");
         }
         if (path.startsWith("/api/v1/admin/synthetic-datasets")) return List.of("SYNTHETIC_DATASET_ADMIN");
@@ -281,6 +282,9 @@ public class OpenApiConfiguration {
         if (path.startsWith("/api/v1/financial-institutions")) return List.of("AUTHENTICATED");
         if (path.contains("/baseline-calculations")) {
             return List.of("DETECTION_CALCULATE or DETECTION_CALCULATE_ALL");
+        }
+        if (path.endsWith("/ai-financial-assistance/change-analysis")) {
+            return List.of("DETECTION_READ or DETECTION_READ_ALL");
         }
         if (path.contains("/baselines") || path.endsWith("/signals") || path.startsWith("/api/v1/signals")) {
             return List.of(method == PathItem.HttpMethod.POST ? "DETECTION_CALCULATE or DETECTION_CALCULATE_ALL"

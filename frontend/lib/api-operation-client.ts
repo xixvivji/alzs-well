@@ -68,6 +68,7 @@ export async function invokeApiOperation<T = unknown>(
   const { path, query, body, ...auth } = options;
   return apiRequest<T>(buildApiOperationPath(operation, path, query), {
     method: operation.method,
+    sameOriginOnly: operation.authorityMode === "BEARER" && !auth.accessToken,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     ...auth,
   });

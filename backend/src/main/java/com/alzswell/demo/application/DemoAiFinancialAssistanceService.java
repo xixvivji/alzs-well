@@ -10,6 +10,7 @@ import com.alzswell.demo.api.AiFinancialAssistanceResponses;
 import com.alzswell.demo.api.BaselineListResponse;
 import com.alzswell.demo.api.DemoErrorCode;
 import com.alzswell.demo.domain.DemoSession;
+import com.alzswell.detection.api.DetectionErrorCode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,8 +45,11 @@ public class DemoAiFinancialAssistanceService {
     private static final Set<String> INTENT_CLARIFICATION_QUESTIONS = Set.of(
             "필수 납부를 계속 유지할지, 변경 전에 확인할지 선택해 주세요.",
             "필수 납부를 중단하려는 뜻인지 직접 확인해 주세요.",
+            "필수 납부 유지와 중단 의향이 함께 보여 직접 확인해 주세요.",
             "쉬운 글, 음성 안내, 행원 설명 중 원하는 방식을 선택해 주세요.",
+            "설명 방식이 여러 가지로 들립니다. 가장 원하는 한 가지를 선택해 주세요.",
             "어떤 상황에서 도움을 요청할지 선택해 주세요.",
+            "도움 요청 조건이 서로 다르게 들립니다. 원하는 조건을 선택해 주세요.",
             "행원과 공유할 항목을 직접 선택해 주세요.",
             "공유할 항목을 선택해 주세요."
     );
@@ -210,25 +215,71 @@ public class DemoAiFinancialAssistanceService {
                 .toList());
         features.addAll(transactionFeatureSeries(sessionId, session.getDemoRunId(), customerId,
                 baselines.observationPeriod().to()));
+        return analyzeFeatures(features,
+                () -> assistanceAuditWriter.accepted(
+                        sessionId, demoRunId, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false),
+                reason -> assistanceAuditWriter.fallback(
+                        sessionId, demoRunId, "CHANGE_ANALYSIS", reason));
+    }
+
+    /** 로그인 합성 회원의 불변 기준선 snapshot만 사용해 식별정보 없이 AI 분석을 수행한다. */
+    @Transactional(readOnly = true)
+    public AiFinancialAssistanceResponses.ChangeAnalysis analyzeMember(String customerId) {
+        List<MemberBaseline> baselines = jdbc.query("""
+                select feature_code,baseline_value,current_value
+                  from customer_baseline_snapshot
+                 where customer_id=? and readiness='READY'
+                 order by feature_code
+                """, (rs, row) -> new MemberBaseline(
+                        memberFeatureCode(rs.getString("feature_code")),
+                        normalizedCount(rs.getBigDecimal("baseline_value")),
+                        normalizedCount(rs.getBigDecimal("current_value"))), customerId);
+        if (baselines.isEmpty()) throw new BusinessException(DetectionErrorCode.SNAPSHOT_NOT_READY);
+        List<FeatureSeries> features = baselines.stream()
+                .map(item -> featureSeries(item.featureCode(), item.baselineValue(), item.currentValue()))
+                .toList();
+        return analyzeFeatures(features, () -> {}, reason -> {});
+    }
+
+    private AiFinancialAssistanceResponses.ChangeAnalysis analyzeFeatures(
+            List<FeatureSeries> features, Runnable accepted, Consumer<String> fallback
+    ) {
         if (enabled) {
             try {
-                UUID requestId = UUID.randomUUID();
-                ChangeAnalysisResponse response = aiClient.analyzeChanges(
-                        new ChangeAnalysisRequest("1.0.0", requestId, 60, 30, features));
-                requireSafeChangeResponse(response, requestId, features);
-                assistanceAuditWriter.accepted(
-                        sessionId, demoRunId, "CHANGE_ANALYSIS", "FASTAPI_EWMA_CUSUM", false);
-                return map(response, false, "FASTAPI_EWMA_CUSUM");
+                List<ChangeAnalysisResponse> windows = new ArrayList<>();
+                for (int baselineDays : List.of(30, 60, 90)) {
+                    UUID requestId = UUID.randomUUID();
+                    ChangeAnalysisResponse response = aiClient.analyzeChanges(
+                            new ChangeAnalysisRequest("1.0.0", requestId, baselineDays, 30, features));
+                    requireSafeChangeResponse(response, requestId, features, baselineDays);
+                    windows.add(response);
+                }
+                accepted.run();
+                return map(windows, false, "FASTAPI_EWMA_CUSUM");
             } catch (AiAssistanceException | IllegalArgumentException exception) {
-                log.warn("AI change analysis failed; using baseline fallback: {}",
-                        exception.getClass().getSimpleName());
-                assistanceAuditWriter.fallback(sessionId, demoRunId, "CHANGE_ANALYSIS",
-                        fallbackReason(exception));
+                log.warn("AI change analysis failed; using baseline fallback: {} ({})",
+                        exception.getClass().getSimpleName(), exception.getMessage());
+                fallback.accept(fallbackReason(exception));
             }
         } else {
-            assistanceAuditWriter.fallback(sessionId, demoRunId, "CHANGE_ANALYSIS", "FEATURE_DISABLED");
+            fallback.accept("FEATURE_DISABLED");
         }
         return fallbackChanges(features);
+    }
+
+    private String memberFeatureCode(String featureCode) {
+        return switch (featureCode) {
+            case "MISSED_PAYMENT", "MISSED_RECURRING_PAYMENT", "MISSED_RECURRING_COUNT" ->
+                    "MISSED_RECURRING_COUNT";
+            case "DUPLICATE_TRANSFER", "DUPLICATE_TRANSFER_COUNT" -> "DUPLICATE_TRANSFER_COUNT";
+            case "REPEATED_CONFIRMATION", "REPEATED_CONFIRMATION_COUNT" ->
+                    "REPEATED_CONFIRMATION_COUNT";
+            default -> throw new IllegalArgumentException("unsupported member baseline feature: " + featureCode);
+        };
+    }
+
+    private String normalizedCount(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 
     public AiFinancialAssistanceResponses.PlainLanguage plainLanguage(
@@ -335,12 +386,16 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private void requireSafeChangeResponse(
-            ChangeAnalysisResponse response, UUID requestId, List<FeatureSeries> features
+            ChangeAnalysisResponse response, UUID requestId, List<FeatureSeries> features,
+            int expectedBaselineDays
     ) {
         if (response == null || !"1.0.0".equals(response.contractVersion())
                 || !requestId.equals(response.requestId()) || response.diagnosisInferred()
                 || response.financialActionExecuted() || response.changes() == null
-                || response.baselineDays() != 60 || response.recentDays() != 30
+                || response.baselineDays() != expectedBaselineDays || response.recentDays() != 30
+                || response.summary() == null || response.confirmationQuestions() == null
+                || response.reviewChecklist() == null
+                || !"EXPLAINABLE_CHANGE_GUIDANCE_V1".equals(response.guidanceMode())
                 || response.changes().size() != features.size()
                 || response.changes().stream().anyMatch(java.util.Objects::isNull)
                 || !response.changes().stream().map(ChangeSignal::featureCode).collect(java.util.stream.Collectors.toSet())
@@ -356,7 +411,7 @@ public class DemoAiFinancialAssistanceService {
         Map<String, FeatureSeries> featureByCode = features.stream().collect(
                 java.util.stream.Collectors.toMap(FeatureSeries::featureCode, feature -> feature));
         for (ChangeSignal item : response.changes()) {
-            ExpectedChange expected = recompute(featureByCode.get(item.featureCode()), 60, 30);
+            ExpectedChange expected = recompute(featureByCode.get(item.featureCode()), expectedBaselineDays, 30);
             if (!close(item.baselineValue(), expected.baselineValue())
                     || !close(item.recentValue(), expected.recentValue())
                     || !close(item.delta(), expected.delta())
@@ -367,10 +422,22 @@ public class DemoAiFinancialAssistanceService {
                     || expected.persistent() != item.persistent()
                     || expected.dataSufficient() != item.dataSufficient()
                     || !expected.explanation().equals(item.explanation())) {
-                throw new IllegalArgumentException("AI change response does not match input series");
+                throw new IllegalArgumentException("AI change response does not match input series: "
+                        + expectedBaselineDays + ":" + item.featureCode());
             }
             requireSafeCustomerText(item.explanation(), "AI change explanation", 300);
         }
+        ExpectedGuidance guidance = expectedGuidance(response.changes(), response.recentDays());
+        if (!guidance.summary().equals(response.summary())
+                || !guidance.confirmationQuestions().equals(response.confirmationQuestions())
+                || !guidance.reviewChecklist().equals(response.reviewChecklist())) {
+            throw new IllegalArgumentException("AI change guidance does not match verified changes");
+        }
+        requireSafeCustomerText(response.summary(), "AI change summary", 300);
+        response.confirmationQuestions().forEach(item ->
+                requireSafeCustomerText(item, "AI confirmation question", 200));
+        response.reviewChecklist().forEach(item ->
+                requireSafeCustomerText(item, "AI review checklist", 200));
     }
 
     private void requireSafeLanguageResponse(
@@ -443,16 +510,19 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private FeatureSeries featureSeries(String featureCode, String baseline, String current) {
-        List<Double> values = new ArrayList<>(java.util.Collections.nCopies(90, 0.0));
-        spread(values, 0, 60, count(baseline));
-        spread(values, 60, 90, count(current));
+        List<Double> values = new ArrayList<>(java.util.Collections.nCopies(120, 0.0));
+        int baselineCount = count(baseline);
+        spread(values, 0, 30, baselineCount);
+        spread(values, 30, 60, baselineCount);
+        spread(values, 60, 90, baselineCount);
+        spread(values, 90, 120, count(current));
         return new FeatureSeries(featureCode, List.copyOf(values), "COUNT");
     }
 
     private List<FeatureSeries> transactionFeatureSeries(
             UUID sessionId, UUID runId, String customerId, LocalDate windowEnd
     ) {
-        LocalDate windowStart = windowEnd.minusDays(89);
+        LocalDate windowStart = windowEnd.minusDays(119);
         LocalDate recentStart = windowEnd.minusDays(29);
         List<TransactionObservation> transactions = jdbc.query("""
                 select t.occurred_at,t.amount,t.counterparty_display_name
@@ -483,7 +553,7 @@ public class DemoAiFinancialAssistanceService {
             LocalDate day = transaction.occurredAt().toLocalDate();
             if (day.isBefore(windowStart)) continue;
             int index = (int) java.time.temporal.ChronoUnit.DAYS.between(windowStart, day);
-            if (index < 0 || index >= 90) continue;
+            if (index < 0 || index >= 120) continue;
             if (firstCounterparty) increment(newCounterparties, index);
             int hour = transaction.occurredAt().getHour();
             if (hour < 7 || hour >= 22) increment(unusualTimes, index);
@@ -497,7 +567,7 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private List<Double> emptySeries() {
-        return new ArrayList<>(java.util.Collections.nCopies(90, 0.0));
+        return new ArrayList<>(java.util.Collections.nCopies(120, 0.0));
     }
 
     private void increment(List<Double> values, int index) {
@@ -521,23 +591,53 @@ public class DemoAiFinancialAssistanceService {
     }
 
     private AiFinancialAssistanceResponses.ChangeAnalysis map(
-            ChangeAnalysisResponse response, boolean fallback, String mode
+            List<ChangeAnalysisResponse> responses, boolean fallback, String mode
     ) {
+        ChangeAnalysisResponse response = responses.stream()
+                .filter(item -> item.baselineDays() == 60).findFirst().orElseThrow();
         List<AiFinancialAssistanceResponses.ChangeItem> changes = response.changes().stream().map(item ->
                 new AiFinancialAssistanceResponses.ChangeItem(item.featureCode(), item.baselineValue(),
                         item.recentValue(), item.delta(), item.direction(), item.ewmaScore(), item.cusumScore(),
                         item.changeDetected(), item.persistent(), item.dataSufficient(), item.method(),
                         item.explanation())).toList();
+        List<AiFinancialAssistanceResponses.ChangeWindow> windows = responses.stream().map(item ->
+                new AiFinancialAssistanceResponses.ChangeWindow(item.baselineDays(), item.recentDays(),
+                        item.changes().stream().map(change -> new AiFinancialAssistanceResponses.ChangeItem(
+                                change.featureCode(), change.baselineValue(), change.recentValue(), change.delta(),
+                                change.direction(), change.ewmaScore(), change.cusumScore(), change.changeDetected(),
+                                change.persistent(), change.dataSufficient(), change.method(), change.explanation()
+                        )).toList())).toList();
         return new AiFinancialAssistanceResponses.ChangeAnalysis(response.baselineDays(), response.recentDays(),
-                response.baselineDays() + response.recentDays(), changes, mode, fallback,
+                response.baselineDays() + response.recentDays(), changes, mode, fallback, windows,
+                response.summary(), List.copyOf(response.confirmationQuestions()),
+                List.copyOf(response.reviewChecklist()), response.guidanceMode(),
                 true, false, false);
     }
 
     private AiFinancialAssistanceResponses.ChangeAnalysis fallbackChanges(List<FeatureSeries> features) {
+        List<AiFinancialAssistanceResponses.ChangeWindow> windows = List.of(30, 60, 90).stream()
+                .map(days -> fallbackWindow(features, days)).toList();
+        List<AiFinancialAssistanceResponses.ChangeItem> items = windows.stream()
+                .filter(window -> window.baselineDays() == 60).findFirst().orElseThrow().changes();
+        ExpectedGuidance guidance = expectedGuidance(items.stream().map(item -> new ChangeSignal(
+                item.featureCode(), item.baselineValue(), item.recentValue(), item.delta(), item.direction(),
+                item.ewmaScore(), item.cusumScore(), item.changeDetected(), item.persistent(),
+                item.dataSufficient(), item.method(), item.explanation())).toList(), 30);
+        return new AiFinancialAssistanceResponses.ChangeAnalysis(60, 30, 90, items,
+                "BASELINE_RULE_FALLBACK", true, windows, guidance.summary(),
+                guidance.confirmationQuestions(), guidance.reviewChecklist(),
+                "SPRING_EXPLAINABLE_GUIDANCE_FALLBACK_V1", true, false, false);
+    }
+
+    private AiFinancialAssistanceResponses.ChangeWindow fallbackWindow(
+            List<FeatureSeries> features, int baselineDays
+    ) {
         List<AiFinancialAssistanceResponses.ChangeItem> items = features.stream().map(feature -> {
-            double baseline = feature.dailyValues().subList(0, 60).stream()
-                    .mapToDouble(Double::doubleValue).sum() / 2.0;
-            double current = feature.dailyValues().subList(60, 90).stream()
+            List<Double> values = feature.dailyValues().subList(
+                    feature.dailyValues().size() - baselineDays - 30, feature.dailyValues().size());
+            double baseline = values.subList(0, baselineDays).stream()
+                    .mapToDouble(Double::doubleValue).sum() * 30.0 / baselineDays;
+            double current = values.subList(baselineDays, baselineDays + 30).stream()
                     .mapToDouble(Double::doubleValue).sum();
             double delta = current - baseline;
             boolean changed = Math.abs(delta) >= Math.max(1, baseline * 0.5);
@@ -550,8 +650,7 @@ public class DemoAiFinancialAssistanceService {
                     delta > 0 ? "INCREASE" : delta < 0 ? "DECREASE" : "STABLE", 0, 0,
                     changed, current >= 3, true, "BASELINE_RULE_FALLBACK", explanation);
         }).toList();
-        return new AiFinancialAssistanceResponses.ChangeAnalysis(60, 30, 90, items,
-                "BASELINE_RULE_FALLBACK", true, true, false, false);
+        return new AiFinancialAssistanceResponses.ChangeWindow(baselineDays, 30, items);
     }
 
     private AiFinancialAssistanceResponses.PlainLanguage fallbackLanguage(
@@ -628,6 +727,51 @@ public class DemoAiFinancialAssistanceService {
             case "NEW_COUNTERPARTY_COUNT" -> "새 수취인 거래";
             case "UNUSUAL_TIME_COUNT" -> "평소와 다른 시간대 거래";
             case "UNUSUAL_AMOUNT_COUNT" -> "평소 범위를 벗어난 금액 거래";
+            default -> throw new IllegalArgumentException("unsupported change feature");
+        };
+    }
+
+    private ExpectedGuidance expectedGuidance(List<ChangeSignal> changes, int recentDays) {
+        List<ChangeSignal> detected = changes.stream().filter(ChangeSignal::changeDetected).toList();
+        String summary;
+        List<String> questions;
+        if (detected.isEmpty()) {
+            summary = "최근 " + recentDays + "일은 과거 기준과 비교해 뚜렷한 장기 변화가 "
+                    + "확인되지 않았습니다. 현재 결과만으로 이상이나 질환을 판단하지 않습니다.";
+            questions = List.of("최근 납부 방법이나 금융 이용 습관을 바꾸셨나요?");
+        } else {
+            summary = "최근 " + recentDays + "일 동안 " + changeFeatureLabel(detected.getFirst().featureCode())
+                    + " 등 " + detected.size() + "개 항목에서 평소와 다른 장기 변화가 확인됐습니다. "
+                    + "이상이나 질환을 뜻하지 않으며, 알고 있는 생활 변화인지 먼저 확인해 주세요.";
+            questions = detected.stream().limit(3).map(item -> confirmationQuestion(item.featureCode())).toList();
+        }
+        List<String> checklist = new ArrayList<>(List.of(
+                "표시된 기간과 횟수가 내 금융생활과 맞는지 확인합니다.",
+                "알고 있는 변화인지 또는 도움이 필요한지 직접 선택합니다."));
+        detected.stream().limit(2).map(item -> reviewItem(item.featureCode())).forEach(checklist::add);
+        return new ExpectedGuidance(summary, questions, List.copyOf(checklist));
+    }
+
+    private String confirmationQuestion(String featureCode) {
+        return switch (featureCode) {
+            case "MISSED_RECURRING_COUNT" -> "최근 납부일이나 납부 방법을 바꾸셨나요?";
+            case "DUPLICATE_TRANSFER_COUNT" -> "같은 곳에 두 번 보낸 것으로 알고 계신가요?";
+            case "REPEATED_CONFIRMATION_COUNT" -> "거래 결과가 잘 보이지 않아 여러 번 확인하셨나요?";
+            case "NEW_COUNTERPARTY_COUNT" -> "최근 새로 거래하기 시작한 분이나 업체가 있나요?";
+            case "UNUSUAL_TIME_COUNT" -> "평소와 다른 시간에 금융서비스를 이용한 이유가 있나요?";
+            case "UNUSUAL_AMOUNT_COUNT" -> "최근 평소보다 큰 금액을 사용하거나 옮길 일이 있었나요?";
+            default -> throw new IllegalArgumentException("unsupported change feature");
+        };
+    }
+
+    private String reviewItem(String featureCode) {
+        return switch (featureCode) {
+            case "MISSED_RECURRING_COUNT" -> "납부일·납부 방법 변경 여부를 확인합니다.";
+            case "DUPLICATE_TRANSFER_COUNT" -> "같은 송금의 목적과 본인 인지 여부를 확인합니다.";
+            case "REPEATED_CONFIRMATION_COUNT" -> "화면 이해나 거래 결과 확인에 어려움이 있었는지 확인합니다.";
+            case "NEW_COUNTERPARTY_COUNT" -> "새 거래 상대와의 관계를 고객에게 직접 확인합니다.";
+            case "UNUSUAL_TIME_COUNT" -> "이용 시간 변화의 생활 맥락을 확인합니다.";
+            case "UNUSUAL_AMOUNT_COUNT" -> "금액 변화의 목적을 고객에게 직접 확인합니다.";
             default -> throw new IllegalArgumentException("unsupported change feature");
         };
     }
@@ -790,5 +934,10 @@ public class DemoAiFinancialAssistanceService {
             String explanation
     ) {}
 
+    private record ExpectedGuidance(
+            String summary, List<String> confirmationQuestions, List<String> reviewChecklist
+    ) {}
+
     private record TransactionObservation(OffsetDateTime occurredAt, double amount, String counterparty) {}
+    private record MemberBaseline(String featureCode, String baselineValue, String currentValue) {}
 }

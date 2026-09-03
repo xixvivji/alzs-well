@@ -13,8 +13,8 @@ type StatusFilter = "ALL" | ApiImplementation;
 
 const MODE: Record<PortalMode, { audiences: ApiAudience[]; eyebrow: string; title: string; description: string }> = {
   customer: {
-    audiences: ["PUBLIC", "CUSTOMER"], eyebrow: "금융서비스", title: "필요한 금융생활을 한곳에서",
-    description: "조회·동의·금융생활 지원을 목적별로 찾을 수 있습니다. 운영 인증이 필요한 서비스는 공개 데모에서 실행되지 않습니다.",
+    audiences: ["PUBLIC", "CUSTOMER"], eyebrow: "개발·시연 점검", title: "백엔드 서비스 연결 현황",
+    description: "고객 화면에서 사용하는 API 계약과 구현 상태를 확인하는 기술 검증 화면입니다. 실제 금융업무 메뉴가 아닙니다.",
   },
   staff: {
     audiences: ["STAFF"], eyebrow: "행원 업무", title: "보호업무 운영 포털",
@@ -67,7 +67,7 @@ export function ApiServiceCatalog({ mode }: { mode: PortalMode }) {
     </section>)}</div>}
 
     <section className="catalog-boundary">
-      <span aria-hidden="true">i</span><p><strong>표시 범위</strong> 237개는 Spring Controller와 명세를 대조한 백엔드 구현 계약 수이며, 모든 API가 현재 화면에서 호출된다는 뜻은 아닙니다. 공개 데모 화면은 합성데이터와 capability 범위의 시연 동선만 호출합니다. Bearer 인증 업무는 사설 IdP 연결 전까지 잠기며, 미구현·외부 참고 API에는 실행 버튼을 만들지 않습니다.</p>
+      <span aria-hidden="true">i</span><p><strong>표시 범위</strong> 238개는 Spring Controller와 명세를 대조한 백엔드 구현 계약 수이며, 모든 API가 현재 화면에서 호출된다는 뜻은 아닙니다. 공개 데모 화면은 합성데이터와 capability 범위의 시연 동선만 호출합니다. Bearer 인증 업무는 사설 IdP 연결 전까지 잠기며, 미구현·외부 참고 API에는 실행 버튼을 만들지 않습니다.</p>
     </section>
   </div>;
 }

@@ -13,7 +13,8 @@ from app.domain.search import SearchRequest, StoredSearchResult
 from app.embedding.base import EmbeddingProvider, vector_literal
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.errors import KnowledgeContractError
-from app.retrieval.query import keyword_query
+from app.retrieval.query import has_definition_intent, keyword_query, retrieval_query
+from app.retrieval.temporal import effective_dates_for_chunks
 from app.storage.database_config import DatabaseConfig
 from app.storage.embedding_index import vector_type
 
@@ -26,6 +27,7 @@ KEYWORD_WEIGHT = 0.35
 VECTOR_WEIGHT = 0.65
 VECTOR_THRESHOLD = 0.15
 RESULT_THRESHOLD = 0.35
+DEFINITION_INTENT_BONUS = 0.08
 ARCTIC_KEYWORD_WEIGHT = 0.2
 ARCTIC_VECTOR_WEIGHT = 0.8
 ARCTIC_VECTOR_THRESHOLD = 0.15
@@ -116,8 +118,9 @@ class PostgresSearchRepository:
             search_parameters(descriptor.backend)
         )
         database_vector_type = vector_type(descriptor.dimensions)
+        effective_query = retrieval_query(request.query)
         query_vector = vector_literal(
-            self._embedding_provider.embed_query(request.query),
+            self._embedding_provider.embed_query(effective_query),
             dimensions=descriptor.dimensions,
         )
         try:
@@ -203,7 +206,11 @@ class PostgresSearchRepository:
                           on d.document_id = c.document_id and d.version_label = c.version_label
                     ), scored as (
                         select ranked.*,
-                            (least(1.0, keyword_score) * %s + vector_score * %s) as score,
+                            least(
+                                1.0,
+                                least(1.0, keyword_score) * %s + vector_score * %s
+                                + case when %s and heading like '%%정의%%' then %s else 0 end
+                            ) as score,
                             ai_knowledge.document_authority_rank(document_type)
                                 as authority_rank
                         from ranked
@@ -215,12 +222,12 @@ class PostgresSearchRepository:
                         source_url, source_hash, text_hash, content, score
                     from scored
                     where score >= %s
-                    order by authority_rank desc, score desc,
+                    order by score desc, authority_rank desc,
                         document_id, version_label, chunk_order
                     limit %s
                     """,
                     (
-                        keyword_query(request.query),
+                        keyword_query(effective_query),
                         query_vector,
                         list(request.principal_roles),
                         list(request.requester_audiences),
@@ -237,12 +244,19 @@ class PostgresSearchRepository:
                         MAX_VECTOR_CANDIDATES,
                         keyword_weight,
                         vector_weight,
+                        has_definition_intent(effective_query),
+                        DEFINITION_INTENT_BONUS,
                         vector_threshold,
                         result_threshold,
-                        request.limit,
+                        _temporal_fetch_limit(request.limit),
                     ),
                 )
-                return tuple(_stored_result(row) for row in cursor.fetchall())
+                return tuple(
+                    _stored_result(row)
+                    for row in _temporally_eligible_rows(
+                        cursor.fetchall(), request.as_of, request.limit
+                    )
+                )
         except psycopg.errors.QueryCanceled:
             raise KnowledgeContractError("SEARCH_TIMEOUT") from None
         except psycopg.Error:
@@ -420,3 +434,33 @@ def _stored_result(row: tuple[Any, ...]) -> StoredSearchResult:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _temporal_fetch_limit(requested_limit: int) -> int:
+    return min(MAX_VECTOR_CANDIDATES, max(100, requested_limit * 10))
+
+
+def _temporally_eligible_rows(
+    rows: list[tuple[Any, ...]], as_of: date, requested_limit: int
+) -> tuple[tuple[Any, ...], ...]:
+    groups: dict[tuple[object, ...], list[tuple[Any, ...]]] = {}
+    for row in rows:
+        key = (row[0], row[1], tuple(row[7]))
+        groups.setdefault(key, []).append(row)
+
+    future_chunk_ids: set[object] = set()
+    for group in groups.values():
+        ordered = sorted(group, key=lambda row: int(row[3]))
+        dates = effective_dates_for_chunks(
+            [str(row[12]) for row in ordered],
+            [tuple(str(value) for value in row[7]) for row in ordered],
+            [int(row[3]) for row in ordered],
+        )
+        future_chunk_ids.update(
+            row[2]
+            for row, effective_from in zip(ordered, dates, strict=True)
+            if effective_from is not None and effective_from > as_of
+        )
+    return tuple(
+        row for row in rows if row[2] not in future_chunk_ids
+    )[:requested_limit]

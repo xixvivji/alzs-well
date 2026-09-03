@@ -1,0 +1,5 @@
+.readiness-boundary{display:grid;grid-template-columns:1fr 1fr;gap:1px;padding:0;overflow:hidden;background:var(--line)}
+.readiness-boundary>div{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 20px;background:#fff}
+.readiness-boundary span{color:#718079;font-size:10px}.readiness-boundary strong{color:#245e49;font-size:11px}
+.readiness-boundary>small{grid-column:1/-1;padding:10px 20px;background:#f4f7f5;color:#65736c;font-size:9px}
+@media(max-width:700px){.readiness-boundary{grid-template-columns:1fr}.readiness-boundary>small{grid-column:1}}

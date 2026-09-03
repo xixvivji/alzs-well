@@ -24,6 +24,13 @@ services:
       timeout: 3s
       retries: 5
       start_period: 15s
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-ap-northeast-2}
+        awslogs-group: ${APP_LOG_GROUP:?APP_LOG_GROUP must be set}
+        awslogs-stream: gateway
+        awslogs-create-group: "false"
     networks: [ingress, app]
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE, CHOWN, DAC_OVERRIDE, SETGID, SETUID]
@@ -74,6 +81,7 @@ services:
       EXTERNAL_EGRESS_ENABLED: "false"
       REMOTE_MODEL_ENABLED: "false"
       SYNTHETIC_PROVIDER_ONLY: "true"
+      SYNTHETIC_MEMBER_AUTH_ENABLED: ${SYNTHETIC_MEMBER_AUTH_ENABLED:-false}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
     volumes:
       - ${RDS_CA_BUNDLE_PATH:?RDS_CA_BUNDLE_PATH must be set}:/run/secrets/rds-ca.pem:ro
@@ -85,6 +93,13 @@ services:
       timeout: 3s
       retries: 8
       start_period: 45s
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-ap-northeast-2}
+        awslogs-group: ${APP_LOG_GROUP:?APP_LOG_GROUP must be set}
+        awslogs-stream: backend
+        awslogs-create-group: "false"
     networks: [app, egress]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
@@ -92,6 +107,45 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1777
     stop_grace_period: 30s
+
+  synthetic-member-seed:
+    profiles: ["synthetic-member-seed"]
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be an immutable ECR digest}
+    restart: "no"
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      PUBLIC_DEPLOYMENT: "true"
+      CORS_CUSTOMER_ALLOWED_ORIGINS: ${CORS_CUSTOMER_ALLOWED_ORIGINS:?CORS_CUSTOMER_ALLOWED_ORIGINS must be set}
+      CORS_STAFF_ALLOWED_ORIGINS: ${CORS_STAFF_ALLOWED_ORIGINS:?CORS_STAFF_ALLOWED_ORIGINS must be set}
+      DEMO_STAFF_BOOTSTRAP_TOKEN: ${DEMO_STAFF_BOOTSTRAP_TOKEN:?DEMO_STAFF_BOOTSTRAP_TOKEN must be set}
+      DB_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST must be set}:5432/${RDS_DATABASE:-alzs_well}?sslmode=verify-full&sslrootcert=/run/secrets/rds-ca.pem
+      DB_USERNAME: ${RDS_MIGRATION_USER:-alzswell_migrator}
+      DB_PASSWORD: ${RDS_MIGRATION_PASSWORD:?RDS_MIGRATION_PASSWORD must be set}
+      SPRING_FLYWAY_USER: ${RDS_MIGRATION_USER:-alzswell_migrator}
+      SPRING_FLYWAY_PASSWORD: ${RDS_MIGRATION_PASSWORD:?RDS_MIGRATION_PASSWORD must be set}
+      SYNTHETIC_SEED_ENABLED: "true"
+      SYNTHETIC_SEED_PROFILE: PUBLIC
+      SYNTHETIC_SEED_FIXTURE_VERSION: ${SYNTHETIC_SEED_FIXTURE_VERSION:-synthetic-v3.0.0}
+      SYNTHETIC_SEED_VALUE: ${SYNTHETIC_SEED_VALUE:-20260901}
+      SYNTHETIC_SEED_BATCH_SIZE: ${SYNTHETIC_SEED_BATCH_SIZE:-50}
+      SYNTHETIC_SEED_VERIFY_DETECTION: "true"
+      SYNTHETIC_SEED_PROVISION_MEMBERS: "true"
+      SYNTHETIC_MEMBER_PASSWORD_HASH: ${SYNTHETIC_MEMBER_PASSWORD_HASH:?SYNTHETIC_MEMBER_PASSWORD_HASH must be set}
+      SYNTHETIC_DATA_ONLY: "true"
+      SYNTHETIC_PROVIDER_ONLY: "true"
+      EXTERNAL_ACTIONS_ENABLED: "false"
+      NETWORK_MODE: AIR_GAPPED_DEMO
+      EXTERNAL_EGRESS_ENABLED: "false"
+      REMOTE_MODEL_ENABLED: "false"
+    volumes:
+      - ${RDS_CA_BUNDLE_PATH:?RDS_CA_BUNDLE_PATH must be set}:/run/secrets/rds-ca.pem:ro
+    networks: [egress]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
 
 networks:
   ingress:

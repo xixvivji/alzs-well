@@ -95,10 +95,11 @@ app:
     cleanup-interval-ms: ${DEMO_CLEANUP_INTERVAL_MS:300000}
     cleanup-batch-size: ${DEMO_CLEANUP_BATCH_SIZE:100}
   features:
-    # 인증·인가·PostgreSQL 영속화 전에는 고객 API를 외부에 노출하지 않는다.
+    # 기본 비활성. 공개 합성 회원 환경은 production의 결합 플래그로만 함께 활성화한다.
     customer-profile-api-enabled: ${CUSTOMER_PROFILE_API_ENABLED:false}
-    # 합성 계정 인증은 로컬·사설 검증 전용이며 공개 운영에서 활성화하지 않는다.
+    # 일반 합성 인증은 로컬 검증용이며 공개 환경에서는 PUBLIC fixture 제한이 추가된다.
     local-auth-api-enabled: ${LOCAL_AUTH_API_ENABLED:false}
+    public-synthetic-member-auth-enabled: ${PUBLIC_SYNTHETIC_MEMBER_AUTH_ENABLED:false}
   ai-retrieval:
     enabled: ${AI_RETRIEVAL_ENABLED:false}
     base-url: ${AI_RETRIEVAL_BASE_URL:http://127.0.0.1:8000}
@@ -135,7 +136,10 @@ app:
     batch-size: ${SYNTHETIC_SEED_BATCH_SIZE:10}
     resume: ${SYNTHETIC_SEED_RESUME:false}
     verify-detection: ${SYNTHETIC_SEED_VERIFY_DETECTION:false}
+    provision-members: ${SYNTHETIC_SEED_PROVISION_MEMBERS:false}
+    member-password-hash: ${SYNTHETIC_MEMBER_PASSWORD_HASH:}
   auth:
+    public-synthetic-members-only: ${PUBLIC_SYNTHETIC_MEMBERS_ONLY:false}
     access-ttl-seconds: ${AUTH_ACCESS_TTL_SECONDS:900}
     refresh-ttl-seconds: ${AUTH_REFRESH_TTL_SECONDS:28800}
     absolute-ttl-seconds: ${AUTH_ABSOLUTE_TTL_SECONDS:86400}
@@ -148,7 +152,7 @@ app:
     cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:200}
   versions:
     api: v1
-    schema: "74"
+    schema: "76"
     fixture: fin-mgmt-ab-v2.0.0
     algorithm: baseline-rules-v2.0.0
     policy: context-policy-v1.0.0

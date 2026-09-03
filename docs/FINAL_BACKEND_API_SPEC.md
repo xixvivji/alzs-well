@@ -14,28 +14,28 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **281개** |
+| 전체 API operation | **283개** |
 | API 도메인 | **26개** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **26개** |
-| P1 제품 핵심 백로그 | **176개** |
+| P1 제품 핵심 백로그 | **178개** |
 | P2 은행·증권 확장 백로그 | **79개** |
-| ALZ's well 소유 `OWNED` | **192개** |
+| ALZ's well 소유 `OWNED` | **194개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 281개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 283개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 문서화된 업무 API 236개 + staging 직원 발급 API 1개 |
+| `IMPLEMENTED` | 문서화된 업무 API 238개 + staging 직원 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 45개 |
 
-문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 236개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 237개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라지며 production에서는 합성 인증 API가 강제 비활성화된다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
+문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 238개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 239개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
 
-여기서 API 281개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+여기서 API 283개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
 
 ## 구현 결정
 
@@ -140,7 +140,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 26개 도메인·281개 API 마스터 카탈로그
+3. 26개 도메인·283개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 15개 상세 계약
 6. P0-B 11개 상세 계약
@@ -854,16 +854,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **281** |
+| 전체 | **283** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **176** |
+| P1 제품 핵심 | **178** |
 | P2 은행·증권 확장 | **79** |
-| OWNED | **192** |
+| OWNED | **194** |
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, 데모 AI 금융생활 지원 6개와 분리된 readiness·고객 확인 유예를 포함해 총 236개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 237개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
+현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 총 238개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 239개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -963,7 +963,7 @@ V57의 P2 세션 관리 2개는 현재 Bearer token의 principal과 session ID�
 | P1 | GET | /api/v1/customers/{customerId}/data-summary | 서비스가 보유한 데이터 범위 확인 | OWNED |
 | P2 | POST | /api/v1/customers/{customerId}/data-export-requests | 고객 데이터 사본 요청 | OWNED |
 
-P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expectedVersion` 낙관적 잠금, V15 Bearer 인증 주체와 customerId 소유권·읽기/쓰기 권한 검증 및 계약 테스트까지 구현했다. `CUSTOMER_PROFILE_API_ENABLED=false`가 기본값이므로 공개 합성데모에는 노출하지 않는다. 실제 공개 노출은 기업 IdP 어댑터 구현과 보안 검증 후에만 허용한다. P2 데이터 사본 요청은 구현 전이다.
+P1의 앞 7개 경로는 Flyway V14 기반 PostgreSQL 영속화, 요청별 `expectedVersion` 낙관적 잠금, V15 Bearer 인증 주체와 customerId 소유권·읽기/쓰기 권한 검증 및 계약 테스트까지 구현했다. 기본값은 비활성이다. 공개 합성데모에서는 성공한 V75 `PUBLIC` fixture 300명, `demo[0-9]{3}` 계정 제한, 합성 전용 가드레일, Vercel HttpOnly BFF를 모두 적용한 경우에만 `SYNTHETIC_MEMBER_AUTH_ENABLED=true`로 함께 활성화한다. P2 데이터 사본 요청은 구현 전이다.
 
 #### 3.3.3-A 금융생활 준비·의향 — 7개
 
@@ -982,7 +982,7 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 포함된 항목만 반환하며 철회된 의향은 조회하지 않는다. 모든 응답은 `legallyBinding=false`,
 `healthInferenceUsed=false`이며 의향은 건강상태·위험도·사건 우선순위 산정에 사용하지 않는다.
 
-#### 3.3.3-B 데모 AI 금융생활 지원 — 6개
+#### 3.3.3-B AI 금융생활 지원 — 7개
 
 | 우선순위 | Method | Path | 용도 | 경계 |
 |---|---|---|---|---|
@@ -992,8 +992,9 @@ Flyway V39의 현재상태, 불변 revision·event, 멱등 command 테이블로 
 | P1 | GET | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/intent | 현재 데모 의향 조회 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/change-analysis | 30·60·90일 설명 가능한 장기 변화 분석 실행 및 감사이력 기록 | OWNED |
 | P1 | POST | /api/v1/demo/sessions/{sessionId}/customers/{customerId}/ai-financial-assistance/plain-language | 고객 선호에 맞는 쉬운말·음성용 문장 생성 | OWNED |
+| P1 | POST | /api/v1/customers/{customerId}/ai-financial-assistance/change-analysis | 로그인 합성 회원 기준선의 30·60·90일 변화 분석 | OWNED |
 
-이 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 내부 FastAPI가 구조화 임베딩 보조, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·금지 표현·크기·버전·승인을 다시 검증한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
+앞의 데모 6개는 합성 데모 capability와 활성 `demoRunId`를 모두 검증한다. 회원 장기 변화 분석은 Bearer 인증 주체와 경로의 `customerId` 일치를 검증한 뒤 서버에 저장된 합성 기준선만 사용한다. 내부 FastAPI가 구조화 임베딩 보조, 명시적 의향 누락·상충 확인 질문, EWMA·CUSUM 분석, 제한된 문장 생성을 수행하되 Spring이 응답 enum·허용 질문·금지 표현·크기·버전·계산값을 다시 검증한다. 장기 변화 분석은 최근 30일을 과거 30·60·90일의 세 기준구간과 각각 비교하고, 기존 클라이언트용 대표 결과는 60일 기준으로 유지한다. FastAPI 장애나 자격정보 미설정 시 Spring의 결정론적 폴백으로 전환하며 건강상태 추론, 금융거래 실행, 외부 연락은 항상 금지한다. V73의 의향 행은 세션과 run에만 귀속되고 세션 폐기 시 cascade 삭제된다.
 
 #### 3.3.4 금융기관·데이터 연결 — 8개
 
@@ -1413,6 +1414,7 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 | P2 | POST | /api/v1/admin/rules/{ruleId}/rollback | 이전 규칙으로 복귀 | OWNED |
 | P1 | GET | /api/v1/admin/policies/versions | 정책엔진 버전 | OWNED |
 | P1 | GET | /api/v1/admin/algorithms/versions | 탐지 알고리즘 버전 | OWNED |
+| P1 | GET | /api/v1/admin/ai-quality/summary | 최근 AI 검색·폴백·인용 거부 운영 품질 | OWNED |
 | P1 | GET | /api/v1/admin/feature-flags | 환경별 기능 플래그 | OWNED |
 | P2 | PUT | /api/v1/admin/feature-flags/{flagKey} | 승인된 기능 플래그 변경 | OWNED |
 
@@ -1422,6 +1424,13 @@ P2 보존정책 조회와 개인정보 삭제·정정 요청 3개는 Flyway V37�
 활성화하지 않고 동일 규칙의 새 ACTIVE 버전을 생성한다. 탐지 실행은 당시의 `policyVersion`과
 `policySnapshotHash`를 `synthetic_detection_run`에 고정해 이후 정책 변경과 무관하게 재현할 수 있다.
 알고리즘 버전 조회는 `advisoryAiUsed=false`, `externalProviderCalled=false`를 명시한다.
+
+AI 운영 품질 요약은 `DETECTION_POLICY_READ` 권한에 한해 최근 1~720시간의 추가 전용
+감사 이벤트를 집계한다. 검색 요청·하이브리드 근거 연결·결정론적 폴백·빈 결과·Spring
+citation 거부와 금융생활 AI 도움의 생성·폴백 건수 및 비율만 반환하며 질의 원문이나
+고객 식별자를 반환하지 않는다. 표본이 없으면 `NO_DATA`, 폴백률 10% 초과 또는 citation
+거부가 있으면 `ATTENTION`, 나머지는 `HEALTHY`다. 이 상태는 운영 점검 신호이며 모델의
+정확도나 고객 위험도를 판정하지 않는다.
 기능 플래그 2개는 Flyway V35의 승인 희망값과 append-only 변경이력으로 구현한다. API는 Spring
 런타임 설정을 동적으로 바꾸지 않으며 `desiredEnabled`, `runtimeEnabled`, `appliedToRuntime`,
 `restartRequired`를 분리해 반환한다. 외부 실행·외부 송신·외부 모델 가드레일은 API 변경 불가이고,
@@ -1494,10 +1503,10 @@ V62의 앞 5개 API는 `USD|JPY|EUR`와 기준통화 `KRW`만 지원한다. 환�
 |---|---|---:|
 | Wave 1 | P0-A 핵심 A/B 데모·운영 안전성 | 15 |
 | Wave 2 | P0-B 세션 격리 뱅킹 셸 | 26 |
-| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 176 |
-| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 261 |
+| Wave 3 | P1 행원·감사·접근성·읽기 전용 금융기능 | 177 |
+| Wave 4 | P2 제품 확장 및 외부 연동 계약 | 262 |
 
-발표에서는 “281개 API 카탈로그를 설계했고 237개 코드 operation을 구현했다”고 표현한다. 281개 전체가 구현됐다고 주장하지 않는다.
+발표에서는 “283개 API 카탈로그를 설계했고 239개 코드 operation을 구현했다”고 표현한다. 283개 전체가 구현됐다고 주장하지 않는다.
 
 ---
 
@@ -1683,7 +1692,7 @@ GET /api/v1/system/health
 GET /api/v1/system/core-readiness
 ```
 
-DB 연결, Flyway V74, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
+DB 연결, Flyway V76, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
 
 ```json
 {
@@ -2351,7 +2360,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "74",
+        "schemaVersion": "76",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2893,7 +2902,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V74와 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V76과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
 
 #### 공개 설정
 
@@ -2946,7 +2955,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "74",
+    "schemaVersion": "76",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",
@@ -3567,9 +3576,9 @@ GET /api/v1/customers/{customerId}/data-summary
 
 ---
 
-## 6.2 P1 로컬 합성 인증 상세 계약
+## 6.2 P1 합성 회원 인증 상세 계약
 
-이 절의 6개 operation은 `IMPLEMENTED-DEVELOPMENT-ONLY`다. `LOCAL_AUTH_API_ENABLED=true`일 때만 Controller가 등록되고 production에서는 강제로 비활성화된다. 실제 서비스의 기업 IdP 계약이 아니다.
+이 절의 operation은 기본적으로 `LOCAL_AUTH_API_ENABLED=true`인 로컬 검증용이다. 공개 합성데모에서는 `SYNTHETIC_MEMBER_AUTH_ENABLED=true`일 때 성공한 `PUBLIC` fixture의 `demo001`~`demo300`만 허용한다. Vercel은 원문 token 응답을 브라우저에 전달하지 않고 Secure·HttpOnly·SameSite=Strict 쿠키로 변환한다. 실제 서비스의 기업 IdP·MFA 계약은 아니다.
 
 ### 공통 token 계약
 
@@ -3590,7 +3599,7 @@ Content-Type: application/json
 
 ```json
 {
-  "loginId": "synthetic-customer",
+  "loginId": "demo001",
   "password": "{12~200자의 로컬 합성 계정 비밀번호}"
 }
 ```
@@ -4138,7 +4147,7 @@ PATCH /api/v1/staff/follow-ups/{followUpId}
 | `PUT /intent` | `expectedVersion`, 납부·설명·도움 enum, 공유범위 0~4개 | `DEMO_AI_INTENT_DRAFT_SAVED` | 고객 수정값만 DRAFT로 저장, 낙관적 버전 검사 |
 | `POST /intent/approve` | `expectedVersion`, `disclaimerAccepted=true` | `DEMO_AI_INTENT_APPROVED` | 고객 확인 전 승인 불가, 법적 효력과 자동 실행 없음 |
 | `GET /intent` | 없음 | `DEMO_AI_INTENT_RETRIEVED` | 현재 세션·run의 의향만 조회 |
-| `GET /change-analysis` | 없음 | `DEMO_AI_CHANGE_ANALYZED` | 총 90일 합성 기준선, 이전 60일과 최근 30일 비교 |
+| `POST /change-analysis` | 없음 | `DEMO_AI_CHANGE_ANALYZED` | 총 90일 합성 기준선, 이전 60일과 최근 30일 비교·감사이력 기록 |
 | `POST /plain-language` | 허용된 `featureCode` | `DEMO_AI_PLAIN_LANGUAGE_GENERATED` | 300자 이하 제한 문장과 브라우저 음성용 동일 사실만 반환 |
 
 장기 변화 결과는 정기납부 누락, 중복송금, 거래결과 재확인, 새 수취인, 평소와 다른 시간대, 평소와 다른 금액의 6개 특징에 대해 EWMA·CUSUM 보조 점수와 기준·최근 횟수, 지속 여부, 자연어 근거를 함께 반환한다. 점수만으로 위험·질병·사기를 판정하지 않으며 화면도 “위험도” 대신 관찰된 횟수 변화로 설명한다. 음성 읽기는 서버가 음성 파일을 만들거나 외부 TTS로 전송하지 않고, 고객 브라우저의 `speechSynthesis`가 반환 문장을 `ko-KR`로 천천히 읽는다.

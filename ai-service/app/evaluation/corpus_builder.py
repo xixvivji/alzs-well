@@ -19,6 +19,7 @@ from app.ingestion.chunker import (
     canonical_chunk_id,
 )
 from app.ingestion.manifest_loader import load_and_validate_manifest
+from app.retrieval.temporal import effective_dates_for_chunks
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,12 +44,21 @@ def build_evaluation_corpus(
         manifest = load_and_validate_manifest(repository_root, manifest_path)
         ensure_ingestion_eligible(manifest, as_of=as_of)
         document_rows = _load_document_chunks(repository_root, manifest)
-        for row in document_rows:
+        content_dates = effective_dates_for_chunks(
+            [str(row["text"]) for row in document_rows],
+            [tuple(str(value) for value in row["sectionPath"]) for row in document_rows],
+            [int(row["chunkOrder"]) for row in document_rows],
+        )
+        for row, content_effective_from in zip(
+            document_rows, content_dates, strict=True
+        ):
+            if content_effective_from is not None and content_effective_from > as_of:
+                continue
             chunk_id = str(row["chunkId"])
             if chunk_id in chunk_ids:
                 raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
             chunk_ids.add(chunk_id)
-            rows.append(_evaluation_row(row, manifest))
+            rows.append(_evaluation_row(row, manifest, content_effective_from))
 
     output_path = (
         repository_root
@@ -128,7 +138,16 @@ def _validate_chunk(
         raise KnowledgeContractError("CHUNK_VALIDATION_FAILED")
 
 
-def _evaluation_row(row: dict[str, Any], manifest: KnowledgeManifest) -> dict[str, object]:
+def _evaluation_row(
+    row: dict[str, Any],
+    manifest: KnowledgeManifest,
+    content_effective_from: date | None,
+) -> dict[str, object]:
+    effective_from = max(
+        value
+        for value in (manifest.effective_from, content_effective_from)
+        if value is not None
+    )
     return {
         "chunkId": row["chunkId"],
         "documentId": manifest.document_id,
@@ -140,7 +159,7 @@ def _evaluation_row(row: dict[str, Any], manifest: KnowledgeManifest) -> dict[st
         "audience": manifest.audience,
         "approvalStatus": manifest.approval_status,
         "lifecycleStatus": manifest.lifecycle_status,
-        "effectiveFrom": manifest.effective_from.isoformat(),
+        "effectiveFrom": effective_from.isoformat(),
         "effectiveTo": (
             None if manifest.effective_to is None else manifest.effective_to.isoformat()
         ),

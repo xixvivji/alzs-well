@@ -47,7 +47,7 @@ python3 scripts/run_demo_rehearsal.py --contracts-only
 | 주의 | 잘 모르겠습니다. 도움받겠습니다 | 검토 시작 → AI 초안 citation 확인 → 안내계획 승인 | `GUIDANCE_PLAN_APPROVED` |
 | 오탐 | 잘 모르겠습니다. 도움받겠습니다 | 검토 시작 → 사실확인 근거 입력 → 오탐 종결 | `CLOSED_FALSE_POSITIVE` |
 
-직원 화면은 ChatGPT 로그인, 서버측 직원 allowlist, 단기 staff capability를 모두 통과해야 한다. 이 경계를 우회하는 로컬 전용 인증 코드는 추가하지 않는다.
+공개 직원 시연은 현재 고객 capability로 같은 합성 세션을 AWS에 먼저 검증한 후 서버 전용 bootstrap 토큰으로 단기 staff capability를 발급해야 한다. 사설 운영 모드는 서버가 검증한 RS256 IdP JWT의 직원 역할을 추가로 요구한다. 이 경계를 우회하는 로컬 전용 인증 코드는 추가하지 않는다.
 
 ## AI 장애 리허설 판정
 

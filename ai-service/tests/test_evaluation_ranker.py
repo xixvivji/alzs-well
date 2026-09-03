@@ -61,6 +61,10 @@ def test_eligibility_blocks_acl_audience_lifecycle_and_effective_date() -> None:
     assert not is_eligible(corpus[9], staff_case)
     assert not is_eligible(corpus[10], staff_case)
     assert not is_eligible(replace(corpus[0], allowed_roles=("CUSTOMER",)), staff_case)
+    assert not is_eligible(
+        replace(corpus[0], content="개정 조문 [시행일: 2026. 10. 1.]"),
+        staff_case,
+    )
 
 
 def test_search_configuration_rejects_invalid_weights_and_negative_threshold() -> None:
@@ -101,7 +105,7 @@ def test_document_authority_order_matches_postgresql_contract() -> None:
     ]
 
 
-def test_authority_is_sorted_before_hybrid_score() -> None:
+def test_hybrid_score_is_sorted_before_authority() -> None:
     case = EvaluationCase(
         query_id="AUTHORITY-FIRST",
         query="피해 지원",
@@ -144,8 +148,8 @@ def test_authority_is_sorted_before_hybrid_score() -> None:
         embedding_provider=AuthorityOrderingEmbeddingProvider(),
     )
 
-    assert ranked[0].chunk.chunk_id == "law"
-    assert ranked[0].score < ranked[1].score
+    assert ranked[0].chunk.chunk_id == "notice"
+    assert ranked[0].score > ranked[1].score
 
 
 def test_law_and_regulation_golden_queries_return_the_expected_authority() -> None:

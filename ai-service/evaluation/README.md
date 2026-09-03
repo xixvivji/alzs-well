@@ -6,6 +6,8 @@
 평가 명령이 고정 SentenceTransformer revision을 사용하고 보고서에 모델 버전을 기록한다.
 현재 측정값과 모델 선택 보류 조건은 `model-comparison-v1.md`에 기록한다.
 Arctic-ko 합성 E2E 부하 게이트의 측정법과 결과는 `arctic-ko-load-test-v1.md`에 기록한다.
+최신 cold-start 예열과 동시성 4 재검증, 동시성 10 포화 탐색 결과는
+`arctic-ko-cold-start-and-load-v2.md`에 기록한다.
 평가에 반입한 모델의 고정 revision·차원·prefix와 SentenceTransformer가 소비하는 모든
 파일의 상대경로·크기·SHA-256은 `model-artifacts-v1.json`에 기록하며 모델 바이너리 자체는
 Git에 커밋하지 않는다.
@@ -15,6 +17,7 @@ Git에 커밋하지 않는다.
 
 - `datasets/retrieval-corpus-v1.jsonl`: 합성 문서 chunk와 문서유형·ACL·audience·상태·효력기간
 - `datasets/retrieval-v1.jsonl`: 질의, 요청자 문맥, 정답 chunk와 무응답 기대값
+- `datasets/ai-safety-policy-v1.jsonl`: 정책 차단 공격 문장 100건과 기대 결과
 
 현재 합성 기준선은 14개 chunk와 17개 질의로 구성한다. 통신사기피해환급법·시행령·
 과거 보도자료 역할의 합성 chunk 3개와 법령 검색 질의 2개를 포함하지만, 실제 공식 manifest의
@@ -23,6 +26,24 @@ Git에 커밋하지 않는다.
 실제 고객명·사건·계좌·내부 원문은 평가 데이터에 넣지 않는다. 현재 v1은 파이프라인과
 품질 게이트를 재현하기 위한 합성 기준선이다. 운영 전에는 업무 담당자와 준법 검토자가
 비식별 질의의 정답 chunk 및 무응답 기대값을 이중 검수해야 한다.
+
+### AI 안전 정책 회귀 100건
+
+`ai-safety-policy-v1.jsonl`은 다음 10개 범주를 각 10건씩 검사한다.
+
+- 사건별 최종 판단, 고객 동의 없는 외부 조치
+- 의학적 진단, 개인화 투자 추천, 미래 법령 단정
+- 프롬프트 인젝션, 권한 상승, 비밀 추출, 타인 개인정보 추출, 근거 조작
+
+이 데이터는 사람이 승인한 검색 골든셋이 아니라 기계 작성 정책 회귀셋이다. 따라서 공식
+27건 검색 성능에 합산하거나 실제 공격 방어율로 표현하지 않는다. CI는 100건 모두
+`POLICY_ABSTAIN`인지 확인하고 범주 또는 문항 수가 달라져도 실패한다.
+
+```bash
+uv run python -m app.evaluation.safety_cli \
+  --dataset evaluation/datasets/ai-safety-policy-v1.jsonl \
+  --output-json data/derived/evaluation/ai-safety-policy-v1.json
+```
 
 ## 사람 검수
 
@@ -88,6 +109,72 @@ threshold `0.2`에서 Recall@3/5 `0.7692`, MRR `0.7564`, nDCG@10 `0.7598`, 무�
 총 27개는 2026-08-28 사람 최종 검수로 `ACCEPTED`가 되었다. 아직 승인되지 않은 문서에
 의존하는 ORC-004, ORC-005, ORC-013은 `PENDING`을 유지한다. 승인된 27개만
 `datasets/official-operational-golden-v1.jsonl`에 고정한다.
+
+### 독립 검수 후보 150건
+
+`reviews/independent-review-candidates-v1.jsonl`과 사람이 검토할
+`reviews/independent-review-v1.csv`는 공식 운영 골든셋을 변경하지 않고 검색 강건성과
+무응답 경계를 추가 검토하기 위한 별도 후보 팩이다.
+
+- 승인 근거 21개에 고객 안내·행원 검토·규정 확인·쉬운말·핵심 조건 표현을 적용한 답변형 105건
+- ACL, 만료·미래 문서, 미승인 문서, 금융 외 질문, 근거 없음 무응답형 45건
+
+150건은 모두 `PENDING`이고 `MACHINE_AUTHORED_REVIEW_CANDIDATE`로 표시한다. 기존 27건의
+사람 승인 상태를 상속하지 않으며, 데이터 작성자와 다른 검수자가 질문·정답 근거·무응답
+기대값을 확인하기 전에는 공식 검색 성능이나 독립 평가 결과로 사용할 수 없다. 계약 테스트는
+문항 수, 범주 분포, 근거 추적성, `PENDING` 상태를 고정한다.
+
+승인 문서에서 검수 corpus를 재생성한 뒤 기존 `prepare` 명령의 `--candidates`에 이 파일을
+지정하면 사람이 검토할 CSV를 만들 수 있다. 검수 후에도 원본이나 공식 골든셋을 덮어쓰지
+않고 새 버전의 별도 데이터셋으로 finalize해야 한다.
+
+Arctic-ko 기본 설정의 검수 전 임시 측정과 실패 우선순위는
+`independent-review-provisional-benchmark-v1.md`에 기록한다. 기계 판정 결과와 재현 입력은
+동명의 JSON에 고정하며, 사람 검수 완료나 공식 검색 성능으로 해석하지 않는다.
+정책 우회 3건을 보완한 동일 조건 재측정은
+`independent-review-provisional-benchmark-v2.md`에 기록한다.
+
+v2에서 Top-1 또는 정상 무응답이 아니었던 36건은
+`reviews/independent-review-ai-triage-v1.csv`와
+`independent-review-ai-triage-v1.md`에서 검수 우선순위별로 기술 분류한다. 이 분류는
+기대 근거와 실제 Top-5의 문서·절 위치를 비교해 동일 문서·제목 상세 검토, 일반 Top-3 검토,
+문맥 민감, 정의 절 불일치, 법률과 세부 시행령의 순위 경합을 구분한다. AI가 만든 검수
+보조자료일 뿐 질문-근거 쌍을 승인하거나 공식 성능을 확정하지 않으며, 모든 행은 독립
+검수자가 확인할 때까지 `PENDING`을 유지한다.
+
+동일 문서·제목으로 자동 분류됐던 12건은 2026-09-02 대회 팀 소유자가 원문을 대조했다.
+Top-1 청크는 질문의 답을 포함하지 않거나 질의 기준일 이후 시행 예정 문구를 포함해 대체
+relevance를 12건 모두 `REJECTED`했다. 이 결정은 대체 청크 추가 여부에만 적용되며 원본
+150개 후보의 질문·기대 근거 상태는 계속 `PENDING`이다. 상세 기록은
+`reviews/independent-review-near-match-human-v1.csv`와
+`independent-review-near-match-human-v1.md`에 고정한다.
+
+이 검수에서 발견된 현재 조문과 미래 시행 예정 개정문의 혼재는 청크 본문의 명시적
+`[시행일: YYYY. M. D.]`를 기준으로 분리했다. 분할된 조문은 시행일 표기가 있는 마지막
+청크에서 같은 조문의 `①` 시작 청크까지 효력일을 전파한다. 2026-08-28 기준 corpus 재생성과
+Arctic-ko 재측정 결과는 `independent-review-temporal-filter-v1.md`에 기록한다. 사전 승인된
+6건은 모두 현행 조문 Top-1을 확인했지만, 이는 150건 전체의 사람 검수 완료나 공식 성능
+승격을 의미하지 않는다.
+
+v4에서 기대 근거가 Top-2였던 잔여 15건의 질문·기대 청크·Top-1 원문 대조 결과는
+`independent-review-top3-content-v1.md`와
+`reviews/independent-review-top3-content-v1.csv`에 둔다. Codex 검수 보조 결과이므로
+프로젝트 책임자가 승인한 `IRC-031`~`IRC-035`의 대체 Top-1 근거만 relevance에
+추가했다. 반영 후 답변형 검색은 Top-1 `95/105`, Top-3 `105/105`이며, 이 수치는
+내부 승인 기반 회귀평가로 외부 독립 검증 결과와 구분한다.
+사람 승인 전에는 원본 150개 후보의 `PENDING` 상태나 공식 성능 수치를 변경하지 않는다.
+
+파생 corpus와 v2 순위 결과가 준비된 환경에서는 다음 명령으로 표를 재현한다.
+
+```bash
+uv run python -m app.evaluation.triage_cli \
+  --corpus data/derived/evaluation/retrieval-official-corpus-2026-08-28.jsonl \
+  --candidates evaluation/reviews/independent-review-candidates-v1.jsonl \
+  --ranking-json data/derived/evaluation/independent-review-arctic-ko-v2.json \
+  --output-csv evaluation/reviews/independent-review-ai-triage-v1.csv \
+  --output-json evaluation/independent-review-ai-triage-v1.json \
+  --output-markdown evaluation/independent-review-ai-triage-v1.md
+```
 
 공식 manifest 7개 중 5개는 2026-08-28 사람 승인으로 `APPROVED/ACTIVE`가 되었고,
 2개는 `IN_REVIEW/PENDING_ACTIVATION` 상태를 유지한다. 사전 검수 corpus는
@@ -223,7 +310,8 @@ CI는 게이트 실패 시 PR을 차단하고 JSON·Markdown 평가 보고서를
 ## 해석상의 한계
 
 오프라인 keyword 점수는 PostgreSQL `ts_rank_cd`의 결정론적 대리 점수다. 임베딩 함수와
-정책 필터를 운영 코드와 공유하고 PostgreSQL의 문서 권위 순위를 동일하게 적용하지만,
+정책 필터를 운영 코드와 공유하고 PostgreSQL과 동일하게 관련성 점수를 우선하며 문서
+권위는 동점 기준으로 적용하지만,
 SQL 관련성 점수와 완전히 동일하다고 가정하지 않는다.
 운영 전에는 PostgreSQL 통합 검색 회귀와 대표 질의에 대한 사람의 relevance 판단을 함께
 수행한다. 내부 모델 교체 시에는 동일 데이터셋으로 기준선을 비교하고 모델·index 버전을

@@ -19,6 +19,7 @@ public class DemoGuardrailStartupValidator {
     private final boolean customerProfileApiEnabled;
     private final boolean localAuthApiEnabled;
     private final boolean publicExposure;
+    private final boolean publicSyntheticMemberAuthEnabled;
 
     public DemoGuardrailStartupValidator(
             @Value("${app.guardrails.synthetic-data-only:true}") boolean syntheticDataOnly,
@@ -29,7 +30,8 @@ public class DemoGuardrailStartupValidator {
             @Value("${app.guardrails.synthetic-provider-only:true}") boolean syntheticProviderOnly,
             @Value("${app.features.customer-profile-api-enabled:false}") boolean customerProfileApiEnabled,
             @Value("${app.features.local-auth-api-enabled:false}") boolean localAuthApiEnabled,
-            @Value("${app.deployment.public-exposure:false}") boolean publicExposure
+            @Value("${app.deployment.public-exposure:false}") boolean publicExposure,
+            @Value("${app.features.public-synthetic-member-auth-enabled:false}") boolean publicSyntheticMemberAuthEnabled
     ) {
         this.syntheticDataOnly = syntheticDataOnly;
         this.externalActionsEnabled = externalActionsEnabled;
@@ -40,6 +42,7 @@ public class DemoGuardrailStartupValidator {
         this.customerProfileApiEnabled = customerProfileApiEnabled;
         this.localAuthApiEnabled = localAuthApiEnabled;
         this.publicExposure = publicExposure;
+        this.publicSyntheticMemberAuthEnabled = publicSyntheticMemberAuthEnabled;
     }
 
     @PostConstruct
@@ -50,8 +53,9 @@ public class DemoGuardrailStartupValidator {
                 && !externalEgressEnabled
                 && !remoteModelEnabled
                 && syntheticProviderOnly
-                && (!customerProfileApiEnabled || !publicExposure)
-                && (!localAuthApiEnabled || !publicExposure);
+                && (!customerProfileApiEnabled || !publicExposure || publicSyntheticMemberAuthEnabled)
+                && (!localAuthApiEnabled || !publicExposure || publicSyntheticMemberAuthEnabled)
+                && (!publicSyntheticMemberAuthEnabled || (customerProfileApiEnabled && localAuthApiEnabled));
         if (!safe) {
             throw new IllegalStateException(
                     "공개 합성데모 안전 가드레일이 해제되어 애플리케이션 기동을 중단합니다."

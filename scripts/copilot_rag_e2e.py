@@ -13,7 +13,6 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
-from itertools import cycle
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -663,6 +662,44 @@ def ai_service_memory_measurements() -> tuple[int, int]:
     return peak_rss, container_peak
 
 
+def warm_arctic_search() -> float:
+    require(EMBEDDING_MODE == "arctic-ko", "warmup requires Arctic-ko mode")
+    require(LOAD_TEST_ENABLED, "warmup requires the isolated load-test port")
+    sys.path.insert(0, str(ROOT / "ai-service"))
+    from app.evaluation.load_test import run_http_load  # pylint: disable=import-outside-toplevel
+
+    metrics = run_http_load(
+        name="fastapi-cold-start",
+        url=f"http://127.0.0.1:{LOAD_TEST_PORT}/internal/v1/search",
+        headers={"X-Internal-Service-Token": ENVIRONMENT["AI_INTERNAL_TOKEN"]},
+        payload_factory=lambda: {
+            "contractVersion": "1.0.0",
+            "requestId": str(uuid4()),
+            "query": QUERY,
+            "permissions": ["KNOWLEDGE_SEARCH"],
+            "principalRoles": ["DETECTION_ADMIN"],
+            "requesterAudiences": ["STAFF"],
+            "asOf": AS_OF,
+            "limit": 5,
+        },
+        response_validator=lambda body: (
+            body.get("contractVersion") == "1.0.0"
+            and bool(body.get("results"))
+            and all(
+                item.get("citation", {}).get("indexVersion") == "hybrid-arctic-ko-v1"
+                for item in body["results"]
+            )
+        ),
+        request_count=1,
+        concurrency=1,
+        warmup_requests=0,
+        timeout_seconds=90.0,
+    )
+    require(metrics.success_count == 1, "Arctic-ko cold-start warmup failed")
+    require(metrics.p95_ms is not None, "Arctic-ko cold-start latency was not measured")
+    return metrics.p95_ms
+
+
 def run_arctic_load_test(access_token: str, startup_seconds: float) -> dict[str, Any]:
     require(EMBEDDING_MODE == "arctic-ko", "load test requires Arctic-ko mode")
     sys.path.insert(0, str(ROOT / "ai-service"))
@@ -674,19 +711,11 @@ def run_arctic_load_test(access_token: str, startup_seconds: float) -> dict[str,
 
     request_count = int(ENVIRONMENT.get("AI_LOAD_TEST_REQUEST_COUNT", "100"))
     concurrency = int(ENVIRONMENT.get("AI_LOAD_TEST_CONCURRENCY", "4"))
-    queries = cycle(
-        (
-            "정기납부 미처리 고객 상담 안내",
-            "중복 송금 고객 상담 안내",
-            "거래 반복 확인 고객 상담 안내",
-        )
-    )
-
     def direct_payload() -> dict[str, Any]:
         return {
             "contractVersion": "1.0.0",
             "requestId": str(uuid4()),
-            "query": next(queries),
+            "query": QUERY,
             "permissions": ["KNOWLEDGE_SEARCH"],
             "principalRoles": ["DETECTION_ADMIN"],
             "requesterAudiences": ["STAFF"],
@@ -713,7 +742,7 @@ def run_arctic_load_test(access_token: str, startup_seconds: float) -> dict[str,
     )
 
     def spring_payload() -> dict[str, Any]:
-        return {"query": next(queries), "asOf": AS_OF, "audience": "STAFF", "limit": 5}
+        return {"query": QUERY, "asOf": AS_OF, "audience": "STAFF", "limit": 5}
 
     spring = run_http_load(
         name="spring",
@@ -829,6 +858,11 @@ def main() -> int:
             import_headers,
         )
         require(imported["code"] == "KNOWLEDGE_INGESTION_IMPORTED", "Spring import failed")
+        cold_start_warmup_ms = (
+            warm_arctic_search()
+            if LOAD_TEST_ENABLED and EMBEDDING_MODE == "arctic-ko"
+            else None
+        )
         searched, _ = http(
             "POST",
             "/api/v1/knowledge/search",
@@ -881,6 +915,8 @@ def main() -> int:
         }
         evidence["embeddingMode"] = EMBEDDING_MODE
         evidence["indexVersion"] = index_version
+        if cold_start_warmup_ms is not None:
+            evidence["coldStartWarmupMs"] = cold_start_warmup_ms
         if load_test is not None:
             evidence["loadTest"] = load_test
         (ARTIFACT_DIRECTORY / "result.json").write_text(

@@ -40,6 +40,7 @@ public class AuthSessionService {
     private final int loginFailureLimit;
     private final long loginFailureWindowSeconds;
     private final TransactionTemplate transactionTemplate;
+    private final boolean publicSyntheticMembersOnly;
 
     public AuthSessionService(JdbcTemplate jdbcTemplate, IdentityProviderPort identityProvider,
             AuthSecurityEventService securityEventService, Clock clock,
@@ -49,7 +50,8 @@ public class AuthSessionService {
             @Value("${app.auth.absolute-ttl-seconds:86400}") long absoluteTtlSeconds,
             @Value("${app.auth.max-active-sessions-per-principal:5}") int maxActiveSessions,
             @Value("${app.auth.login-failure-limit:10}") int loginFailureLimit,
-            @Value("${app.auth.login-failure-window-seconds:900}") long loginFailureWindowSeconds) {
+            @Value("${app.auth.login-failure-window-seconds:900}") long loginFailureWindowSeconds,
+            @Value("${app.auth.public-synthetic-members-only:false}") boolean publicSyntheticMembersOnly) {
         if (accessTtlSeconds < 60 || refreshTtlSeconds <= accessTtlSeconds
                 || absoluteTtlSeconds < refreshTtlSeconds || maxActiveSessions < 1
                 || loginFailureLimit < 1 || loginFailureWindowSeconds < 60) {
@@ -66,6 +68,7 @@ public class AuthSessionService {
         this.loginFailureLimit = loginFailureLimit;
         this.loginFailureWindowSeconds = loginFailureWindowSeconds;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.publicSyntheticMembersOnly = publicSyntheticMembersOnly;
     }
 
     public TokenPair login(String loginId, String password) {
@@ -79,6 +82,9 @@ public class AuthSessionService {
         }
         IdentityProviderPort.AuthenticatedPrincipal principal;
         try {
+            if (publicSyntheticMembersOnly && !isAllowedPublicSyntheticPrincipal(normalizedLoginId)) {
+                throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
+            }
             principal = identityProvider.authenticate(normalizedLoginId, password);
         } catch (BusinessException exception) {
             securityEventService.complete(attemptId, "FAILED");
@@ -93,12 +99,33 @@ public class AuthSessionService {
         return pair;
     }
 
+    private boolean isAllowedPublicSyntheticPrincipal(String loginId) {
+        String requiredRole = loginId.matches("^demo[0-9]{3}$") ? "CUSTOMER"
+                : loginId.matches("^staff[0-9]{3}$") ? "PROTECTION_STAFF"
+                : loginId.matches("^admin[0-9]{3}$") ? "DETECTION_ADMIN" : null;
+        if (requiredRole == null) return false;
+        Integer matches = jdbcTemplate.queryForObject("""
+                select count(*) from auth_principal p
+                join synthetic_fixture_customer f on f.customer_id=p.customer_id
+                join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                join auth_principal_role pr on pr.principal_id=p.principal_id
+                where p.login_id=? and p.status='ACTIVE' and r.profile='PUBLIC' and r.status='SUCCEEDED'
+                  and pr.role_code=?
+                """, Integer.class, loginId, requiredRole);
+        return matches != null && matches == 1;
+    }
+
     @Transactional(noRollbackFor = BusinessException.class)
     public TokenPair refresh(String refreshToken) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         List<RefreshTokenRow> tokens = jdbcTemplate.query("""
                 select t.session_id, s.token_family_id, s.absolute_expires_at, s.revoked_at,
-                       t.expires_at, t.used_at, t.revoked_at token_revoked_at
+                       t.expires_at, t.used_at, t.revoked_at token_revoked_at,
+                       exists(select 1 from auth_principal p
+                           join synthetic_fixture_customer f on f.customer_id=p.customer_id
+                           join synthetic_fixture_generation_run r on r.run_id=f.run_id
+                           where p.principal_id=s.principal_id and r.profile='PUBLIC' and r.status='SUCCEEDED')
+                           public_member_allowed
                   from auth_refresh_token t
                   join auth_session s on s.session_id = t.session_id
                  where t.token_hash = ?
@@ -109,9 +136,13 @@ public class AuthSessionService {
                         rs.getObject("revoked_at", OffsetDateTime.class),
                         rs.getObject("expires_at", OffsetDateTime.class),
                         rs.getObject("used_at", OffsetDateTime.class),
-                        rs.getObject("token_revoked_at", OffsetDateTime.class)), hash(refreshToken));
+                        rs.getObject("token_revoked_at", OffsetDateTime.class),
+                        rs.getBoolean("public_member_allowed")), hash(refreshToken));
         if (tokens.size() != 1) throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
         RefreshTokenRow tokenRow = tokens.getFirst();
+        if (publicSyntheticMembersOnly && !tokenRow.publicMemberAllowed()) {
+            throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
+        }
         if (tokenRow.usedAt() != null || tokenRow.tokenRevokedAt() != null) {
             revokeFamily(tokenRow.tokenFamilyId(), now, "REFRESH_TOKEN_REUSE");
             throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
@@ -345,7 +376,8 @@ public class AuthSessionService {
 
     private record RefreshTokenRow(UUID sessionId, UUID tokenFamilyId, OffsetDateTime absoluteExpiresAt,
                                    OffsetDateTime sessionRevokedAt, OffsetDateTime expiresAt,
-                                   OffsetDateTime usedAt, OffsetDateTime tokenRevokedAt) {}
+                                   OffsetDateTime usedAt, OffsetDateTime tokenRevokedAt,
+                                   boolean publicMemberAllowed) {}
     private record SessionOwnershipRow(OffsetDateTime revokedAt) {}
 
     private void recordSessionEvent(UUID principalId, UUID actorSessionId, UUID targetSessionId,

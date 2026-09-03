@@ -15,12 +15,29 @@ import {
 } from "../lib/private-financial-products";
 import { PrivateSessionExpiredError, withPrivateCustomerSession } from "../lib/private-auth-session";
 import { loadSystemStatus } from "../lib/system-status";
+import { suggestPrivateFinancialIntent } from "../lib/private-ai-intent";
 
 const envelope = <T>(data: T, status = 200) => JSON.stringify({
   success: status < 400, status, code: status === 503 ? "SYSTEM_NOT_READY" : "OK", message: "ok", data,
   errors: [], timestamp: "2026-08-30T00:00:00Z", traceId: "trace",
 });
 const demoContext = { sessionId: "session-1", capability: "customer-cap", demoRunId: "run-1", customerId: "customer-1", alertId: "alert-1" };
+
+test("로그인 회원 AI 의향 구조화는 문장만 격리 세션에 전달하고 세션을 회수한다", async (t) => {
+  const calls: Array<{ path: string; method: string; body?: string }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); calls.push({ path, method: init?.method ?? "GET", body: init?.body?.toString() });
+    if (path === "/api/v1/demo/sessions") return new Response(envelope({ sessionId: "session-member-ai" }), { headers: { "content-type": "application/json", "X-Demo-Customer-Capability": "temporary-cap" } });
+    if (path.endsWith("/ingest")) return new Response(envelope({ demoRunId: "run-member-ai", customerId: "isolated-ai-customer", alertId: "alert-member-ai" }), { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/intent-suggestions")) return new Response(envelope({ suggestion: { paymentContinuity: "KEEP_ESSENTIAL_PAYMENTS", explanationMode: "STAFF_EXPLANATION", helpCondition: "ON_REPEATED_CHANGE", shareScopes: [] }, summary: "필수 납부를 유지하고 반복 변화 때 도움을 요청합니다.", evidence: [], needsClarification: false, clarifyingQuestions: [], generatedBy: "FASTAPI", modelInvoked: true, fallbackUsed: false, healthInferenceUsed: false, financialActionExecuted: false }), { headers: { "content-type": "application/json" } });
+    return new Response(envelope(null), { headers: { "content-type": "application/json" } });
+  });
+  const result = await suggestPrivateFinancialIntent("공과금은 유지하고 반복 변화 때 알려주세요.");
+  assert.equal(result.suggestion.helpCondition, "ON_REPEATED_CHANGE");
+  assert.equal(calls.filter((call) => call.method === "DELETE").length, 1);
+  assert.match(calls.find((call) => call.path.endsWith("/intent-suggestions"))?.body ?? "", /공과금은 유지/);
+  assert.ok(calls.every((call) => !String(call.body).includes("customer-1")));
+});
 
 test("loads the customer protection center from five scoped read APIs", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
@@ -33,7 +50,7 @@ test("loads the customer protection center from five scoped read APIs", async (t
         : path.endsWith("/intent")
           ? { intentId: "intent-1", customerId: "customer-1", status: "APPROVED", version: 2, paymentContinuity: "KEEP_ESSENTIAL_PAYMENTS", explanationMode: "SIMPLE_TEXT", helpCondition: "ON_CUSTOMER_REQUEST", shareScopes: [], disclaimerAccepted: true, legallyBinding: false, healthInferenceUsed: false }
           : path.endsWith("/change-analysis")
-            ? { baselineDays: 60, recentDays: 30, analysisWindowDays: 90, changes: [{ featureCode: "REPEATED_CONFIRMATION_COUNT", baselineValue: 2, recentValue: 7, delta: 5, direction: "INCREASE", ewmaScore: 1, cusumScore: 2, changeDetected: true, persistent: true, dataSufficient: true, method: "EWMA_CUSUM", explanation: "재확인이 증가했습니다." }], analysisMode: "FASTAPI", fallbackUsed: false, syntheticData: true, diagnosisInferred: false, financialActionExecuted: false }
+            ? { baselineDays: 60, recentDays: 30, analysisWindowDays: 90, changes: [{ featureCode: "REPEATED_CONFIRMATION_COUNT", baselineValue: 2, recentValue: 7, delta: 5, direction: "INCREASE", ewmaScore: 1, cusumScore: 2, changeDetected: true, persistent: true, dataSufficient: true, method: "EWMA_CUSUM", explanation: "재확인이 증가했습니다." }], summary: "거래결과 확인 변화가 있습니다.", confirmationQuestions: ["여러 번 확인하셨나요?"], reviewChecklist: ["표시된 값을 확인합니다."], guidanceMode: "EXPLAINABLE_CHANGE_GUIDANCE_V1", analysisMode: "FASTAPI", fallbackUsed: false, syntheticData: true, diagnosisInferred: false, financialActionExecuted: false }
             : { items: [{ auditId: "audit-1", eventType: "ALERT_CREATED", actorType: "SYSTEM", fromState: null, toState: "PENDING_CUSTOMER_CONFIRMATION", resultCode: null, evidenceIds: [], algorithmVersion: "v1", policyVersion: "v1", traceId: "trace", occurredAt: "2026-08-30T00:00:00Z" }], nextCursor: null, hasMore: false };
     return new Response(envelope(data), { headers: { "content-type": "application/json" } });
   });
@@ -94,15 +111,15 @@ test("keeps readiness details visible when the readiness API correctly returns 5
   const snapshot = await loadSystemStatus();
   assert.equal(snapshot.readiness.ready, false);
   assert.equal(snapshot.readiness.checks.aiRetrieval, "DOWN");
-  assert.deepEqual(paths.sort(), ["/api/v1/system/health", "/api/v1/system/public-config", "/api/v1/system/readiness", "/api/v1/system/versions"]);
+  assert.deepEqual(paths.sort(), ["/api/v1/system/ai-readiness", "/api/v1/system/core-readiness", "/api/v1/system/health", "/api/v1/system/public-config", "/api/v1/system/readiness", "/api/v1/system/versions"]);
 });
 
-test("uses Bearer authentication for the private card, loan and investment dashboard", async (t) => {
+test("uses the HttpOnly BFF session for the private card, loan and investment dashboard", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); calls.push({ path, init });
     let data: unknown;
-    if (path.endsWith("/auth/login")) data = { accessToken: "access-secret", accessExpiresAt: "2099-08-30T01:00:00Z", refreshToken: "refresh-secret", refreshExpiresAt: "2099-08-31T00:00:00Z" };
+    if (path.endsWith("/member-auth/login")) data = null;
     else if (path.endsWith("/auth/me/permissions")) data = { permissions: ["CARD_READ", "FINANCIAL_OVERVIEW_READ"] };
     else if (path.endsWith("/auth/me")) data = { customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"] };
     else if (path.endsWith("/customers/customer-1/cards")) data = { items: [{ cardId: "card-1", currency: "KRW" }] };
@@ -118,21 +135,26 @@ test("uses Bearer authentication for the private card, loan and investment dashb
     else if (path.endsWith("/investment-accounts/account-1/portfolio")) data = { allocations: [] };
     else if (path.endsWith("/investment-accounts/account-1/positions")) data = { items: [] };
     else if (path.endsWith("/investment-accounts/account-1/orders")) data = { items: [] };
+    else if (path.endsWith("/customers/customer-1/watchlist")) data = { customerId: "customer-1", items: [{ instrumentId: "instrument-1", instrumentName: "안심전자", maskedInstrumentCode: "00****" }], total: 1, version: 1 };
+    else if (path.endsWith("/market-instruments/instrument-1/quote")) data = { instrumentId: "instrument-1", currentPrice: 10000 };
+    else if (path.endsWith("/market-instruments/instrument-1/chart")) data = { instrumentId: "instrument-1", items: [] };
     else data = null;
     return new Response(envelope(data), { headers: { "content-type": "application/json" } });
   });
 
-  const session = await loginPrivateCustomer("synthetic-customer", "a-secure-demo-password");
+  const session = await loginPrivateCustomer("demo001", "a-secure-demo-password");
   const overview = await loadPrivateProductOverview(session);
   assert.equal(overview.cards[0]?.cardId, "card-1");
-  const loginCall = calls.find((call) => call.path.endsWith("/auth/login"));
+  assert.equal(overview.watchlist?.total, 1);
+  assert.equal(overview.selectedQuote?.instrumentId, "instrument-1");
+  const loginCall = calls.find((call) => call.path.endsWith("/member-auth/login"));
   assert.equal(new Headers(loginCall?.init?.headers).get("Authorization"), null);
-  const protectedCalls = calls.filter((call) => !call.path.endsWith("/auth/login"));
+  const protectedCalls = calls.filter((call) => !call.path.endsWith("/member-auth/login"));
   assert.ok(protectedCalls.length >= 10);
-  assert.ok(protectedCalls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+  assert.ok(protectedCalls.every((call) => new Headers(call.init?.headers).get("Authorization") === null));
 });
 
-test("loan simulation and logout remain explicit non-persistent Bearer calls", async (t) => {
+test("loan simulation and logout remain same-origin HttpOnly session calls", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     calls.push({ path: String(input), init });
@@ -141,19 +163,19 @@ test("loan simulation and logout remain explicit non-persistent Bearer calls", a
       : null;
     return new Response(envelope(data), { headers: { "content-type": "application/json" } });
   });
-  const session = { accessToken: "access-secret", accessExpiresAt: "", refreshToken: "refresh-secret", refreshExpiresAt: "", customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
+  const session = privateSession();
   const result = await simulateLoanRepayment(session, "product-1", 30000000, 60, 4.5);
   await logoutPrivateCustomer(session);
   assert.equal(result.applicationAvailable, false);
   assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), { principalAmount: 30000000, termMonths: 60, annualInterestRate: 4.5 });
-  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === null));
 });
 
 test("loads deposit, FX, pension, trust and consent contracts under one customer Bearer session", async (t) => {
   const paths: string[] = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); paths.push(path);
-    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer access-secret");
+    assert.equal(new Headers(init?.headers).get("Authorization"), null);
     let data: unknown;
     if (path.endsWith("/customers/customer-1/deposit-holdings")) data = { items: [{ holdingId: "holding-1", currentBalance: 10000000, currency: "KRW" }] };
     else if (path.endsWith("/deposit-products")) data = { items: [{ productId: "deposit-product-1" }] };
@@ -211,14 +233,14 @@ test("connects safe simulations and consent lifecycle commands without external 
   assert.ok(new Headers(calls[2]?.init?.headers).get("Idempotency-Key"));
   assert.deepEqual(calls[3]?.body, { expectedVersion: 1, reason: "범위를 재검토합니다." });
   assert.ok(new Headers(calls[3]?.init?.headers).get("Idempotency-Key"));
-  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => new Headers(call.init?.headers).get("Authorization") === null));
 });
 
 test("loads customer profile, accessibility, trusted contacts and appeal targets in one Bearer session", async (t) => {
   const paths: string[] = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input); paths.push(path);
-    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer access-secret");
+    assert.equal(new Headers(init?.headers).get("Authorization"), null);
     let data: unknown;
     if (path.endsWith("/customers/customer-1")) data = { customerId: "customer-1", displayName: "합성고객", organization: "보호센터", region: "KR-11", status: "ACTIVE", version: 1, createdAt: "2026-08-30T00:00:00Z", updatedAt: "2026-08-30T00:00:00Z" };
     else if (path.endsWith("/preferences")) data = { customerId: "customer-1", smsNotificationEnabled: false, pushNotificationEnabled: false, inAppNotificationEnabled: true, version: 1, updatedAt: "2026-08-30T00:00:00Z" };
@@ -258,58 +280,45 @@ test("connects customer settings, trusted-contact consent and human appeal mutat
   await revokeTrustedContact(session, contact, "고객 직접 철회");
   const appeal = await submitAlertAppeal(session, { alertId: "alert-1", signalId: "signal-1", customerId: "customer-1", state: "AWAITING_CONTEXT", severity: "MEDIUM", reasonCode: "DUPLICATE_TRANSFER", version: 1, deferredUntil: null, createdAt: "", updatedAt: "" }, "REQUEST_HUMAN_REVIEW", "사람의 재검토를 요청합니다.");
   assert.equal(appeal.financialActionExecuted, false);
-  assert.ok(calls.every((call) => call.headers.get("Authorization") === "Bearer access-secret"));
+  assert.ok(calls.every((call) => call.headers.get("Authorization") === null));
   assert.ok(calls.every((call) => call.headers.get("Idempotency-Key")));
   assert.deepEqual(calls[0]?.body, { expectedVersion: 1, displayName: "안심 고객" });
   assert.deepEqual(calls.at(-1)?.body, { reasonCode: "REQUEST_HUMAN_REVIEW", statement: "사람의 재검토를 요청합니다.", expectedVersion: 1 });
 });
 
 function privateSession() {
-  return { accessToken: "access-secret", accessExpiresAt: "", refreshToken: "refresh-secret", refreshExpiresAt: "", customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
+  return { customerId: "customer-1", displayName: "합성고객", roles: [], permissions: [] };
 }
 
-test("401이면 access token을 자동 갱신하고 한 번만 재시도한다", async (t) => {
+test("401이면 HttpOnly 세션을 자동 갱신하고 한 번만 재시도한다", async (t) => {
   let refreshCalls = 0;
   t.mock.method(globalThis, "fetch", async (input, init) => {
-    assert.equal(String(input), "/api/v1/auth/token/refresh");
-    assert.deepEqual(JSON.parse(String(init?.body)), { refreshToken: "refresh-old" });
+    assert.equal(String(input), "/api/member-auth/refresh");
+    assert.equal(init?.body, undefined);
     refreshCalls += 1;
-    return new Response(envelope({
-      accessToken: "access-new", accessExpiresAt: "2099-01-01T00:00:00Z",
-      refreshToken: "refresh-new", refreshExpiresAt: "2099-02-01T00:00:00Z",
-    }), { headers: { "content-type": "application/json" } });
+    return new Response(envelope(null), { headers: { "content-type": "application/json" } });
   });
-  const session = {
-    ...privateSession(), accessToken: "access-old", accessExpiresAt: "2099-01-01T00:00:00Z",
-    refreshToken: "refresh-old", refreshExpiresAt: "2099-01-01T00:00:00Z",
-  };
+  const session = privateSession();
   let operationCalls = 0;
-  const token = await withPrivateCustomerSession(session, async (accessToken) => {
+  const result = await withPrivateCustomerSession(session, async () => {
     operationCalls += 1;
-    if (operationCalls === 1 && accessToken === "access-old") {
-      throw new ApiClientError("http", "expired upstream", 401);
-    }
-    return accessToken;
+    if (operationCalls === 1) throw new ApiClientError("http", "expired upstream", 401);
+    return "retried";
   });
-  assert.equal(token, "access-new");
+  assert.equal(result, "retried");
   assert.equal(refreshCalls, 1);
   assert.equal(operationCalls, 2);
-  assert.equal(session.refreshToken, "refresh-new");
+  assert.equal(session.invalidated, false);
 });
 
 test("refresh 실패 시 token을 메모리에서 폐기하고 안전 로그아웃한다", async (t) => {
   t.mock.method(globalThis, "fetch", async () => new Response(envelope(null, 401), {
     status: 401, headers: { "content-type": "application/json" },
   }));
-  const session = {
-    ...privateSession(), accessExpiresAt: "2000-01-01T00:00:00Z",
-    refreshExpiresAt: "2099-01-01T00:00:00Z",
-  };
+  const session = privateSession();
   await assert.rejects(
-    withPrivateCustomerSession(session, async () => "unused"),
+    withPrivateCustomerSession(session, async () => { throw new ApiClientError("http", "expired", 401); }),
     (reason: unknown) => reason instanceof PrivateSessionExpiredError,
   );
-  assert.equal(session.accessToken, "");
-  assert.equal(session.refreshToken, "");
   assert.equal(session.invalidated, true);
 });

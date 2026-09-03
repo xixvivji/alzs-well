@@ -18,6 +18,8 @@ ROLE_SCRIPT = ROOT / "backend" / "docker" / "create-database-roles.sh"
 AI_SERVICE_ENV = ROOT / "ai-service" / ".env.example"
 LOCAL_COMPOSE = ROOT / "backend" / "compose.yaml"
 MIGRATION_ROOT = ROOT / "backend" / "src" / "main" / "resources" / "db" / "migration"
+AWS_FOUNDATION = ROOT / "infra" / "aws-staging" / "foundation.yaml"
+APP_GATEWAY = ROOT / "backend" / "docker" / "nginx.conf.template"
 
 EXPECTED_INGESTION_ROLE = "alzswell_ai_ingestor"
 EXPECTED_RUNTIME_ROLE = "alzswell_ai_runtime"
@@ -58,6 +60,8 @@ def main() -> int:
     aws_env = read(AI_ENV)
     role_script = read(ROLE_SCRIPT)
     ai_service_env = read(AI_SERVICE_ENV)
+    aws_foundation = read(AWS_FOUNDATION)
+    app_gateway = read(APP_GATEWAY)
     errors: list[str] = []
 
     contracts = {
@@ -104,6 +108,78 @@ def main() -> int:
             if role not in allowed_ai_roles:
                 errors.append(f"unknown AI database role {role!r} in {path.relative_to(ROOT)}")
 
+    required_foundation_contracts = {
+        "separate App runtime role": "  AppRuntimeRole:\n",
+        "separate AI runtime role": "  AiRuntimeRole:\n",
+        "separate App instance profile": "  AppRuntimeInstanceProfile:\n",
+        "separate AI instance profile": "  AiRuntimeInstanceProfile:\n",
+        "temporary DB bootstrap policy": "  DatabaseBootstrapPolicy:\n",
+        "temporary AI ingestion policy": "  AiIngestionPolicy:\n",
+        "temporary ECR image publish permission": '              - "ecr:PutImage"\n',
+        "private AI service discovery": "  AiPrivateDnsRecord:\n",
+        "separate App mTLS secret": "  AppTlsSecret:\n",
+        "separate AI mTLS secret": "  AiTlsSecret:\n",
+        "App CloudWatch log group": "  AppLogGroup:\n",
+        "AI CloudWatch log group": "  AiLogGroup:\n",
+        "tag-scoped staging operator role": "  StagingOperatorRole:\n",
+        "App profile attachment": "IamInstanceProfile: !Ref AppRuntimeInstanceProfile",
+        "AI profile attachment": "IamInstanceProfile: !Ref AiRuntimeInstanceProfile",
+    }
+    for label, marker in required_foundation_contracts.items():
+        if marker not in aws_foundation:
+            errors.append(f"AWS foundation is missing {label}: {marker.strip()!r}")
+
+    forbidden_foundation_contracts = {
+        "shared runtime role": r"^  RuntimeRole:$",
+        "shared runtime instance profile": r"^  RuntimeInstanceProfile:$",
+        "shared runtime profile attachment": r"IamInstanceProfile: !Ref RuntimeInstanceProfile",
+    }
+    for label, pattern in forbidden_foundation_contracts.items():
+        if re.search(pattern, aws_foundation, re.MULTILINE):
+            errors.append(f"AWS foundation still contains {label}")
+
+    read_rate_contracts = {
+        "network read rate": "zone=demo_read:10m rate=300r/m;",
+        "capability read rate": "zone=demo_capability_read:10m rate=300r/m;",
+        "network read burst": "limit_req zone=demo_read burst=80 nodelay;",
+        "capability read burst": "limit_req zone=demo_capability_read burst=80 nodelay;",
+    }
+    for label, marker in read_rate_contracts.items():
+        if marker not in app_gateway:
+            errors.append(f"AWS app gateway is missing {label}: {marker!r}")
+    for marker in (
+        "zone=demo_session_create:10m rate=10r/m;",
+        "zone=demo_mutation:10m rate=30r/m;",
+        "zone=demo_capability_mutation:10m rate=30r/m;",
+    ):
+        if marker not in app_gateway:
+            errors.append(f"AWS app gateway mutation/session limit changed unexpectedly: {marker!r}")
+
+    bootstrap_policy = aws_foundation.split("  ImagePublishDeploymentPolicy:\n", 1)[-1].split("\n  AppInstance:\n", 1)[0]
+    for repository in ("AppRepository.Arn", "AiRepository.Arn"):
+        if repository not in bootstrap_policy:
+            errors.append(f"temporary image publisher is missing {repository}")
+    if "Condition: EnableImagePublishDeployment" not in bootstrap_policy:
+        errors.append("temporary image publisher must have its own deployment condition")
+    ingestion_policy = aws_foundation.split("  AiIngestionPolicy:\n", 1)[-1].split(
+        "\n  ImagePublishDeploymentPolicy:\n", 1
+    )[0]
+    if "ecr:PutImage" in ingestion_policy:
+        errors.append("AI ingestion policy must not publish ECR images")
+    permanent_ai_policy = aws_foundation.split("  AiRuntimeRole:\n", 1)[-1].split(
+        "\n  AiRuntimeInstanceProfile:\n", 1
+    )[0]
+    if "ecr:PutImage" in permanent_ai_policy:
+        errors.append("permanent AI runtime role must not publish ECR images")
+    operator_policy = aws_foundation.split("  StagingOperatorRole:\n", 1)[-1].split(
+        "\n  DatabaseBootstrapPolicy:\n", 1
+    )[0]
+    for marker in ('"ssm:resourceTag/Project": alzs-well', '"ssm:resourceTag/Environment": staging'):
+        if marker not in operator_policy:
+            errors.append(f"staging operator command scope is missing {marker}")
+    if "secretsmanager:GetSecretValue" in operator_policy:
+        errors.append("staging operator role must not read deployment secrets directly")
+
     try:
         app_config = render_compose(APP_COMPOSE, APP_ENV)
         ai_config = render_compose(AI_COMPOSE, AI_ENV, profile="ingestion")
@@ -141,6 +217,23 @@ def main() -> int:
             errors.append("AWS app must pin the approved embedding backend")
         if backend_environment.get("AI_EXPECTED_EMBEDDING_DIMENSIONS") != EXPECTED_EMBEDDING_DIMENSIONS:
             errors.append("AWS app must pin the approved embedding dimensions")
+
+        expected_logging = {
+            "AWS app gateway": (app_config["services"]["gateway"], "/alzs-well-staging/app", "gateway"),
+            "AWS app backend": (app_config["services"]["backend"], "/alzs-well-staging/app", "backend"),
+            "AWS AI gateway": (ai_config["services"]["ai-gateway"], "/alzs-well-staging/ai", "gateway"),
+            "AWS AI runtime": (ai_config["services"]["ai-service"], "/alzs-well-staging/ai", "runtime"),
+            "AWS AI ingestion": (ai_config["services"]["ingestion"], "/alzs-well-staging/ai", "ingestion"),
+        }
+        for label, (service, group, stream) in expected_logging.items():
+            logging = service.get("logging", {})
+            options = logging.get("options", {})
+            if logging.get("driver") != "awslogs":
+                errors.append(f"{label} must use the awslogs driver")
+            if options.get("awslogs-group") != group or options.get("awslogs-stream") != stream:
+                errors.append(f"{label} has an unexpected log destination: {options!r}")
+            if options.get("awslogs-create-group") != "false":
+                errors.append(f"{label} must not create log groups at runtime")
 
         ai_gateway = ai_config["services"].get("ai-gateway")
         if ai_gateway is None:

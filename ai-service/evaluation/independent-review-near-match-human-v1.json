@@ -1,0 +1,19 @@
+{
+  "reviewVersion": "independent-review-near-match-human-v1",
+  "scope": "alternative-top-chunk-relevance-only",
+  "humanReviewCompleted": true,
+  "allIndependentCandidatesReviewed": false,
+  "officialPerformanceClaim": false,
+  "reviewedBy": "competition-team-owner",
+  "reviewedAt": "2026-09-02",
+  "caseCount": 12,
+  "acceptedAlternativeCount": 0,
+  "rejectedAlternativeCount": 12,
+  "candidateDecisionChanged": false,
+  "rankingConfigurationChanged": false,
+  "reasonCounts": {
+    "CHECKLIST_WITHOUT_EXCLUSION_ANSWER": 3,
+    "FUTURE_AMENDMENT_FOR_AS_OF_DATE": 6,
+    "WRONG_SUBSECTION_NO_PROCEDURE": 3
+  }
+}

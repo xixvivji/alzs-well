@@ -6,7 +6,14 @@ from dataclasses import dataclass
 from app.embedding.base import EmbeddingProvider
 from app.embedding.local_hash import LocalHashEmbeddingProvider
 from app.evaluation.models import EvaluationCase, EvaluationChunk
-from app.retrieval.query import keyword_terms, normalize, requires_abstention
+from app.retrieval.query import (
+    has_definition_intent,
+    keyword_terms,
+    normalize,
+    requires_abstention,
+    retrieval_query,
+)
+from app.retrieval.temporal import is_content_effective
 
 
 DOCUMENT_AUTHORITY = {
@@ -18,6 +25,7 @@ DOCUMENT_AUTHORITY = {
     "FORM": 100,
     "SYNTHETIC_FIXTURE": 0,
 }
+DEFINITION_INTENT_BONUS = 0.08
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,12 +67,13 @@ def rank(
     if requires_abstention(case.query):
         return ()
     provider = embedding_provider or LocalHashEmbeddingProvider()
-    query_embedding = provider.embed_query(case.query)
+    effective_query = retrieval_query(case.query)
+    query_embedding = provider.embed_query(effective_query)
     ranked: list[RankedChunk] = []
     for chunk in corpus:
         if not is_eligible(chunk, case):
             continue
-        keyword_score = _keyword_score(case.query, chunk.searchable_text())
+        keyword_score = _keyword_score(effective_query, chunk.searchable_text())
         vector_score = max(
             0.0, _cosine(query_embedding, provider.embed_passage(chunk.searchable_text()))
         )
@@ -74,6 +83,8 @@ def rank(
             keyword_score * configuration.keyword_weight
             + vector_score * configuration.vector_weight
         )
+        if has_definition_intent(effective_query) and "정의" in chunk.heading:
+            score = min(1.0, score + DEFINITION_INTENT_BONUS)
         if score < configuration.result_threshold:
             continue
         ranked.append(
@@ -86,8 +97,8 @@ def rank(
         )
     ranked.sort(
         key=lambda item: (
-            -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
             -item.score,
+            -DOCUMENT_AUTHORITY.get(item.chunk.document_type, 0),
             item.chunk.document_id,
             item.chunk.chunk_id,
         )
@@ -104,7 +115,9 @@ def is_eligible(chunk: EvaluationChunk, case: EvaluationCase) -> bool:
         return False
     if chunk.effective_from > case.as_of:
         return False
-    return chunk.effective_to is None or chunk.effective_to >= case.as_of
+    if chunk.effective_to is not None and chunk.effective_to < case.as_of:
+        return False
+    return is_content_effective(chunk.content, case.as_of)
 
 
 def _keyword_score(query: str, text: str) -> float:

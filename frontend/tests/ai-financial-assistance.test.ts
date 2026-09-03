@@ -14,7 +14,7 @@ test("connects the three AI assistance flows through the scoped demo API", async
     const data = url.endsWith("/intent-suggestions") ? { suggestion: { paymentContinuity: "KEEP_ESSENTIAL_PAYMENTS", explanationMode: "SIMPLE_TEXT", helpCondition: "ON_CUSTOMER_REQUEST", shareScopes: [] } }
       : url.endsWith("/intent/approve") ? { intentId: "intent-1", status: "APPROVED", version: 2 }
       : url.endsWith("/intent") ? { intentId: "intent-1", status: "DRAFT", version: 1 }
-      : url.endsWith("/change-analysis") ? { analysisWindowDays: 90, changes: [] }
+      : url.endsWith("/change-analysis") ? { analysisWindowDays: 90, changes: [], windowComparisons: [], summary: "최근 변화가 없습니다.", confirmationQuestions: ["최근 이용 방식을 바꾸셨나요?"], reviewChecklist: ["표시된 값을 확인합니다."], guidanceMode: "EXPLAINABLE_CHANGE_GUIDANCE_V1" }
       : { featureCode: "REPEATED_CONFIRMATION_COUNT", text: "쉬운 설명", speechText: "쉬운 설명" };
     return new Response(JSON.stringify({ success: true, status: 200, code: "OK", message: "ok", data, errors: [], timestamp: "2026-08-30T00:00:00Z", traceId: "trace" }), { status: 200, headers: { "content-type": "application/json" } });
   });

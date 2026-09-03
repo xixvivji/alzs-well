@@ -7,6 +7,7 @@ import com.alzswell.fixture.application.SyntheticFixtureGenerationService;
 import com.alzswell.fixture.application.SyntheticFixtureGenerationService.GenerationResult;
 import com.alzswell.fixture.application.SyntheticFixtureProfile;
 import com.alzswell.fixture.application.SyntheticFixtureQualityService;
+import com.alzswell.fixture.application.SyntheticMemberProvisioningService;
 import com.alzswell.common.security.AuditActor;
 import com.alzswell.detection.application.DetectionPromotionService;
 import com.alzswell.detection.application.SyntheticDatasetService;
@@ -35,6 +36,7 @@ class SyntheticFixtureGenerationIntegrationTest {
     @Autowired SyntheticDatasetService detectionRuns;
     @Autowired DetectionPromotionService promotions;
     @Autowired SyntheticFixtureQualityService qualityService;
+    @Autowired SyntheticMemberProvisioningService memberProvisioningService;
     @Autowired JdbcTemplate jdbc;
 
     @Test
@@ -148,9 +150,47 @@ class SyntheticFixtureGenerationIntegrationTest {
 
     @Test
     void loadProfileStaysWithinTheDailyIntegrationRange() {
+        assertThat(SyntheticFixtureProfile.PUBLIC.customerCount()).isEqualTo(300);
+        assertThat(SyntheticFixtureProfile.PUBLIC.transactionCount()).isEqualTo(72_000);
         assertThat(SyntheticFixtureProfile.LOAD.customerCount()).isEqualTo(250);
         assertThat(SyntheticFixtureProfile.LOAD.accountCount()).isEqualTo(500);
         assertThat(SyntheticFixtureProfile.LOAD.transactionCount()).isEqualTo(75_000);
+    }
+
+    @Test
+    void provisionsThreeHundredIsolatedPublicSyntheticMembers() {
+        GenerationResult result = service.generate(
+                SyntheticFixtureProfile.PUBLIC, FIXTURE_VERSION, SEED + 3, 50, false);
+
+        var members = memberProvisioningService.provision(result.runId(),
+                "$2y$12$Bu7SxonBbyIlnLnrupD/.eEWz3ZVBoC8bDvguOq9iJlsOAN8pGxBm");
+
+        assertThat(members.activeMembers()).isEqualTo(300);
+        assertThat(result.actualTransactionCount()).isEqualTo(72_000);
+        assertThat(jdbc.queryForObject("""
+                select count(distinct p.customer_id) from auth_principal p
+                join synthetic_fixture_customer f on f.customer_id=p.customer_id where f.run_id=?
+                """, Integer.class, result.runId())).isEqualTo(300);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from synthetic_fixture_customer f where f.run_id=?
+                  and (select count(*) from customer_card_snapshot c where c.customer_id=f.customer_id)=1
+                  and (select count(*) from customer_deposit_holding_snapshot d where d.customer_id=f.customer_id)=1
+                  and (select count(*) from customer_investment_account_snapshot i where i.customer_id=f.customer_id)=1
+                """, Integer.class, result.runId())).isEqualTo(300);
+        assertThat(jdbc.queryForObject("select customer_id from auth_principal where login_id='demo001'", String.class))
+                .isNotEqualTo(jdbc.queryForObject("select customer_id from auth_principal where login_id='demo300'", String.class));
+        assertThat(jdbc.queryForObject("""
+                select count(*) from customer_detection_signal s join synthetic_fixture_customer f on f.customer_id=s.customer_id
+                where f.run_id=?
+                """, Integer.class, result.runId())).isEqualTo(225);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from operational_alert a join synthetic_fixture_customer f on f.customer_id=a.customer_id
+                where f.run_id=? and a.state='AWAITING_CONTEXT'
+                """, Integer.class, result.runId())).isEqualTo(225);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from staff_access_grant g join synthetic_fixture_customer f on f.customer_id=g.customer_id
+                where f.run_id=? and g.status='ACTIVE' and g.purpose_code='PROTECTION_CASE_MANAGEMENT'
+                """, Integer.class, result.runId())).isEqualTo(300);
     }
 
     @Test

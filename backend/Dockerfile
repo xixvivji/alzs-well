@@ -11,6 +11,7 @@ RUN ./gradlew bootJar --no-daemon
 FROM eclipse-temurin:21-jre-jammy
 
 RUN apt-get update \
+    && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 alzswell

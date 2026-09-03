@@ -8,6 +8,7 @@
 |---|---:|---:|---:|---|
 | `SMOKE` | 10 | 20 | 600 | 로컬·CI 빠른 회귀 |
 | `DEMO` | 50 | 100 | 12,000 | 프론트·발표·통합 시연 |
+| `PUBLIC` | 300 | 600 | 72,000 | 공개 합성 회원 로그인·회원별 데이터 시연 |
 | `LOAD` | 250 | 500 | 75,000 | 탐지 품질·페이지네이션·일상 부하 검증 |
 | `DEV` | 1,000 | 2,000 | 1,000,000 | 페이지네이션·탐지·인덱스·운영 검증 |
 
@@ -55,6 +56,22 @@ docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
 
 `DEV`는 데이터베이스 용량과 실행시간을 확인한 별도 검증 환경에서만 실행한다. `LOAD`와
 `DEV` 모두 공개 운영 데이터베이스에는 실행하지 않는다.
+
+공개 합성 회원 환경은 `PUBLIC`만 사용한다. 아래 Job은 `demo001`~`demo300`을 각기 다른
+`customer_id`에 연결하고, 회원마다 계좌 2개·거래 240건과 카드·예금·대출·투자 snapshot을
+프로비저닝한다. 비밀번호 평문을 저장소나 명령 기록에 넣지 말고 비밀 저장소에서 BCrypt
+hash만 주입한다.
+
+```bash
+docker compose --env-file .env.aws-app \
+  -f compose.aws-app.yaml --profile synthetic-member-seed \
+  run --rm synthetic-member-seed
+```
+
+Job 성공 후에만 업무 백엔드의 `SYNTHETIC_MEMBER_AUTH_ENABLED=true`를 적용한다. 공개 인증은
+성공한 `PUBLIC` run에 속한 `demo[0-9]{3}` 계정만 허용하며 기존 `synthetic-customer` 계정은
+공개 경로에서 거부한다. access·refresh token은 Vercel BFF의 Secure·HttpOnly·SameSite 쿠키로
+보관하고 브라우저 JavaScript나 저장소에는 전달하지 않는다.
 
 ## 완료 검증
 
@@ -112,8 +129,9 @@ docker compose --env-file .env \
 
 통합 override는 `development`, `publicExposure=false`, `localAuth=true`를 한 묶음으로 강제하고
 서버를 컨테이너 내부의 모든 인터페이스에 바인딩한다. 게이트웨이의 host bind 기본값은 계속
-`127.0.0.1`이다. 기본 Compose와 production 프로필에서는 로컬 인증이 계속 비활성화되며,
-이 설정을 공개 staging·운영 환경의 인증 수단으로 사용하지 않는다.
+`127.0.0.1`이다. 일반 로컬 인증은 공개 staging·운영 환경의 인증 수단으로 사용하지 않는다.
+production 공개 합성 인증은 앞의 `PUBLIC` 300명 프로비저닝과 HttpOnly BFF 경계를 모두 갖춘
+경우에만 별도 플래그로 활성화한다.
 
 ## 실패와 재개
 

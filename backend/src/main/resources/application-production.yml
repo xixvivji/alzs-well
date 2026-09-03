@@ -3,7 +3,11 @@ server:
 
 app:
   features:
-    local-auth-api-enabled: false
+    local-auth-api-enabled: ${SYNTHETIC_MEMBER_AUTH_ENABLED:false}
+    customer-profile-api-enabled: ${SYNTHETIC_MEMBER_AUTH_ENABLED:false}
+    public-synthetic-member-auth-enabled: ${SYNTHETIC_MEMBER_AUTH_ENABLED:false}
+  auth:
+    public-synthetic-members-only: ${SYNTHETIC_MEMBER_AUTH_ENABLED:false}
   cors:
     customer-allowed-origins: ${CORS_CUSTOMER_ALLOWED_ORIGINS}
     staff-allowed-origins: ${CORS_STAFF_ALLOWED_ORIGINS}

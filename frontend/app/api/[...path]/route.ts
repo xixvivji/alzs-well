@@ -7,6 +7,7 @@ import {
   demoCapabilityCookie,
   readDemoCapabilityCookie,
 } from "../../../worker/demo-capability-cookie";
+import { readMemberAccessCookie } from "../../../worker/member-auth-cookie";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,8 +15,18 @@ export const maxDuration = 15;
 
 async function handler(request: Request): Promise<Response> {
   const requestUrl = new URL(request.url);
+  if (requestUrl.pathname === "/api/v1/auth/login" || requestUrl.pathname === "/api/v1/auth/token/refresh") {
+    return Response.json({ success: false, status: 404, code: "API_NOT_FOUND", message: "요청한 API를 찾을 수 없습니다.", data: null, errors: [] }, { status: 404 });
+  }
   const capability = request.headers.get("X-Demo-Capability") ?? readDemoCapabilityCookie(request);
   const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.delete("Authorization");
+  const memberAccess = readMemberAccessCookie(request);
+  const demoCapabilityPath = requestUrl.pathname === "/api/v1/demo/sessions"
+    || requestUrl.pathname.startsWith("/api/v1/demo/sessions/");
+  // 한 브라우저에 회원 세션과 격리 데모 세션이 함께 있어도 인증 방식을 섞지 않는다.
+  // demo capability endpoint에 Bearer를 붙이면 Spring이 고객 역할을 우선 인증해 capability 요청을 거부한다.
+  if (memberAccess && !demoCapabilityPath) forwardedHeaders.set("Authorization", `Bearer ${memberAccess}`);
   if (capability && !forwardedHeaders.has("X-Demo-Capability")) forwardedHeaders.set("X-Demo-Capability", capability);
   const upstreamRequest = new Request(request, { headers: forwardedHeaders });
   const clientRateIdentity = await resolveClientRateIdentity(

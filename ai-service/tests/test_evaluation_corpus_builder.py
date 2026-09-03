@@ -67,6 +67,20 @@ def test_rejects_tampered_or_unapproved_inputs(repo_root: Path, tmp_path: Path) 
     assert raised.value.code == "DOCUMENT_NOT_APPROVED"
 
 
+def test_excludes_chunk_with_future_effective_marker(
+    repo_root: Path, tmp_path: Path
+) -> None:
+    _copy_contract(repo_root, tmp_path)
+    _write_chunk(tmp_path, text="개정 조문 [시행일: 2026. 10. 1.] 제1조")
+
+    result = build_evaluation_corpus(
+        tmp_path, (MANIFEST_PATH,), as_of=date(2026, 9, 1)
+    )
+
+    assert result.chunk_count == 0
+    assert result.output_path.read_text(encoding="utf-8") == ""
+
+
 def test_corpus_cli_reports_output_without_printing_content(
     repo_root: Path, tmp_path: Path, capsys: object
 ) -> None:
@@ -97,8 +111,11 @@ def _copy_contract(repo_root: Path, target: Path) -> None:
     manifest.write_bytes((repo_root / MANIFEST_PATH).read_bytes())
 
 
-def _write_chunk(repository_root: Path) -> dict[str, object]:
-    text = "승인된 합성 문서의 검색 근거입니다."
+def _write_chunk(
+    repository_root: Path,
+    *,
+    text: str = "승인된 합성 문서의 검색 근거입니다.",
+) -> dict[str, object]:
     text_hash = "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
     section_path = ["합성 문서", "검증 절"]
     chunk_id, _ = canonical_chunk_id(

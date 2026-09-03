@@ -34,10 +34,14 @@ export async function issueStaffCapability(request: Request, options: Options): 
       fetchImpl: options.fetchImpl,
     });
     if (!verification.ok) {
-      await verification.body?.cancel().catch(() => undefined);
+      await verification.arrayBuffer().catch(() => undefined);
       return error(403, "STAFF_ACCESS_DENIED", "현재 데모 세션을 확인할 수 없습니다.", traceId);
     }
-    await verification.body?.cancel().catch(() => undefined);
+    try {
+      await verification.arrayBuffer();
+    } catch {
+      return error(403, "STAFF_ACCESS_DENIED", "현재 데모 세션을 확인할 수 없습니다.", traceId);
+    }
   } else {
     const verifiedUserId = await verifyStaffIdentityJwt(
       request.headers.get("x-alzs-staff-identity-token"),
