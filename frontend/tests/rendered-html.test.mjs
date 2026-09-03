@@ -117,6 +117,10 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   assert.match(staffCaseQueue, /다음 사건 20건 불러오기/);
   assert.match(staffCaseQueue, /직원 접근 권한을 확인하고 있습니다/);
   assert.match(alertDetail, /나중에 확인할게요/);
+  assert.match(alertDetail, /readEvidenceSignals\(detail\?\.t0AlertEvidence\)/);
+  assert.match(alertDetail, /알림이 발생한 이유/);
+  assert.match(alertDetail, /평소 .*최근 .*로 확인됐습니다/);
+  assert.match(alertDetail, /질병 진단이나 사기 판정이 아닙니다/);
   for (const label of ["예금", "외환", "연금·신탁", "동의관리"]) assert.match(productCenter, new RegExp(label));
   assert.match(customerAssets, /가입·해지·외부 호출 없음/);
   assert.match(customerAssets, /외부 제공 자동 실행 없음/);
