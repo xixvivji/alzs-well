@@ -52,6 +52,6 @@ export default function Home() {
     <section className="bank-info" id="notices"><div><div className="bank-section-heading compact"><h2>새소식</h2><a href="#notices">더보기 ＋</a></div><ul>{notices.map(([type,title,date]) => <li key={title}><span>{type}</span><strong>{title}</strong><time>{date}</time></li>)}</ul></div><aside id="support"><p>고객센터</p><strong>1588-0000</strong><span>평일 09:00~18:00</span><div><a href="#support">자주 묻는 질문</a><a href="#support">금융사고 신고</a><a href="#support">이용안내</a></div></aside></section>
 
     </div>
-    <footer className="bank-footer"><div><Link className="bank-brand inverse" href="/"><span>A</span><strong>ALZ&apos;s well</strong></Link><p>고령 금융소비자의 자기결정권을 지키는 금융생활 안심 동행</p></div><nav><a href="#support">개인정보처리방침</a><a href="#support">전자금융거래약관</a><a href="#support">보안센터</a></nav><p>합성데이터 전용 체험 서비스 · 실제 금융거래 및 외부 연락 없음</p></footer>
+    <footer className="bank-footer"><div><Link className="bank-brand inverse" href="/"><span>A</span><strong>ALZ&apos;s well</strong></Link><p>고령 금융소비자의 자기결정권을 지키는 금융생활 안심 동행</p></div><nav aria-label="하단 서비스 메뉴"><a href="#support">개인정보처리방침</a><a href="#support">전자금융거래약관</a><a href="#support">보안센터</a><Link href="/staff/login">직원업무</Link></nav><p>합성데이터 전용 체험 서비스 · 실제 금융거래 및 외부 연락 없음</p></footer>
   </main>;
 }
