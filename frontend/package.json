@@ -37,7 +37,7 @@
     "tailwindcss": "4.2.1",
     "tsx": "4.23.12",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.59.3"
+    "typescript-eslint": "8.68.0"
   },
   "overrides": {
     "@esbuild-kit/core-utils": {
