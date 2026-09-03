@@ -209,7 +209,9 @@ class DemoAiFinancialAssistanceServiceTest {
                     false, false, true, "EWMA_CUSUM_V1", "최근 변화가 없습니다."
             )).toList();
             return new ChangeAnalysisResponse(
-                    "1.0.0", request.requestId(), request.baselineDays(), 30, forged, false, false);
+                    "1.0.0", request.requestId(), request.baselineDays(), 30, forged,
+                    "검증되지 않은 요약", List.of("검증되지 않은 질문"), List.of("검증되지 않은 항목"),
+                    "EXPLAINABLE_CHANGE_GUIDANCE_V1", false, false);
         });
 
         var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
@@ -241,7 +243,16 @@ class DemoAiFinancialAssistanceServiceTest {
             List<ChangeSignal> changes = request.features().stream()
                     .map(this::fastApiCompatibleSignal).toList();
             return new ChangeAnalysisResponse(
-                    "1.0.0", request.requestId(), request.baselineDays(), 30, changes, false, false);
+                    "1.0.0", request.requestId(), request.baselineDays(), 30, changes,
+                    "최근 30일 동안 정기납부 누락 등 2개 항목에서 평소와 다른 장기 변화가 확인됐습니다. "
+                            + "이상이나 질환을 뜻하지 않으며, 알고 있는 생활 변화인지 먼저 확인해 주세요.",
+                    List.of("최근 납부일이나 납부 방법을 바꾸셨나요?",
+                            "같은 곳에 두 번 보낸 것으로 알고 계신가요?"),
+                    List.of("표시된 기간과 횟수가 내 금융생활과 맞는지 확인합니다.",
+                            "알고 있는 변화인지 또는 도움이 필요한지 직접 선택합니다.",
+                            "납부일·납부 방법 변경 여부를 확인합니다.",
+                            "같은 송금의 목적과 본인 인지 여부를 확인합니다."),
+                    "EXPLAINABLE_CHANGE_GUIDANCE_V1", false, false);
         });
 
         var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
@@ -274,6 +285,36 @@ class DemoAiFinancialAssistanceServiceTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
+    void rejectsGuidanceThatDoesNotMatchTheVerifiedChangeFacts() {
+        var baseline = baseline("REPEATED_CONFIRMATION_COUNT", "1", "5");
+        when(financeQueryService.baselines(SESSION_ID, CUSTOMER_ID)).thenReturn(new BaselineListResponse(
+                CUSTOMER_ID,
+                new BaselineListResponse.DatePeriod(LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 29)),
+                new BaselineListResponse.DatePeriod(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 30)),
+                List.of(baseline), null));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(aiClient.analyzeChanges(any(ChangeAnalysisRequest.class))).thenAnswer(invocation -> {
+            ChangeAnalysisRequest request = invocation.getArgument(0);
+            List<ChangeSignal> changes = request.features().stream()
+                    .map(this::fastApiCompatibleSignal).toList();
+            return new ChangeAnalysisResponse("1.0.0", request.requestId(), request.baselineDays(), 30,
+                    changes, "고객이 위험하므로 즉시 조치해야 합니다.",
+                    List.of("임의 질문"), List.of("임의 조치"),
+                    "EXPLAINABLE_CHANGE_GUIDANCE_V1", false, false);
+        });
+
+        var result = service.analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
+
+        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.guidanceMode()).isEqualTo("SPRING_EXPLAINABLE_GUIDANCE_FALLBACK_V1");
+        assertThat(result.summary()).doesNotContain("위험");
+        verify(assistanceAuditWriter).fallback(
+                SESSION_ID, RUN_ID, "CHANGE_ANALYSIS", "UPSTREAM_RESPONSE_REJECTED");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void analyzesOnlyTheAuthenticatedMembersStoredSyntheticBaseline() throws Exception {
         ResultSet resultSet = mock(ResultSet.class);
         when(resultSet.getString("feature_code")).thenReturn("REPEATED_CONFIRMATION");
@@ -288,7 +329,14 @@ class DemoAiFinancialAssistanceServiceTest {
                     "INCREASE", 1.5003, 7.8303, true, true, true, "EWMA_CUSUM_V1",
                     "최근 30일 동안 거래결과 재확인이 평소 1회에서 5회로 지속적으로 증가했습니다.");
             return new ChangeAnalysisResponse("1.0.0", request.requestId(),
-                    request.baselineDays(), 30, List.of(signal), false, false);
+                    request.baselineDays(), 30, List.of(signal),
+                    "최근 30일 동안 거래결과 재확인 등 1개 항목에서 평소와 다른 장기 변화가 확인됐습니다. "
+                            + "이상이나 질환을 뜻하지 않으며, 알고 있는 생활 변화인지 먼저 확인해 주세요.",
+                    List.of("거래 결과가 잘 보이지 않아 여러 번 확인하셨나요?"),
+                    List.of("표시된 기간과 횟수가 내 금융생활과 맞는지 확인합니다.",
+                            "알고 있는 변화인지 또는 도움이 필요한지 직접 선택합니다.",
+                            "화면 이해나 거래 결과 확인에 어려움이 있었는지 확인합니다."),
+                    "EXPLAINABLE_CHANGE_GUIDANCE_V1", false, false);
         });
 
         var result = service.analyzeMember("SYN_V3_PUBLIC_MEMBER_000001");
@@ -312,6 +360,7 @@ class DemoAiFinancialAssistanceServiceTest {
                 60, 30, 90, List.of(change), "FASTAPI_EWMA_CUSUM", false,
                 List.of(new com.alzswell.demo.api.AiFinancialAssistanceResponses.ChangeWindow(
                         60, 30, List.of(change))),
+                "변화 요약", List.of("확인 질문"), List.of("확인 항목"), "EXPLAINABLE_CHANGE_GUIDANCE_V1",
                 true, false, false))
                 .when(spyService).analyze(SESSION_ID, RUN_ID, CUSTOMER_ID);
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class)))

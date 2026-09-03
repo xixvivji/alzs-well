@@ -48,13 +48,15 @@ test("회원 장기 변화는 같은 customerId의 30·60·90일 서버 분석�
   t.mock.method(globalThis, "fetch", async (input, init) => {
     assert.ok(String(input).endsWith("/customers/customer-1/ai-financial-assistance/change-analysis"));
     method = init?.method ?? "GET";
-    return response({ baselineDays: 60, recentDays: 30, analysisWindowDays: 90, changes: [], windowComparisons: [{ baselineDays: 30, recentDays: 30, changes: [] }, { baselineDays: 60, recentDays: 30, changes: [] }, { baselineDays: 90, recentDays: 30, changes: [] }], analysisMode: "FASTAPI_EWMA_CUSUM", fallbackUsed: false, syntheticData: true, diagnosisInferred: false, financialActionExecuted: false });
+    return response({ baselineDays: 60, recentDays: 30, analysisWindowDays: 90, changes: [], windowComparisons: [{ baselineDays: 30, recentDays: 30, changes: [] }, { baselineDays: 60, recentDays: 30, changes: [] }, { baselineDays: 90, recentDays: 30, changes: [] }], summary: "최근 변화가 없습니다.", confirmationQuestions: ["최근 이용 방식을 바꾸셨나요?"], reviewChecklist: ["표시된 값을 확인합니다."], guidanceMode: "EXPLAINABLE_CHANGE_GUIDANCE_V1", analysisMode: "FASTAPI_EWMA_CUSUM", fallbackUsed: false, syntheticData: true, diagnosisInferred: false, financialActionExecuted: false });
   });
 
   const analysis = await loadPrivateLongitudinalAnalysis(session);
 
   assert.equal(method, "POST");
   assert.deepEqual(analysis.windowComparisons.map((item) => item.baselineDays), [30, 60, 90]);
+  assert.equal(analysis.guidanceMode, "EXPLAINABLE_CHANGE_GUIDANCE_V1");
+  assert.equal(analysis.confirmationQuestions.length, 1);
 });
 
 test("이체 화면은 회원별 계좌·수취인·한도·양식과 실행 없는 사전검증만 사용한다", async (t) => {

@@ -8,7 +8,7 @@
 
 - Spring Boot 3.5·Java 21·PostgreSQL/Flyway 기반 업무 API 카탈로그 283개를 관리하며, 코드 기준 operation은 239개다.
 - 합성 데이터 적재, 변화 탐지, 고객 알림, 직원 사건 검토, 동의·신뢰연락인·감사·정책 관리가 구현돼 있다.
-- FastAPI RAG는 승인 문서 ingestion, pgvector hybrid 검색, Spring citation 재검증과 결정론적 폴백을 제공한다.
+- FastAPI는 승인 문서 ingestion·Arctic-ko 하이브리드 검색뿐 아니라 개인 기준선의 EWMA·CUSUM 장기변화 분석과 검증 가능한 쉬운 요약·고객 확인 질문·검토 체크리스트를 제공한다. Spring은 수치와 안내 문장을 다시 계산해 일치하지 않는 응답을 거부한다.
 - Arctic-ko는 `STAGED_APPROVED`이며 AWS staging에서 승인값·revision·artifact/golden-set hash가 모두 일치할 때만 로드한다. 기본 embedding은 계속 Hash다.
 - 최종 staging은 업무 EC2 + AI EC2 + Private RDS다. 로컬 개발은 단일 Docker Compose를 사용한다.
 - 공개 행원 시연은 현재 고객 capability로 같은 합성 세션을 먼저 검증한 후 단기 직원 capability를 발급한다. 사설 운영 모드는 서버가 서명·issuer·audience·만료·직원 역할을 검증한 RS256 IdP JWT만 신뢰한다.
