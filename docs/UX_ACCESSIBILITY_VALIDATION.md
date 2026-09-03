@@ -30,3 +30,12 @@
 | ESLint `jsx-a11y` | 통과 |
 
 이 검증은 코드·접근성 트리·반응형 화면에 대한 기술 검증이다. 실제 고령 사용자 조사나 특정 보조공학 제품의 인증 결과로 표현하지 않는다.
+
+## 운영 시나리오 재검증
+
+2026-09-03에 `python3 scripts/verify_production_scenarios.py`로 고객 Vercel BFF에서 AWS까지의 합성 폐루프를 다시 실행했다. 실행에 사용한 격리 세션은 검증 직후 폐기했다.
+
+- 정상: `CLOSED_NORMAL`, 직원 사건 미생성
+- 주의: `GUIDANCE_PLAN_APPROVED`, 승인 근거 citation 1건, AI 폴백 미사용
+- 오탐: 사람 검토 후 `CLOSED_FALSE_POSITIVE`
+- 공통: 외부 금융 실행 0건

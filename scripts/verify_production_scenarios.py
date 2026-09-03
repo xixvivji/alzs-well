@@ -75,7 +75,7 @@ def command_headers(session: Session, capability: str | None = None) -> dict[str
 
 
 def idempotency(prefix: str) -> str:
-    return f"production-{prefix}-{uuid4()}"
+    return f"prod-{prefix[:20]}-{uuid4()}"
 
 
 def create_session(client: Client) -> Session:
