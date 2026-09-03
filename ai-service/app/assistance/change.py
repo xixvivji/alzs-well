@@ -164,7 +164,7 @@ def _explanation(
     baseline = _count_text(baseline_value)
     recent = _count_text(recent_value)
     if detected:
-        direction_text = "증가했습니다" if direction == "INCREASE" else "감소했습니다"
+        direction_text = "증가했습니다." if direction == "INCREASE" else "감소했습니다."
         return (
             f"최근 {recent_days}일 동안 {label}이 평소 {baseline}에서 {recent}로 "
             f"지속적으로 {direction_text}"

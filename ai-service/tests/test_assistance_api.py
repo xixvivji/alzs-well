@@ -134,6 +134,7 @@ def test_detects_persistent_longitudinal_change(monkeypatch: object) -> None:
     assert change["recentValue"] == 7.0
     assert change["changeDetected"] is True
     assert change["persistent"] is True
+    assert change["explanation"].endswith("지속적으로 증가했습니다.")
     assert "거래결과 재확인 등 1개 항목" in response.json()["summary"]
     assert response.json()["confirmationQuestions"] == [
         "거래 결과가 잘 보이지 않아 여러 번 확인하셨나요?"
@@ -167,7 +168,7 @@ def test_detects_persistent_longitudinal_decrease_with_directional_explanation(
     assert change["changeDetected"] is True
     assert change["persistent"] is True
     assert change["cusumScore"] >= 3.0
-    assert "지속적으로 감소했습니다" in change["explanation"]
+    assert change["explanation"].endswith("지속적으로 감소했습니다.")
     assert response.json()["diagnosisInferred"] is False
 
 
@@ -197,7 +198,7 @@ def test_detects_persistent_decrease_for_sparse_nonnegative_count_series(
     assert change["direction"] == "DECREASE"
     assert change["changeDetected"] is True
     assert change["persistent"] is True
-    assert "지속적으로 감소했습니다" in change["explanation"]
+    assert change["explanation"].endswith("지속적으로 감소했습니다.")
 
 
 def test_reports_stable_series_without_false_alarm(monkeypatch: object) -> None:
