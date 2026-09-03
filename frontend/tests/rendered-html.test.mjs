@@ -149,11 +149,12 @@ test("서버 전용 비밀값의 예시 placeholder가 Next.js 산출물에 직�
 });
 
 test("고객·행원·관리자 공통 접근성 계약을 유지한다", async () => {
-  const [shell, bankingShell, controls, login, staffQueue, roleDashboard, accessibilityCss] = await Promise.all([
+  const [shell, bankingShell, controls, login, operationalLogin, staffQueue, roleDashboard, accessibilityCss] = await Promise.all([
     readFile(new URL("../components/AppShell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/BankingShell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/AccessibilityControls.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/MemberLogin.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/OperationalLogin.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateStaffCaseQueue.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/OperationalRoleDashboard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/accessibility-redesign.css", import.meta.url), "utf8"),
@@ -164,13 +165,19 @@ test("고객·행원·관리자 공통 접근성 계약을 유지한다", async 
   }
   assert.match(shell, /관리자 서비스/);
   assert.match(controls, /role="group"/);
+  assert.match(controls, /aria-live="polite"/);
   assert.match(login, /aria-busy=\{busy\}/);
   assert.match(login, /aria-describedby="member-id-help"/);
+  assert.match(login, /금융서비스 홈으로/);
+  assert.match(operationalLogin, /aria-busy=\{busy\}/);
+  assert.match(operationalLogin, /aria-describedby="operator-id-help"/);
   assert.match(staffQueue, /aria-describedby="staff-note-help"/);
   assert.match(roleDashboard, /aria-busy="true"/);
   assert.match(accessibilityCss, /prefers-reduced-motion:reduce/);
   assert.match(accessibilityCss, /outline:4px solid var\(--focus\)/);
   assert.match(accessibilityCss, /min-height:44px/);
+  assert.match(accessibilityCss, /\.bank-panel small/);
+  assert.match(accessibilityCss, /@media\(max-width:1150px\)\{\.banking-mobile-nav\{display:flex/);
 });
 
 test("전역 오류와 잘못된 주소에서 사용자가 복구할 수 있다", async () => {

@@ -43,7 +43,7 @@ export function MemberLogin() {
         {error && <p className="api-error" role="alert">{error}</p>}
       </form>
       <aside><strong>공개 합성 체험 계정</strong><p><b>demo001 ~ demo300</b> 중 하나와 공통 비밀번호 <b>local-synthetic-customer-password</b>를 이용하세요. 300명은 계좌·거래·설정이 서로 분리되어 있습니다.</p></aside>
-      <Link className="member-login-help" href="/demo">로그인 없이 공개 도움 시나리오 체험 →</Link>
+      <div className="login-exit-links"><Link className="member-login-help" href="/demo">로그인 없이 공개 도움 시나리오 체험 →</Link><Link className="member-login-help" href="/">금융서비스 홈으로 →</Link></div>
     </section>
   </main>;
 }
