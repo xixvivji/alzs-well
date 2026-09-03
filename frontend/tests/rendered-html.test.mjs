@@ -33,7 +33,7 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   assert.doesNotMatch(routesManifest, /unsafe-eval/);
   assert.match(manifest, /\/api\/\[\.\.\.path\]\/route/);
   assert.match(manifest, /\/api\/internal\/staff-capability\/\[sessionId\]\/route/);
-  for (const route of ["/api/member-auth/login/route", "/api/member-auth/refresh/route", "/api/member-auth/logout/route", "/login/page", "/help/page", "/banking/help/page", "/staff/login/page"]) {
+  for (const route of ["/api/member-auth/login/route", "/api/member-auth/refresh/route", "/api/member-auth/logout/route", "/login/page", "/help/page", "/banking/help/page", "/staff/login/page", "/_not-found/page"]) {
     assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
   }
   for (const route of ["/demo/protection/page", "/demo/finance/page", "/demo/products/page", "/demo/settings/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
@@ -142,6 +142,44 @@ test("서버 전용 비밀값의 예시 placeholder가 Next.js 산출물에 직�
     const content = await readFile(file);
     assert.equal(content.includes(Buffer.from("replace-with-64-lowercase-hex")), false, `placeholder leaked into ${file.pathname}`);
   }
+});
+
+test("고객·행원·관리자 공통 접근성 계약을 유지한다", async () => {
+  const [shell, bankingShell, controls, login, staffQueue, roleDashboard, accessibilityCss] = await Promise.all([
+    readFile(new URL("../components/AppShell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/BankingShell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/AccessibilityControls.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/MemberLogin.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/PrivateStaffCaseQueue.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/OperationalRoleDashboard.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/accessibility-redesign.css", import.meta.url), "utf8"),
+  ]);
+  for (const source of [shell, bankingShell]) {
+    assert.match(source, /본문 바로가기/);
+    assert.match(source, /aria-current/);
+  }
+  assert.match(shell, /관리자 서비스/);
+  assert.match(controls, /role="group"/);
+  assert.match(login, /aria-busy=\{busy\}/);
+  assert.match(login, /aria-describedby="member-id-help"/);
+  assert.match(staffQueue, /aria-describedby="staff-note-help"/);
+  assert.match(roleDashboard, /aria-busy="true"/);
+  assert.match(accessibilityCss, /prefers-reduced-motion:reduce/);
+  assert.match(accessibilityCss, /outline:4px solid var\(--focus\)/);
+  assert.match(accessibilityCss, /min-height:44px/);
+});
+
+test("전역 오류와 잘못된 주소에서 사용자가 복구할 수 있다", async () => {
+  const [errorPage, notFoundPage] = await Promise.all([
+    readFile(new URL("../app/error.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/not-found.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(errorPage, /role="alert"/);
+  assert.match(errorPage, /다시 시도/);
+  assert.match(errorPage, /처음 화면으로/);
+  assert.doesNotMatch(errorPage, /error\.message/);
+  assert.match(notFoundPage, /페이지를 찾을 수 없습니다/);
+  assert.match(notFoundPage, /도움 안내 보기/);
 });
 
 async function allFiles(directory) {
