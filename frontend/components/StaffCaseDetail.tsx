@@ -164,6 +164,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
 
   return <div className="staff-case-detail">
     {rehearsal && <section className="rehearsal-cue staff-rehearsal-cue" role="note" data-rehearsal-scenario={rehearsal.id}><strong>{rehearsal.label} 리허설</strong><span>{rehearsal.title}</span><small>목표 상태 {rehearsal.expectedState}</small></section>}
+    <nav className="staff-review-journey" aria-label="행원 사건 처리 순서"><article><b>1</b><div><strong>고객 응답과 근거 확인</strong><span>단정하지 않고 사실과 생활 맥락을 봅니다.</span></div></article><article><b>2</b><div><strong>AI 검토 초안 요청</strong><span>추천 질문과 승인된 인용 근거를 확인합니다.</span></div></article><article><b>3</b><div><strong>행원이 최종 결정</strong><span>안내계획을 직접 선택하고 승인합니다.</span></div></article></nav>
     <section className="case-summary-grid">
       <article className="panel case-identity">
         <div><p className="label">사건 상태</p><h2>{stateLabel(detail.state)}</h2></div>
@@ -203,7 +204,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
     {context && staffCapability && <StaffCaseOperations context={context} caseId={caseId} staffCapability={staffCapability} caseVersion={detail.caseVersion} caseState={detail.state} onChanged={refreshCase} />}
 
     <section className="panel copilot-section">
-      <div className="section-heading"><div><p className="label">근거 기반 AI 지원</p><h2>행원 검토 초안</h2></div><button className="secondary-button" onClick={() => void generateCopilot()} disabled={busy !== null}>{busy === "copilot" ? "생성 중…" : copilot ? "초안 다시 생성" : "AI 검토 초안 생성"}</button></div>
+      <div className="section-heading"><div><p className="label">2단계 · 근거 기반 AI 지원</p><h2>고객에게 무엇을 확인할지 준비합니다</h2><p className="section-help">AI가 결론을 내리지 않습니다. 아래 초안을 만든 뒤 질문·체크리스트·원문을 행원이 직접 검토합니다.</p></div><button className="secondary-button" onClick={() => void generateCopilot()} disabled={busy !== null}>{busy === "copilot" ? "확인할 내용을 만드는 중…" : copilot ? "초안 다시 만들기" : "확인 질문 만들기"}</button></div>
       {!copilot ? <div className="empty-block">행원이 요청할 때만 승인된 근거를 검색해 초안을 만듭니다.</div> : <div className="copilot-result" data-copilot-mode={copilot.draft.fallbackUsed ? "fallback" : "grounded"}>
         <div className="copilot-meta"><span>{copilot.draft.generatedBy}</span><span>검색: {copilot.draft.retrievalMode}</span><span>{copilot.draft.fallbackUsed ? "안전 폴백 사용" : "승인 근거 연결"}</span></div>
         <p className="copilot-summary">{copilot.draft.summary}</p>

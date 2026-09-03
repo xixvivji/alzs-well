@@ -393,6 +393,9 @@ public class DemoAiFinancialAssistanceService {
                 || !requestId.equals(response.requestId()) || response.diagnosisInferred()
                 || response.financialActionExecuted() || response.changes() == null
                 || response.baselineDays() != expectedBaselineDays || response.recentDays() != 30
+                || response.summary() == null || response.confirmationQuestions() == null
+                || response.reviewChecklist() == null
+                || !"EXPLAINABLE_CHANGE_GUIDANCE_V1".equals(response.guidanceMode())
                 || response.changes().size() != features.size()
                 || response.changes().stream().anyMatch(java.util.Objects::isNull)
                 || !response.changes().stream().map(ChangeSignal::featureCode).collect(java.util.stream.Collectors.toSet())
@@ -424,6 +427,17 @@ public class DemoAiFinancialAssistanceService {
             }
             requireSafeCustomerText(item.explanation(), "AI change explanation", 300);
         }
+        ExpectedGuidance guidance = expectedGuidance(response.changes(), response.recentDays());
+        if (!guidance.summary().equals(response.summary())
+                || !guidance.confirmationQuestions().equals(response.confirmationQuestions())
+                || !guidance.reviewChecklist().equals(response.reviewChecklist())) {
+            throw new IllegalArgumentException("AI change guidance does not match verified changes");
+        }
+        requireSafeCustomerText(response.summary(), "AI change summary", 300);
+        response.confirmationQuestions().forEach(item ->
+                requireSafeCustomerText(item, "AI confirmation question", 200));
+        response.reviewChecklist().forEach(item ->
+                requireSafeCustomerText(item, "AI review checklist", 200));
     }
 
     private void requireSafeLanguageResponse(
@@ -595,6 +609,8 @@ public class DemoAiFinancialAssistanceService {
                         )).toList())).toList();
         return new AiFinancialAssistanceResponses.ChangeAnalysis(response.baselineDays(), response.recentDays(),
                 response.baselineDays() + response.recentDays(), changes, mode, fallback, windows,
+                response.summary(), List.copyOf(response.confirmationQuestions()),
+                List.copyOf(response.reviewChecklist()), response.guidanceMode(),
                 true, false, false);
     }
 
@@ -603,8 +619,14 @@ public class DemoAiFinancialAssistanceService {
                 .map(days -> fallbackWindow(features, days)).toList();
         List<AiFinancialAssistanceResponses.ChangeItem> items = windows.stream()
                 .filter(window -> window.baselineDays() == 60).findFirst().orElseThrow().changes();
+        ExpectedGuidance guidance = expectedGuidance(items.stream().map(item -> new ChangeSignal(
+                item.featureCode(), item.baselineValue(), item.recentValue(), item.delta(), item.direction(),
+                item.ewmaScore(), item.cusumScore(), item.changeDetected(), item.persistent(),
+                item.dataSufficient(), item.method(), item.explanation())).toList(), 30);
         return new AiFinancialAssistanceResponses.ChangeAnalysis(60, 30, 90, items,
-                "BASELINE_RULE_FALLBACK", true, windows, true, false, false);
+                "BASELINE_RULE_FALLBACK", true, windows, guidance.summary(),
+                guidance.confirmationQuestions(), guidance.reviewChecklist(),
+                "SPRING_EXPLAINABLE_GUIDANCE_FALLBACK_V1", true, false, false);
     }
 
     private AiFinancialAssistanceResponses.ChangeWindow fallbackWindow(
@@ -705,6 +727,51 @@ public class DemoAiFinancialAssistanceService {
             case "NEW_COUNTERPARTY_COUNT" -> "새 수취인 거래";
             case "UNUSUAL_TIME_COUNT" -> "평소와 다른 시간대 거래";
             case "UNUSUAL_AMOUNT_COUNT" -> "평소 범위를 벗어난 금액 거래";
+            default -> throw new IllegalArgumentException("unsupported change feature");
+        };
+    }
+
+    private ExpectedGuidance expectedGuidance(List<ChangeSignal> changes, int recentDays) {
+        List<ChangeSignal> detected = changes.stream().filter(ChangeSignal::changeDetected).toList();
+        String summary;
+        List<String> questions;
+        if (detected.isEmpty()) {
+            summary = "최근 " + recentDays + "일은 과거 기준과 비교해 뚜렷한 장기 변화가 "
+                    + "확인되지 않았습니다. 현재 결과만으로 이상이나 질환을 판단하지 않습니다.";
+            questions = List.of("최근 납부 방법이나 금융 이용 습관을 바꾸셨나요?");
+        } else {
+            summary = "최근 " + recentDays + "일 동안 " + changeFeatureLabel(detected.getFirst().featureCode())
+                    + " 등 " + detected.size() + "개 항목에서 평소와 다른 장기 변화가 확인됐습니다. "
+                    + "이상이나 질환을 뜻하지 않으며, 알고 있는 생활 변화인지 먼저 확인해 주세요.";
+            questions = detected.stream().limit(3).map(item -> confirmationQuestion(item.featureCode())).toList();
+        }
+        List<String> checklist = new ArrayList<>(List.of(
+                "표시된 기간과 횟수가 내 금융생활과 맞는지 확인합니다.",
+                "알고 있는 변화인지 또는 도움이 필요한지 직접 선택합니다."));
+        detected.stream().limit(2).map(item -> reviewItem(item.featureCode())).forEach(checklist::add);
+        return new ExpectedGuidance(summary, questions, List.copyOf(checklist));
+    }
+
+    private String confirmationQuestion(String featureCode) {
+        return switch (featureCode) {
+            case "MISSED_RECURRING_COUNT" -> "최근 납부일이나 납부 방법을 바꾸셨나요?";
+            case "DUPLICATE_TRANSFER_COUNT" -> "같은 곳에 두 번 보낸 것으로 알고 계신가요?";
+            case "REPEATED_CONFIRMATION_COUNT" -> "거래 결과가 잘 보이지 않아 여러 번 확인하셨나요?";
+            case "NEW_COUNTERPARTY_COUNT" -> "최근 새로 거래하기 시작한 분이나 업체가 있나요?";
+            case "UNUSUAL_TIME_COUNT" -> "평소와 다른 시간에 금융서비스를 이용한 이유가 있나요?";
+            case "UNUSUAL_AMOUNT_COUNT" -> "최근 평소보다 큰 금액을 사용하거나 옮길 일이 있었나요?";
+            default -> throw new IllegalArgumentException("unsupported change feature");
+        };
+    }
+
+    private String reviewItem(String featureCode) {
+        return switch (featureCode) {
+            case "MISSED_RECURRING_COUNT" -> "납부일·납부 방법 변경 여부를 확인합니다.";
+            case "DUPLICATE_TRANSFER_COUNT" -> "같은 송금의 목적과 본인 인지 여부를 확인합니다.";
+            case "REPEATED_CONFIRMATION_COUNT" -> "화면 이해나 거래 결과 확인에 어려움이 있었는지 확인합니다.";
+            case "NEW_COUNTERPARTY_COUNT" -> "새 거래 상대와의 관계를 고객에게 직접 확인합니다.";
+            case "UNUSUAL_TIME_COUNT" -> "이용 시간 변화의 생활 맥락을 확인합니다.";
+            case "UNUSUAL_AMOUNT_COUNT" -> "금액 변화의 목적을 고객에게 직접 확인합니다.";
             default -> throw new IllegalArgumentException("unsupported change feature");
         };
     }
@@ -865,6 +932,10 @@ public class DemoAiFinancialAssistanceService {
             boolean persistent,
             boolean dataSufficient,
             String explanation
+    ) {}
+
+    private record ExpectedGuidance(
+            String summary, List<String> confirmationQuestions, List<String> reviewChecklist
     ) {}
 
     private record TransactionObservation(OffsetDateTime occurredAt, double amount, String counterparty) {}

@@ -137,6 +137,12 @@ class ChangeAnalysisResponse(AssistanceModel):
     baseline_days: int
     recent_days: int
     changes: tuple[ChangeSignal, ...]
+    summary: str = Field(min_length=1, max_length=300)
+    confirmation_questions: tuple[str, ...] = Field(min_length=1, max_length=3)
+    review_checklist: tuple[str, ...] = Field(min_length=1, max_length=4)
+    guidance_mode: Literal["EXPLAINABLE_CHANGE_GUIDANCE_V1"] = (
+        "EXPLAINABLE_CHANGE_GUIDANCE_V1"
+    )
     diagnosis_inferred: Literal[False] = False
     financial_action_executed: Literal[False] = False
 

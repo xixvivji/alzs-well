@@ -93,7 +93,7 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
 });
 
 test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 제외한다", async () => {
-  const [page, staffCaseDetail, staffCaseQueue, alertDetail, productCenter, customerAssets, customerCare, privateLifeServices, protectionCenter, scenarioData] = await Promise.all([
+  const [page, staffCaseDetail, staffCaseQueue, alertDetail, productCenter, customerAssets, customerCare, privateLifeServices, privateHelpHub, protectionCenter, scenarioData] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseDetail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/StaffCaseQueue.tsx", import.meta.url), "utf8"),
@@ -102,6 +102,7 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
     readFile(new URL("../components/PrivateCustomerAssets.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateCustomerCare.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/PrivateLifeServices.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/PrivateHelpHub.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/CustomerProtectionCenter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../data/rehearsal-scenarios-v1.json", import.meta.url), "utf8"),
   ]);
@@ -109,6 +110,8 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   assert.doesNotMatch(page, /각 기관의 공식 서비스가 아닙니다/);
   assert.match(staffCaseDetail, /AI는 검토 초안과 승인된 근거를 제시할 뿐/);
   assert.match(staffCaseDetail, /사람 검토 필수/);
+  assert.match(staffCaseDetail, /고객 응답과 근거 확인/);
+  assert.match(staffCaseDetail, /행원이 최종 결정/);
   assert.match(staffCaseQueue, /먼저 확인할 사건부터/);
   assert.match(staffCaseQueue, /업무 우선순위는 위험도·치매·사기 확률이 아닙니다/);
   assert.match(staffCaseQueue, /다음 사건 20건 불러오기/);
@@ -123,6 +126,10 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   assert.match(customerCare, /사람의 재검토를 요청/);
   assert.match(customerCare, /금융행위 대리권은 부여하지 않습니다/);
   assert.match(privateLifeServices, /생활금융 정보를 안전하게 불러오고 있습니다/);
+  assert.match(privateHelpHub, /도움 방식 정하기/);
+  assert.match(privateHelpHub, /AI가 수치에서 확인한 내용/);
+  assert.match(privateHelpHub, /나에게 물어볼 질문/);
+  assert.match(privateHelpHub, /내 상황 답하기/);
   assert.match(protectionCenter, /결정은 언제나 고객과 사람에게 있습니다/);
   assert.match(protectionCenter, /진단하거나 거래를 자동으로 막지 않습니다/);
   assert.match(scenarioData, /같은 T0 합성 snapshot/);

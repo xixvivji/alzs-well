@@ -27,6 +27,8 @@ public interface InternalFinancialAiClient {
                         String method, String explanation) {}
     record ChangeAnalysisResponse(String contractVersion, UUID requestId, int baselineDays,
                                   int recentDays, List<ChangeSignal> changes,
+                                  String summary, List<String> confirmationQuestions,
+                                  List<String> reviewChecklist, String guidanceMode,
                                   boolean diagnosisInferred, boolean financialActionExecuted) {}
 
     record PlainLanguageFact(String featureCode, double baselineValue, double recentValue,

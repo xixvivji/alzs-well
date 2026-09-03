@@ -21,7 +21,9 @@ class CustomerAiFinancialAssistanceControllerTest {
     void delegatesMemberScopedChangeAnalysisWithoutAcceptingClientFeatureValues() {
         ChangeAnalysis expected = new ChangeAnalysis(
                 60, 30, 90, List.of(), "FASTAPI_EWMA_CUSUM", false,
-                List.of(), true, false, false);
+                List.of(), "최근 변화가 없습니다.", List.of("최근 이용 방식을 바꾸셨나요?"),
+                List.of("표시된 값을 확인합니다."), "EXPLAINABLE_CHANGE_GUIDANCE_V1",
+                true, false, false);
         when(assistanceService.analyzeMember("SYN_CUSTOMER_001")).thenReturn(expected);
 
         ApiResponse<ChangeAnalysis> body = new CustomerAiFinancialAssistanceController(assistanceService)
