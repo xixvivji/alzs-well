@@ -58,6 +58,7 @@ def load_environment() -> dict[str, str]:
     }:
         environment["FRONTEND_PROXY_SHARED_SECRET"] = secrets.token_hex(32)
     environment["AI_RETRIEVAL_ENABLED"] = "true"
+    environment["AI_ASSISTANCE_ENABLED"] = "true"
     environment["COPILOT_RAG_ENABLED"] = "true"
     return environment
 
@@ -377,6 +378,23 @@ def create_rehearsal_session() -> RehearsalSession:
             "X-Demo-Capability": customer_capability,
             IDEMPOTENCY_HEADER: SCENARIO_COMMAND_ID,
         },
+    )
+    change_analysis, _ = http(
+        "POST",
+        f"/api/v1/demo/sessions/{session_id}/customers/{ingested['data']['customerId']}"
+        "/ai-financial-assistance/change-analysis",
+        headers={
+            "X-Demo-Capability": customer_capability,
+            "X-Demo-Run-Id": ingested["data"]["demoRunId"],
+        },
+    )
+    require(
+        change_analysis["data"]["fallbackUsed"] is False,
+        "FastAPI change analysis was rejected by the Spring verifier",
+    )
+    require(
+        any(item["changeDetected"] for item in change_analysis["data"]["changes"]),
+        "change-analysis interop fixture did not exercise a detected change",
     )
     return RehearsalSession(
         session_id=session_id,
