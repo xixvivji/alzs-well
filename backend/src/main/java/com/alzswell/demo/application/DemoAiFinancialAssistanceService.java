@@ -232,8 +232,8 @@ public class DemoAiFinancialAssistanceService {
                  order by feature_code
                 """, (rs, row) -> new MemberBaseline(
                         memberFeatureCode(rs.getString("feature_code")),
-                        rs.getBigDecimal("baseline_value").toPlainString(),
-                        rs.getBigDecimal("current_value").toPlainString()), customerId);
+                        normalizedCount(rs.getBigDecimal("baseline_value")),
+                        normalizedCount(rs.getBigDecimal("current_value"))), customerId);
         if (baselines.isEmpty()) throw new BusinessException(DetectionErrorCode.SNAPSHOT_NOT_READY);
         List<FeatureSeries> features = baselines.stream()
                 .map(item -> featureSeries(item.featureCode(), item.baselineValue(), item.currentValue()))
@@ -276,6 +276,10 @@ public class DemoAiFinancialAssistanceService {
                     "REPEATED_CONFIRMATION_COUNT";
             default -> throw new IllegalArgumentException("unsupported member baseline feature: " + featureCode);
         };
+    }
+
+    private String normalizedCount(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 
     public AiFinancialAssistanceResponses.PlainLanguage plainLanguage(
