@@ -134,7 +134,7 @@
 - Spring 시작 시 Flyway 76개 migration을 검증했고, 합성 고객 300명·계좌 600건·거래 72,000건과 탐지 신호 225/225, 오탐·미탐 0건을 재현했다.
 - Vercel 고객 BFF에서 `demo001` 로그인·본인 확인·AI 변화 분석·로그아웃이 모두 200이고 다른 회원 분석은 403으로 차단됐다.
 - 회원 AI 응답은 `FASTAPI_EWMA_CUSUM`과 `EXPLAINABLE_CHANGE_GUIDANCE_V1`을 사용하며 요약 1건 이상, 확인 질문 1건 이상, 검토 체크리스트 1건 이상을 반환했다.
-- GitHub의 Vercel 앱에는 `xixvivji/alzs-well` 저장소만 추가 허용했고, 기존 Vercel 프로젝트를 해당 저장소에 연결했다.
+- GitHub의 Vercel 앱에는 `xixvivji/alzs-well` 저장소만 추가 허용했고, 기존 Vercel 프로젝트를 해당 저장소에 연결한 뒤 monorepo Root Directory를 `frontend`로 고정했다.
 - 배포 완료 후 CloudFormation은 `UPDATE_COMPLETE`이며 `DatabaseBootstrapEnabled`, `AppMigrationDeploymentEnabled`, `ImagePublishDeploymentEnabled`가 모두 `false`다.
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
