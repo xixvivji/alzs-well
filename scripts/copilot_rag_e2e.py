@@ -834,6 +834,16 @@ def main() -> int:
             "--wait-timeout",
             "300",
         )
+        compose(
+            "--profile",
+            "ai",
+            "exec",
+            "-T",
+            "ai-service",
+            "python",
+            "-c",
+            "import sentence_transformers, torch, transformers",
+        )
         if LOAD_TEST_ENABLED:
             published_port = compose(
                 "--profile", "ai", "port", "ai-service", "8000", capture=True
