@@ -84,9 +84,16 @@ public class SyntheticFixtureGenerationService {
             for (int first = 1; first <= profile.customerCount(); first += batchSize) {
                 int last = Math.min(profile.customerCount(), first + batchSize - 1);
                 int batchFirst = first;
-                transactions.executeWithoutResult(ignored -> jdbc.queryForObject(
-                        "select seed_synthetic_fixture_batch(?,?,?,?,?)",
-                        Integer.class, runId, leaseId, batchFirst, last, profile.transactionsPerCustomer()));
+                transactions.executeWithoutResult(ignored -> {
+                    int baseTransactionCount = fixtureVersion.compareTo("synthetic-v3.1.0") >= 0
+                            ? Math.min(240, profile.transactionsPerCustomer()) : profile.transactionsPerCustomer();
+                    jdbc.queryForObject("select seed_synthetic_fixture_batch(?,?,?,?,?)",
+                            Integer.class, runId, leaseId, batchFirst, last, baseTransactionCount);
+                    if (profile.transactionsPerCustomer() > baseTransactionCount) {
+                        jdbc.queryForObject("select seed_synthetic_fixture_lifestyle_batch(?,?,?,?,?)",
+                                Integer.class, runId, leaseId, batchFirst, last, profile.transactionsPerCustomer());
+                    }
+                });
             }
             ensureDetectionBaselines(runId);
             Counts counts = counts(runId);

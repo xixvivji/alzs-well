@@ -1,6 +1,8 @@
 # ALZ's well 백엔드
 
-금융생활 변화 조기알림과 행원 보호업무 코파일럿의 공모전용 Spring 백엔드다. `FIN_MGMT_AB_001` 완전 합성데이터만 사용하며 실제 송금·지급정지·한도변경·가족 연락·외부 AI 호출은 실행하지 않는다.
+금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿의 공모전용 Spring 백엔드다. `FIN_MGMT_AB_001` 시나리오와 회원별 PUBLIC fixture 등 완전 합성데이터를 사용하며 실제 송금·지급정지·한도변경·가족 연락·외부 상용 AI 호출은 실행하지 않는다.
+
+2026-09-05 코드 `517781c`는 Tomcat 10.1.59·Flyway V77·PUBLIC v3.1(300명, 216,000건 생성 규격)을 포함한다. AWS 배포·fixture 적재는 별도 보류 상태이며 [현행 상태](../docs/CURRENT_IMPLEMENTATION_STATUS.md)를 따른다.
 
 상위 제품 기준은 [`../ALZS_WELL_PROJECT_SSOT.md`](../ALZS_WELL_PROJECT_SSOT.md), 요청·응답 계약은 [`../docs/FINAL_BACKEND_API_SPEC.md`](../docs/FINAL_BACKEND_API_SPEC.md)다.
 
@@ -187,7 +189,7 @@ docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
 
 ```dotenv
 SYNTHETIC_SEED_PROFILE=DEMO
-SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.0.0
+SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.1.0
 SYNTHETIC_SEED_VALUE=20260825
 SYNTHETIC_SEED_BATCH_SIZE=10
 SYNTHETIC_SEED_RESUME=false
@@ -198,7 +200,7 @@ SYNTHETIC_SEED_PROVISION_MEMBERS=false
 동일 버전·profile·seed의 완료 실행은 중복 적재하지 않고 기존 manifest를 재생한다. 중단된 `RUNNING` 실행만 운영자가 원인을 확인한 후 `SYNTHETIC_SEED_RESUME=true`로 재개할 수 있다. 상세 절차는 [`../docs/runbooks/SYNTHETIC_DATASET_V3.md`](../docs/runbooks/SYNTHETIC_DATASET_V3.md)를 따른다.
 `LOAD`는 고객 250명·거래 75,000건의 중간 규모이며 `SYNTHETIC_SEED_VERIFY_DETECTION=true`로
 활성 정책의 전체 고객 오탐·미탐 검증까지 실행할 수 있다.
-`PUBLIC`은 고객 300명·계좌 600개·거래 72,000건이며
+`PUBLIC`은 고객 300명·계좌 600개·거래 216,000건이며
 `SYNTHETIC_SEED_PROVISION_MEMBERS=true`와 비밀 저장소의 `SYNTHETIC_MEMBER_PASSWORD_HASH`를
 함께 지정하면 `demo001`~`demo300` 인증 주체와 회원별 카드·예금·대출·투자 snapshot을 만든다.
 

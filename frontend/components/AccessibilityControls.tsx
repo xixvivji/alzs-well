@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 
+export function AccessibilityPreferences() {
+  useEffect(() => {
+    document.documentElement.dataset.largeText = String(localStorage.getItem("alzs-large-text") === "true");
+    document.documentElement.dataset.highContrast = String(localStorage.getItem("alzs-high-contrast") === "true");
+  }, []);
+  return null;
+}
+
 export function AccessibilityControls() {
   const [largeText, setLargeText] = useState(false);
   const [highContrast, setHighContrast] = useState(false);

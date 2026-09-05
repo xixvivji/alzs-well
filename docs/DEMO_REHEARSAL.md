@@ -2,12 +2,14 @@
 
 이 문서는 합성데이터로 고객 알림부터 행원 최종 통제까지 세 가지 발표 흐름을 고정한다. 세 흐름 모두 질병·사기 여부를 자동 판단하거나 외부 연락·금융 실행을 만들지 않는다.
 
+2026-09-05의 v3.1 코드 기준 운영 리허설은 보류 중이다. 아래 절차·예상 결과는 실행 방법이며, 최신 운영에서 통과했다는 증적은 아니다. 이전 실행 기록은 `UX_ACCESSIBILITY_VALIDATION.md`와 `STAGING_DEPLOYMENT_CHECKLIST.md`에 날짜별로 보존한다.
+
 ## 기존 합성 데이터 확인
 
 새 시나리오 데이터를 별도로 복제하지 않고 기존 두 계층을 재사용한다.
 
 - 공개 발표 fixture `FIN_MGMT_AB_001`: 기준선 9개월, 관측 3개월, 정기납부 누락 3건·10분 이내 중복송금 2건·1시간 이내 반복확인 7건을 불변 T0 snapshot으로 고정한다.
-- 운영형 fixture generator `synthetic-v3.0.0`: `SMOKE/DEMO/LOAD/DEV` 프로필과 `NORMAL/MISSED_PAYMENT/DUPLICATE_TRANSFER/REPEATED_CONFIRMATION` 고객군을 seed 기반으로 재현한다.
+- 운영형 fixture generator `synthetic-v3.1.0`: `SMOKE/DEMO/PUBLIC/LOAD/DEV` 프로필과 `NORMAL/MISSED_PAYMENT/DUPLICATE_TRANSFER/REPEATED_CONFIRMATION` 고객군을 seed 기반으로 재현한다. PUBLIC은 고객 300명마다 720건의 거래를 생성한다.
 - 최소 합성 고객 프로필: `SYN_CUSTOMER_FIN_MGMT_001`, 2개 기관·4개 계좌·42개 합성 거래와 큰 글씨·한 손 모드 기본 설정을 가진다.
 
 발표용 세 흐름은 서로 다른 탐지 데이터를 만드는 방식이 아니다. 같은 T0 신호에 고객의 생활맥락 응답과 행원의 사실확인 결과만 다르게 적용한다. 이 방식은 모델 성능 비교처럼 보이는 오해를 막고, 자동 위험판정 대신 고객 확인과 사람 검토가 결과를 바꾼다는 제품 원칙을 보여준다. 프런트 계약은 `frontend/data/rehearsal-scenarios-v1.json`에 고정한다.

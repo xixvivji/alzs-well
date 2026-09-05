@@ -32,7 +32,7 @@ public class SyntheticFixtureSeedJob {
             ConfigurableApplicationContext applicationContext,
             SyntheticFixtureQualityService qualityService,
             @Value("${app.synthetic-seed.profile:SMOKE}") SyntheticFixtureProfile profile,
-            @Value("${app.synthetic-seed.fixture-version:synthetic-v3.0.0}") String fixtureVersion,
+            @Value("${app.synthetic-seed.fixture-version:synthetic-v3.1.0}") String fixtureVersion,
             @Value("${app.synthetic-seed.seed:20260825}") long seed,
             @Value("${app.synthetic-seed.batch-size:10}") int batchSize,
             @Value("${app.synthetic-seed.resume:false}") boolean resume,

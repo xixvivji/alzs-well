@@ -1,6 +1,6 @@
 import { ApiClientError } from "./api";
 import type { PrivateCustomerSession } from "./private-financial-products";
-const refreshInFlight = new WeakMap<PrivateCustomerSession, Promise<void>>();
+let refreshInFlight: Promise<void> | undefined;
 
 export class PrivateSessionExpiredError extends Error {
   constructor() {
@@ -23,7 +23,11 @@ export async function withPrivateCustomerSession<T>(
   } catch (reason) {
     if (!(reason instanceof ApiClientError) || reason.status !== 401) throw reason;
     if (session.invalidated) throw new PrivateSessionExpiredError();
-    await refreshAccessToken(session);
+    try { await recoverPrivateSession(); session.invalidated = false; }
+    catch (error) {
+      if (error instanceof PrivateSessionExpiredError) invalidatePrivateCustomerSession(session);
+      throw error;
+    }
     try {
       return await operation("");
     } catch (retryReason) {
@@ -40,22 +44,24 @@ export function invalidatePrivateCustomerSession(session: PrivateCustomerSession
   session.invalidated = true;
 }
 
-async function refreshAccessToken(session: PrivateCustomerSession): Promise<void> {
-  const active = refreshInFlight.get(session);
-  if (active) return active;
-  const refresh = performRefresh(session);
-  refreshInFlight.set(session, refresh);
-  try { return await refresh; }
-  finally { refreshInFlight.delete(session); }
+export async function recoverPrivateSession(): Promise<void> {
+  if (refreshInFlight) return refreshInFlight;
+  const recover = async () => {
+    // Recheck inside the cross-tab lock: another tab may have rotated cookies.
+    const probe = await fetch("/api/v1/auth/me", { cache: "no-store" });
+    if (probe.ok) return;
+    if (probe.status !== 401) throw new Error("인증 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    await performRefresh();
+  };
+  refreshInFlight = typeof navigator !== "undefined" && navigator.locks
+    ? navigator.locks.request("alzs-member-refresh", recover).then(() => undefined)
+    : recover();
+  try { await refreshInFlight; }
+  finally { refreshInFlight = undefined; }
 }
 
-async function performRefresh(session: PrivateCustomerSession): Promise<void> {
-  try {
+async function performRefresh(): Promise<void> {
     const response = await fetch("/api/member-auth/refresh", { method: "POST", headers: { "Content-Type": "application/json" } });
-    if (!response.ok) throw new Error("member session refresh failed");
-    session.invalidated = false;
-  } catch {
-    invalidatePrivateCustomerSession(session);
-    throw new PrivateSessionExpiredError();
-  }
+    if (response.status === 401) throw new PrivateSessionExpiredError();
+    if (!response.ok) throw new Error("인증 갱신이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
 }
