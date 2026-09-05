@@ -117,7 +117,7 @@
 - PR #166에서 이미지 게시 권한을 DB bootstrap과 분리했고, 배포 완료 후 세 임시 권한을 모두 회수했다.
 - PR #168에서 PostgreSQL `numeric` 건수값의 소수 표기(`0.0000`)를 정규화해 장기 변화 분석의 500 오류를 수정했다.
 - backend는 코드 `a269168f3c23c3e459b5d49e3714a9128a5e2052`, image `backend-a269168`, digest `sha256:a7d351cf6b49f05389a6fe84ad7119b4bb01179e456d740bfb2ce4c3581bbfc6`로 교체했다.
-- Flyway 77개 migration을 검증했고, 공개 합성 fixture는 고객 300명·계좌 600건·거래 216,000건을 재현하도록 확장했다.
+- 당시 배포 기준은 Flyway V76과 PUBLIC v3.0의 고객 300명·계좌 600건·거래 72,000건이다. V77·216,000건은 후속 v3.1 코드 변경이며 이 배포의 증적에 포함하지 않는다.
 - Vercel 고객 BFF에서 `demo001` 로그인·본인 확인·AI 분석·로그아웃이 모두 200이고, `demo002` 분석 접근은 403으로 차단됐다.
 - 회원 AI 응답은 `FASTAPI_EWMA_CUSUM`, `fallbackUsed=false`이며 30·60·90일 비교 결과를 모두 반환했다.
 - 응답은 `syntheticData=true`, `diagnosisInferred=false`, `financialActionExecuted=false` 안전 경계를 유지한다.
@@ -131,11 +131,15 @@
 - backend image는 `backend-552e24d`, digest `sha256:f7283a03623fe7b1ec286ad435c8c4077728d7c0de8dbbfbe50a75ddfff01b01`로 교체했다.
 - AI image는 `ai-552e24d`, digest `sha256:560237bb3a65a0f0f74de297cc9a6b2beb4ced7ccbf6f8cb194440fb584f6f9a`로 교체했다.
 - AI readiness는 `READY`, `local-arctic-ko`, 1024차원, `STAGED_APPROVED`, `hybrid-arctic-ko-v1`, fallback 비활성 상태를 확인했다.
-- Spring 시작 시 Flyway 77개 migration을 검증하고, 합성 고객 300명·계좌 600건·거래 216,000건과 탐지 신호 225/225를 재현하도록 구성했다.
+- 당시 배포 기준은 Flyway V76, 합성 고객 300명·계좌 600건·거래 72,000건과 탐지 신호 225/225다. 후속 v3.1의 V77·216,000건은 별도 배포·적재 검증 대상이다.
 - Vercel 고객 BFF에서 `demo001` 로그인·본인 확인·AI 변화 분석·로그아웃이 모두 200이고 다른 회원 분석은 403으로 차단됐다.
 - 회원 AI 응답은 `FASTAPI_EWMA_CUSUM`과 `EXPLAINABLE_CHANGE_GUIDANCE_V1`을 사용하며 요약 1건 이상, 확인 질문 1건 이상, 검토 체크리스트 1건 이상을 반환했다.
 - GitHub의 Vercel 앱에는 `xixvivji/alzs-well` 저장소만 추가 허용했고, 기존 Vercel 프로젝트를 해당 저장소에 연결한 뒤 monorepo Root Directory를 `frontend`로 고정했다.
 - 배포 완료 후 CloudFormation은 `UPDATE_COMPLETE`이며 `DatabaseBootstrapEnabled`, `AppMigrationDeploymentEnabled`, `ImagePublishDeploymentEnabled`가 모두 `false`다.
+
+## 2026-09-05 후속 코드 반영과 보류 상태
+
+`517781c`는 Tomcat 10.1.59와 v3.1 생성 규격을 포함한다. 로컬 백엔드 테스트·빌드는 통과했으며 PR #182 CI 최종 확인, develop 병합, AWS 교체·V77 적용, PUBLIC v3.1 적재와 세 역할 E2E, 최종 릴리스는 사용자 요청으로 보류했다. 아래 과거 배포 digest를 이 코드의 배포 증적으로 사용하지 않는다. AWS 로그인 세션은 마지막 확인에서 만료됐으며 배포 재개 시 재인증이 필요하다.
 
 ## 6. 2026-09-11 23:59 KST 이후 수동 철거
 

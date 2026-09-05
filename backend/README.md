@@ -1,6 +1,8 @@
 # ALZ's well 백엔드
 
-금융생활 변화 조기알림과 행원 보호업무 코파일럿의 공모전용 Spring 백엔드다. `FIN_MGMT_AB_001` 완전 합성데이터만 사용하며 실제 송금·지급정지·한도변경·가족 연락·외부 AI 호출은 실행하지 않는다.
+금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿의 공모전용 Spring 백엔드다. `FIN_MGMT_AB_001` 시나리오와 회원별 PUBLIC fixture 등 완전 합성데이터를 사용하며 실제 송금·지급정지·한도변경·가족 연락·외부 상용 AI 호출은 실행하지 않는다.
+
+2026-09-05 코드 `517781c`는 Tomcat 10.1.59·Flyway V77·PUBLIC v3.1(300명, 216,000건 생성 규격)을 포함한다. AWS 배포·fixture 적재는 별도 보류 상태이며 [현행 상태](../docs/CURRENT_IMPLEMENTATION_STATUS.md)를 따른다.
 
 상위 제품 기준은 [`../ALZS_WELL_PROJECT_SSOT.md`](../ALZS_WELL_PROJECT_SSOT.md), 요청·응답 계약은 [`../docs/FINAL_BACKEND_API_SPEC.md`](../docs/FINAL_BACKEND_API_SPEC.md)다.
 

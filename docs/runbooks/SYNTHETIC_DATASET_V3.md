@@ -16,7 +16,7 @@
 
 ## 실행 전 확인
 
-1. `develop` 기준 이미지와 Flyway V63이 배포돼 있어야 한다.
+1. 사용할 코드의 이미지와 Flyway V77이 배포돼 있어야 한다. v3.1 코드 반영과 실제 AWS 적재는 별도 단계다.
 2. 백엔드 `/api/v1/system/readiness`가 `ready=true`여야 한다.
 3. `.env`의 DB 비밀번호는 32자 이상이어야 한다.
 4. `SYNTHETIC_DATA_ONLY=true`, `SYNTHETIC_PROVIDER_ONLY=true`, `EXTERNAL_ACTIONS_ENABLED=false`를 변경하지 않는다.
@@ -58,7 +58,7 @@ docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
 `DEV` 모두 공개 운영 데이터베이스에는 실행하지 않는다.
 
 공개 합성 회원 환경은 `PUBLIC`만 사용한다. 아래 Job은 `demo001`~`demo300`을 각기 다른
-`customer_id`에 연결하고, 회원마다 계좌 2개·거래 240건과 카드·예금·대출·투자 snapshot을
+`customer_id`에 연결하고, 회원마다 계좌 2개·거래 720건과 카드·예금·대출·투자 snapshot을
 프로비저닝한다. 비밀번호 평문을 저장소나 명령 기록에 넣지 말고 비밀 저장소에서 BCrypt
 hash만 주입한다.
 
