@@ -40,7 +40,11 @@ export function PrivateStaffCaseQueue({ compact = false }: { compact?: boolean }
 
   async function openCase(item: OperationalCaseSummary) {
     if (!session) return; setBusy("detail"); setError(""); setResult("");
-    try { setSelected(item); setBundle(await loadOperationalCaseBundle(session, item.caseId)); }
+    setSelected(null); setBundle(null);
+    try {
+      const loaded = await loadOperationalCaseBundle(session, item.caseId);
+      setBundle(loaded); setSelected(item);
+    }
     catch (reason) { setError(message(reason)); }
     finally { setBusy(""); }
   }

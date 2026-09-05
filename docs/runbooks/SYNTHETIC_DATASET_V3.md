@@ -8,7 +8,7 @@
 |---|---:|---:|---:|---|
 | `SMOKE` | 10 | 20 | 600 | 로컬·CI 빠른 회귀 |
 | `DEMO` | 50 | 100 | 12,000 | 프론트·발표·통합 시연 |
-| `PUBLIC` | 300 | 600 | 72,000 | 공개 합성 회원 로그인·회원별 데이터 시연 |
+| `PUBLIC` | 300 | 600 | 216,000 | 공개 합성 회원 로그인·회원별 생활거래 데이터 시연 |
 | `LOAD` | 250 | 500 | 75,000 | 탐지 품질·페이지네이션·일상 부하 검증 |
 | `DEV` | 1,000 | 2,000 | 1,000,000 | 페이지네이션·탐지·인덱스·운영 검증 |
 
@@ -36,7 +36,7 @@ docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed
 
 ```bash
 SYNTHETIC_SEED_PROFILE=DEMO \
-SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.0.0 \
+SYNTHETIC_SEED_FIXTURE_VERSION=synthetic-v3.1.0 \
 SYNTHETIC_SEED_VALUE=20260825 \
 SYNTHETIC_SEED_BATCH_SIZE=10 \
 docker compose --env-file .env --profile synthetic-tools run --rm synthetic-seed

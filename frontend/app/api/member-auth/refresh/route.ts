@@ -14,7 +14,9 @@ export async function POST(request: Request): Promise<Response> {
   const response = await proxyMemberAuth(request, "/api/v1/auth/token/refresh", { refreshToken });
   if (!response.ok) {
     const headers = new Headers(response.headers);
-    for (const cookie of clearMemberTokenCookies(request.url)) headers.append("Set-Cookie", cookie);
+    if (response.status === 401) {
+      for (const cookie of clearMemberTokenCookies(request.url)) headers.append("Set-Cookie", cookie);
+    }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   }
   try {

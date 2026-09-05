@@ -79,9 +79,9 @@ test("이체 화면은 회원별 계좌·수취인·한도·양식과 실행 없
 });
 
 test("계좌 화면은 거래·거래처·정기납부·명세서 상세를 고객 요청 시 조회한다", async (t) => {
-  const paths: string[] = [];
-  t.mock.method(globalThis, "fetch", async (input) => {
-    const path = String(input); paths.push(path);
+  const calls: Array<{ path: string; signal?: AbortSignal | null }> = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input); calls.push({ path, signal: init?.signal });
     if (path.endsWith("/enrichment")) return response({ normalizedDescription: "공과금", inferredCategory: "UTILITIES", effectiveCategory: "UTILITIES", recurringCandidate: true, newCounterparty: false, confidence: 0.95, reasonCodes: ["RECURRING_PATTERN"], deterministic: true });
     if (path.includes("/transaction-history")) return response({ items: [] });
     if (path.includes("/transactions/transaction-1")) return response({ transaction: { transactionId: "transaction-1" }, originalDescriptionAvailable: false, cancellationAvailable: false, correctionAvailable: true });
@@ -89,15 +89,17 @@ test("계좌 화면은 거래·거래처·정기납부·명세서 상세를 고�
     if (path.includes("/recurring-payments/")) return response({ payment: { recurringPaymentId: "recurring-1" }, latestOccurrence: null, cancellationAvailable: false, externalActionExecuted: false });
     return response({ accountId: "account-1", statement: { statementId: "statement-1" }, transactionRowsIncluded: false, externalDownloadAvailable: false });
   });
+  const controller = new AbortController();
   const transaction = { transactionId: "transaction-1", accountId: "account-1", accountDisplayName: "생활비", institutionName: "합성은행", counterpartyId: "counterparty-1", counterpartyName: "공과금", occurredAt: "2026-08-31T00:00:00Z", direction: "DEBIT", transactionType: "TRANSFER", status: "POSTED", amount: 10000, currency: "KRW", balanceAfter: 100000, description: "공과금", category: "UTILITIES", preferenceVersion: 1 };
-  const insight = await loadTransactionInsight(session, transaction);
-  await loadRecurringInsight(session, "recurring-1");
-  await loadStatementDetail(session, "account-1", "statement-1");
+  const insight = await loadTransactionInsight(session, transaction, controller.signal);
+  await loadRecurringInsight(session, "recurring-1", controller.signal);
+  await loadStatementDetail(session, "account-1", "statement-1", controller.signal);
   assert.equal(insight.enrichment.deterministic, true);
-  assert.equal(paths.length, 6);
-  assert.ok(paths.includes("/api/v1/transactions/transaction-1/enrichment"));
-  assert.ok(paths.includes("/api/v1/counterparties/counterparty-1/transaction-history?limit=10"));
-  assert.ok(paths.includes("/api/v1/accounts/account-1/statements/statement-1"));
+  assert.equal(calls.length, 6);
+  assert.ok(calls.some((call) => call.path === "/api/v1/transactions/transaction-1/enrichment"));
+  assert.ok(calls.some((call) => call.path === "/api/v1/counterparties/counterparty-1/transaction-history?limit=10"));
+  assert.ok(calls.some((call) => call.path === "/api/v1/accounts/account-1/statements/statement-1"));
+  assert.ok(calls.every((call) => call.signal instanceof AbortSignal));
 });
 
 test("거래 분류·기억 메모·납부 알림은 버전과 멱등키를 가진 회원 수정 API를 사용한다", async (t) => {
@@ -184,6 +186,20 @@ test("감사권한이 없는 탐지 관리자는 감사 API를 호출하지 않�
   assert.equal(bundle.auditAuthorized, false);
   assert.equal(bundle.audit.length, 0);
   assert.ok(!paths.some((path) => path.startsWith("/api/v1/audit/events")));
+});
+
+test("관리자 부분 조회 장애는 빈 결과가 아니라 실패 항목으로 보존한다", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const path = String(input);
+    if (path.endsWith("/admin/policies/versions")) {
+      return new Response(JSON.stringify({ success: false, status: 503, code: "UNAVAILABLE", message: "정책 저장소를 확인할 수 없습니다.", data: null, errors: [], timestamp: "2026-09-01T00:00:00Z", traceId: "trace" }), { status: 503, headers: { "content-type": "application/json" } });
+    }
+    return response({ items: [] });
+  });
+  const admin = { ...session, roles: ["DETECTION_ADMIN"], permissions: [] };
+  const bundle = await loadAdminOperations(admin);
+  assert.deepEqual(bundle.policies, []);
+  assert.deepEqual(bundle.partialFailures, [{ section: "policies", message: "정책 저장소를 확인할 수 없습니다." }]);
 });
 
 test("로그인 행원 사건 화면은 데모 capability가 아닌 운영 Bearer 큐와 상세를 조회한다", async (t) => {

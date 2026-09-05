@@ -53,7 +53,7 @@ class PublicSyntheticMemberAuthIntegrationTest {
     @BeforeAll
     void provisionPublicMembers() {
         var run = fixtureService.generate(
-                SyntheticFixtureProfile.PUBLIC, "synthetic-v3.0.0", 20_260_901L, 50, false);
+                SyntheticFixtureProfile.PUBLIC, "synthetic-v3.1.0", 20_260_901L, 50, false);
         provisioningService.provision(run.runId(), PASSWORD_HASH);
     }
 
