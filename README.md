@@ -1,6 +1,8 @@
 # ALZ's well
 
-금융생활 변화 조기알림 및 행원 보호업무 코파일럿 프로젝트다.
+금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿 프로젝트다.
+
+문서 점검 기준은 2026-09-05 코드 `517781c`다. [현행 구현·검증 상태](docs/CURRENT_IMPLEMENTATION_STATUS.md)에 수치와 보류 작업을 정리했다. PUBLIC v3.1의 300명·216,000건 생성 규격은 코드에 반영됐으며 AWS 적재·역할별 E2E·최종 릴리스는 보류 중이다.
 
 개발 브랜치와 커밋 규칙은 [`CONTRIBUTING.md`](./CONTRIBUTING.md)를 따른다.
 
@@ -52,7 +54,7 @@ AWS 구성은 [`docs/AWS_BACKEND_DEPLOYMENT.md`](./docs/AWS_BACKEND_DEPLOYMENT.m
 11. 실서비스 전환 게이트: [`docs/PRODUCTION_READINESS.md`](./docs/PRODUCTION_READINESS.md)
 12. Staging 배포 체크리스트: [`docs/STAGING_DEPLOYMENT_CHECKLIST.md`](./docs/STAGING_DEPLOYMENT_CHECKLIST.md)
 
-충돌 시 `최신 대회 공식 공지 → 최종 SSOT → 최종 API 명세 → 실제 구현과 테스트` 순서로 판단하고, 차이가 생기면 문서와 구현을 같은 변경에서 함께 갱신한다.
+제품 목적·안전 경계는 SSOT, API 계약은 명세를 따른다. 구현 완료 여부는 실제 코드·테스트, 배포 여부는 날짜·digest가 있는 증적으로 확인하고 불일치 문서를 함께 갱신한다. 공식 제출 조건은 최신 대회 공지로 별도 확인한다.
 
 레거시 보고서·렌더·구 API 명세는 배포·SSOT에서 제외하며, 필요한 이력은 Git 기록에서
 확인한다. 로컬 `archive/`는 버전 관리하지 않는다.

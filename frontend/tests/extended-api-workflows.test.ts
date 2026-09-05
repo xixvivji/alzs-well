@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./session-recovery.test";
 import test from "node:test";
 import { ApiClientError } from "../lib/api";
 import { loadAlertAudit } from "../lib/alert-audit";
@@ -293,6 +294,7 @@ function privateSession() {
 test("401이면 HttpOnly 세션을 자동 갱신하고 한 번만 재시도한다", async (t) => {
   let refreshCalls = 0;
   t.mock.method(globalThis, "fetch", async (input, init) => {
+    if (String(input) === "/api/v1/auth/me") return new Response(null, { status: 401 });
     assert.equal(String(input), "/api/member-auth/refresh");
     assert.equal(init?.body, undefined);
     refreshCalls += 1;

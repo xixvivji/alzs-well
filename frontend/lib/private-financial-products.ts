@@ -1,5 +1,6 @@
 import { invokeApiOperation } from "./api-operation-client";
-import { invalidatePrivateCustomerSession, withPrivateCustomerSession } from "./private-auth-session";
+import { invalidatePrivateCustomerSession, recoverPrivateSession, withPrivateCustomerSession } from "./private-auth-session";
+import { ApiClientError } from "./api";
 
 export type PrivateCustomerSession = {
   principalId: string;
@@ -47,6 +48,15 @@ export async function loginPrivateCustomer(loginId: string, password: string): P
 }
 
 export async function restorePrivateCustomerSession(): Promise<PrivateCustomerSession> {
+  try { return await readPrivateCustomerSession(); }
+  catch (error) {
+    if (!(error instanceof ApiClientError) || error.status !== 401) throw error;
+    await recoverPrivateSession();
+    return readPrivateCustomerSession();
+  }
+}
+
+async function readPrivateCustomerSession(): Promise<PrivateCustomerSession> {
   const [me, permissions] = await Promise.all([
     invokeApiOperation<CurrentUser>("GET /api/v1/auth/me"),
     invokeApiOperation<PermissionList>("GET /api/v1/auth/me/permissions"),

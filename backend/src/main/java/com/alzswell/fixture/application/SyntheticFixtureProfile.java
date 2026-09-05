@@ -3,7 +3,7 @@ package com.alzswell.fixture.application;
 public enum SyntheticFixtureProfile {
     SMOKE(10, 60),
     DEMO(50, 240),
-    PUBLIC(300, 240),
+    PUBLIC(300, 720),
     LOAD(250, 300),
     DEV(1_000, 1_000);
 

@@ -25,7 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
 class SyntheticFixtureGenerationIntegrationTest {
-    private static final String FIXTURE_VERSION = "synthetic-v3.0.0";
+    private static final String FIXTURE_VERSION = "synthetic-v3.1.0";
     private static final long SEED = 20_260_825L;
 
     @Container
@@ -151,7 +151,7 @@ class SyntheticFixtureGenerationIntegrationTest {
     @Test
     void loadProfileStaysWithinTheDailyIntegrationRange() {
         assertThat(SyntheticFixtureProfile.PUBLIC.customerCount()).isEqualTo(300);
-        assertThat(SyntheticFixtureProfile.PUBLIC.transactionCount()).isEqualTo(72_000);
+        assertThat(SyntheticFixtureProfile.PUBLIC.transactionCount()).isEqualTo(216_000);
         assertThat(SyntheticFixtureProfile.LOAD.customerCount()).isEqualTo(250);
         assertThat(SyntheticFixtureProfile.LOAD.accountCount()).isEqualTo(500);
         assertThat(SyntheticFixtureProfile.LOAD.transactionCount()).isEqualTo(75_000);
@@ -166,7 +166,11 @@ class SyntheticFixtureGenerationIntegrationTest {
                 "$2y$12$Bu7SxonBbyIlnLnrupD/.eEWz3ZVBoC8bDvguOq9iJlsOAN8pGxBm");
 
         assertThat(members.activeMembers()).isEqualTo(300);
-        assertThat(result.actualTransactionCount()).isEqualTo(72_000);
+        assertThat(result.actualTransactionCount()).isEqualTo(216_000);
+        assertThat(jdbc.queryForObject("""
+                select count(distinct t.display_description) from financial_transaction_snapshot t
+                join synthetic_fixture_customer f on f.customer_id=t.customer_id where f.run_id=?
+                """, Integer.class, result.runId())).isGreaterThanOrEqualTo(25);
         assertThat(jdbc.queryForObject("""
                 select count(distinct p.customer_id) from auth_principal p
                 join synthetic_fixture_customer f on f.customer_id=p.customer_id where f.run_id=?

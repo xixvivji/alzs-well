@@ -1,10 +1,10 @@
 # ALZ's well 최종 백엔드 API 명세서
 
-> 문서 버전: **1.32.0**
+> 문서 버전: **1.33.0**
 > 상태: **통합 최종안 · API 설계 SSOT**  
-> 기준일: **2026-08-31 (Asia/Seoul)**
+> 코드 정합성 점검일: **2026-09-05 (Asia/Seoul), 517781c**
 > 백엔드: **Java 21 · Spring Boot 3.5.16 · PostgreSQL · 모듈형 모놀리스**  
-> 프론트 계약: **React 또는 Vue에서 독립적으로 사용하는 JSON REST API**  
+> 프론트 계약: **Next.js·React와 HttpOnly BFF에서 사용하는 JSON REST API**
 > 런타임 네트워크: **AIR_GAPPED_DEMO · Docker internal 네트워크로 외부 egress 차단**
 > 상위 제품 기준: `ALZS_WELL_PROJECT_SSOT.md`
 
@@ -35,7 +35,7 @@ API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같�
 
 문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 238개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 239개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
 
-여기서 API 283개라는 수치는 SSOT의 평가용 합성 프로필 240개 목표와 무관하다.
+API 수와 합성 회원 수는 별개다. 현재 PUBLIC v3.1 생성 규격은 고객 300명·회원당 거래 720건(총 216,000건)이다. V77·v3.1의 AWS 배포 및 적재 검증은 보류 중이다. 상세 상태는 `CURRENT_IMPLEMENTATION_STATUS.md`를 따른다.
 
 ## 구현 결정
 
@@ -184,7 +184,7 @@ ALZ's well은 은행 코어를 새로 만드는 서비스가 아니다. 고객 �
 | 데이터 접근 | Spring Data JPA 기본, 필요한 분석 조회만 JDBC·jOOQ 보조 |
 | 마이그레이션 | Flyway |
 | 구조 | Spring Boot 모듈형 모놀리스 |
-| 프론트 계약 | React 또는 Vue에서도 사용할 수 있는 JSON REST API |
+| 프론트 계약 | Next.js·React와 HttpOnly BFF가 사용하는 JSON REST API |
 | P0 AI | 규칙·통계 탐지 + 정책엔진 + 결정론적 템플릿 |
 | 선택형 AI | LLM과 벡터 RAG는 P1 이후 |
 | P0 데이터 | 완전 합성데이터만 사용 |
@@ -589,9 +589,9 @@ OPEN
 | P0 RAG | 벡터DB 필수 | 구조화 공식 근거 카탈로그 P0, 벡터 RAG P1 |
 | 백엔드 구조 | MSA·Kafka·Kubernetes | Spring Boot 모듈형 모놀리스 |
 | Spring 버전 | 원본 문서의 Spring Boot 4.1 | 실제 빌드 기준 Spring Boot 3.5.16 |
-| 프론트 결합 | Thymeleaf·HTMX 전용 계약 | React·Vue에서도 사용할 JSON REST 계약 |
-| 합성데이터 규모 | 240개 거래 또는 240개 시연 고객 | 평가용 합성 프로필 240개 목표, 시연 페르소나는 소수 |
-| 공개 데모 보안 | JWT·RBAC 구현 완료 주장 | 현재 합성데모는 공개, PoC·운영 전에 RBAC 구현 |
+| 프론트 결합 | Thymeleaf·HTMX 전용 계약 | Next.js·React + HttpOnly BFF의 JSON REST 계약 |
+| 합성데이터 규모 | 초기 240개 프로필 목표와 현행 생성 규모 혼동 | PUBLIC v3.1은 회원 300명·거래 216,000건 생성 규격, AWS 적재 별도 확인 |
+| 공개 데모 보안 | 익명 공개를 무권한으로 해석 | 익명 capability 격리와 합성 회원 Bearer·RBAC 구현, 실제 기업 IdP 도입은 별도 |
 | 보호계획 승인 | 실제 지급정지·차단 승인 또는 고객 전달 완료 | 상담 `guidancePlan` 승인만 기록, 전달·외부 실행은 별도 상태 |
 | 신뢰연락인 | 가족이면 자동 권한 | 별도 동의와 최소정보, 법적 대리권과 분리 |
 | 데이터 연결 | 실제 전 금융사 연결 주장 | P0 합성데이터, 실연동은 적법한 제휴 후 P2 |
@@ -1692,7 +1692,7 @@ GET /api/v1/system/health
 GET /api/v1/system/core-readiness
 ```
 
-DB 연결, Flyway V76, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
+DB 연결, Flyway V77, 합성 fixture, 보호업무 정책, 활성 탐지정책과 공개 데모 안전 가드레일만 검사한다. AI 검색 서비스가 중단되어도 이 응답이 `READY`이면 규칙·템플릿 폴백으로 고객 확인과 행원 검토 흐름을 계속할 수 있다. 준비되면 `SYSTEM_CORE_READY`, 하나라도 실패하면 `503 SYSTEM_NOT_READY`를 반환한다.
 
 ```json
 {
@@ -2360,7 +2360,7 @@ GET /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/audit?cursor={cursor}&lim
         "evidenceIds": ["CONSENT_SNAPSHOT_001"],
         "algorithmVersion": "baseline-rules-v2.0.0",
         "policyVersion": "context-policy-v1.0.0",
-        "schemaVersion": "76",
+        "schemaVersion": "77",
         "requestHash": "sha256:context-b-request-001...",
         "idempotencyKeyHash": "sha256:context-b-key-001...",
         "traceId": "frontend-trace-0007",
@@ -2902,7 +2902,7 @@ GET /api/v1/system/readiness
 }
 ```
 
-데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V76과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
+데이터베이스 또는 필수 fixture가 준비되지 않으면 `503 Service Unavailable`과 `SYSTEM_NOT_READY`를 반환한다. Flyway 준비상태는 최신 성공 migration이 서비스의 필수 스키마 버전 V77과 정확히 일치하고 실패 migration이 없을 때만 `UP`이다. 활성 탐지정책이 정확히 하나가 아니어도 readiness는 `DOWN`이다. `/system/core-readiness`는 AI와 무관한 핵심 업무 의존성만, `/system/ai-readiness`는 AI 기능만 검사한다. 기존 `/system/readiness`는 두 결과를 합치되 `AI_REQUIRE_FOR_CORE_READINESS=false`이면 AI 중단을 핵심 데모 중단으로 승격하지 않는다. AWS AI 통합 staging은 strict 모드를 사용하며 Spring이 FastAPI `/readiness`의 `status=READY`, 모델 승인상태·revision·artifact/골든셋 SHA-256·index version·배포환경을 검증한다. 불일치하면 `MISMATCH`, 무응답이면 `DOWN`으로 AI readiness를 실패시킨다. FastAPI `/health`는 프로세스 liveness 전용이므로 모델·DB 준비상태 판정에 사용하지 않는다.
 
 #### 공개 설정
 
@@ -2955,7 +2955,7 @@ GET /api/v1/system/versions
   "data": {
     "applicationVersion": "0.0.1-SNAPSHOT",
     "apiVersion": "v1",
-    "schemaVersion": "76",
+    "schemaVersion": "77",
     "fixtureVersion": "fin-mgmt-ab-v2.0.0",
     "algorithmVersion": "baseline-rules-v2.0.0",
     "policyVersion": "context-policy-v1.0.0",

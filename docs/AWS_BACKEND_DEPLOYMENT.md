@@ -3,7 +3,7 @@
 최종 공모전 staging 기준은 `업무 EC2 1대 + AI EC2 1대 + Private RDS PostgreSQL/pgvector`다. 단일 EC2는 AI를 끈 최소 검증 환경에서만 사용한다. 이 구성은 합성 데이터 전용이며 금융회사 실서비스 보안성 심사를 통과했다는 의미가 아니다.
 
 ```text
-Internet → WAF → HTTPS ALB (public subnet)
+Vercel BFF → HTTPS CloudFront 기본 도메인 → WAF 적용 ALB (public subnet)
                     ↓
 업무 EC2 (private) ─ Nginx + Spring Boot
                     ↓ mTLS https://ai.internal:8443, 내부 토큰

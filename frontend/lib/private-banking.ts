@@ -94,9 +94,9 @@ export async function loadBankingOverview(session: PrivateCustomerSession): Prom
   });
 }
 
-export async function loadAccountWorkspace(session: PrivateCustomerSession, accountId?: string, query?: string): Promise<AccountWorkspace> {
+export async function loadAccountWorkspace(session: PrivateCustomerSession, accountId?: string, query?: string, signal?: AbortSignal): Promise<AccountWorkspace> {
   return withPrivateCustomerSession(session, async (accessToken) => {
-    const customer = { customerId: session.customerId }; const auth = { accessToken };
+    const customer = { customerId: session.customerId }; const auth = { accessToken, signal };
     const [accountList, transactionPage, transactionSummary, recurring, missed, duplicates, groups, counterparties, liabilities, recurringCalendar] = await Promise.all([
       invokeApiOperation<{ items: Account[] }>("GET /api/v1/customers/{customerId}/accounts", { path: customer, ...auth }),
       invokeApiOperation<{ items: Transaction[] }>("GET /api/v1/customers/{customerId}/transactions/search", { path: customer, query: { q: query || undefined, accountId, limit: 50 }, ...auth }),
@@ -176,13 +176,13 @@ function calendarRange() {
   return { from: iso(from), to: iso(to) };
 }
 
-export async function loadTransactionInsight(session: PrivateCustomerSession, transaction: Transaction): Promise<TransactionInsight> {
+export async function loadTransactionInsight(session: PrivateCustomerSession, transaction: Transaction, signal?: AbortSignal): Promise<TransactionInsight> {
   return withPrivateCustomerSession(session, async (accessToken) => {
     const [detail, enrichment, history] = await Promise.all([
-      invokeApiOperation<TransactionInsight["detail"]>("GET /api/v1/transactions/{transactionId}", { path: { transactionId: transaction.transactionId }, accessToken }),
-      invokeApiOperation<TransactionInsight["enrichment"]>("GET /api/v1/transactions/{transactionId}/enrichment", { path: { transactionId: transaction.transactionId }, accessToken }),
+      invokeApiOperation<TransactionInsight["detail"]>("GET /api/v1/transactions/{transactionId}", { path: { transactionId: transaction.transactionId }, accessToken, signal }),
+      invokeApiOperation<TransactionInsight["enrichment"]>("GET /api/v1/transactions/{transactionId}/enrichment", { path: { transactionId: transaction.transactionId }, accessToken, signal }),
       transaction.counterpartyId
-        ? invokeApiOperation<{ items: Transaction[] }>("GET /api/v1/counterparties/{counterpartyId}/transaction-history", { path: { counterpartyId: transaction.counterpartyId }, query: { limit: 10 }, accessToken })
+        ? invokeApiOperation<{ items: Transaction[] }>("GET /api/v1/counterparties/{counterpartyId}/transaction-history", { path: { counterpartyId: transaction.counterpartyId }, query: { limit: 10 }, accessToken, signal })
         : null,
     ]);
     return {
@@ -192,19 +192,19 @@ export async function loadTransactionInsight(session: PrivateCustomerSession, tr
   });
 }
 
-export async function loadRecurringInsight(session: PrivateCustomerSession, recurringPaymentId: string): Promise<RecurringInsight> {
+export async function loadRecurringInsight(session: PrivateCustomerSession, recurringPaymentId: string, signal?: AbortSignal): Promise<RecurringInsight> {
   return withPrivateCustomerSession(session, async (accessToken) => {
     const [detail, occurrences] = await Promise.all([
-      invokeApiOperation<RecurringInsight["detail"]>("GET /api/v1/recurring-payments/{recurringPaymentId}", { path: { recurringPaymentId }, accessToken }),
-      invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/recurring-payments/{recurringPaymentId}/occurrences", { path: { recurringPaymentId }, accessToken }),
+      invokeApiOperation<RecurringInsight["detail"]>("GET /api/v1/recurring-payments/{recurringPaymentId}", { path: { recurringPaymentId }, accessToken, signal }),
+      invokeApiOperation<{ items: Array<Record<string, unknown>> }>("GET /api/v1/recurring-payments/{recurringPaymentId}/occurrences", { path: { recurringPaymentId }, accessToken, signal }),
     ]);
     return { detail: data(detail, "정기납부 상세"), occurrences: data(occurrences, "정기납부 발생 이력").items };
   });
 }
 
-export async function loadStatementDetail(session: PrivateCustomerSession, accountId: string, statementId: string): Promise<Record<string, unknown>> {
+export async function loadStatementDetail(session: PrivateCustomerSession, accountId: string, statementId: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
   return withPrivateCustomerSession(session, async (accessToken) => data(
-    await invokeApiOperation<Record<string, unknown>>("GET /api/v1/accounts/{accountId}/statements/{statementId}", { path: { accountId, statementId }, accessToken }),
+    await invokeApiOperation<Record<string, unknown>>("GET /api/v1/accounts/{accountId}/statements/{statementId}", { path: { accountId, statementId }, accessToken, signal }),
     "거래명세서 상세",
   ));
 }

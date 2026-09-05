@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccessibilityPreferences } from "../components/AccessibilityControls";
 import "./globals.css";
 import "./bank-home.css";
 import "./assistance-start.css";
@@ -57,6 +58,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" data-scroll-behavior="smooth"><body>{children}</body></html>
+    <html lang="ko" data-scroll-behavior="smooth"><body><AccessibilityPreferences />{children}</body></html>
   );
 }

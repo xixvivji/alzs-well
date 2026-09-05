@@ -10,7 +10,7 @@ group = 'com.alzswell'
 version = '0.0.1-SNAPSHOT'
 description = "ALZ's well financial safety backend"
 
-ext['tomcat.version'] = '10.1.57'
+ext['tomcat.version'] = '10.1.59'
 ext['postgresql.version'] = '42.7.12'
 
 java {

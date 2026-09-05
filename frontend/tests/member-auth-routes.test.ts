@@ -93,6 +93,25 @@ test("login BFF converts backend tokens to HttpOnly cookies and removes them fro
   assert.match(cookies, /HttpOnly/);
 });
 
+test("temporary upstream refresh errors preserve cookies", async (t) => {
+  const origin = process.env.BACKEND_API_ORIGIN;
+  const secret = process.env.BACKEND_PROXY_SHARED_SECRET;
+  process.env.BACKEND_API_ORIGIN = "http://127.0.0.1:8080";
+  process.env.BACKEND_PROXY_SHARED_SECRET = "a".repeat(64);
+  t.after(() => {
+    if (origin === undefined) delete process.env.BACKEND_API_ORIGIN; else process.env.BACKEND_API_ORIGIN = origin;
+    if (secret === undefined) delete process.env.BACKEND_PROXY_SHARED_SECRET; else process.env.BACKEND_PROXY_SHARED_SECRET = secret;
+  });
+  for (const status of [429, 502, 504]) {
+    t.mock.method(globalThis, "fetch", async () => new Response("{}", { status }));
+    const response = await refresh(new Request("http://localhost:3000/api/member-auth/refresh", {
+      method: "POST", headers: { cookie: `alzs-member-refresh=${"b".repeat(43)}` },
+    }));
+    assert.equal(response.status, status);
+    assert.doesNotMatch(response.headers.get("set-cookie") ?? "", /alzs-member-(access|refresh)=/);
+  }
+});
+
 test("refresh cookie가 없으면 남은 access cookie도 함께 제거한다", async () => {
   const response = await refresh(new Request("https://alzs-well.vercel.app/api/member-auth/refresh", {
     method: "POST", headers: { cookie: `__Host-alzs-member-access=${"a".repeat(43)}` },
