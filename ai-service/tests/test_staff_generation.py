@@ -56,6 +56,24 @@ def test_rejects_invented_completed_action(enabled):
     assert generate_draft(payload(), Mock(generate=Mock(return_value=raw))).fallbackUsed
 
 
+@pytest.mark.parametrize("code,text", [
+    ("REPEATED_CONFIRMATION", "고객이 중복 송금에 대해 잘 모르는 것으로 보입니다."),
+    ("REPEATED_CONFIRMATION", "고객님의 정기납부를 확인하세요."),
+    ("DUPLICATE_TRANSFER", "거래를 여러 번 확인하셨나요?"),
+])
+def test_rejects_general_guidance_as_case_fact(enabled, code, text):
+    request = payload().model_copy(update={"reasonCodes": [code]})
+    raw = valid_text().replace("고객 확인이 필요합니다.", text)
+    result = generate_draft(request, Mock(generate=Mock(return_value=raw)))
+    assert result.fallbackUsed and result.draft is None
+
+
+def test_accepts_only_present_signal_and_preserves_valid_multiple_signals(enabled):
+    raw = valid_text().replace("고객 확인이 필요합니다.", "중복 송금과 반복 확인의 맥락을 확인하세요.")
+    request = payload().model_copy(update={"reasonCodes": ["DUPLICATE_TRANSFER", "REPEATED_CONFIRMATION"]})
+    assert not generate_draft(request, Mock(generate=Mock(return_value=raw))).fallbackUsed
+
+
 @pytest.mark.parametrize("raw", ["not json", "x" * 12001, '{"summary":"x"}',
     valid_text().replace("송금", "HTTPS://bad.example 송금"),
     valid_text().replace("송금", "<script>송금")])
