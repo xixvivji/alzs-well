@@ -45,20 +45,23 @@ export async function loadSafetyCenter(
   session: PrivateCustomerSession,
   alertId?: string,
   signal?: AbortSignal,
+  initialLists?: { baselines: Baseline[]; signals: ChangeSignal[]; alerts: SafetyAlert[] },
 ): Promise<SafetyCenterBundle> {
   return withPrivateCustomerSession(session, async (accessToken) => {
     const path = { customerId: session.customerId };
-    const [baselineResponse, signalResponse, alertResponse] = await Promise.all([
+    const responses = initialLists ? null : await Promise.all([
       invokeApiOperation<{ items: Baseline[] }>("GET /api/v1/customers/{customerId}/baselines", { path, accessToken, signal }),
       invokeApiOperation<{ items: ChangeSignal[] }>("GET /api/v1/customers/{customerId}/signals", { path, accessToken, signal }),
       invokeApiOperation<{ items: SafetyAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, accessToken, signal }),
     ]);
-    const baselines = body(baselineResponse, "개인 기준선").items;
-    const signals = body(signalResponse, "변화신호").items;
-    const alerts = body(alertResponse, "확인 알림").items;
-    const selectedBaseline = baselines[0];
-    const selectedSignal = signals[0];
-    const selectedAlert = alerts.find((item) => item.alertId === alertId) ?? alerts[0] ?? null;
+    const baselines = initialLists?.baselines ?? body(responses![0], "개인 기준선").items;
+    const signals = initialLists?.signals ?? body(responses![1], "변화신호").items;
+    const alerts = initialLists?.alerts ?? body(responses![2], "확인 알림").items;
+    const selectedAlert = alertId ? alerts.find((item) => item.alertId === alertId) ?? null
+      : alerts.find((item) => ["AWAITING_CONTEXT", "DEFERRED"].includes(item.state)) ?? alerts[0] ?? null;
+    if (alertId && !selectedAlert) throw new Error("이 계정에서 해당 알림을 찾을 수 없습니다. 목록을 새로 확인해 주세요.");
+    const selectedSignal = selectedAlert ? signals.find((item) => item.signalId === selectedAlert.signalId) : signals[0];
+    const selectedBaseline = selectedSignal ? baselines.find((item) => item.baselineId === selectedSignal.baselineId) : undefined;
     const [featureResponse, evidenceResponse, alertDetailResponse, optionResponse, auditResponse] = await Promise.all([
       selectedBaseline ? invokeApiOperation<{ items: BaselineFeature[] }>("GET /api/v1/customers/{customerId}/baselines/{baselineId}/features", { path: { ...path, baselineId: selectedBaseline.baselineId }, accessToken, signal }) : null,
       selectedSignal ? invokeApiOperation<{ items: SignalEvidence[] }>("GET /api/v1/signals/{signalId}/evidence", { path: { signalId: selectedSignal.signalId }, accessToken, signal }) : null,
@@ -84,5 +87,12 @@ export async function respondToSafetyAlert(session: PrivateCustomerSession, aler
   await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("POST /api/v1/alerts/{alertId}/context-responses", {
     path: { alertId: alert.alertId }, accessToken, idempotencyKey: crypto.randomUUID(),
     body: { responseCode, expectedVersion: alert.version },
+  }));
+}
+
+export async function deferSafetyAlert(session: PrivateCustomerSession, alert: SafetyAlert): Promise<void> {
+  await withPrivateCustomerSession(session, (accessToken) => invokeApiOperation("POST /api/v1/alerts/{alertId}/defer", {
+    path: { alertId: alert.alertId }, accessToken, idempotencyKey: crypto.randomUUID(),
+    body: { deferredUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), expectedVersion: alert.version },
   }));
 }

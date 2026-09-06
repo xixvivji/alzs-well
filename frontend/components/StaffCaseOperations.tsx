@@ -64,7 +64,7 @@ export function StaffCaseOperations({ context, caseId, staffCapability, caseVers
   if (!operations) return <section className="panel empty-state"><p>{error || "업무 기록을 불러오지 못했습니다."}</p></section>;
 
   return <section className="panel staff-operations-section">
-    <div className="section-heading"><div><p className="label">별도 API 연결</p><h2>타임라인·내부 메모·후속관리</h2></div><span className="status-chip">사건 v{caseVersion}</span></div>
+    <div className="section-heading"><div><h2>타임라인·내부 메모·후속관리</h2></div><span className="status-chip">사건 v{caseVersion}</span></div>
     <div className="operations-tabs" aria-label="업무 기록 요약"><span>타임라인 {operations.timeline.phases.length}</span><span>감사 {operations.timeline.auditTrail.length}</span><span>메모 {operations.notes.count}</span><span>후속 {operations.followUps.count}</span></div>
 
     <div className="operations-grid">

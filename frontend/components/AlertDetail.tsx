@@ -120,7 +120,7 @@ export function AlertDetail({ alertId }: { alertId: string }) {
   const primaryReason = reasonCodes[0] ?? evidenceSignals[0]?.reasonCode;
   return <>
     {rehearsal && <section className="rehearsal-cue" role="note"><strong>{rehearsal.label} 리허설</strong><span>이번 선택: {rehearsal.customerAction}</span><small>목표 상태 {rehearsal.expectedState}</small></section>}
-    {result ? <section className="panel result-panel"><p className="label">고객 응답 처리 완료</p><h2>{result.message}</h2><p className="state-confirmation">확인된 상태 <strong>{result.currentState}</strong></p>{result.currentState === "DEFERRED" && result.deferredUntil && <p>다시 확인할 시각 <strong>{dateTime(result.deferredUntil)}</strong></p>}{result.currentState === "PENDING_BANK_REVIEW" ? <Link className="primary-button" href="/staff/cases">행원 사건 화면에서 계속하기</Link> : <Link className="primary-button" href="/demo">내 금융생활로 돌아가기</Link>}</section> : <>
+    {result ? <section className="panel result-panel"><p className="label">고객 응답 처리 완료</p><h2>{result.message}</h2><p className="state-confirmation">확인된 상태 <strong>{result.currentState}</strong></p>{result.currentState === "DEFERRED" && result.deferredUntil && <p>다시 확인할 시각 <strong>{dateTime(result.deferredUntil)}</strong></p>}{result.currentState === "PENDING_BANK_REVIEW" ? <Link className="primary-button" href="/demo/staff/cases">행원 사건 화면에서 계속하기</Link> : <Link className="primary-button" href="/demo">내 금융생활로 돌아가기</Link>}</section> : <>
       <p className="step-indicator">3단계 중 2단계 · 내용 확인</p>
       <section className="panel detail-panel">
         <p className="label">확인이 필요한 금융생활 변화</p>

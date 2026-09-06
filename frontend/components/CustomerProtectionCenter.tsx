@@ -64,7 +64,7 @@ export function CustomerProtectionCenter() {
     return <ProtectionStart busy={loading} error={error} onStart={() => void start()} />;
   }
   if (!snapshot) {
-    return <section className="panel protection-loading"><div className={loading ? "bank-spinner" : "protection-error-mark"}>{loading ? "" : "!"}</div><h2>{loading ? "나의 보호 상태를 확인하고 있습니다." : "보호센터 연결을 다시 확인해 주세요."}</h2><p>{error || "합성 금융생활과 AI 보조정보를 안전하게 불러옵니다."}</p><button className="primary-button" type="button" disabled={loading} onClick={() => void start()}>새 안전 체험 시작</button></section>;
+    return <section className="panel protection-loading"><div className={loading ? "bank-spinner" : "protection-error-mark"}>{loading ? "" : "!"}</div><h2>{loading ? "나의 보호 상태를 확인하고 있습니다." : "보호센터 연결을 다시 확인해 주세요."}</h2><p>{error || "금융생활 정보를 불러옵니다."}</p><button className="primary-button" type="button" disabled={loading} onClick={() => void start()}>새 안전 체험 시작</button></section>;
   }
 
   const changes = snapshot.analysis?.changes.filter((item) => item.changeDetected) ?? [];
@@ -75,7 +75,7 @@ export function CustomerProtectionCenter() {
   return <div className="customer-protection-center">
     <section className="protection-hero">
       <div className="protection-hero-copy">
-        <p><span>ALZ&apos;s well 안심 보호센터</span> 합성데이터 실시간 요약</p>
+        <p><span>ALZ&apos;s well 안심 보호센터</span> 확인할 내용</p>
         <h2>오늘의 금융생활,<br/><em>확인할 것만 간단하게.</em></h2>
         <p className="protection-hero-description">AI는 변화를 설명하고 사람은 맥락을 확인합니다. 진단하거나 거래를 자동으로 막지 않습니다.</p>
         <div className="protection-hero-actions">
@@ -135,7 +135,7 @@ export function CustomerProtectionCenter() {
       <Link href="/demo/alerts"><span>01</span><strong>변화 알림</strong><small>쉬운 말로 확인</small><b>→</b></Link>
       <Link href="/demo/ai-assistant"><span>02</span><strong>AI 의향서</strong><small>직접 수정·승인</small><b>→</b></Link>
       <Link href="/demo/settings"><span>03</span><strong>도움 설정</strong><small>접근성·신뢰 연락처</small><b>→</b></Link>
-      <Link href="/staff/cases"><span>04</span><strong>행원 연결</strong><small>사람의 최종 검토</small><b>→</b></Link>
+      <Link href="/demo/staff/cases"><span>04</span><strong>행원 연결</strong><small>사람의 최종 검토</small><b>→</b></Link>
     </section>
 
     {snapshot.unavailable.length > 0 && <p className="protection-warning" role="status">일부 보조정보({snapshot.unavailable.map(unavailableLabel).join(", ")})를 불러오지 못했지만 고객 알림과 금융생활 요약은 정상적으로 표시됩니다.</p>}
@@ -144,7 +144,7 @@ export function CustomerProtectionCenter() {
 }
 
 function ProtectionStart({ busy, error, onStart }: { busy: boolean; error: string; onStart: () => void }) {
-  return <section className="panel protection-start"><div><p className="label">고객 보호센터</p><h2>오늘 확인할 금융생활을<br/>한 화면에 모았습니다.</h2><p>기존 정상·주의·오탐 합성데이터를 사용하며 실제 금융기관이나 고객정보에는 연결하지 않습니다.</p><button className="primary-button" type="button" disabled={busy} onClick={onStart}>{busy ? "안전 환경 준비 중…" : "보호센터 안전 체험 시작"}</button>{error && <p className="api-error" role="alert">{error}</p>}</div><div className="protection-start-preview"><span>오늘의 확인</span><strong>변화 알림 · 나의 의향 · 사람 검토</strong><small>외부 금융 실행 0건</small></div></section>;
+  return <section className="panel protection-start"><div><p className="label">고객 보호센터</p><h2>오늘 확인할 금융생활을<br/>한 화면에 모았습니다.</h2><p>변화를 살펴보고 필요한 도움을 선택해 보세요.</p><button className="primary-button" type="button" disabled={busy} onClick={onStart}>{busy ? "안전 환경 준비 중…" : "보호센터 안전 체험 시작"}</button>{error && <p className="api-error" role="alert">{error}</p>}</div><div className="protection-start-preview"><span>오늘의 확인</span><strong>변화 알림 · 나의 의향 · 사람 검토</strong><small>외부 금융 실행 0건</small></div></section>;
 }
 
 function SectionHeading({ label, title, side }: { label: string; title: string; side: string }) {

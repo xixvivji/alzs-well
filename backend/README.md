@@ -1,15 +1,15 @@
 # ALZ's well 백엔드
 
-금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿의 공모전용 Spring 백엔드다. `FIN_MGMT_AB_001` 시나리오와 회원별 PUBLIC fixture 등 완전 합성데이터를 사용하며 실제 송금·지급정지·한도변경·가족 연락·외부 상용 AI 호출은 실행하지 않는다.
+금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿의 공모전용 Spring 백엔드다. `FIN_MGMT_AB_001` 시나리오와 회원별 PUBLIC fixture 등 완전 합성데이터를 사용하며 실제 송금·지급정지·한도변경·가족 연락은 실행하지 않는다. 기본 template 모드는 외부 추론을 하지 않으며, 승인된 합성 사건의 선택형 Bedrock 모드만 FastAPI를 통해 외부 추론을 사용한다.
 
-2026-09-05 코드 `517781c`는 Tomcat 10.1.59·Flyway V77·PUBLIC v3.1(300명, 216,000건 생성 규격)을 포함한다. AWS 배포·fixture 적재는 별도 보류 상태이며 [현행 상태](../docs/CURRENT_IMPLEMENTATION_STATUS.md)를 따른다.
+2026-09-06 기준 Tomcat 10.1.59·Flyway V77·PUBLIC v3.1(300명, 거래 216,000건)의 AWS 배포·적재와 역할별 BFF 검증을 완료했다. [v0.1.4 증적](../docs/RELEASE_V0_1_4.md)과 [Bedrock 사건 초안의 승인 범위·실제 호출 증적](../docs/BEDROCK_STAFF_DRAFT.md)을 따른다. 이는 합성 환경 검증이며 실고객 운영 승인을 뜻하지 않는다.
 
 상위 제품 기준은 [`../ALZS_WELL_PROJECT_SSOT.md`](../ALZS_WELL_PROJECT_SSOT.md), 요청·응답 계약은 [`../docs/FINAL_BACKEND_API_SPEC.md`](../docs/FINAL_BACKEND_API_SPEC.md)다.
 
 ## 기술 기준
 
 - Java 21, Spring Boot 3.5.16, Gradle 8.14.3 Wrapper
-- PostgreSQL 17.11, Spring Data JPA·JDBC, Flyway V36
+- PostgreSQL 17.11, Spring Data JPA·JDBC, Flyway V77
 - Spring MVC·Security·Validation, Actuator
 - JUnit 5, Testcontainers
 

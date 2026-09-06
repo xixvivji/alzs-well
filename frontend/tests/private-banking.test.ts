@@ -7,10 +7,236 @@ import { loadAdminOperations, loadStaffOperations } from "../lib/operational-por
 import { loadOperationalCaseBundle, loadOperationalCaseQueue, startOperationalCaseReview } from "../lib/private-staff-cases";
 import { loadPrivateHelpOverview, loadPrivateLongitudinalAnalysis } from "../lib/private-help";
 import type { PrivateCustomerSession } from "../lib/private-financial-products";
+import { deferSafetyAlert, type SafetyCenterBundle } from "../lib/private-safety-center";
+import { approveCaseGuidance, completeCaseReview, finishCaseFollowUp, loadCaseCustomerIntent, loadOperationalCasePage, scheduleCaseFollowUp, type OperationalCaseSummary } from "../lib/private-staff-cases";
+import { caseIdFromSearch, safePortalNext, staffLoginPath } from "../lib/prototype-navigation";
+import { adminLinks, canOpenStaffPage, loginDestination, portalHome, staffLinks, staffRoleFor } from "../lib/portal-access";
+import { accountDisplayName, customerLabel, evidenceDescription } from "../lib/presentation-copy";
+import { loadServiceAvailability, loadServiceMetadata } from "../lib/system-status";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { OperationalCaseReview } from "../components/OperationalCaseReview";
+import { reviewEventLabel, reviewNextTask, reviewPrompt } from "../lib/staff-review-presentation";
+import type { OperationalCaseBundle } from "../lib/private-staff-cases";
+
+const reviewFixture: OperationalCaseBundle = {
+  detail: { caseSummary: { caseId: "case-1", alertId: "alert-1", signalId: "signal-1", customerId: "customer-1", reviewPriority: "HIGH", taskStatus: "IN_REVIEW", version: 3, assignedTeam: "TEAM", assignedTo: "staff-1", createdAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-02T00:00:00Z" }, customerResponseCode: "UNRECOGNIZED", reasonCode: "MISSED_RECURRING_PAYMENT", alertState: "BANK_REVIEW", selectedActionCodes: [], guidancePlanId: null },
+  evidence: { baselineValue: "0", currentValue: "1", unit: "COUNT", items: [{ evidenceId: "evidence-1", description: "예정된 정기납부가 확인되지 않은 합성 근거입니다.", occurredAt: "2026-09-01T00:00:00Z", amount: null, currency: null, sourceReference: "source-1" }] },
+  notes: [], followUps: [], timeline: [{ eventType: "CASE_CREATED", summary: "운영형 행원 사건 생성", occurredAt: "2026-09-01T00:00:00Z", previousState: null, resultingState: "PENDING" }],
+};
+const renderReview = (bundle: OperationalCaseBundle, principalId = "staff-1") => renderToStaticMarkup(createElement(OperationalCaseReview, { bundle, session: { principalId, roles: ["PROTECTION_STAFF"] } as PrivateCustomerSession, busy: false, runCommand: async () => false }));
+
+test("고객 내용과 행원 작성 영역은 서로 다른 배경 클래스를 사용하며 참고자료와 섞지 않는다", () => {
+  const bundle = structuredClone(reviewFixture);
+  bundle.notes = [{ noteId: "note-1", noteText: "행원이 확인한 내용", createdAt: "2026-09-02T00:00:00Z", createdBy: "staff-1" }];
+  const html = renderReview(bundle);
+  assert.match(html, /class="case-customer-source"[^>]*data-origin="customer"/);
+  assert.match(html, /class="case-section case-customer-source"[^>]*data-origin="customer"/);
+  assert.match(html, /class="case-section case-staff-source"[^>]*aria-labelledby="case-decision-title"/);
+  assert.match(html, /class="case-section case-staff-source"[^>]*aria-labelledby="case-followup-title"/);
+  assert.match(html, /class="case-system-source"[^>]*data-origin="system"/);
+  assert.match(html, /내가 작성<!-- --> · 저장됨|내가 작성 · 저장됨/);
+  assert.doesNotMatch(html, /case-data-origin|origin-customer|origin-staff/);
+});
+
+test("행원 작업 영역은 세 탭으로 나누고 고객 응답·수치를 공통 요약으로 유지한다", () => {
+  const html = renderReview(reviewFixture);
+  assert.equal((html.match(/role="tab"/g) ?? []).length, 3);
+  assert.equal((html.match(/role="tabpanel"/g) ?? []).length, 3);
+  assert.match(html, /id="case-tab-facts"[^>]*aria-selected="true"/);
+  assert.match(html, /id="case-area-decision"[^>]*hidden=""/);
+  assert.ok(html.indexOf("고객이 남긴 응답") < html.indexOf('role="tablist"'));
+  assert.match(html, /제가 모르는 변화예요/);
+  assert.match(html, /예정된 정기납부 내역이 확인되지 않았습니다/);
+  assert.match(html, /공유 의향 확인/);
+  assert.doesNotMatch(html, /합성 근거|API가 제공|백엔드의 결정론적|prototype-role-switch/);
+});
+
+test("검토 질문은 사건 사유에 맞는 백엔드 기본 질문만 표시한다", () => {
+  assert.match(renderReview(reviewFixture), /최근 정기납부가 처리되지 않은 이유/);
+  assert.doesNotMatch(renderReview(reviewFixture), /같은 금액을 두 번 송금한 사유/);
+  assert.match(reviewPrompt("DUPLICATE_TRANSFER")!.question, /같은 금액을 두 번/);
+  assert.match(reviewPrompt("REPEATED_CONFIRMATION")!.check, /결과화면 지연/);
+  assert.equal(reviewPrompt("UNKNOWN_REASON"), null);
+  assert.equal(reviewEventLabel("CASE_CREATED", "원문"), "은행 검토 접수");
+  assert.equal(reviewEventLabel("UNKNOWN", "원문"), "원문");
+});
+
+test("검토 대기·타 담당 사건에는 승인·종결·후속 등록 폼을 열지 않는다", () => {
+  const pending = structuredClone(reviewFixture); pending.detail.caseSummary.taskStatus = "PENDING";
+  assert.match(renderReview(pending), />검토 시작<\/button>/);
+  assert.doesNotMatch(renderReview(pending), /class="case-guidance-form"|class="case-close-form"|case-new-schedule/);
+  const other = renderReview(reviewFixture, "other-staff");
+  assert.match(other, /다른 행원이 담당/);
+  assert.doesNotMatch(other, /class="case-guidance-form"|class="case-close-form"|case-new-schedule|>내부 메모 저장<\/button>/);
+});
+
+test("안내 승인 후에는 기존 안내와 종결 입력, 종결 후에는 후속관리만 제공한다", () => {
+  const approved = structuredClone(reviewFixture); approved.detail.caseSummary.taskStatus = "GUIDANCE_APPROVED"; approved.detail.guidancePlanId = "plan-1"; approved.detail.selectedActionCodes = ["BRANCH_CONSULTATION"];
+  const html = renderReview(approved);
+  assert.match(html, /승인된 안내계획/); assert.match(html, /영업점 상담 안내/);
+  assert.match(html, /class="case-close-form"/); assert.doesNotMatch(html, /class="case-guidance-form"/);
+  approved.detail.caseSummary.taskStatus = "COMPLETED";
+  const completed = renderReview(approved);
+  assert.doesNotMatch(completed, /class="case-close-form"|class="case-guidance-form"/);
+  assert.match(completed, /새 후속 일정 등록/);
+  assert.match(reviewNextTask("COMPLETED"), /검토가 종결/);
+});
+
+test("각 예정 일정 바로 아래에 결과 입력을 배치하고 완료 일정에는 입력을 표시하지 않는다", () => {
+  const bundle = structuredClone(reviewFixture);
+  bundle.followUps = ["SCHEDULED", "SCHEDULED", "COMPLETED"].map((status, index) => ({ followUpId: `follow-${index}`, purpose: `일정 ${index}`, status, scheduledAt: "2026-09-07T00:00:00Z", outcome: null, version: 1 }));
+  const html = renderReview(bundle);
+  assert.equal((html.match(/확인 결과 또는 취소 사유 \(500자 이내\)/g) ?? []).length, 2);
+  assert.equal((html.match(/>완료 기록<\/button>/g) ?? []).length, 2);
+  assert.match(html, /예정 2건/);
+});
+
+test("서비스 상태는 전용 core·AI 준비상태만 먼저 읽고 버전은 별도 조회한다", async (t) => {
+  const calls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const path = String(input); calls.push(path);
+    if (path.endsWith("/core-readiness")) return response({ ready: true, status: "READY", checks: { database: "UP" } });
+    if (path.endsWith("/ai-readiness")) return response({ ready: false, status: "NOT_READY", checks: { aiRetrieval: "DOWN" } });
+    return response({ featureFlags: { templateFallbackEnabled: true } });
+  });
+  const result = await loadServiceAvailability();
+  assert.equal(result.coreReadiness.ready, true);
+  assert.equal(result.aiReadiness.ready, false);
+  assert.deepEqual(calls, ["/api/v1/system/core-readiness", "/api/v1/system/ai-readiness", "/api/v1/system/public-config"]);
+  await loadServiceMetadata();
+  assert.deepEqual(calls.slice(3), ["/api/v1/system/health", "/api/v1/system/versions"]);
+});
+
+test("로그인 유형이 아닌 서버 역할로 시작 화면과 허용 목적지를 결정한다", () => {
+  assert.equal(loginDestination(["CUSTOMER"], "/staff/control-center"), "/banking");
+  assert.equal(loginDestination(["PROTECTION_STAFF"], "/banking/help"), "/staff/cases");
+  assert.equal(loginDestination(["DETECTION_ADMIN"], "/staff/cases"), "/staff/control-center");
+  assert.equal(loginDestination(["PROTECTION_STAFF"], "/staff/operations"), "/staff/operations");
+  for (const roles of [["PROTECTION_STAFF"], ["DETECTION_ADMIN"]]) {
+    assert.equal(loginDestination(roles, "/staff/system-status"), "/staff/system-status");
+    for (const invalid of ["//evil.example", "/\\evil.example", "https://evil.example", "/staff/../banking"]) assert.equal(loginDestination(roles, invalid), portalHome(roles));
+  }
+  const caseId = "11111111-1111-4111-8111-111111111111";
+  assert.equal(loginDestination(["PROTECTION_STAFF"], `/staff/cases?caseId=${caseId}`), `/staff/cases?caseId=${caseId}`);
+  assert.equal(loginDestination(["CUSTOMER"], "/banking/help?alertId=one"), "/banking/help?alertId=one");
+  assert.equal(loginDestination([], "/staff/cases"), "/");
+});
+
+test("공용 상태 페이지에서도 행원·관리자 메뉴를 유지하며 역할을 우회하지 않는다", () => {
+  assert.equal(staffRoleFor(["PROTECTION_STAFF"]), "protection");
+  assert.equal(staffRoleFor(["DETECTION_ADMIN"]), "admin");
+  assert.equal(staffRoleFor(["CUSTOMER"]), null);
+  assert.deepEqual(staffLinks.map(([path]) => path), ["/staff/operations", "/staff/cases", "/staff/system-status"]);
+  assert.deepEqual(adminLinks.map(([path]) => path), ["/staff/control-center", "/staff/system-status"]);
+  assert.equal(canOpenStaffPage(["CUSTOMER"], "protection"), false);
+  assert.equal(canOpenStaffPage(["DETECTION_ADMIN"], "protection"), false);
+  assert.equal(canOpenStaffPage(["PROTECTION_STAFF"], "admin"), false);
+  assert.equal(canOpenStaffPage(["PROTECTION_STAFF"], "protection"), true);
+  assert.equal(canOpenStaffPage([], "shared"), true);
+});
+
+test("업무용 문구는 알려진 시드 설명만 정리하며 근거·식별자를 조작하지 않는다", () => {
+  assert.equal(evidenceDescription("예정된 정기납부가 확인되지 않은 합성 근거입니다."), "예정된 정기납부 내역이 확인되지 않았습니다.");
+  assert.equal(evidenceDescription("같은 거래 결과를 반복 확인한 합성 상호작용 근거입니다."), "같은 거래 결과를 여러 번 확인한 기록이 있습니다.");
+  assert.equal(evidenceDescription("9월 4일 50,000원 송금 실패"), "9월 4일 50,000원 송금 실패");
+  assert.equal(customerLabel("SYN_V3_PUBLIC_4393bb3d_000001"), "demo001");
+  assert.equal(customerLabel("customer-unknown"), "customer-unknown");
+  assert.equal(accountDisplayName("합성 보호업무 행원 01"), "행원 01");
+  assert.equal(accountDisplayName("고객이 설정한 이름"), "고객이 설정한 이름");
+});
 
 const session: PrivateCustomerSession = { principalId: "00000000-0000-0000-0000-000000000001", customerId: "customer-1", displayName: "합성고객", roles: ["CUSTOMER"], permissions: [] };
 const envelope = (data: unknown) => JSON.stringify({ success: true, status: 200, code: "OK", message: "ok", data, errors: [], timestamp: "2026-09-01T00:00:00Z", traceId: "trace" });
 const response = (data: unknown) => new Response(envelope(data), { headers: { "content-type": "application/json" } });
+
+test("역할 전환은 로컬 허용 경로와 사건 식별자만 보존한다", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  assert.equal(caseIdFromSearch(`?caseId=${id}`), id);
+  assert.equal(caseIdFromSearch("?caseId=invalid"), null);
+  assert.equal(safePortalNext(`/staff/cases?caseId=${id}`, "staff"), `/staff/cases?caseId=${id}`);
+  assert.equal(safePortalNext("/staff/control-center", "staff"), "/staff/cases");
+  for (const path of ["//evil.example", "/\\evil.example", "/banking-evil", "https://evil.example"]) assert.equal(safePortalNext(path, "customer"), "/banking/help");
+  assert.equal(safePortalNext("/banking/help?alertId=one#help-context", "customer"), "/banking/help?alertId=one#help-context");
+  assert.equal(staffLoginPath(id), `/staff/login?next=${encodeURIComponent(`/staff/cases?caseId=${id}`)}`);
+});
+
+test("통합 도움은 선택 알림의 signalId·baselineId로만 근거를 묶고 목록을 재요청하지 않는다", async (t) => {
+  const calls: string[] = [];
+  const lists = {
+    baselines: [{ baselineId: "wrong" }, { baselineId: "right-baseline" }],
+    signals: [{ signalId: "wrong", baselineId: "wrong" }, { signalId: "right-signal", baselineId: "right-baseline" }],
+    alerts: [{ alertId: "chosen", signalId: "right-signal", state: "AWAITING_CONTEXT" }],
+  } as Pick<SafetyCenterBundle, "baselines" | "signals" | "alerts">;
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const path = String(input); calls.push(path);
+    if (path.endsWith("/chosen")) return response({ alert: lists.alerts[0] });
+    if (path.endsWith("/context-options")) return response({ question: "알고 있는 활동인가요?", options: [] });
+    return response({ items: [] });
+  });
+  const result = await loadSafetyCenter(session, "chosen", undefined, lists);
+  assert.equal(result.selectedAlert?.signalId, "right-signal");
+  assert.equal(calls.length, 5);
+  assert.ok(calls.includes("/api/v1/signals/right-signal/evidence"));
+  assert.ok(calls.includes("/api/v1/customers/customer-1/baselines/right-baseline/features"));
+  assert.ok(calls.every((path) => !path.includes("wrong")));
+  await assert.rejects(() => loadSafetyCenter(session, "not-owned", undefined, lists), /찾을 수 없습니다/);
+  assert.equal(calls.length, 5);
+});
+
+test("나중에 확인은 하루 뒤까지 유예하고 사건 생성 명령을 보내지 않는다", async (t) => {
+  const calls: { path: string; body: Record<string, unknown> }[] = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => { calls.push({ path: String(input), body: JSON.parse(String(init?.body)) }); return response({ currentState: "DEFERRED" }); });
+  await deferSafetyAlert(session, { alertId: "alert-1", version: 4 } as SafetyCenterBundle["alerts"][number]);
+  assert.equal(calls.length, 1); assert.equal(calls[0].path, "/api/v1/alerts/alert-1/defer");
+  assert.equal(calls[0].body.expectedVersion, 4);
+  assert.ok(Math.abs(new Date(String(calls[0].body.deferredUntil)).getTime() - Date.now() - 86400000) < 2000);
+});
+
+test("행원 안내·종결·후속관리는 기존 API의 버전과 안전한 명령 계약을 따른다", async (t) => {
+  const calls: { path: string; method: string; body: Record<string, unknown> }[] = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    calls.push({ path: String(input), method: init?.method ?? "GET", body: JSON.parse(String(init?.body ?? "{}")) }); return response({});
+  });
+  const staff = { ...session, roles: ["PROTECTION_STAFF"] };
+  const item = { caseId: "case-1", version: 7 } as OperationalCaseSummary;
+  await approveCaseGuidance(staff, item, ["BRANCH_CONSULTATION"]);
+  await completeCaseReview(staff, item, "고객이 설명을 이해했는지 확인함");
+  await scheduleCaseFollowUp(staff, item, "2026-09-09T00:00:00Z", "추가 확인");
+  await finishCaseFollowUp(staff, { followUpId: "follow-1", version: 2 } as Parameters<typeof finishCaseFollowUp>[1], "COMPLETE", "확인 완료");
+  assert.deepEqual(calls.map((call) => call.method), ["POST", "POST", "POST", "PATCH"]);
+  assert.equal(calls[0].body.expectedVersion, 7);
+  assert.equal(calls[1].body.actionCode, "COMPLETE_REVIEW");
+  assert.equal(calls[2].body.expectedCaseVersion, 7);
+  assert.equal(calls[3].body.expectedVersion, 2);
+  assert.equal(calls[3].path, "/api/v1/staff/follow-ups/follow-1");
+  await assert.rejects(() => approveCaseGuidance(session, item, ["BRANCH_CONSULTATION"]), /권한/);
+  assert.equal(calls.length, 4);
+});
+
+test("행원은 고객 의향 원문이 아닌 공유 동의 요약만 요청하며 사건 목록은 cursor를 유지한다", async (t) => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input) => {
+    paths.push(String(input));
+    return String(input).includes("financial-intent-summary") ? response({ intentId: "approved", explanationMode: "SIMPLE_TEXT", paymentContinuity: null, helpCondition: null, sharedScopes: ["EXPLANATION_PREFERENCE"], nonConsentedFieldsExcluded: true }) : response({ items: [], nextCursor: "cursor-2" });
+  });
+  const staff = { ...session, roles: ["PROTECTION_STAFF"] };
+  const intent = await loadCaseCustomerIntent(staff, "customer-1");
+  assert.equal(intent?.intentId, "approved");
+  assert.equal(intent?.paymentContinuity, null);
+  assert.equal(paths[0], "/api/v1/staff/customers/customer-1/financial-intent-summary");
+  assert.equal((await loadOperationalCasePage(staff, "cursor-1")).nextCursor, "cursor-2");
+  assert.ok(paths[1].includes("cursor=cursor-1"));
+});
+
+test("공유 의향의 명세상 없음만 빈 상태이며 권한 거부는 숨기지 않는다", async (t) => {
+  let status = 404;
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ success: false, status, code: status === 404 ? "FINANCIAL_INTENT_NOT_FOUND" : "FORBIDDEN", message: "조회 불가", data: null, errors: [] }), { status, headers: { "content-type": "application/json" } }));
+  const staff = { ...session, roles: ["PROTECTION_STAFF"] };
+  assert.equal(await loadCaseCustomerIntent(staff, "customer-1"), null);
+  status = 403;
+  await assert.rejects(() => loadCaseCustomerIntent(staff, "customer-1"), /조회 불가/);
+});
 
 test("회원 통합금융 화면은 8개 운영 조회 API를 HttpOnly BFF로 연결한다", async (t) => {
   const paths: string[] = [];

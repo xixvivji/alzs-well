@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AccessibilityPreferences } from "../components/AccessibilityControls";
+import { AccessibilityControls } from "../components/AccessibilityControls";
 import "./globals.css";
 import "./bank-home.css";
 import "./assistance-start.css";
@@ -21,6 +21,10 @@ import "./member-login.css";
 import "./help-entry.css";
 import "./role-portal-completion.css";
 import "./accessibility-redesign.css";
+import "./ux-product-redesign.css";
+import "./continuity-workflow.css";
+import "./portal-navigation.css";
+import "./staff-review-workbench.css";
 
 function metadataOrigin(): URL {
   const configured = process.env.NEXT_PUBLIC_SITE_URL;
@@ -58,6 +62,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" data-scroll-behavior="smooth"><body><AccessibilityPreferences />{children}</body></html>
+    <html lang="ko" data-scroll-behavior="smooth">
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="stylesheet" crossOrigin="anonymous" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+      </head>
+      <body>
+        <a className="skip-link global-view-tools-skip" href="#floating-view-tools">화면 보기 도구로 이동</a>
+        {children}
+        <AccessibilityControls />
+      </body>
+    </html>
   );
 }

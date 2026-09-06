@@ -1,0 +1,104 @@
+/* Shared account entry. Dropdown belongs to the header, never to the task body. */
+.portal-login-menu { position: relative; flex-shrink: 0; width: max-content; z-index: 40; }
+.portal-login-menu .portal-login-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; height: auto; padding: 10px 20px; border: 1px solid #163b4d; border-radius: 999px; background: #163b4d; color: #fff; font: inherit; font-weight: 750; white-space: nowrap; }
+.portal-login-menu .portal-login-trigger:hover { background: #102f3e; color: #fff; }
+.portal-login-menu .portal-login-options { position: absolute; top: 100%; right: 0; display: grid; min-width: 172px; margin: 0; padding: 8px; border: 1px solid #163b4d; border-radius: 12px; background: #fff; color: #17242a; }
+.portal-login-options[hidden] { display: none !important; }
+.portal-login-menu .portal-login-options a { display: flex; align-items: center; min-height: 48px; padding: 10px 14px; border: 0; border-radius: 6px; color: #17242a; background: #fff; font-size: 1rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.portal-login-menu .portal-login-options a:hover, .portal-login-menu .portal-login-options a:focus-visible { background: #eef3f4; color: #163b4d; }
+.portal-account { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; flex-wrap: wrap; font-size: .9rem; }
+.portal-account.checking { min-height: 48px; color: #52636a; }
+.portal-account-name { display: grid; gap: 2px; color: #17242a; text-decoration: none; }
+.portal-account-name strong { overflow-wrap: anywhere; }
+.portal-account-name small { color: #52636a; }
+.portal-account .portal-logout { min-height: 48px; padding: 8px; border: 0; background: transparent; color: #163b4d; font: inherit; cursor: pointer; }
+.portal-account .portal-logout:disabled { cursor: wait; opacity: .6; }
+.public-header-inner > :is(.portal-account, .portal-login-menu) { justify-self: end; }
+.banking-topbar > div:last-child { min-width: 0; }
+.portal-access-required { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.portal-access-required :is(h2, p) { flex-basis: 100%; margin: 0; }
+.app-shell .portal-footer { display: block; margin-top: 56px; padding: 20px 0 0; border-top: 1px solid #d9e0de; background: transparent; color: #52636a; font-size: .8125rem; line-height: 1.6; }
+.app-shell.staff { background: #fff; }
+.staff .app-content > header { align-items: center; padding-bottom: 24px; border-bottom: 1px solid #d9e0de; }
+.staff .app-content > header h1 { font-size: 2rem; margin: 0; }
+.staff .app-sidebar .back-home { margin-top: auto; color: #dce6eb; }
+.staff .app-sidebar .app-logo small { color: #dce6eb; }
+.staff .app-logo > span { background: #163b4d; color: #fff; }
+.staff .app-sidebar .side-nav a { color: #dce6eb; }
+.staff .app-sidebar .side-nav a.active { background: #31556c; color: #fff; }
+.staff .app-sidebar .app-mode { color: #fff; background: transparent; padding-inline: 12px; }
+.portal-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.portal-section-heading h2 { margin: 0; font-size: 1.4rem; line-height: 1.5; }
+.portal-section-heading p { margin: 8px 0 0; color: #52636a; }
+.staff-work-overview, .service-health-page { display: grid; gap: 24px; }
+.staff-work-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-block: 1px solid #d9e0de; }
+.staff-work-counts > button { display: grid; gap: 8px; min-width: 0; min-height: 48px; padding: 24px; border: 1px solid transparent; background: #fff; color: #17242a; font: inherit; text-align: left; cursor: pointer; }
+.staff-work-counts > button:hover { background: #f4f6f8; }
+.staff-work-counts > button[aria-pressed="true"] { background: #e9eff9; border-color: #244a70; color: #1c3551; }
+.staff-work-counts > button:focus-visible { outline: 3px solid #356675; outline-offset: 3px; position: relative; z-index: 1; }
+.staff-work-counts strong { display: flex; align-items: baseline; gap: 6px; font-size: 2rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.staff-work-counts small { font-size: 1rem; }
+.staff-work-counts .staff-work-count-action { font-size: .875rem; color: #244a70; text-decoration: underline; text-underline-offset: 3px; }
+.staff-work-counts [aria-pressed="true"] .staff-work-count-action { font-weight: 750; text-decoration: none; }
+.staff-work-list { padding: 0; margin: 24px 0 0; list-style: none; }
+.staff-work-list li { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0; border-top: 1px solid #d9e0de; }
+.staff-work-list li > div { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.staff-work-list span { color: #52636a; }
+.staff-work-list .btn { flex-shrink: 0; }
+.service-health-controls { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; color: #52636a; font-size: .9rem; }
+.service-health-controls label { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.service-health-controls input { width: 20px; height: 20px; accent-color: #163b4d; }
+.service-health-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.service-health-summary h3 { margin: 0 0 16px; font-size: 1.2rem; }
+.service-health-summary strong { font-size: 1.75rem; }
+.service-health-summary p { margin: 12px 0 0; color: #52636a; }
+.health-ok { color: #285d50; }
+.health-attention { color: #855309; }
+.service-health-guidance { padding: 24px 0; border-block: 1px solid #d9e0de; }
+.service-health-guidance h3 { margin: 0 0 8px; font-size: 1.2rem; }
+.service-health-guidance p { margin: 0; max-width: 70ch; color: #52636a; }
+.service-health-details summary { cursor: pointer; min-height: 44px; align-content: center; font-weight: 750; }
+.service-health-details dl { margin: 16px 0 0; }
+.service-health-details dl > div { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr); padding: 12px 0; gap: 16px; border-top: 1px solid #d9e0de; }
+.service-health-details dd { margin: 0; overflow-wrap: anywhere; }
+.staff-work-overview .btn, .service-health-page .btn, .portal-access-required .btn { min-height: 48px; height: auto; padding: 12px 20px; font-size: 1rem; line-height: 1.5; white-space: normal; }
+.staff-work-overview .btn-primary, .service-health-page .btn-primary, .portal-access-required .btn-primary { color: #fff; background: #163b4d; }
+.staff-work-overview .btn-outline, .service-health-page .btn-outline, .portal-access-required .btn-outline { color: #163b4d; background: #fff; border: 1px solid #91aa9d; }
+.login-type-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-top: 32px; border-bottom: 1px solid #d9e0de; }
+.login-type-tabs a { display: grid; place-items: center; min-height: 52px; padding: 12px 8px; color: #52636a; text-decoration: none; font-weight: 650; }
+.login-type-tabs a[aria-current="page"] { color: #163b4d; border-bottom: 3px solid #163b4d; }
+.member-login-page .member-login-copy { margin: 28px 0; }
+.member-login-page .member-login-copy h1 { font-size: 2rem; color: #17242a; }
+.member-login-page .member-login-copy p { margin: 12px 0 0; color: #52636a; font-weight: 400; line-height: 1.6; }
+.member-login-page .member-login-card { border-radius: 16px; }
+.member-login-page .member-login-card form button { background: #163b4d; color: #fff; }
+.member-login-page .member-login-brand > span { background: #163b4d; color: #fff; }
+.login-account-help { margin-top: 24px; border-block: 1px solid #d9e0de; padding: 12px 0; }
+.login-account-help summary { min-height: 44px; align-content: center; cursor: pointer; color: #163b4d; }
+.login-account-help p { color: #52636a; line-height: 1.65; overflow-wrap: anywhere; }
+.member-login-card .login-boundary { margin-top: 28px; color: #52636a; font-size: .8125rem; line-height: 1.6; }
+@media (max-width: 1100px) {
+  .public-header-inner > .portal-account { max-width: 260px; }
+  .portal-account-name { display: none; }
+}
+@media (max-width: 760px) {
+  .public-header-inner > :is(.portal-account, .portal-login-menu) { grid-column: 2; grid-row: 1; }
+  .portal-account { gap: 6px; }
+  .portal-login-menu .portal-login-trigger { padding-inline: 14px; }
+  .portal-account .portal-logout { padding-inline: 4px; }
+  .staff .app-content > header { align-items: flex-start; gap: 16px; }
+  .staff .customer-header-actions { width: 100%; }
+  .staff .portal-account-name { display: grid; }
+  .portal-section-heading { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .staff-work-counts { grid-template-columns: 1fr 1fr; }
+  .staff-work-counts > button { padding: 20px 12px; }
+  .staff-work-list li { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .service-health-summary { grid-template-columns: 1fr; }
+  .service-health-details dl > div { grid-template-columns: 1fr; gap: 6px; }
+  .member-login-page .member-login-card { border-radius: 0; }
+}
+html[data-high-contrast="true"] :is(.portal-login-options, .service-health-summary .panel, .service-health-details) { background: #fff; border-color: #17242a; }
+html[data-high-contrast="true"] :is(.portal-account, .staff-work-overview, .service-health-page, .member-login-page) :is(p, small, dt, span) { color: #17242a; }
+html[data-high-contrast="true"] .staff .app-sidebar { background: #fff; color: #17242a; }
+html[data-high-contrast="true"] .staff .app-sidebar :is(.app-logo, .app-logo small, .app-mode, .side-nav a, .back-home) { color: #17242a !important; }
+html[data-high-contrast="true"] .staff .app-sidebar .side-nav a.active { background: #eef3f4; outline: 1px solid #17242a; }

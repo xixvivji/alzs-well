@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logoutPrivateCustomer, restorePrivateCustomerSession, type PrivateCustomerSession } from "../lib/private-financial-products";
+import { portalHome, staffRoleFor } from "../lib/portal-access";
+import { accountDisplayName } from "../lib/presentation-copy";
+import { LoginMenu } from "./LoginMenu";
 
 export function MemberSessionStatus() {
-  const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<PrivateCustomerSession | null>(null);
   const [checking, setChecking] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -20,8 +23,8 @@ export function MemberSessionStatus() {
     return () => { active = false; };
   }, []);
 
-  if (checking) return <div className="member-session-status checking">회원 확인 중</div>;
-  if (!session) return <Link className="member-session-status login" href={pathname.startsWith("/staff") ? "/staff/login" : "/login"}>{pathname.startsWith("/staff") ? "운영 채널 로그인" : "금융서비스 로그인"}</Link>;
-  const operational = session.roles.some((role) => role === "PROTECTION_STAFF" || role === "DETECTION_ADMIN");
-  return <div className="member-session-status active"><span>{session.displayName.slice(0, 1)}</span><Link href={operational ? "/staff/operations" : "/banking/settings"}><strong>{session.displayName}</strong><small>{operational ? "합성 운영자 로그인" : "내 정보·보호 설정"}</small></Link><button onClick={() => void logoutPrivateCustomer(session).finally(() => { setSession(null); router.replace(operational ? "/staff/login" : "/login"); router.refresh(); })}>로그아웃</button></div>;
+  if (checking) return <LoginMenu />;
+  if (!session) return <LoginMenu />;
+  const staffRole = staffRoleFor(session.roles);
+  return <div className="portal-account"><Link className="portal-account-name" href={portalHome(session.roles)}><strong>{accountDisplayName(session.displayName)}</strong><small>{staffRole === "admin" ? "관리자" : staffRole === "protection" ? "행원" : "개인"}</small></Link><LoginMenu signedIn /><button className="portal-logout" disabled={loggingOut} onClick={() => { setLoggingOut(true); void logoutPrivateCustomer(session).finally(() => { setSession(null); setLoggingOut(false); router.replace("/"); router.refresh(); }); }}>{loggingOut ? "종료 중…" : "로그아웃"}</button></div>;
 }

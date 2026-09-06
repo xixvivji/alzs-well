@@ -173,7 +173,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
       <article className="panel safety-boundary">
         <p className="label">안전 경계</p>
         <h2>행원이 확인하고 최종 결정합니다.</h2>
-        <p>합성데이터만 사용하며 AI는 검토 초안과 승인된 근거를 제시할 뿐, 연락·지급정지·계좌조치를 실행하지 않습니다.</p>
+        <p>AI는 검토 초안과 승인된 근거를 제시할 뿐, 연락·지급정지·계좌조치를 실행하지 않습니다.</p>
         <div className="boundary-chips"><span>외부 연락 없음</span><span>금융 실행 없음</span><span>사람 최종 승인</span></div>
       </article>
     </section>
@@ -192,7 +192,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
     </section>
 
     <section className="panel evidence-section">
-      <div className="section-heading"><div><p className="label">불변 합성 근거</p><h2>변화를 만든 신호</h2></div><span className="status-chip">T0 snapshot 고정</span></div>
+      <div className="section-heading"><div><h2>변화를 만든 신호</h2></div></div>
       <div className="evidence-grid">{evidence.signals.map((signal) => <article key={signal.signalId}>
         <strong>{reasonLabel(signal.reasonCode)}</strong>
         <p><b>{signal.observedCount}건</b> · {windowLabel(signal.windowSeconds)}</p>

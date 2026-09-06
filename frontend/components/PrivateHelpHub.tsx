@@ -1,33 +1,61 @@
 "use client";
 
 import Link from "next/link";
+import { accountDisplayName } from "../lib/presentation-copy";
 import { useEffect, useState } from "react";
-import { loadPrivateHelpOverview, loadPrivateLongitudinalAnalysis, type PrivateHelpOverview } from "../lib/private-help";
 import type { ChangeAnalysis } from "../lib/ai-financial-assistance";
 import { restorePrivateCustomerSession, type PrivateCustomerSession } from "../lib/private-financial-products";
+import { loadPrivateHelpOverview, loadPrivateLongitudinalAnalysis, type PrivateHelpOverview } from "../lib/private-help";
+import type { FinancialIntent } from "../lib/private-life-services";
+import { changeLabel, intentValueLabel } from "../lib/continuity-labels";
 import { LoginRequired } from "./PrivateBankingDashboard";
 import { MemberAiIntentAssistant } from "./MemberAiIntentAssistant";
+import { PrivateSafetyCenter } from "./PrivateSafetyCenter";
 
 export function PrivateHelpHub() {
-  const [session, setSession] = useState<PrivateCustomerSession | null>(null); const [overview, setOverview] = useState<PrivateHelpOverview | null>(null); const [analysis, setAnalysis] = useState<ChangeAnalysis | null>(null); const [analyzing, setAnalyzing] = useState(false); const [error, setError] = useState("");
-  useEffect(() => { let active = true; void restorePrivateCustomerSession().then(async (restored) => { if (!active) return; setSession(restored); const loaded = await loadPrivateHelpOverview(restored); if (active) setOverview(loaded); }).catch((reason) => { if (active) setError(message(reason)); }); return () => { active = false; }; }, []);
-  if (!session && !error) return <section className="bank-panel banking-loading"><div className="bank-spinner" /><p>회원별 도움 정보를 불러오고 있습니다.</p></section>;
+  const [session, setSession] = useState<PrivateCustomerSession | null>(null);
+  const [overview, setOverview] = useState<PrivateHelpOverview | null>(null);
+  const [activeIntent, setActiveIntent] = useState<FinancialIntent | null>(null);
+  const [analysis, setAnalysis] = useState<ChangeAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    void restorePrivateCustomerSession().then(async (restored) => {
+      if (!active) return;
+      if (!restored.roles.includes("CUSTOMER")) throw new Error("고객 계정으로 전환해 주세요. 행원 로그인과 고객 로그인은 구분됩니다.");
+      setSession(restored);
+      const loaded = await loadPrivateHelpOverview(restored);
+      if (!active) return;
+      setOverview(loaded); setActiveIntent(loaded.preparation.latestApproved ?? loaded.intents[0] ?? null); setError("");
+    }).catch((reason) => { if (active) setError(message(reason)); });
+    return () => { active = false; };
+  }, [retry]);
+  if (!session && !error) return <section className="bank-panel" aria-busy="true"><p role="status">회원별 도움 정보를 불러옵니다.</p></section>;
   if (!session) return <LoginRequired message={error} />;
-  if (!overview) return <section className="bank-panel login-required"><h2>도움 정보를 불러오지 못했습니다.</h2><p>{error}</p></section>;
-  const unread = overview.inbox.filter((item) => !item.read).length; const openSignals = overview.signals.filter((item) => item.status === "OPEN").length; const awaitingAlerts = overview.alerts.filter((item) => ["AWAITING_CONTEXT", "DEFERRED"].includes(item.state)).length; const latestChange = overview.baselines.find((item) => item.comparisonText)?.comparisonText;
+  if (!overview) return <section className="bank-panel"><h2>도움 정보를 확인하고 있습니다.</h2>{error ? <><p role="alert">{error}</p><button className="btn btn-outline" onClick={() => setRetry((value) => value + 1)}>다시 불러오기</button></> : <p role="status">잠시 기다려 주세요.</p>}</section>;
+  const activeSession = session;
+  const intentReady = activeIntent?.status === "APPROVED" || overview.preparation.readiness === "READY";
+  async function analyzeChanges() {
+    setAnalyzing(true); setError("");
+    try { setAnalysis(await loadPrivateLongitudinalAnalysis(activeSession)); }
+    catch (reason) { setError(message(reason)); }
+    finally { setAnalyzing(false); }
+  }
   return <div className="private-help-hub">
-    <section className="help-member-hero"><div><p>{session.displayName}님의 금융생활</p><h2>내 금융생활을 천천히 확인해 보세요</h2><span>무엇을 해야 할지 고민하지 않도록 한 단계씩 안내합니다.</span></div><Link href="/demo">대표 사례 빠른 체험</Link></section>
-    <nav className="help-journey" aria-label="금융생활 도움 이용 순서"><article><b>1</b><div><strong>도움 방식 정하기</strong><span>원하는 설명과 도움 조건을 확인합니다.</span></div></article><article className="current"><b>2</b><div><strong>내 변화 확인하기</strong><span>평소와 최근의 차이를 쉬운 말로 봅니다.</span></div></article><article><b>3</b><div><strong>직접 답하거나 도움 요청</strong><span>알고 있음·잘 모르겠음·나중에 중에서 선택합니다.</span></div></article></nav>
-    <section className="help-summary-grid" aria-label="회원별 도움 현황"><article><small>금융생활 의향</small><strong>{intentStatus(overview.preparation.readiness)}</strong><span>버전 {overview.preparation.latestApproved?.version ?? overview.intents[0]?.version ?? 0}</span></article><article><small>열린 변화 신호</small><strong>{openSignals}건</strong><span>진단이 아닌 변화 설명</span></article><article><small>내 확인 필요</small><strong>{awaitingAlerts}건</strong><span>알고 있음·모름·나중에</span></article><article><small>읽지 않은 알림</small><strong>{unread}건</strong><span>앱 안에서만 제공</span></article></section>
-    <MemberAiIntentAssistant session={session} initialIntent={overview.preparation.latestApproved ?? overview.intents[0] ?? null} />
-    <section className="help-member-analysis bank-panel"><header><div><p>2단계 · 내 변화 확인</p><h3>평소와 최근을 쉬운 말로 비교합니다</h3><span>버튼을 누르면 내 합성 거래기록만 사용해 30·60·90일을 비교합니다.</span></div><button className="secondary-button" disabled={analyzing || !overview.baselines.length} onClick={() => { setAnalyzing(true); setError(""); void loadPrivateLongitudinalAnalysis(session).then(setAnalysis).catch((reason) => setError(message(reason))).finally(() => setAnalyzing(false)); }}>{analyzing ? "내 변화를 확인하는 중…" : analysis ? "다시 확인하기" : "내 변화 확인하기"}</button></header><div>{overview.baselines.slice(0, 3).map((item) => <article key={item.baselineId}><span>{featureLabel(item.featureCode)}</span><strong>{item.baselineValue}{unitLabel(item.unit)} → {item.currentValue}{unitLabel(item.unit)}</strong><small>{item.comparisonText || "현재 기준 범위 안에서 관찰 중입니다."}</small></article>)}</div>{!overview.baselines.length && <p className="help-analysis-empty">아직 비교할 기록이 충분하지 않습니다. 기록이 쌓이면 이곳에서 최근 변화를 확인할 수 있습니다.</p>}{analysis && <section className="member-window-analysis" aria-live="polite"><header><span>AI가 수치에서 확인한 내용</span><h4>{analysis.summary}</h4><small>{analysis.fallbackUsed ? "AI 연결이 어려워 안전한 기본 설명을 표시했습니다." : "설명 가능한 변화 분석이 정상적으로 완료됐습니다."}</small></header><div>{analysis.windowComparisons.map((window) => <article key={window.baselineDays}><span>과거 {window.baselineDays}일과 비교</span><strong>확인할 변화 {window.changes.filter((item) => item.changeDetected).length}건</strong><small>최근 {window.recentDays}일 기준</small></article>)}</div><div className="member-guidance-grid"><section><strong>나에게 물어볼 질문</strong><ol>{analysis.confirmationQuestions.map((question) => <li key={question}>{question}</li>)}</ol></section><section><strong>도움을 요청하기 전 확인</strong><ul>{analysis.reviewChecklist.map((item) => <li key={item}>{item}</li>)}</ul></section></div><details><summary>수치와 분석 근거 보기</summary>{analysis.changes.map((change) => <p key={change.featureCode}><strong>{featureLabel(change.featureCode)}</strong><span>{change.explanation}</span></p>)}</details><Link className="primary-button member-analysis-next" href="/banking/safety">내 상황 답하기</Link></section>}<footer>이 결과는 진단이나 사기 판정이 아닙니다. AI가 거래를 실행하거나 계좌를 막지 않으며, 선택은 고객과 행원이 합니다.</footer></section>
-    {latestChange && <section className="help-change-summary bank-panel"><span aria-hidden="true">!</span><div><p>최근 장기 변화 설명</p><strong>{latestChange}</strong><small>위험도나 질병 확률이 아니라 평소값과 최근값의 차이입니다.</small></div><Link href="/banking/safety">근거와 선택지 확인</Link></section>}
-    <section className="help-service-grid"><Link href="/banking/life"><span>01</span><div><strong>AI 금융생활 의향서</strong><small>도움 조건과 설명 방식을 직접 정하고 승인합니다.</small></div><b>의향 관리 →</b></Link><Link href="/banking/safety"><span>02</span><div><strong>장기 변화와 본인 확인</strong><small>평소 기준선과 최근 변화를 보고 내 상황을 답합니다.</small></div><b>변화 확인 →</b></Link><Link href="/banking/life"><span>03</span><div><strong>알림·공식 근거·고객센터</strong><small>내 알림과 승인된 문서의 쉬운 설명을 확인합니다.</small></div><b>생활금융 →</b></Link><Link href="/banking/settings"><span>04</span><div><strong>큰 글씨·도움 설정</strong><small>접근성, 신뢰 연락처와 이의신청을 관리합니다.</small></div><b>설정 열기 →</b></Link></section>
-    <section className="help-boundary"><strong>사람이 결정합니다.</strong><span>AI는 변화를 설명하고 질문을 돕지만 진단·송금·지급정지·외부 연락을 자동 실행하지 않습니다.</span></section>
+    <p className="continuity-intro">{accountDisplayName(session.displayName)}님, 변화를 먼저 확인하고 내 상황을 알려주세요.</p>
+    <nav className="help-journey" aria-label="금융생활 도움 이용 순서">{[["#help-analysis", "변화·근거 확인", "평소와 최근을 비교합니다."], ["#help-context", "내 상황 답하기", "알고 있는 활동인지 선택합니다."], ["#help-status", "연결 상태 확인", "필요한 경우 행원 검토로 이어집니다."]].map(([href, title, description], index) => <a href={href} key={href}><b>{index + 1}</b><div><strong>{title}</strong><span>{description}</span></div></a>)}</nav>
+    <div className="continuity-preparation"><p><strong>내 도움 방식: {intentReady ? "승인 완료" : "확인 필요"}</strong> · 처음 이용하거나 선호가 바뀌었을 때만 설정합니다. 알림에 답할 때마다 작성하지 않습니다.</p><a href="#help-intent">{intentReady ? "현재 도움 방식 보기" : "금융생활 의향 준비하기"}</a></div>
+    <PrivateSafetyCenter session={session} initialLists={overview} />
+    <section className="bank-panel continuity-workspace" aria-labelledby="longitudinal-title"><header className="continuity-heading"><div><h3 id="longitudinal-title">더 자세한 장기 변화 비교</h3><p>필요할 때 30·60·90일 기준으로 비교합니다. 위의 변화 확인과 응답은 AI 분석 없이도 이용할 수 있습니다.</p></div><button className="btn btn-outline" disabled={analyzing || !overview.baselines.length} onClick={() => void analyzeChanges()}>{analyzing ? "비교하는 중…" : "30·60·90일 비교 보기"}</button></header>
+      {!overview.baselines.length && <p>장기 비교를 위한 기준선이 아직 없습니다.</p>}{error && <p className="api-error" role="alert">{error}</p>}
+      {analysis && <section className="member-window-analysis" aria-live="polite"><h4>AI 변화 설명 · {analysis.summary}</h4><p>{analysis.fallbackUsed ? "AI 연결이 어려워 검증된 기본 설명을 표시했습니다." : "수치에 기반한 설명이며 사람의 확인이 필요합니다."}</p><div>{analysis.windowComparisons.map((window) => <article key={window.baselineDays}><span>과거 {window.baselineDays}일과 비교</span><strong>확인할 변화 {window.changes.filter((item) => item.changeDetected).length}건</strong><small>최근 {window.recentDays}일 기준</small></article>)}</div><div className="member-guidance-grid"><section><h4>나에게 물어볼 질문</h4><ol>{analysis.confirmationQuestions.map((question) => <li key={question}>{question}</li>)}</ol></section><section><h4>추가 확인할 내용</h4><ul>{analysis.reviewChecklist.map((item) => <li key={item}>{item}</li>)}</ul></section></div><details><summary>분석 근거 자세히 보기</summary>{analysis.changes.map((change) => <p key={change.featureCode}><strong>{changeLabel(change.featureCode)}</strong> {change.explanation}</p>)}</details></section>}
+    </section>
+    <section className="help-work-stage" id="help-intent" aria-labelledby="help-intent-title"><header><div><h3 id="help-intent-title">내 금융생활 의향·도움 방식</h3><p>유지할 납부, 편한 설명 방식과 도움 조건을 직접 정합니다. 저장과 승인은 내가 합니다.</p></div>{intentReady && <b>승인 완료</b>}</header>
+      {intentReady ? <details className="help-intent-details"><summary>현재 도움 방식 확인·관리</summary><div className="help-intent-readonly"><dl><div><dt>필수 납부</dt><dd>{intentValueLabel(activeIntent?.paymentContinuity)}</dd></div><div><dt>설명 방식</dt><dd>{intentValueLabel(activeIntent?.explanationMode)}</dd></div><div><dt>도움 조건</dt><dd>{intentValueLabel(activeIntent?.helpCondition)}</dd></div></dl><Link className="btn btn-outline" href="/banking/life">도움 방식 변경·철회</Link></div></details> : <details className="help-intent-details"><summary>처음 이용하는 경우 · 도움 방식 정하기</summary><MemberAiIntentAssistant session={session} initialIntent={activeIntent} onIntentChange={setActiveIntent} /></details>}
+    </section>
+    <section className="help-support-links" aria-label="도움 설정과 고객 권리"><Link href="/banking/life"><strong>의향·알림 관리</strong><span>이력과 현재 설정을 확인합니다.</span></Link><Link href="/banking/settings"><strong>내 정보·이의신청</strong><span>동의, 연락처와 사람의 재검토 요청을 관리합니다.</span></Link></section>
   </div>;
 }
-
-function intentStatus(value: string) { return ({ READY: "승인 완료", DRAFT: "확인 필요", NOT_STARTED: "작성 전", NOT_PREPARED: "작성 전" } as Record<string, string>)[value] ?? value; }
-function featureLabel(value: string) { return ({ MISSED_PAYMENT: "정기납부 누락", DUPLICATE_TRANSFER: "중복송금", REPEATED_CONFIRMATION: "거래결과 재확인", NEW_COUNTERPARTY: "새 수취인" } as Record<string, string>)[value] ?? value.replaceAll("_", " "); }
-function unitLabel(value: string) { return ({ COUNT: "회", KRW: "원", RATIO: "%" } as Record<string, string>)[value] ?? ""; }
 function message(reason: unknown) { return reason instanceof Error ? reason.message : "회원별 도움 정보를 불러오지 못했습니다."; }
