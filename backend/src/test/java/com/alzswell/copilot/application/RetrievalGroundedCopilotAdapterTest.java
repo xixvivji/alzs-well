@@ -34,6 +34,27 @@ class RetrievalGroundedCopilotAdapterTest {
             List.of("DUPLICATE_TRANSFER"), List.of("TRANSFER_PURPOSE"));
     private final DeterministicCopilotAdapter deterministic = new DeterministicCopilotAdapter();
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void revalidatesRetrievedEvidenceAfterSuccessfulGeneration(boolean revoked) {
+        KnowledgeRetrievalPort retrieval = mock(KnowledgeRetrievalPort.class);
+        OptionalStaffDraftGenerator generator = mock(OptionalStaffDraftGenerator.class);
+        Passage passage = new Passage(UUID.randomUUID(), "DOC", "1", "제목", "승인 원문", List.of(), "근거", null,
+                LocalDate.of(2026, 1, 1), null);
+        var valid = new RetrievalResult(List.of(new SearchHit(passage, 1, "INTERNAL_RAG_HYBRID")), "INTERNAL_RAG_HYBRID", false, 0);
+        var denied = new RetrievalResult(List.of(), "INTERNAL_RAG_POLICY_ABSTAIN", false, 0);
+        when(retrieval.retrieve(any())).thenReturn(valid, revoked ? denied : valid);
+        when(generator.generate(any(), any(), any())).thenAnswer(invocation -> {
+            CopilotDraft base = invocation.getArgument(2);
+            return new CopilotDraft("생성 초안", List.of("질문"), List.of("확인"), FACTS.reasonCodes(),
+                    "BEDROCK_GENERATIVE_DRAFT", false, true, true, base.retrievalMode(), base.citations());
+        });
+        var result = new RetrievalGroundedCopilotAdapter(true, retrieval, deterministic, CLOCK, generator).generate(FACTS);
+        assertThat(result.generatedBy()).isEqualTo(revoked ? "POLICY_GUARDRAIL" : "BEDROCK_GENERATIVE_DRAFT");
+        assertThat(result.citations()).hasSize(revoked ? 0 : 1);
+        verify(retrieval, times(2)).retrieve(any());
+    }
+
     @Test
     void keepsDeterministicPathWhenCopilotRagIsDisabled() {
         KnowledgeRetrievalPort retrieval = mock(KnowledgeRetrievalPort.class);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { OperationalCopilotDraft } from "./OperationalCopilotDraft";
 import { restorePrivateCustomerSession, type PrivateCustomerSession } from "../lib/private-financial-products";
 import {
   addOperationalCaseNote, loadOperationalCaseBundle, loadOperationalCaseQueue,
@@ -81,6 +82,7 @@ export function PrivateStaffCaseQueue({ compact = false }: { compact?: boolean }
     {selected && bundle && <section className="panel operational-case-detail">
       <div className="section-heading"><div><p className="label">사건 {selected.caseId.slice(0, 8)}</p><h2>{statusLabel(selected.taskStatus)} · {reasonLabel(selected)}</h2></div>{selected.taskStatus === "PENDING" && <button type="button" className="primary-button" onClick={() => void startReview()} disabled={Boolean(busy)}>{busy === "review" ? "처리 중…" : "검토 시작"}</button>}</div>
       <dl className="system-detail-grid"><div><dt>고객 응답</dt><dd>{text(bundle.detail, "customerResponseCode", "확인 요청")}</dd></div><div><dt>근거 수</dt><dd>{count(bundle.evidence)}건</dd></div><div><dt>타임라인</dt><dd>{bundle.timeline.length}건</dd></div><div><dt>후속관리</dt><dd>{bundle.followUps.length}건</dd></div></dl>
+      <OperationalCopilotDraft key={selected.caseId} session={session} caseId={selected.caseId} />
       <label className="form-field"><span>행원 내부 메모</span><textarea aria-describedby="staff-note-help" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} /></label>
       <p id="staff-note-help" className="field-help">최대 500자이며 고객이나 외부기관에는 전송되지 않습니다.</p>
       <button type="button" className="secondary-button" onClick={() => void saveNote()} disabled={Boolean(busy) || !note.trim()}>{busy === "note" ? "저장 중…" : "내부 메모 저장"}</button>

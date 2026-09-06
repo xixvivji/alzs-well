@@ -7,7 +7,11 @@ public interface CopilotPort {
     CopilotDraft generate(CopilotFacts facts);
 
     record CopilotFacts(String draftType, String customerResponseCode,
-                        List<String> reasonCodes, List<String> unconfirmedItems) {
+                        List<String> reasonCodes, List<String> unconfirmedItems, boolean syntheticData) {
+        public CopilotFacts(String draftType, String customerResponseCode,
+                            List<String> reasonCodes, List<String> unconfirmedItems) {
+            this(draftType, customerResponseCode, reasonCodes, unconfirmedItems, false);
+        }
     }
 
     record CopilotDraft(String summary, List<String> suggestedQuestions, List<String> checklist,

@@ -9,9 +9,9 @@ import {
 import { API_OPERATION_CATALOG } from "../lib/generated/api-operation-catalog.ts";
 
 test("문서와 코드의 전체 API operation을 중복 없이 분류한다", () => {
-  assert.equal(API_OPERATION_CATALOG.length, 284);
-  assert.equal(new Set(API_OPERATION_CATALOG.map(({ key }) => key)).size, 284);
-  assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "IMPLEMENTED").length, 239);
+  assert.equal(API_OPERATION_CATALOG.length, 285);
+  assert.equal(new Set(API_OPERATION_CATALOG.map(({ key }) => key)).size, 285);
+  assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "IMPLEMENTED").length, 240);
   assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "PLANNED").length, 23);
   assert.equal(API_OPERATION_CATALOG.filter(({ implementation }) => implementation === "REFERENCE_ONLY").length, 22);
   assert.equal(API_OPERATION_CATALOG.every(({ externalActionAllowed }) => externalActionAllowed === false), true);
@@ -20,6 +20,21 @@ test("문서와 코드의 전체 API operation을 중복 없이 분류한다", (
     assert.equal(findApiOperation(operation.key).key, operation.key);
     assert.doesNotMatch(buildApiOperationPath(operation, values), /\{[^}]+\}/);
   }
+});
+
+test("행원 초안은 회원 사건의 Bearer 경로이며 고객 식별정보를 본문에 보내지 않는다", async (t) => {
+  const key = "POST /api/v1/staff/cases/{caseId}/copilot-drafts";
+  assert.equal(findApiOperation(key).authorityMode, "BEARER");
+  assert.equal(findApiOperation(key).audience, "STAFF");
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    assert.equal(input, "/api/v1/staff/cases/case-123/copilot-drafts");
+    assert.equal(init?.method, "POST");
+    assert.equal(init?.body, undefined);
+    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer test-token");
+    return new Response(JSON.stringify({ success: true, data: { generatedBy: "RAG_GROUNDED_TEMPLATE" } }),
+      { headers: { "content-type": "application/json" } });
+  });
+  await invokeApiOperation(key, { path: { caseId: "case-123" }, accessToken: "test-token", timeoutMs: 20_000 });
 });
 
 test("경로 매개변수와 검색 조건을 안전하게 조합한다", () => {

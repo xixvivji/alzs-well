@@ -22,6 +22,16 @@ Parameters:
     Type: String
     Default: m7i-flex.large
     AllowedValues: [t3.medium, t3.large, m7i-flex.large, m7i.large]
+  BedrockDiscoveryEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Temporary Seoul model metadata discovery on the AI host only
+  BedrockInferenceEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Allow only the Seoul APAC Nova Lite inference profile for synthetic staff drafts
   DatabaseInstanceClass:
     Type: String
     Default: db.t4g.micro
@@ -41,6 +51,11 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Temporarily allow the AI build host to publish immutable app and AI images only
+  ImagePublishExpiresAt:
+    Type: String
+    Default: "1970-01-01T00:00:00Z"
+    AllowedPattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    Description: Mandatory UTC expiration for ECR publishing; expired by default
   DatabaseDeletionProtectionEnabled:
     Type: String
     Default: "false"
@@ -53,6 +68,8 @@ Parameters:
     Description: Enable only after initial provisioning and rehearsal verification
 
 Conditions:
+  EnableBedrockDiscovery: !Equals [!Ref BedrockDiscoveryEnabled, "true"]
+  EnableBedrockInference: !Equals [!Ref BedrockInferenceEnabled, "true"]
   EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
   EnableAppMigrationDeployment: !Equals [!Ref AppMigrationDeploymentEnabled, "true"]
   EnableImagePublishDeployment: !Equals [!Ref ImagePublishDeploymentEnabled, "true"]
@@ -524,6 +541,39 @@ Resources:
     Properties:
       InstanceProfileName: !Sub "${EnvironmentName}-ai-runtime"
       Roles: [!Ref AiRuntimeRole]
+  BedrockDiscoveryPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableBedrockDiscovery
+    Properties:
+      PolicyName: TemporaryBedrockModelDiscovery
+      Roles: [!Ref AiRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: ["bedrock:ListFoundationModels", "bedrock:GetFoundationModel", "bedrock:GetFoundationModelAvailability"]
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:RequestedRegion: ap-northeast-2
+  BedrockInferencePolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableBedrockInference
+    Properties:
+      PolicyName: SyntheticStaffDraftNovaLite
+      Roles: [!Ref AiRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: ["bedrock:GetInferenceProfile", "bedrock:InvokeModel"]
+            Resource: !Sub "arn:aws:bedrock:ap-northeast-2:${AWS::AccountId}:inference-profile/apac.amazon.nova-lite-v1:0"
+          - Effect: Allow
+            Action: "bedrock:InvokeModel"
+            Resource: "arn:aws:bedrock:ap-*::foundation-model/amazon.nova-lite-v1:0"
+            Condition:
+              StringEquals:
+                bedrock:InferenceProfileArn: !Sub "arn:aws:bedrock:ap-northeast-2:${AWS::AccountId}:inference-profile/apac.amazon.nova-lite-v1:0"
   StagingOperatorRole:
     Type: AWS::IAM::Role
     Properties:
@@ -616,6 +666,9 @@ Resources:
               - "ecr:PutImage"
               - "ecr:UploadLayerPart"
             Resource: [!GetAtt AppRepository.Arn, !GetAtt AiRepository.Arn]
+            Condition:
+              DateLessThan:
+                aws:CurrentTime: !Ref ImagePublishExpiresAt
 
   AppInstance:
     Type: AWS::EC2::Instance

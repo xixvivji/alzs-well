@@ -52,6 +52,13 @@ services:
       ALZS_AI_DB_SSLMODE: verify-full
       PGSSLROOTCERT: /run/secrets/rds-ca.pem
       ALZS_AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?AI_INTERNAL_TOKEN must be set}
+      ALZS_COPILOT_PROVIDER: ${ALZS_COPILOT_PROVIDER:-template}
+      ALZS_BEDROCK_SYNTHETIC_EGRESS_ALLOWED: ${ALZS_BEDROCK_SYNTHETIC_EGRESS_ALLOWED:-false}
+      ALZS_BEDROCK_REGION: ${ALZS_BEDROCK_REGION:-}
+      ALZS_BEDROCK_MODEL_ID: ${ALZS_BEDROCK_MODEL_ID:-}
+      AWS_CONFIG_FILE: /run/bedrock/config
+      AWS_PROFILE: bedrock-runtime
+      AWS_EC2_METADATA_DISABLED: "true"
       ALZS_EMBEDDING_BACKEND: local-arctic-ko
       ALZS_EMBEDDING_EXECUTION_CONTEXT: STAGING
       ALZS_EMBEDDING_ALLOW_HASH_FALLBACK: "false"
@@ -66,6 +73,7 @@ services:
       ALZS_MODEL_GOLDEN_SET_PATH: /opt/alzs-well/evaluation/datasets/official-operational-golden-v1.jsonl
     volumes:
       - ${AI_MODEL_ROOT:?AI_MODEL_ROOT must be set}:/opt/models:ro
+      - ${BEDROCK_CREDENTIAL_ROOT:-/run/alzs-well-bedrock}:/run/bedrock:ro
       - ${AI_EVALUATION_ROOT:?AI_EVALUATION_ROOT must be set}:/opt/alzs-well/evaluation:ro
       - ${RDS_CA_BUNDLE_PATH:?RDS_CA_BUNDLE_PATH must be set}:/run/secrets/rds-ca.pem:ro
     healthcheck:

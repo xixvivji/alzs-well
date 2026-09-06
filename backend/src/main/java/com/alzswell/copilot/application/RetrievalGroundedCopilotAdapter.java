@@ -29,13 +29,22 @@ public class RetrievalGroundedCopilotAdapter implements CopilotPort {
     private final KnowledgeRetrievalPort retrievalPort;
     private final DeterministicCopilotAdapter deterministic;
     private final Clock clock;
+    private final OptionalStaffDraftGenerator generator;
 
     public RetrievalGroundedCopilotAdapter(@Value("${app.copilot.rag-enabled:false}") boolean enabled,
             KnowledgeRetrievalPort retrievalPort, DeterministicCopilotAdapter deterministic, Clock clock) {
+        this(enabled, retrievalPort, deterministic, clock, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RetrievalGroundedCopilotAdapter(@Value("${app.copilot.rag-enabled:false}") boolean enabled,
+            KnowledgeRetrievalPort retrievalPort, DeterministicCopilotAdapter deterministic, Clock clock,
+            OptionalStaffDraftGenerator generator) {
         this.enabled = enabled;
         this.retrievalPort = retrievalPort;
         this.deterministic = deterministic;
         this.clock = clock;
+        this.generator = generator;
     }
 
     @Override
@@ -55,11 +64,25 @@ public class RetrievalGroundedCopilotAdapter implements CopilotPort {
             List<String> checklist = new java.util.ArrayList<>(base.checklist());
             citations.stream().map(CopilotCitation::citationLabel).distinct().limit(3)
                     .map(label -> "승인 근거 확인: " + label).forEach(checklist::add);
-            return new CopilotDraft(
+            CopilotDraft template = new CopilotDraft(
                     "승인된 내부 근거를 바탕으로 고객의 금융생활 변화를 추가 확인해야 합니다.",
                     base.suggestedQuestions(), checklist,
                     facts.reasonCodes(), "RAG_GROUNDED_TEMPLATE", false, false, false,
                     result.retrievalMode(), citations);
+            CopilotDraft generated = generator == null ? template : generator.generate(facts,
+                    result.hits().stream().limit(3).map(hit -> hit.passage().content()).toList(), template);
+            if ("BEDROCK_GENERATIVE_DRAFT".equals(generated.generatedBy())) {
+                RetrievalResult checked = retrievalPort.retrieve(new RetrievalQuery(
+                        safeQuery(facts), LocalDate.now(clock.withZone(SERVICE_ZONE)), "STAFF",
+                        List.of("PROTECTION_STAFF"), List.of("STAFF"), 3));
+                if (checked.fallbackUsed() || !checked.retrievalMode().equals(result.retrievalMode())
+                        || !checked.hits().equals(result.hits())) {
+                    return new CopilotDraft("검색 근거가 변경되었습니다. 최신 원문을 다시 확인해 주세요.",
+                            List.of(), List.of("최신 승인 근거 재확인"), facts.reasonCodes(), "POLICY_GUARDRAIL",
+                            true, true, true, "INTERNAL_RAG_POLICY_ABSTAIN", List.of());
+                }
+            }
+            return generated;
         } catch (RuntimeException exception) {
             return deterministic.generate(facts);
         }

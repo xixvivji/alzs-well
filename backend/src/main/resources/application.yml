@@ -128,6 +128,8 @@ app:
     enabled: ${AI_ASSISTANCE_ENABLED:${AI_RETRIEVAL_ENABLED:false}}
   copilot:
     rag-enabled: ${COPILOT_RAG_ENABLED:false}
+    generation-enabled: ${COPILOT_GENERATION_ENABLED:false}
+    egress-document-ids: ${COPILOT_EGRESS_DOCUMENT_IDS:}
   synthetic-seed:
     enabled: ${SYNTHETIC_SEED_ENABLED:false}
     profile: ${SYNTHETIC_SEED_PROFILE:SMOKE}

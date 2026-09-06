@@ -14,26 +14,26 @@
 
 | 항목 | 수량 |
 |---|---:|
-| 전체 API operation | **283개** |
+| 전체 API operation | **284개** |
 | API 도메인 | **26개** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15개** |
 | P0-B 공개 데모 핀테크 셸 | **11개** |
 | P0 구현 목표 합계 | **26개** |
-| P1 제품 핵심 백로그 | **178개** |
+| P1 제품 핵심 백로그 | **179개** |
 | P2 은행·증권 확장 백로그 | **79개** |
-| ALZ's well 소유 `OWNED` | **194개** |
+| ALZ's well 소유 `OWNED` | **195개** |
 | 외부 연동 `EXTERNAL_INTEGRATION` | **67개** |
 | 참조 전용 `REFERENCE_ONLY` | **22개** |
 
-API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 283개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
+API 개수는 `Method + Path` 한 쌍을 operation 하나로 계산한다. 같은 path라도 HTTP method가 다르면 별도 operation이다. 284개에는 실행하지 않을 은행 코어 참조 기능도 포함된다. 현재 실제 구현된 P0 API는 기존 23개에 핵심·AI readiness 2개와 고객 확인 유예 1개를 더한 **26개**다.
 
 | 현재 구현상태 | 수량 |
 |---|---:|
-| `IMPLEMENTED` | 문서화된 업무 API 238개 + staging 직원 발급 API 1개 |
+| `IMPLEMENTED` | 문서화된 업무 API 239개 + staging 직원 발급 API 1개 |
 | 상세 계약 확정, 구현 전 | 0개 |
 | 카탈로그·백로그 | 45개 |
 
-문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 238개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 239개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
+문서화된 업무 `IMPLEMENTED`는 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 239개다. 직원 bootstrap 발급 API 1개는 공개 카탈로그 밖 staging 전용 계약이므로 코드 기준 총 240개다. 실제 OpenAPI 노출 수는 고객 기능·합성 직원 bootstrap 기능 플래그에 따라 달라진다. production 합성 인증은 기본 비활성이며, 성공한 `PUBLIC` fixture의 300명과 Vercel HttpOnly BFF 경계가 함께 준비된 경우만 활성화한다. 운영 직원 인증은 검증된 외부 IdP JWT 어댑터를 요구하지만 실제 금융회사 IdP 테넌트 연동 증적은 아직 없다.
 
 API 수와 합성 회원 수는 별개다. 현재 PUBLIC v3.1 생성 규격은 고객 300명·회원당 거래 720건(총 216,000건)이다. V77·v3.1의 AWS 배포 및 적재 검증은 보류 중이다. 상세 상태는 `CURRENT_IMPLEMENTATION_STATUS.md`를 따른다.
 
@@ -140,7 +140,7 @@ Docker Compose에서 `internal: true`는 외부 연결이 없는 네트워크를
 
 1. 프로젝트 기준과 도메인 경계
 2. 참여 금융사 기능 근거와 반영 범위
-3. 26개 도메인·283개 API 마스터 카탈로그
+3. 26개 도메인·284개 API 마스터 카탈로그
 4. 공통 프로토콜·응답·오류 규칙
 5. P0-A 15개 상세 계약
 6. P0-B 11개 상세 계약
@@ -854,16 +854,16 @@ OPEN
 
 | 구분 | 수량 |
 |---|---:|
-| 전체 | **283** |
+| 전체 | **284** |
 | P0-A 기존 핵심 데모·운영 안전성 | **15** |
 | P0-B 공개 데모 뱅킹 셸 보강 | **11** |
-| P1 제품 핵심 | **178** |
+| P1 제품 핵심 | **179** |
 | P2 은행·증권 확장 | **79** |
-| OWNED | **194** |
+| OWNED | **195** |
 | EXTERNAL_INTEGRATION | **67** |
 | REFERENCE_ONLY | **22** |
 
-현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 총 238개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 239개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
+현재 문서화된 업무 구현은 고객지원 콘텐츠 조회 2개, 외환 읽기·모의계산 5개, 지식 ingestion import 1개, AI 금융생활 지원 7개와 분리된 readiness·고객 확인 유예를 포함해 총 239개다. 별도 staging 직원 발급 API 1개까지 포함하면 구현 코드는 240개 operation이다. 나머지 문서 operation 45개 중 23개는 계획, 22개는 참조 전용이며 구현 완료로 표현하지 않는다.
 
 #### 우선순위 정의
 
@@ -1273,6 +1273,7 @@ ALZ's well은 투자 추천·적합성 판단·주문 실행을 하지 않는다
 |---|---|---|---|---|
 | P1 | GET | /api/v1/staff/cases | 운영 행원 사건큐 | OWNED |
 | P1 | GET | /api/v1/staff/cases/{caseId} | 운영 사건 상세 | OWNED |
+| P1 | POST | /api/v1/staff/cases/{caseId}/copilot-drafts | 권한 범위 내 사건 검토 초안, 명시적 설정 시 Bedrock 사용 | OWNED |
 | P1 | PUT | /api/v1/staff/cases/{caseId}/assignment | 담당자·팀 배정 | OWNED |
 | P1 | GET | /api/v1/staff/cases/{caseId}/timeline | 운영 사건·경보·검토 통합 타임라인 | OWNED |
 | P1 | GET | /api/v1/staff/cases/{caseId}/evidence | 운영 사건의 불변 합성 근거 묶음 | OWNED |

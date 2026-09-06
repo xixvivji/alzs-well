@@ -9,6 +9,10 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DemoGuardrailStartupValidator {
+    @Value("${app.copilot.generation-enabled:false}")
+    private boolean copilotGenerationEnabled;
+    @Value("${app.copilot.egress-document-ids:}")
+    private String copilotApprovedDocuments = "";
 
     private final boolean syntheticDataOnly;
     private final boolean externalActionsEnabled;
@@ -49,7 +53,7 @@ public class DemoGuardrailStartupValidator {
     void validatePublicDemoBoundary() {
         boolean safe = syntheticDataOnly
                 && !externalActionsEnabled
-                && "AIR_GAPPED_DEMO".equals(networkMode)
+                && CopilotNetworkBoundary.valid(networkMode, copilotGenerationEnabled, copilotApprovedDocuments)
                 && !externalEgressEnabled
                 && !remoteModelEnabled
                 && syntheticProviderOnly
