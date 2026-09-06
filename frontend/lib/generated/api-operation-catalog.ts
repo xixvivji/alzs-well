@@ -3130,6 +3130,23 @@ export const API_OPERATION_CATALOG = [
     "externalActionAllowed": false
   },
   {
+    "key": "POST /api/v1/staff/cases/{caseId}/copilot-drafts",
+    "method": "POST",
+    "path": "/api/v1/staff/cases/{caseId}/copilot-drafts",
+    "purpose": "권한 범위 내 사건 검토 초안, 명시적 설정 시 Bedrock 사용",
+    "domain": "행원 사건·코파일럿·후속관리",
+    "domainId": "행원-사건-코파일럿-후속관리",
+    "priority": "P1",
+    "boundary": "OWNED",
+    "implementation": "IMPLEMENTED",
+    "audience": "STAFF",
+    "authorityMode": "BEARER",
+    "pathParameters": [
+      "caseId"
+    ],
+    "externalActionAllowed": false
+  },
+  {
     "key": "PUT /api/v1/staff/cases/{caseId}/assignment",
     "method": "PUT",
     "path": "/api/v1/staff/cases/{caseId}/assignment",

@@ -8,6 +8,16 @@ public interface InternalFinancialAiClient {
     ChangeAnalysisResponse analyzeChanges(ChangeAnalysisRequest request);
     PlainLanguageResponse plainLanguage(PlainLanguageRequest request);
 
+    default StaffDraftResponse staffDraft(StaffDraftRequest request) {
+        throw new UnsupportedOperationException("Staff generation is not configured");
+    }
+
+    record StaffDraftRequest(boolean syntheticData, List<String> reasonCodes,
+                             String customerResponseCode, List<String> passages) {}
+    record StaffDraftText(String summary, List<String> suggestedQuestions, List<String> checklist) {}
+    record StaffDraftResponse(StaffDraftText draft, String generatedBy, boolean modelInvoked,
+                              boolean externalEgressAttempted, boolean fallbackUsed) {}
+
     record IntentStructureRequest(String contractVersion, UUID requestId, String utterance) {}
     record IntentSuggestion(String paymentContinuity, String explanationMode, String helpCondition,
                             List<String> shareScopes) {}

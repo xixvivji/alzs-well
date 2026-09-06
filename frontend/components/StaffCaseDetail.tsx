@@ -213,7 +213,7 @@ export function StaffCaseDetail({ caseId }: { caseId: string }) {
           const sourceUrl = safeHttpsUrl(citation.sourceUrl);
           return <article key={citation.passageId}><div><strong>{citation.citationLabel}</strong><small>{citation.documentId} · {citation.versionLabel}</small></div>{sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer">원문 확인</a> : <span>내부 승인 근거</span>}</article>;
         }) : <p className="muted">검색 근거가 없어 결정론적 안전 템플릿으로 생성했습니다.</p>}</div>
-        <p className="human-review-notice">사람 검토 필수 · 모델 직접 판단 {copilot.draft.modelInvoked ? "사용" : "미사용"} · 외부 전송 {copilot.draft.externalEgressAttempted ? "발생" : "없음"}</p>
+        <p className="human-review-notice">사람 검토 필수 · {copilot.draft.generatedBy === "BEDROCK_GENERATIVE_DRAFT" ? "생성형 AI 초안" : "기본 안내"} · 외부 호출 시도 {copilot.draft.externalEgressAttempted ? "확인" : "확인되지 않음"} · 자동 판단·승인 없음</p>
       </div>}
       {rehearsal && <div className="rehearsal-ai-checks"><span className={copilot && !copilot.draft.fallbackUsed && copilot.draft.citations.length ? "verified" : ""}>AI 정상: 승인 근거 citation 1개 이상</span><span className={copilot?.draft.fallbackUsed && !copilot.draft.citations.length ? "verified" : ""}>AI 장애: 결정론적 폴백·citation 0개</span></div>}
     </section>

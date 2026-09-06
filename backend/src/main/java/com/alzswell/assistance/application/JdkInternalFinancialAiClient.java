@@ -56,13 +56,22 @@ public class JdkInternalFinancialAiClient implements InternalFinancialAiClient {
     }
 
     private <T> T post(String path, Object body, Class<T> responseType) {
+        return post(path, body, responseType, requestTimeout);
+    }
+
+    @Override
+    public StaffDraftResponse staffDraft(StaffDraftRequest request) {
+        return post("/internal/v1/copilot-draft", request, StaffDraftResponse.class, Duration.ofSeconds(12));
+    }
+
+    private <T> T post(String path, Object body, Class<T> responseType, Duration timeout) {
         Transport activeTransport = transport.orElseThrow(
                 () -> new AiAssistanceException("AI assistance is disabled"));
         if (token.length() < 32) throw new AiAssistanceException("AI assistance credentials are not configured");
         try {
             byte[] requestBody = objectMapper.writeValueAsBytes(body);
             URI uri = httpClientFactory.endpoint(activeTransport.baseUri(), path);
-            HttpRequest request = HttpRequest.newBuilder(uri).timeout(requestTimeout)
+            HttpRequest request = HttpRequest.newBuilder(uri).timeout(timeout)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
                     .header("X-Internal-Service-Token", token)

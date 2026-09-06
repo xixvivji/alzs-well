@@ -22,6 +22,11 @@ Parameters:
     Type: String
     Default: m7i-flex.large
     AllowedValues: [t3.medium, t3.large, m7i-flex.large, m7i.large]
+  BedrockDiscoveryEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Temporary Seoul model metadata discovery on the AI host only
   DatabaseInstanceClass:
     Type: String
     Default: db.t4g.micro
@@ -53,6 +58,7 @@ Parameters:
     Description: Enable only after initial provisioning and rehearsal verification
 
 Conditions:
+  EnableBedrockDiscovery: !Equals [!Ref BedrockDiscoveryEnabled, "true"]
   EnableDatabaseBootstrap: !Equals [!Ref DatabaseBootstrapEnabled, "true"]
   EnableAppMigrationDeployment: !Equals [!Ref AppMigrationDeploymentEnabled, "true"]
   EnableImagePublishDeployment: !Equals [!Ref ImagePublishDeploymentEnabled, "true"]
@@ -524,6 +530,21 @@ Resources:
     Properties:
       InstanceProfileName: !Sub "${EnvironmentName}-ai-runtime"
       Roles: [!Ref AiRuntimeRole]
+  BedrockDiscoveryPolicy:
+    Type: AWS::IAM::Policy
+    Condition: EnableBedrockDiscovery
+    Properties:
+      PolicyName: TemporaryBedrockModelDiscovery
+      Roles: [!Ref AiRuntimeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: ["bedrock:ListFoundationModels", "bedrock:GetFoundationModel", "bedrock:GetFoundationModelAvailability"]
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:RequestedRegion: ap-northeast-2
   StagingOperatorRole:
     Type: AWS::IAM::Role
     Properties:

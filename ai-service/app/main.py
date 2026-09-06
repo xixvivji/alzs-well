@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api_config import ApiConfig
 from app.assistance.change import analyze_changes
+from app.assistance.copilot import DraftRequest, DraftResponse, generate_draft
 from app.assistance.intent import structure_intent
 from app.assistance.plain_language import plain_language
 from app.domain.assistance import (
@@ -227,6 +228,11 @@ def create_app() -> FastAPI:
     )
     def generate_plain_language(payload: PlainLanguageRequest) -> PlainLanguageResponse:
         return plain_language(payload)
+
+    @application.post("/internal/v1/copilot-draft", response_model=DraftResponse,
+                      dependencies=[Depends(_verify_internal_token)])
+    def copilot_draft(payload: DraftRequest) -> DraftResponse:
+        return generate_draft(payload)
 
     return application
 
