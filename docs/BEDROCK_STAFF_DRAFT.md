@@ -1,6 +1,16 @@
 # 행원 검토 초안: 선택형 Bedrock 연결
 
-2026-09-06 개발 변경. 이 문서는 연결 코드와 배포 활성화를 구분한다. 현재 기본값은 비활성화이며 실제 Bedrock 호출 성공·비용·응답 품질·운영 E2E 증적은 아직 없다. 기존 배포가 생성형 AI를 사용한다고 설명하지 않는다.
+2026-09-06 개발·AWS 활성화 기록. 저장소 기본값은 비활성화이며 AWS에서는 승인된 합성 사건에 한해 Bedrock을 활성화했다. 운영 BFF를 통한 고객 응답 → 담당 행원 동일 사건 → 실제 생성 초안 호출을 확인했다. 화면 배포와 추가 품질 검증 상태는 아래 증적 범위와 구분한다.
+
+## AWS 실제 호출 증적
+
+- 요청 리전 서울, 추론 프로필 `apac.amazon.nova-lite-v1:0`. 사용자가 APAC 교차 리전 처리를 승인했다. 기존 NAT의 HTTPS 경로를 사용하며 Bedrock VPC Endpoint나 완전 폐쇄망으로 설명하지 않는다.
+- AI EC2 역할에 해당 Nova Lite 추론 프로필만 허용한다. 컨테이너는 호스트가 5분마다 갱신하는 읽기 전용 단기 역할 자격증명을 사용한다. 장기 키·EC2 메타데이터 hop limit 완화는 사용하지 않는다.
+- Spring `NETWORK_MODE=CONTROLLED_BEDROCK_SYNTHETIC`, 전송 승인 문서 `DOC-SYN-COPILOT-001`. 다른 문서·실데이터 전송을 승인한 것이 아니다.
+- 2026-09-06 06:29 UTC: `demo003`의 `NOT_SURE` 응답 → `BANK_REVIEW` → 담당 `staff003`의 동일 사건 조회 → 초안 HTTP 200, 3,898ms. `generatedBy=BEDROCK_GENERATIVE_DRAFT`, `fallbackUsed=false`, `retrievalMode=INTERNAL_RAG_HYBRID`를 확인했다. 초안 trace ID: `a8ebe7da46fc4c9989c4e868de0bf774`.
+- 인용은 합성 상담 문서 1건이며 외부 원문 URL이 없는 자료다. 이를 공식 법령 인용이나 법률 검토 결과로 표시하지 않는다.
+- AI readiness에서 `local-arctic-ko`, `STAGED_APPROVED`, `embeddingFallbackUsed=false` 확인. 생성 모델 추가로 검색 임베딩을 교체하지 않았다.
+- 최초 출력에서 행원 업무 회고형 질문이 나타나 고객에게 직접 확인할 질문 예시를 추가했다. 이 기록은 기능 연동 증적이지 독립적인 답변 품질 평가가 아니다.
 
 ## 사용자 흐름
 
@@ -29,13 +39,13 @@ FastAPI는 기본 비활성화, 내부 서비스 토큰 인증, 합성 플래그
 2. AI 실행 역할에 해당 모델만의 `bedrock:InvokeModel` 권한을 부여하고 단기 역할 자격증명을 전달한다. 장기 키를 Git이나 프런트에 넣지 않는다.
 3. 사설 Bedrock Runtime VPC Endpoint 또는 승인된 제한적 egress를 검증한다. 현재 Compose 설정만으로 해당 네트워크와 IAM이 만들어지지는 않는다. 컨테이너 역할 자격증명 접근도 별도 확인한다.
 4. AI 이미지를 재빌드한다. Dockerfile에는 SDK extra가 포함되어 있다. 로컬 설치는 `uv sync --extra bedrock`으로 한다.
-5. Spring: `COPILOT_RAG_ENABLED=true`, `AI_ASSISTANCE_ENABLED=true`, `COPILOT_GENERATION_ENABLED=true`, `COPILOT_EGRESS_DOCUMENT_IDS=<전송 승인된 문서 ID 쉼표 목록>`.
+5. Spring: `NETWORK_MODE=CONTROLLED_BEDROCK_SYNTHETIC`, `COPILOT_RAG_ENABLED=true`, `AI_ASSISTANCE_ENABLED=true`, `COPILOT_GENERATION_ENABLED=true`, `COPILOT_EGRESS_DOCUMENT_IDS=<전송 승인된 문서 ID 쉼표 목록>`.
 6. FastAPI: `ALZS_COPILOT_PROVIDER=bedrock`, `ALZS_BEDROCK_SYNTHETIC_EGRESS_ALLOWED=true`, `ALZS_BEDROCK_REGION=<승인 리전>`, `ALZS_BEDROCK_MODEL_ID=<승인 모델 ID>`.
 7. 합성 사건 한 건으로 실제 생성·원문 일치·권한 거절·모델 차단 시 기본 안내를 확인한 뒤에만 배포 완료로 기록한다.
 
 추론은 프로세스당 동시 2건, SDK 연결 2초·읽기 8초, 자동 재시도 없이 900 출력 토큰으로 제한한다. Spring 생성 요청 12초, 프록시 초안 경로 18초, 브라우저 20초다. 일반 API 시간 제한은 유지한다. 이 제한은 월별 지출 상한이 아니므로 실제 활성화 전 별도 예산 경보·호출량 검토가 필요하다. SDK 자격증명 획득 시간과 검색 지연에 따라 총 응답이 초과될 수 있으며 이때 기본 안내 또는 오류 안내를 사용한다.
 
-중단은 `COPILOT_GENERATION_ENABLED=false`와 `ALZS_COPILOT_PROVIDER=template` 적용 후 재기동한다. 기존 검색·결정론적 업무 흐름은 유지한다.
+중단은 Spring의 `NETWORK_MODE=AIR_GAPPED_DEMO`, `COPILOT_GENERATION_ENABLED=false`와 FastAPI의 `ALZS_COPILOT_PROVIDER=template` 적용 후 재기동한다. 기존 검색·결정론적 업무 흐름은 유지한다.
 
 ## 향후 자체 호스팅
 
