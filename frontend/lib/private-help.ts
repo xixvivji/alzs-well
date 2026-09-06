@@ -9,6 +9,14 @@ export type PrivateHelpOverview = {
   preparation: { readiness: string; latestApproved: FinancialIntent | null; legalDisclaimerRequired: boolean };
   intents: FinancialIntent[]; inbox: InboxMessage[]; baselines: Baseline[]; signals: ChangeSignal[]; alerts: SafetyAlert[];
 };
+export type PrivateChangeStatus = { detectedCount: number; needsResponseCount: number };
+export type PrivateChangeIndicator = { count: number; badge: "확인" | "변화"; ariaLabel: string };
+
+export function getPrivateChangeIndicator(status: PrivateChangeStatus): PrivateChangeIndicator | null {
+  if (status.needsResponseCount > 0) return { count: status.needsResponseCount, badge: "확인", ariaLabel: "직접 확인할 변화" };
+  if (status.detectedCount > 0) return { count: status.detectedCount, badge: "변화", ariaLabel: "열린 금융생활 변화" };
+  return null;
+}
 
 const required = <T>(response: { body: { data: T | null } }, label: string): T => {
   if (response.body.data === null) throw new Error(`${label} 응답을 확인해 주세요.`);
@@ -27,6 +35,20 @@ export async function loadPrivateHelpOverview(session: PrivateCustomerSession): 
       invokeApiOperation<{ items: SafetyAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, ...auth }),
     ]);
     return { preparation: required(preparation, "금융생활 의향"), intents: required(intents, "의향 이력").items, inbox: required(inbox, "알림함").items, baselines: required(baselines, "개인 기준선").items, signals: required(signals, "변화 신호").items, alerts: required(alerts, "확인 알림").items };
+  });
+}
+
+export async function loadPrivateChangeStatus(session: PrivateCustomerSession): Promise<PrivateChangeStatus> {
+  return withPrivateCustomerSession(session, async (accessToken) => {
+    const path = { customerId: session.customerId }; const auth = { accessToken };
+    const [signals, alerts] = await Promise.all([
+      invokeApiOperation<{ items: ChangeSignal[] }>("GET /api/v1/customers/{customerId}/signals", { path, ...auth }),
+      invokeApiOperation<{ items: SafetyAlert[] }>("GET /api/v1/customers/{customerId}/alerts", { path, ...auth }),
+    ]);
+    return {
+      detectedCount: required(signals, "변화 신호").items.filter((item) => item.status === "OPEN").length,
+      needsResponseCount: required(alerts, "확인 알림").items.filter((item) => ["AWAITING_CONTEXT", "DEFERRED"].includes(item.state)).length,
+    };
   });
 }
 

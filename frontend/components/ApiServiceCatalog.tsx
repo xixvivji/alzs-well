@@ -50,7 +50,7 @@ export function ApiServiceCatalog({ mode }: { mode: PortalMode }) {
 
     <section className="catalog-stats" aria-label="API 연결 현황">
       <article><span className="stat-symbol connected">✓</span><p><strong>{implemented}</strong><small>백엔드 구현 확인</small></p></article>
-      <article><span className="stat-symbol locked">⌁</span><p><strong>{restricted}</strong><small>사설 인증 필요</small></p></article>
+      <article><span className="stat-symbol locked">⌁</span><p><strong>{restricted}</strong><small>역할 인증 필요</small></p></article>
       <article><span className="stat-symbol disabled">–</span><p><strong>{inactive}</strong><small>계획·외부 참고</small></p></article>
     </section>
 
@@ -67,7 +67,7 @@ export function ApiServiceCatalog({ mode }: { mode: PortalMode }) {
     </section>)}</div>}
 
     <section className="catalog-boundary">
-      <span aria-hidden="true">i</span><p><strong>표시 범위</strong> 238개는 Spring Controller와 명세를 대조한 백엔드 구현 계약 수이며, 모든 API가 현재 화면에서 호출된다는 뜻은 아닙니다. 공개 데모 화면은 합성데이터와 capability 범위의 시연 동선만 호출합니다. Bearer 인증 업무는 사설 IdP 연결 전까지 잠기며, 미구현·외부 참고 API에는 실행 버튼을 만들지 않습니다.</p>
+      <p>개발 참고용 목록입니다. 실제 사용 가능한 기능은 각 업무 화면에서 확인하세요.</p>
     </section>
   </div>;
 }
@@ -92,7 +92,7 @@ function authorityLabel(item: ApiOperationDefinition) {
 function detailText(item: ApiOperationDefinition) {
   if (item.implementation === "REFERENCE_ONLY") return "외부 금융기관의 공식 채널로 위임되는 참고 계약이며 ALZ's well이 실행하지 않습니다.";
   if (item.implementation === "PLANNED") return "명세에만 존재하는 후속 범위입니다. 구현과 검증 전에는 호출되지 않습니다.";
-  if (item.authorityMode === "BEARER") return "백엔드 구현이 확인된 호출 계약입니다. 실제 화면 실행에는 운영 IdP의 역할 권한과 해당 화면 동선이 모두 필요합니다.";
+  if (item.authorityMode === "BEARER") return "로그인한 역할의 권한이 필요한 API입니다.";
   return "백엔드 구현이 확인된 공통 호출 계약입니다. 실제 공개 화면 호출 여부는 시연 동선별 연결 목록에서 별도로 관리합니다.";
 }
 function statusLabel(value: StatusFilter) { return ({ ALL: "전체", IMPLEMENTED: "구현됨", PLANNED: "구현 예정", REFERENCE_ONLY: "외부 참고" } as const)[value]; }

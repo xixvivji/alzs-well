@@ -66,7 +66,7 @@ export function FinancialWorkspace() {
   }, []);
 
   if (loading) return <section className="panel finance-loading"><div className="bank-spinner" /><p>통합 금융생활을 안전하게 불러오는 중입니다.</p></section>;
-  if (!context) return <section className="panel finance-empty"><span className="finance-empty-icon" aria-hidden="true">₩</span><p className="label">통합 금융생활</p><h2>먼저 합성데이터 체험을 시작해 주세요.</h2><p>실제 계좌나 개인정보 없이 안전한 금융 포털 화면을 확인할 수 있습니다.</p><Link className="primary-button" href="/demo">체험 시작하기</Link></section>;
+  if (!context) return <section className="panel finance-empty"><span className="finance-empty-icon" aria-hidden="true">₩</span><p className="label">통합 금융생활</p><h2>먼저 시연을 시작해 주세요.</h2><p>금융 현황과 거래내역을 확인할 수 있습니다.</p><Link className="primary-button" href="/demo">체험 시작하기</Link></section>;
   if (error || !data) return <section className="panel finance-empty"><p className="label">연결 상태 확인</p><h2>금융생활 정보를 불러오지 못했습니다.</h2><p>{error || "잠시 후 다시 시도해 주세요."}</p><Link className="primary-button" href="/demo">데모 상태 확인</Link></section>;
 
   const featured = data.accounts[0];

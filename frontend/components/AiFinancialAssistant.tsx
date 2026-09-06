@@ -91,7 +91,7 @@ export function AiFinancialAssistant() {
     window.speechSynthesis.speak(speech);
   }
 
-  if (!context) return <section className="panel ai-start"><p className="label">합성데이터 전용 체험</p><h2>AI 금융생활 도우미를 시작해 보세요.</h2><p>실제 계좌나 개인정보를 사용하지 않습니다.</p><button type="button" onClick={() => void start()} disabled={busy !== null}>{busy === "start" ? "준비 중…" : "안전 체험 시작"}</button>{error && <p className="api-error" role="alert">{error}</p>}</section>;
+  if (!context) return <section className="panel ai-start"><h2>AI 금융생활 도우미를 시작해 보세요.</h2><p>실제 계좌나 개인정보를 사용하지 않습니다.</p><button type="button" onClick={() => void start()} disabled={busy !== null}>{busy === "start" ? "준비 중…" : "안전 체험 시작"}</button>{error && <p className="api-error" role="alert">{error}</p>}</section>;
 
   return <div className="ai-assistant-flow">
     <section className="panel ai-intent-hero">

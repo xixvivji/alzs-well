@@ -8,7 +8,7 @@ test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링�
   assert.match(html, /ALZ(?:&#x27;|')s well/);
   assert.match(html, /내 금융생활을 한눈에/);
   assert.match(html, /href="#home-main"/);
-  assert.match(html, /합성데이터 전용 체험 서비스/);
+  assert.match(html, /체험 서비스 · 예시 데이터 사용/);
   assert.match(html, /무엇을 하시겠어요/);
   assert.match(html, /금융생활 도움받기/);
   assert.match(html, /href="\/login\?next=\/banking\/accounts"/);
@@ -16,8 +16,10 @@ test("Vercel Next.js 빌드가 ALZ's well 첫 화면을 정적으로 렌더링�
   assert.match(html, /송금 전 확인/);
   assert.match(html, /href="\/help"/);
   assert.match(html, /href="\/help"/);
-  assert.match(html, /href="\/staff\/login"/);
-  assert.match(html, /합성데이터/);
+  assert.match(html, /href="\/staff\/login\?next=/);
+  assert.match(html, /개인 로그인/);
+  assert.match(html, /운영자 로그인/);
+  assert.match(html, /aria-expanded="false"/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Building your site/i);
 });
 
@@ -39,6 +41,17 @@ test("Vercel BFF와 보안 헤더가 배포 구성에 포함된다", async () =>
   for (const route of ["/demo/protection/page", "/demo/finance/page", "/demo/products/page", "/demo/settings/page", "/demo/services/page", "/staff/operations/page", "/staff/control-center/page", "/staff/system-status/page"]) {
     assert.match(manifest, new RegExp(route.replaceAll("/", "\\/")));
   }
+});
+
+test("일반 진입 화면에서 발표 데모와 중복 역할 전환 안내를 제거한다", async () => {
+  for (const path of ["index.html", "login.html", "staff/login.html", "staff/operations.html", "staff/system-status.html"]) {
+    const html = await readFile(new URL(`../.next/server/app/${path}`, import.meta.url), "utf8");
+    assert.doesNotMatch(html, /href="\/demo(?:["/?])|class="channel-switch"|class="side-safety"|prototype-role-switch/);
+  }
+  const entry = await readFile(new URL("../components/HelpEntry.tsx", import.meta.url), "utf8");
+  const hub = await readFile(new URL("../components/PrivateHelpHub.tsx", import.meta.url), "utf8");
+  assert.match(entry, /router.replace\("\/login\?next=\/banking\/help"\)/);
+  assert.doesNotMatch(entry + hub, /["']\/demo["']/);
 });
 
 test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링된다", async () => {
@@ -64,7 +77,7 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   for (const href of ["/demo/protection", "/demo/finance", "/demo/ai-assistant", "/demo/alerts", "/demo/services"]) {
     assert.match(protection, new RegExp(`href="${href}"`));
   }
-  assert.match(products, /합성 금융서비스 인증/);
+  assert.match(products, /내 금융정보는 로그인 후 조회합니다/);
   assert.match(products, /금융서비스 로그인/);
   assert.match(products, /href="\/demo\/products"/);
   assert.match(settings, /고객 보호 설정/);
@@ -74,21 +87,24 @@ test("고객·행원·관리자 금융 포털 화면이 정적으로 렌더링�
   assert.match(services, /실제 금융업무 메뉴가 아닙니다/);
   assert.match(services, /전체 계약/);
   assert.match(services, /외부 참고/);
-  assert.match(operations, /고객의 확인 요청을/);
-  assert.match(operations, /로그인 회원 보호사건/);
+  assert.match(operations, /업무 현황/);
+  assert.match(operations, /로그인 권한을 확인하고 있습니다/);
   assert.match(operations, /aria-label="모바일 행원 서비스"/);
   for (const href of ["/staff/cases", "/staff/operations", "/staff/system-status"]) {
     assert.match(operations, new RegExp(`href="${href}"`));
   }
   assert.doesNotMatch(operations, /href="\/staff\/control-center"/);
-  assert.match(control, /정책과 AI가 안전 경계 안에서/);
-  assert.match(control, /관리 기능은 운영자 인증 후에만 실행/);
+  assert.match(control, /관리·준법/);
+  assert.match(control, /로그인 권한을 확인하고 있습니다/);
   assert.match(control, /href="\/staff\/control-center"/);
   assert.doesNotMatch(control, /href="\/staff\/operations"/);
   assert.doesNotMatch(control, /href="\/staff\/cases"/);
-  assert.match(systemStatus, /서비스 준비상태를 확인하고 있습니다/);
-  for (const html of [services, operations, control]) {
-    assert.match(html, /사설 인증 필요|인증 필요/);
+  assert.match(systemStatus, /서비스 연결을 확인하고 있습니다/);
+  assert.match(systemStatus, /금융업무와 AI 설명을 사용할 수 있나요/);
+  for (const href of ["/staff/cases", "/staff/operations", "/staff/system-status"]) assert.match(systemStatus, new RegExp(`href="${href}"`));
+  assert.match(services, /역할 인증 필요|인증 필요/);
+  for (const html of [operations, control]) {
+    assert.doesNotMatch(html, /표시 범위|IdP 연결 전|prototype-role-switch/);
   }
 });
 
@@ -131,7 +147,7 @@ test("제품 안전 경계는 유지하고 대회 기관 표기는 화면에서 
   assert.match(customerCare, /금융행위 대리권은 부여하지 않습니다/);
   assert.match(privateLifeServices, /생활금융 정보를 안전하게 불러오고 있습니다/);
   assert.match(privateHelpHub, /도움 방식 정하기/);
-  assert.match(privateHelpHub, /AI가 수치에서 확인한 내용/);
+  assert.match(privateHelpHub, /AI 변화 설명/);
   assert.match(privateHelpHub, /나에게 물어볼 질문/);
   assert.match(privateHelpHub, /내 상황 답하기/);
   assert.match(protectionCenter, /결정은 언제나 고객과 사람에게 있습니다/);
@@ -155,7 +171,7 @@ test("고객·행원·관리자 공통 접근성 계약을 유지한다", async 
     readFile(new URL("../components/AccessibilityControls.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/MemberLogin.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/OperationalLogin.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/PrivateStaffCaseQueue.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/OperationalCaseReview.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/OperationalRoleDashboard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/accessibility-redesign.css", import.meta.url), "utf8"),
   ]);
