@@ -18,6 +18,11 @@ dependencies = [
   "uvicorn[standard]>=0.35,<1",
 ]
 
+[project.optional-dependencies]
+bedrock = [
+    "boto3>=1.40,<2",
+]
+
 [dependency-groups]
 dev = [
   "httpx>=0.28,<1",

@@ -104,7 +104,8 @@ export async function proxyApiRequest(
     return proxyError(413, "BACKEND_PROXY_REQUEST_TOO_LARGE", "요청 본문이 허용 크기를 초과했습니다.", traceId);
   }
 
-  const timeoutSignal = AbortSignal.timeout(options.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  const draftPath = /^\/api\/v1\/staff\/cases\/[0-9a-f-]+\/copilot-drafts$/i.test(incoming.pathname);
+  const timeoutSignal = AbortSignal.timeout(options.timeoutMs ?? (draftPath ? 18_000 : REQUEST_TIMEOUT_MS));
   const bodyLimitController = new AbortController();
   let bodyLimitExceeded = false;
   const signal = AbortSignal.any([request.signal, timeoutSignal, bodyLimitController.signal]);

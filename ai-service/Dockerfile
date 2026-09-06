@@ -18,7 +18,7 @@ RUN apt-get update && \
 COPY pyproject.toml uv.lock README.md ./
 COPY app ./app
 RUN uv sync --python /usr/bin/python3.12 --no-managed-python --locked --no-dev \
-        --group model-runtime --no-cache && \
+        --group model-runtime --extra bedrock --no-cache && \
     useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin ai-ingestor
 
 USER 10001:10001

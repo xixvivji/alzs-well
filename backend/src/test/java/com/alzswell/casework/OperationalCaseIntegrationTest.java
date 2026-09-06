@@ -84,6 +84,17 @@ class OperationalCaseIntegrationTest {
                 "select case_id from operational_protection_case where alert_id = ?", UUID.class, alertId);
         assertThat(caseId).isNotNull();
 
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/copilot-drafts", caseId)
+                        .header("Authorization", "Bearer " + staffAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.generatedBy").value("DETERMINISTIC_TEMPLATE"))
+                .andExpect(jsonPath("$.data.modelInvoked").value(false));
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/copilot-drafts", caseId)
+                        .with(user(CUSTOMER_ID).authorities(new SimpleGrantedAuthority("ALERT_READ"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/staff/cases/{caseId}/copilot-drafts", caseId))
+                .andExpect(status().isUnauthorized());
+
         mockMvc.perform(get("/api/v1/staff/cases").header("Authorization", "Bearer " + staffAccessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.count").value(1))
