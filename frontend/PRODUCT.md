@@ -56,6 +56,7 @@ ALZ's well은 치매·인지저하·사기를 진단하거나 기존 FDS를 대�
 
 ## Evidence on Hand
 
+- 추가 기획 참고: 사용자 제공 `2026_금융_AI_Challenge_기획서_수정본.pdf` (2026-09-06). 고객의 현재 응답·허용된 사전의향·근거를 같은 사건에서 대조한 뒤 행원이 안내·종결·후속관리를 결정하는 의도를 따른다. 기획서의 구현 주장은 현행 백엔드 계약과 대조하며, 현재 체크아웃에 없는 회원 사건용 Bedrock 초안 API를 UI에서 가정하지 않는다.
 - 제품과 표현의 최상위 기준: `../ALZS_WELL_PROJECT_SSOT.md`
 - 프론트 실행·라우트·보안 구조: `README.md`
 - 역할별 화면과 API 경계: `../docs/FRONTEND_API_ROLE_MATRIX.md`

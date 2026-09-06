@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { getPrivateChangeIndicator, loadPrivateChangeStatus, type PrivateChangeStatus } from "../lib/private-help";
 import { restorePrivateCustomerSession } from "../lib/private-financial-products";
 import { MemberSessionStatus } from "./MemberSessionStatus";
+import { LoginNavigationProvider } from "./LoginNavigationContext";
 
 const links = [
   ["/banking", "금융 홈"],
@@ -48,7 +49,7 @@ export function BankingShell({ title, description, children }: { title: string; 
 
   const changeIndicator = changeStatus ? getPrivateChangeIndicator(changeStatus) : null;
   const helpActive = continuityFeature;
-  return <BankingChangeStatusContext.Provider value={changeStatus}><div className={shellClassName} data-service-kind={continuityFeature ? "continuity" : "standard"}>
+  return <LoginNavigationProvider><BankingChangeStatusContext.Provider value={changeStatus}><div className={shellClassName} data-service-kind={continuityFeature ? "continuity" : "standard"}>
     <a className="skip-link" href="#banking-main">본문 바로가기</a>
     <header className="banking-topbar">
       <Link className="bank-brand" href="/" aria-label="ALZ's well 처음 화면"><span aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
@@ -60,9 +61,9 @@ export function BankingShell({ title, description, children }: { title: string; 
     </header>
     <main className="banking-main" id="banking-main" tabIndex={-1}>
       <nav className="breadcrumb" aria-label="현재 위치"><Link href="/">홈</Link><span aria-hidden="true">/</span><span>개인 금융</span><span aria-hidden="true">/</span><strong>{title}</strong></nav>
-      <section className="banking-title"><div><h1>{title}</h1><span>{description}</span></div><aside><i /> {continuityFeature ? "금융생활 변화 확인 · 합성 데이터" : "합성 데이터로 안전하게 체험 중"}</aside></section>
+      <section className="banking-title"><div><h1>{title}</h1><span>{description}</span></div></section>
       {children}
     </main>
-    <footer className="banking-footer"><p>ALZ&apos;s well 금융생활 서비스</p><span>화면의 회원·계좌·거래는 모두 합성 데이터이며 실제 금융거래는 실행되지 않습니다.</span><Link href="/">처음 화면으로</Link></footer>
-  </div></BankingChangeStatusContext.Provider>;
+    <footer className="banking-footer"><p>ALZ&apos;s well 금융생활 서비스</p><span>체험 서비스 · 예시 데이터 사용 · 실제 거래·외부 연락 없음</span><Link href="/">처음 화면으로</Link></footer>
+  </div></BankingChangeStatusContext.Provider></LoginNavigationProvider>;
 }

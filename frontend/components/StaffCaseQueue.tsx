@@ -172,7 +172,7 @@ export function StaffCaseQueue({ compact = false }: StaffCaseQueueProps) {
   const loadedLabel = `${metrics.loaded}${hasMore ? "+" : ""}`;
   return <div className="staff-case-queue-dashboard">
     <section className="staff-queue-hero">
-      <div><p>PROTECTION CASE DESK</p><h2>먼저 확인할 사건부터<br />차분하게 처리합니다.</h2><span>고객 응답과 합성 근거를 확인하고, 최종 결정은 행원이 기록합니다.</span></div>
+      <div><p>PROTECTION CASE DESK</p><h2>먼저 확인할 사건부터<br />차분하게 처리합니다.</h2><span>고객 응답과 근거를 확인하고 검토 결과를 기록하세요.</span></div>
       <div className="staff-queue-hero-status"><span>현재 조회 사건</span><strong>{loadedLabel}</strong><small>{hasMore ? "다음 페이지 있음" : "불러온 범위 완료"}</small></div>
     </section>
 
@@ -231,7 +231,7 @@ function QueueContents({ phase, items, hasLoadedItems, error, onRefresh, onReset
       <td data-label="고객 확인"><span className="queue-response">{responseLabel(item.customerResponseCode)}</span></td>
       <td data-label="상태"><span className={`queue-state state-${item.state.toLocaleLowerCase()}`}>{stateLabel(item.state)}</span></td>
       <td data-label="접수"><time dateTime={item.createdAt}>{dateTime(item.createdAt)}</time></td>
-      <td><Link className="queue-open-case" href={`/staff/cases/${encodeURIComponent(item.caseId)}`} aria-label={`${item.customerId} 사건 상세 보기`}>사건 열기<span aria-hidden="true">→</span></Link></td>
+      <td><Link className="queue-open-case" href={`/demo/staff/cases/${encodeURIComponent(item.caseId)}`} aria-label={`${item.customerId} 사건 상세 보기`}>사건 열기<span aria-hidden="true">→</span></Link></td>
     </tr>)}</tbody>
   </table></div>;
 }
@@ -249,8 +249,8 @@ function CompactCaseQueue({ phase, items, hasMore, error, onRefresh }: {
 }) {
   return <section className="panel compact-case-queue" aria-live="polite">
     <div className="staff-queue-section-heading"><div><p className="label">현재 데모 세션</p><h2>보호업무 사건</h2></div><span className="queue-result-count">{items.length}{hasMore ? "+" : ""}건</span></div>
-    {phase !== "ready" ? <QueueContents phase={phase} items={[]} hasLoadedItems={false} error={error} onRefresh={onRefresh} onReset={onRefresh} /> : items.length ? <div className="compact-case-list">{items.slice(0, 3).map((item) => <Link key={item.caseId} href={`/staff/cases/${encodeURIComponent(item.caseId)}`}><span className={`queue-priority priority-${item.reviewPriority.toLocaleLowerCase()}`}>{priorityLabel(item.reviewPriority)}</span><div><strong>{stateLabel(item.state)}</strong><small>{item.summary}</small></div><b aria-hidden="true">→</b></Link>)}</div> : <QueueFeedback title="현재 검토할 사건이 없습니다." detail="고객 주의 시나리오를 실행하면 이곳에 연결됩니다." />}
-    <Link className="compact-queue-footer" href="/staff/cases">검색·필터가 있는 전체 사건 큐 열기 →</Link>
+    {phase !== "ready" ? <QueueContents phase={phase} items={[]} hasLoadedItems={false} error={error} onRefresh={onRefresh} onReset={onRefresh} /> : items.length ? <div className="compact-case-list">{items.slice(0, 3).map((item) => <Link key={item.caseId} href={`/demo/staff/cases/${encodeURIComponent(item.caseId)}`}><span className={`queue-priority priority-${item.reviewPriority.toLocaleLowerCase()}`}>{priorityLabel(item.reviewPriority)}</span><div><strong>{stateLabel(item.state)}</strong><small>{item.summary}</small></div><b aria-hidden="true">→</b></Link>)}</div> : <QueueFeedback title="현재 검토할 사건이 없습니다." detail="고객 주의 시나리오를 실행하면 이곳에 연결됩니다." />}
+    <Link className="compact-queue-footer" href="/demo/staff/cases">검색·필터가 있는 전체 사건 큐 열기 →</Link>
   </section>;
 }
 

@@ -1,95 +1,119 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { restorePrivateCustomerSession, type PrivateCustomerSession } from "../lib/private-financial-products";
-import {
-  addOperationalCaseNote, loadOperationalCaseBundle, loadOperationalCaseQueue,
-  startOperationalCaseReview, type OperationalCaseBundle, type OperationalCaseSummary,
-} from "../lib/private-staff-cases";
+import { loadOperationalCaseBundle, loadOperationalCasePage, type OperationalCaseBundle, type OperationalCaseSummary } from "../lib/private-staff-cases";
+import { caseStateLabel, dateTime } from "../lib/continuity-labels";
+import { caseIdFromSearch } from "../lib/prototype-navigation";
+import { customerLabel } from "../lib/presentation-copy";
+import { ReviewLoginContext } from "./LoginNavigationContext";
+import { OperationalCaseReview } from "./OperationalCaseReview";
 
 export function PrivateStaffCaseQueue({ compact = false }: { compact?: boolean }) {
   const [session, setSession] = useState<PrivateCustomerSession | null>(null);
   const [items, setItems] = useState<OperationalCaseSummary[]>([]);
-  const [selected, setSelected] = useState<OperationalCaseSummary | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [bundle, setBundle] = useState<OperationalCaseBundle | null>(null);
-  const [note, setNote] = useState("고객 응답과 합성 근거를 함께 확인했습니다.");
-  const [busy, setBusy] = useState("loading");
+  const [viewingCase, setViewingCase] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
+  const [updatedAt, setUpdatedAt] = useState("");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [filter, setFilter] = useState("ALL");
+  const [needsReload, setNeedsReload] = useState(false);
+  const mounted = useRef(false);
+  const pending = useRef(false);
+  const generation = useRef(0);
 
-  const refresh = useCallback(async (active: PrivateCustomerSession) => {
-    const queue = await loadOperationalCaseQueue(active);
-    setItems(queue); setSelected((current) => queue.find((item) => item.caseId === current?.caseId) ?? null);
+  const refresh = useCallback(async (active: PrivateCustomerSession, nextCursor?: string) => {
+    const page = await loadOperationalCasePage(active, nextCursor);
+    if (!mounted.current) return;
+    setItems((current) => nextCursor ? [...current, ...page.items.filter((item) => !current.some((previous) => previous.caseId === item.caseId))] : page.items);
+    setCursor(page.nextCursor); setUpdatedAt(new Date().toISOString());
+  }, []);
+
+  const openCase = useCallback(async (active: PrivateCustomerSession, caseId: string) => {
+    const current = ++generation.current;
+    pending.current = true; setBusy(true); setError(""); setResult("");
+    setBundle((currentBundle) => currentBundle?.detail.caseSummary.caseId === caseId ? currentBundle : null);
+    try {
+      const loaded = await loadOperationalCaseBundle(active, caseId);
+      if (!mounted.current || current !== generation.current) return;
+      setBundle(loaded); setNeedsReload(false); setViewingCase(true);
+      window.history.replaceState(null, "", `/staff/cases?caseId=${encodeURIComponent(caseId)}`);
+    } catch (reason) { if (mounted.current && current === generation.current) { setNeedsReload(true); setError(`사건을 열지 못했습니다. 해당 고객의 담당 행원인지 확인해 주세요. ${message(reason)}`); } }
+    finally { if (mounted.current && current === generation.current) { pending.current = false; setBusy(false); } }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void restorePrivateCustomerSession().then(async (active) => {
-      if (!active.roles.includes("PROTECTION_STAFF")) throw new Error("보호업무 행원 권한이 필요합니다.");
-      if (cancelled) return; setSession(active); await refresh(active);
-    }).catch((reason) => { if (!cancelled) setError(message(reason)); })
-      .finally(() => { if (!cancelled) setBusy(""); });
-    return () => { cancelled = true; };
-  }, [refresh]);
+    mounted.current = true;
+    let active = true;
+    void restorePrivateCustomerSession().then(async (restored) => {
+      if (!restored.roles.includes("PROTECTION_STAFF")) throw new Error("보호업무 행원 권한이 필요합니다.");
+      if (!active) return;
+      setSession(restored); await refresh(restored);
+      const caseId = caseIdFromSearch(window.location.search);
+      if (active && caseId) await openCase(restored, caseId);
+    }).catch((reason) => { if (active) setError(message(reason)); }).finally(() => { if (active) setBusy(false); });
+    return () => { active = false; mounted.current = false; generation.current += 1; };
+  }, [openCase, refresh]);
 
-  const metrics = useMemo(() => ({
-    high: items.filter((item) => item.reviewPriority === "HIGH").length,
-    pending: items.filter((item) => item.taskStatus === "PENDING").length,
-    reviewing: items.filter((item) => item.taskStatus === "IN_REVIEW").length,
-  }), [items]);
+  useEffect(() => {
+    if (!session || !autoRefresh) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible" || pending.current) return;
+      pending.current = true;
+      void refresh(session).catch((reason) => { if (mounted.current) setError(`자동 새로고침 실패: ${message(reason)}`); }).finally(() => { pending.current = false; });
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [session, autoRefresh, refresh]);
 
-  async function openCase(item: OperationalCaseSummary) {
-    if (!session) return; setBusy("detail"); setError(""); setResult("");
-    try { setSelected(item); setBundle(await loadOperationalCaseBundle(session, item.caseId)); }
-    catch (reason) { setError(message(reason)); }
-    finally { setBusy(""); }
+  const selectedCaseId = bundle?.detail.caseSummary.caseId;
+  useEffect(() => {
+    if (!selectedCaseId || !viewingCase) return;
+    document.getElementById("case-review-title")?.focus({ preventScroll: true });
+    document.getElementById("staff-case-detail")?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [selectedCaseId, viewingCase]);
+
+  async function reloadList(nextCursor?: string) {
+    if (!session || pending.current) return;
+    pending.current = true; setBusy(true); setError("");
+    try { await refresh(session, nextCursor); }
+    catch (reason) { if (mounted.current) setError(message(reason)); }
+    finally { pending.current = false; if (mounted.current) setBusy(false); }
   }
 
-  async function startReview() {
-    if (!session || !selected) return; setBusy("review"); setError(""); setResult("");
-    try { await startOperationalCaseReview(session, selected); await refresh(session); setResult("검토를 시작했습니다."); }
-    catch (reason) { setError(message(reason)); }
-    finally { setBusy(""); }
+  async function runCommand(command: () => Promise<unknown>, success: string): Promise<boolean> {
+    if (!session || !bundle || pending.current || needsReload) return false;
+    pending.current = true; setBusy(true); setError(""); setResult("");
+    const caseId = bundle.detail.caseSummary.caseId;
+    let saved = false;
+    try {
+      await command(); saved = true;
+      const latest = await loadOperationalCaseBundle(session, caseId);
+      if (!mounted.current) return false;
+      setBundle(latest); setResult(success); await refresh(session); return true;
+    } catch (reason) {
+      if (mounted.current) {
+        setError(`${saved ? "요청은 저장됐지만 최신 상태를 불러오지 못했습니다. 다시 제출하지 말고 사건을 다시 열어 주세요. " : "입력은 유지했습니다. 사건을 다시 열어 최신 상태를 확인한 뒤 이어가세요. "}${message(reason)}`);
+        setNeedsReload(true);
+      }
+      return false;
+    } finally { pending.current = false; if (mounted.current) setBusy(false); }
   }
 
-  async function saveNote() {
-    if (!session || !selected || !note.trim()) return; setBusy("note"); setError(""); setResult("");
-    try { await addOperationalCaseNote(session, selected.caseId, note.trim()); setBundle(await loadOperationalCaseBundle(session, selected.caseId)); setResult("내부 메모를 저장했습니다. 외부로 전송하지 않았습니다."); }
-    catch (reason) { setError(message(reason)); }
-    finally { setBusy(""); }
-  }
-
-  if (busy === "loading") return <section className="panel" aria-busy="true" aria-live="polite"><div className="list-skeleton">로그인 행원의 담당 사건을 확인하고 있습니다.</div></section>;
-  if (!session || error && !items.length) return <section className="panel empty-state" role="alert"><h2>담당 사건을 열 수 없습니다.</h2><p>{error}</p></section>;
-
-  return <section className={`private-staff-case-queue ${compact ? "compact" : ""}`}>
-    <div className="case-summary-grid" aria-label="로그인 행원 사건 요약">
-      <article className="panel"><span>현재 담당</span><strong>{items.length}</strong><small>목적별 접근권 범위</small></article>
-      <article className="panel"><span>우선 검토</span><strong>{metrics.high}</strong><small>위험 확률이 아닌 업무 순서</small></article>
-      <article className="panel"><span>검토 대기</span><strong>{metrics.pending}</strong><small>고객 확인 후 승격</small></article>
-      <article className="panel"><span>처리 중</span><strong>{metrics.reviewing}</strong><small>사람 검토 진행</small></article>
-    </div>
-    <section className="panel">
-      <div className="section-heading"><div><p className="label">Bearer 보호업무 큐</p><h2>로그인 행원의 담당 사건</h2></div><button type="button" className="secondary-button" onClick={() => void refresh(session)} disabled={Boolean(busy)}>새로고침</button></div>
-      {!items.length ? <div className="empty-block"><strong>현재 담당 사건이 없습니다.</strong><p>배정된 고객이 안심관리에서 “확인하기 어렵습니다” 또는 “잘 모르겠어요”를 선택하면 이곳에 생성됩니다.</p></div> :
-        <div className="staff-case-list">{items.map((item) => <article key={item.caseId} className="staff-case-row"><div><span>{priorityLabel(item.reviewPriority)}</span><strong>{reasonLabel(item)}</strong><small>{maskCustomer(item.customerId)} · {statusLabel(item.taskStatus)}</small></div><button type="button" className="secondary-button" onClick={() => void openCase(item)} disabled={Boolean(busy)} aria-label={`${maskCustomer(item.customerId)} 사건 근거와 기록 확인`}>근거·기록 확인</button></article>)}</div>}
+  const visible = items.filter((item) => filter === "ALL" || item.taskStatus === filter);
+  return <div className={`private-staff-case-queue continuity-staff ${compact ? "compact" : ""}`}>
+    <ReviewLoginContext caseId={bundle?.detail.caseSummary.caseId} customerId={bundle?.detail.caseSummary.customerId} alertId={bundle?.detail.caseSummary.alertId} />
+    <section className="panel" id="staff-case-list" tabIndex={-1} hidden={viewingCase && Boolean(bundle)}><header className="continuity-heading"><div><h2>고객 응답이 도착한 사건</h2><p>고객이 확인을 요청한 내용을 검토해 주세요.</p></div><button className="btn btn-outline" disabled={busy} onClick={() => void reloadList()}>목록 새로고침</button></header>
+      <div className="continuity-queue-controls"><label className="continuity-field"><span>처리 상태</span><select className="select" value={filter} onChange={(event) => setFilter(event.target.value)}>{["ALL", "PENDING", "IN_REVIEW", "GUIDANCE_APPROVED", "COMPLETED"].map((value) => <option key={value} value={value}>{value === "ALL" ? "전체 상태" : caseStateLabel(value)}</option>)}</select></label><label className="continuity-checkbox"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />30초마다 목록 확인</label><span>마지막 확인: {updatedAt ? dateTime(updatedAt) : "확인 중"}</span></div>
+      <p>불러온 {items.length}건 중 {visible.length}건 표시</p>
+      {busy && !updatedAt ? <p role="status">로그인 행원의 사건을 불러옵니다.</p> : !visible.length ? <p>표시할 사건이 없습니다. 고객 응답 여부, 선택한 상태, 담당 고객 접근 권한을 확인해 주세요.</p> : <div className="continuity-case-list">{visible.map((item) => <article key={item.caseId} className={bundle?.detail.caseSummary.caseId === item.caseId ? "selected" : ""}><div><strong>{customerLabel(item.customerId)}</strong><span>{caseStateLabel(item.taskStatus)} · {item.reviewPriority === "HIGH" ? "우선 검토" : "일반 검토"}</span><small>접수 {dateTime(item.createdAt)}</small></div><button className="btn btn-outline" disabled={busy} onClick={() => session && void openCase(session, item.caseId)} aria-label={`${item.customerId} 고객의 사건 확인`}>응답·근거 확인</button></article>)}</div>}
+      {cursor && <button className="btn btn-outline" disabled={busy} onClick={() => void reloadList(cursor)}>다음 사건 더 보기</button>}
     </section>
-    {selected && bundle && <section className="panel operational-case-detail">
-      <div className="section-heading"><div><p className="label">사건 {selected.caseId.slice(0, 8)}</p><h2>{statusLabel(selected.taskStatus)} · {reasonLabel(selected)}</h2></div>{selected.taskStatus === "PENDING" && <button type="button" className="primary-button" onClick={() => void startReview()} disabled={Boolean(busy)}>{busy === "review" ? "처리 중…" : "검토 시작"}</button>}</div>
-      <dl className="system-detail-grid"><div><dt>고객 응답</dt><dd>{text(bundle.detail, "customerResponseCode", "확인 요청")}</dd></div><div><dt>근거 수</dt><dd>{count(bundle.evidence)}건</dd></div><div><dt>타임라인</dt><dd>{bundle.timeline.length}건</dd></div><div><dt>후속관리</dt><dd>{bundle.followUps.length}건</dd></div></dl>
-      <label className="form-field"><span>행원 내부 메모</span><textarea aria-describedby="staff-note-help" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} /></label>
-      <p id="staff-note-help" className="field-help">최대 500자이며 고객이나 외부기관에는 전송되지 않습니다.</p>
-      <button type="button" className="secondary-button" onClick={() => void saveNote()} disabled={Boolean(busy) || !note.trim()}>{busy === "note" ? "저장 중…" : "내부 메모 저장"}</button>
-      {bundle.notes.length > 0 && <p className="muted">저장된 내부 메모 {bundle.notes.length}건 · 고객·외부기관에는 전송되지 않습니다.</p>}
-    </section>}
-    {error && <p className="form-error" role="alert">{error}</p>}{result && <p className="form-success" role="status">{result}</p>}
-  </section>;
+    {error && <p className="api-error" role="alert">{error}</p>}{result && <p className="workflow-result" role="status">{result}</p>}
+    {session && bundle && <div className="case-detail-view" hidden={!viewingCase}><div className="case-detail-toolbar"><button className="btn btn-outline" disabled={busy} onClick={() => { setViewingCase(false); window.history.replaceState(null, "", "/staff/cases"); requestAnimationFrame(() => { document.getElementById("staff-case-list")?.focus(); }); }}>사건 목록으로</button><button className="btn btn-outline" disabled={busy} onClick={() => void openCase(session, bundle.detail.caseSummary.caseId)}>사건 새로고침</button></div><OperationalCaseReview key={bundle.detail.caseSummary.caseId} session={session} bundle={bundle} busy={busy || needsReload} runCommand={runCommand} /></div>}
+  </div>;
 }
-
 function message(reason: unknown) { return reason instanceof Error ? reason.message : "사건 정보를 불러오지 못했습니다."; }
-function maskCustomer(value: string) { return value.length > 10 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value; }
-function priorityLabel(value: string) { return value === "HIGH" ? "우선 검토" : value === "MEDIUM" ? "일반 검토" : "낮은 순서"; }
-function statusLabel(value: string) { return ({ PENDING: "검토 대기", IN_REVIEW: "검토 중", GUIDANCE_APPROVED: "안내계획 승인", COMPLETED: "처리 완료" } as Record<string, string>)[value] ?? value; }
-function reasonLabel(item: OperationalCaseSummary) { return item.reviewPriority === "HIGH" ? "고객이 확인을 요청한 금융생활 변화" : "고객 맥락 추가 확인"; }
-function text(record: Record<string, unknown>, key: string, fallback: string) { const value = record[key]; return typeof value === "string" && value ? value : fallback; }
-function count(record: Record<string, unknown>) { const value = record.count; return typeof value === "number" ? value : Array.isArray(record.items) ? record.items.length : 0; }

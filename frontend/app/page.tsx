@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MemberSessionStatus } from "../components/MemberSessionStatus";
 
 const financeServices = [
   { title: "금융 홈", description: "자산과 금융 일정을 한눈에 확인", href: "/login?next=/banking" },
@@ -18,8 +19,8 @@ export default function Home() {
     <a className="skip-link" href="#home-main">본문 바로가기</a>
 
     <div className="public-utility">
-      <span>모든 화면은 합성 데이터로 안전하게 체험합니다.</span>
-      <nav aria-label="보조 메뉴"><Link href="/staff/login">직원업무</Link><a href="#service-guide">이용안내</a></nav>
+      <span>금융생활 안심 동행</span>
+      <nav aria-label="보조 메뉴"><a href="#service-guide">이용안내</a></nav>
     </div>
 
     <header className="public-header">
@@ -35,7 +36,7 @@ export default function Home() {
           <Link href="/login?next=/banking/products">금융상품</Link>
           <Link className="feature-link" href="/help">금융생활 도움받기</Link>
         </nav>
-        <Link className="public-login" href="/login">로그인</Link>
+        <MemberSessionStatus />
       </div>
     </header>
 
@@ -59,17 +60,17 @@ export default function Home() {
       </section>
 
       <section className="public-service-directory" id="service-guide" aria-labelledby="service-directory-title">
-        <header><div><h2 id="service-directory-title">무엇을 하시겠어요?</h2><p>메인 화면에서는 길을 찾고, 로그인 후 금융 홈에서 자세한 내용을 확인합니다.</p></div></header>
+        <header><h2 id="service-directory-title">무엇을 하시겠어요?</h2></header>
         <div>{financeServices.map((service) => <Link href={service.href} key={service.title}><strong>{service.title}</strong><span>{service.description}</span><b>바로가기</b></Link>)}</div>
       </section>
 
       <section className="public-safety-boundary" aria-label="서비스 안전 범위">
         <strong>고객에게 먼저 묻습니다.</strong>
         <p>이 서비스는 질병이나 사기를 진단하지 않으며 실제 송금, 지급정지, 상품 가입 또는 가족 연락을 자동으로 실행하지 않습니다.</p>
-        <Link href="/help">대표 도움 흐름 체험</Link>
+        <Link href="/help">금융생활 도움받기</Link>
       </section>
     </main>
 
-    <footer className="public-footer"><div><strong>ALZ&apos;s well</strong><span>금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿</span></div><p>합성데이터 전용 체험 서비스 · 실제 금융거래 및 외부 연락 없음</p></footer>
+    <footer className="public-footer"><div><strong>ALZ&apos;s well</strong><span>금융생활 안심 동행</span></div><p>체험 서비스 · 예시 데이터 사용 · 실제 거래·외부 연락 없음</p></footer>
   </div>;
 }

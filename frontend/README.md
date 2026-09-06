@@ -29,21 +29,24 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/help`: 로그인 상태를 판별해 회원별 도움 허브 또는 비로그인 공개 시나리오로 연결
 - `/login`: `demo001`~`demo300` 합성 회원 전용 로그인. 회원가입은 없고 token은 Vercel Secure·HttpOnly 쿠키에만 저장
 - `/banking`: 로그인 회원의 통합자산·현금흐름·지출·금융일정 대시보드
-- `/banking/help`: 로그인 회원과 동일한 customerId의 의향·알림·기준선·변화신호를 사용해 1단계 도움 방식, 2단계 AI 변화 요약·확인 질문, 3단계 본인 확인으로 안내하는 도움 허브
+- `/banking/help`: 변화·근거 확인 → 본인 응답 → 은행 검토 연결 상태를 한 화면에서 확인. 의향은 최초 이용·선호 변경 시 별도 설정하며 알림 응답의 선행 조건으로 강제하지 않는다.
 - `/banking/accounts`: 계좌 상세·잔액 추세·계좌별 거래·거래처·부채·납부 달력, 거래 분류·기억 메모, 정기납부 확인 알림, 월별 명세서 상세
 - `/banking/transfer`: 등록 수취인·한도·이체 양식과 실제 실행 없는 이체 사전검증
 - `/banking/products`: 회원별 카드·예금·대출·투자·외환·연금·신탁, 관심종목 지연 시세·차트 조회와 실행 없는 모의계산
 - `/banking/life`: 금융생활 의향서·인앱 알림·기관 연결·보호수단·승인 근거·보안 세션
-- `/banking/safety`: 로그인 회원별 기준선·변화신호·불변 근거·본인 확인 선택지·감사이력
+- `/banking/safety`: `/banking/help#help-analysis`로 이동하는 호환 주소. `alertId`가 있으면 보존한다.
 - `/banking/settings`: 프로필·접근성·신뢰 연락처·이의신청
 - `/demo/products`: 로그인 회원 본인의 합성 카드·예금·대출·투자·외환·연금·신탁 조회, 동의관리, 실행 없는 이자·상환·환전 모의계산
 - `/demo/settings`: 로그인 회원 본인의 프로필·알림 채널·접근성 설정, 최소정보 신뢰 연락처, 사람 재검토 이의신청
 - `/demo/services`: 실제 금융업무 메뉴가 아닌 개발·시연용 API 계약과 연결 상태
-- `/staff/cases`: 합성 사건 큐, 타임라인·내부 메모·후속관리, 근거 기반 코파일럿, 행원 검토 폐루프
-- `/staff/operations`: 실제 데모 사건 큐와 운영 사건 상세·타임라인·근거·메모·후속관리·금융생활 의향 요약
+- `/staff/cases`: 행원 전용 사건 검토. 고객 응답·근거·공유 의향·안내계획·메모·후속관리. `?caseId=`로 같은 사건에 진입하며 `/staff/cases/{caseId}`도 이 경로로 이동한다.
+- `/staff/operations`: 행원 업무 현황. 조회한 사건의 상태별 건수를 누르면 아래 목록을 필터링하며, 종결 사건 조회와 개별 사건 진입을 제공한다.
+- `/demo/staff/cases`, `/demo/staff/cases/{caseId}`: 별도 공개 시연 세션의 사건 목록·상세. 회원 사건과 혼합하지 않는다.
 - `/staff/control-center`: core/AI/통합 readiness·버전·AI 폴백 상태와 규칙·감사 상세, 준법·정책 API 계약
 - `/staff/login`: `staff001`~`staff005` 보호업무 역할과 `admin001`~`admin002` 탐지관리 역할의 합성 운영 로그인
-- `/staff/system-status`: health·readiness·공개 설정·버전과 AI 검색 장애 폴백 상태
+- `/staff/system-status`: 공용 연결 상태. 핵심 금융 연결과 AI 보조 연결을 분리하고 세부 설정·버전은 접어 둔다. 로그인 역할의 행원·관리자 메뉴를 유지한다.
+
+상단 로그인 메뉴는 개인·운영자 진입을 제공한다. 선택한 메뉴가 권한을 부여하지 않으며, 백엔드가 반환한 CUSTOMER / PROTECTION_STAFF / DETECTION_ADMIN 역할로 시작 화면과 허용 목적지를 결정한다. 동일 사건 전환은 본문 배너 대신 상단 로그인 메뉴가 목적지 식별자를 보존한다.
 
 `scripts/generate-api-catalog.mjs`는 최종 API 명세 283개와 Spring Controller 239개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 238개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 239개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
 

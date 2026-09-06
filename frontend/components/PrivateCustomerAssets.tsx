@@ -88,7 +88,7 @@ export function PrivateCustomerAssets({ session, activeTab, onSessionExpired }: 
   }
 
   if (!activeTab) return null;
-  if (!assets) return <section className="panel asset-loading"><div className={busy === "load" ? "bank-spinner" : "status-outage"}>{busy === "load" ? "" : "!"}</div><h2>{busy === "load" ? "남은 금융자산을 연결하고 있습니다." : "금융자산을 불러오지 못했습니다."}</h2><p>{error || "합성 금융정보를 안전하게 조회합니다."}</p>{busy !== "load" && <button className="primary-button" onClick={() => void refresh()}>다시 조회</button>}</section>;
+  if (!assets) return <section className="panel asset-loading"><div className={busy === "load" ? "bank-spinner" : "status-outage"}>{busy === "load" ? "" : "!"}</div><h2>{busy === "load" ? "남은 금융자산을 연결하고 있습니다." : "금융자산을 불러오지 못했습니다."}</h2><p>{error || "금융정보를 불러오고 있습니다."}</p>{busy !== "load" && <button className="primary-button" onClick={() => void refresh()}>다시 조회</button>}</section>;
 
   return <div className="customer-assets-workspace">
     {activeTab === "deposit" && <DepositScreen assets={assets} busy={busy} amount={depositAmount} term={depositTerm} interest={interest} setAmount={setDepositAmount} setTerm={setDepositTerm} simulate={() => void simulateDeposit()} />}

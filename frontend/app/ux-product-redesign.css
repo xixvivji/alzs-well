@@ -691,12 +691,12 @@
   grid-template-columns: 270px minmax(0, 1fr);
 }
 
-.app-shell aside {
+.app-shell > .app-sidebar {
   padding: 26px 20px;
   border-color: var(--ux-border);
 }
 
-.staff aside {
+.staff > .app-sidebar {
   background: var(--ux-ocean-strong);
 }
 
@@ -742,20 +742,9 @@
   background: #31556c;
 }
 
-.side-safety {
-  border-radius: 9px;
-}
-
-.side-safety strong,
 .back-home,
-.channel-switch a,
 .service-status strong {
   font-size: 13px;
-}
-
-.side-safety p {
-  font-size: 12px;
-  line-height: 1.55;
 }
 
 .app-content {
@@ -2065,13 +2054,26 @@ html[data-large-text="true"] .public-header-inner {
 .shared-customer-nav a.feature-link.has-change,
 .banking-topbar > nav.shared-customer-nav a.feature-link.has-change {
   border-bottom-color: transparent;
-  background: #fff4cf;
+  background: transparent;
   color: #5b4208;
+}
+
+.shared-customer-nav a.feature-link.has-change:not(.active):hover,
+.banking-topbar > nav.shared-customer-nav a.feature-link.has-change:not(.active):hover {
+  border-bottom-color: #91aa9d;
 }
 
 .shared-customer-nav a.feature-link.active.has-change,
 .banking-topbar > nav.shared-customer-nav a.feature-link.active.has-change {
-  border-bottom-color: #91aa9d;
+  border-bottom-color: transparent;
+  background: #fff4cf;
+}
+
+/* Keep one navigation underline at a time: another item's hover preview
+ * temporarily replaces the current-page underline. */
+.shared-customer-nav:has(a:not(.active):hover) a.active,
+.banking-topbar > nav.shared-customer-nav:has(a:not(.active):hover) a.active {
+  box-shadow: none;
 }
 
 .shared-customer-nav .feature-link > span {
@@ -2128,11 +2130,16 @@ html[data-large-text="true"] .public-header-inner {
   box-shadow: none;
 }
 
-[data-high-contrast="true"] .shared-customer-nav a.feature-link.has-change,
 [data-high-contrast="true"] .banking-first-task.has-detected-change,
 [data-high-contrast="true"] .banking-shortcuts a.has-change,
 [data-high-contrast="true"] .help-summary-grid article.has-change {
   border-color: #000 !important;
+  background: #ffdf00;
+  color: #000;
+}
+
+[data-high-contrast="true"] .shared-customer-nav a.feature-link.active.has-change {
+  border-bottom-color: transparent !important;
   background: #ffdf00;
   color: #000;
 }
