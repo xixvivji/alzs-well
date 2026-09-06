@@ -1,6 +1,6 @@
 # ALZ's well AI service
 
-2026-09-06 개발 추가: `/internal/v1/copilot-draft`에 선택형 Bedrock Converse 제공자를 추가했다. 기본값은 `template`이며 실제 AWS 호출·운영 검증은 아직 하지 않았다. Bedrock을 켜면 아래의 기본 폐쇄형 경계와 달리 명시적으로 승인한 외부 추론이 발생한다. [설정·통제·향후 로컬 LLM 교체 범위](../docs/BEDROCK_STAFF_DRAFT.md).
+2026-09-06: `/internal/v1/copilot-draft`에 선택형 Bedrock Converse 제공자를 추가했고 AWS의 실제 합성 회원 사건에서 생성 응답을 확인했다. 기본값은 `template`이며 활성화한 AWS는 승인된 APAC Nova Lite 추론을 사용한다. 아래의 기본 폐쇄형 경계와 달리 명시적으로 승인한 외부 추론이 발생한다. [설정·통제·검증 증적·향후 로컬 LLM 교체 범위](../docs/BEDROCK_STAFF_DRAFT.md).
 
 폐쇄망에서 승인된 지식 원문을 검증·추출·청킹하고 이후 검색 인덱스를 만드는 내부 AI/RAG 프로젝트다.
 현재 단계는 공용 지식 계약 v1을 소비하는 manifest, HTML/PDF 원문 검증과 결정론적
