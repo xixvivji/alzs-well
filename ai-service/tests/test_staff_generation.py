@@ -44,6 +44,18 @@ def test_valid_draft(enabled):
     assert result.modelInvoked and result.externalEgressAttempted and not result.fallbackUsed
 
 
+def test_accepts_only_a_complete_json_fence(enabled):
+    result = generate_draft(payload(), Mock(generate=Mock(return_value="```json\n" + valid_text() + "\n```")))
+    assert not result.fallbackUsed
+    result = generate_draft(payload(), Mock(generate=Mock(return_value="설명\n```json\n" + valid_text() + "\n```")))
+    assert result.fallbackUsed
+
+
+def test_rejects_invented_completed_action(enabled):
+    raw = valid_text().replace("고객 확인이 필요합니다.", "고객 확인이 처리되었습니다.")
+    assert generate_draft(payload(), Mock(generate=Mock(return_value=raw))).fallbackUsed
+
+
 @pytest.mark.parametrize("raw", ["not json", "x" * 12001, '{"summary":"x"}',
     valid_text().replace("송금", "HTTPS://bad.example 송금"),
     valid_text().replace("송금", "<script>송금")])
