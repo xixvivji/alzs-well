@@ -9,7 +9,7 @@ chunk 생성 CLI, PostgreSQL·pgvector 하이브리드 검색과 개인 기준�
 사람 검토 체크리스트가 포함된다. Spring이 입력 수치에서 전체 결과를 다시 계산해 일치하지 않는
 응답은 폴백하며 진단·사기 판정·금융 실행은 생성하지 않는다.
 
-2026-09-05 문서 점검 기준: 검색 기본 Hash와 승인 staging의 Arctic-ko 설정을 구분한다. Arctic-ko는 생성형 LLM이 아닌 임베딩 모델이며, 구조화 초안·쉬운 설명·체크리스트는 규칙·템플릿 기반이다. 평가 결과는 [평가 안내](evaluation/README.md)의 개별 데이터셋·시점에 한정하며, 최신 회원 v3.1 운영 E2E는 보류 중이다.
+2026-09-06 기준: 검색 기본 Hash와 승인 AWS staging의 Arctic-ko 설정을 구분한다. Arctic-ko는 생성형 LLM이 아닌 임베딩 모델이다. 고객 의향 구조화·변화 설명은 규칙·템플릿 기반이며, 로그인 행원의 사건 검토 초안만 선택형 Bedrock 생성 기능을 사용한다. 평가 결과는 [평가 안내](evaluation/README.md)의 개별 데이터셋·시점에 한정한다. 회원 v3.1 적재·역할별 BFF 검증은 [v0.1.4 증적](../docs/RELEASE_V0_1_4.md), 실제 생성 응답은 [Bedrock 증적](../docs/BEDROCK_STAFF_DRAFT.md)을 따른다.
 
 ## 실행
 

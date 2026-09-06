@@ -40,7 +40,7 @@
 - 사건 상세의 `customerResponseCode`로 고객이 선택한 응답을 보여준다. 근거 수치나 행원 메모와 분리한다.
 - `CaseworkResponses.CaseDetail`은 고객의 자유서술 의견·이의신청 원문을 제공하지 않는다. DB에 저장된 원문이 있다고 프론트가 조회 가능한 것처럼 꾸미지 않는다.
 - 행원 의향은 `GET /api/v1/staff/customers/{customerId}/financial-intent-summary`만 사용한다. `FinancialIntentService.staff`는 최신 승인 의향의 공유 동의 필드만 반환하고 나머지는 null로 제외한다. 고객 전용 의향 이력 API로 우회하지 않는다.
-- 회원용 사건 전용 코파일럿 초안 API는 현재 카탈로그에 없다. 질문은 백엔드 결정론적 템플릿을 참고한 정적 안내로 구분하고 공식 근거 검색은 기존 knowledge API를 사용한다. `/demo/**/copilot-drafts`를 회원 사건에 호출하지 않는다.
+- 회원 사건의 `검토·결정` 탭은 `POST /api/v1/staff/cases/{caseId}/copilot-drafts`로 선택형 Bedrock 검토 초안을 요청한다. 생성 성공과 기본 안내를 구분하고, 사건·버전 변경 시 이전 초안은 폐기한다. 정적 상담 질문 및 공식 근거 검색은 별도로 유지한다. `/demo/**/copilot-drafts`를 회원 사건에 호출하지 않는다. 전송 범위와 검증 한계는 [Bedrock 안내](BEDROCK_STAFF_DRAFT.md)를 따른다.
 
 ## 공개 데이터의 패턴과 담당 계정
 

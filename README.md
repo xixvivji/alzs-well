@@ -4,19 +4,19 @@
 
 2026-09-06: 로그인 행원 사건에 선택형 Bedrock 검토 초안을 추가하고 AWS에서 고객 응답 → 담당 행원 동일 사건 → 실제 생성 응답을 확인했다. 저장소 기본값은 비활성화이며 승인된 합성 자료만 APAC Nova Lite로 전달한다. 고객 흐름·Arctic-ko 검색은 유지한다. [생성형 초안 범위와 검증 증적](docs/BEDROCK_STAFF_DRAFT.md). 아래 규모는 기존 문서 점검 시점 기준이며 이 변경의 카탈로그는 문서 284개·구현 240개다.
 
-문서 점검 기준은 2026-09-05 코드 `517781c`다. [현행 구현·검증 상태](docs/CURRENT_IMPLEMENTATION_STATUS.md)에 수치와 보류 작업을 정리했다. PUBLIC v3.1의 300명·216,000건 생성 규격은 코드에 반영됐으며 AWS 적재·역할별 E2E·최종 릴리스는 보류 중이다.
+2026-09-06 통합 기준: PUBLIC v3.1의 회원 300명·계좌 600개·거래 216,000건은 AWS 적재와 역할별 BFF 검증을 완료했다. [v0.1.4 증적](docs/RELEASE_V0_1_4.md)과 [v0.1.5 릴리스](https://github.com/xixvivji/alzs-well/releases/tag/v0.1.5)를 참고한다. 고객·행원 UX 통합 화면은 이번 develop 변경이며, 기존 운영 검증이 새 화면 전체의 배포·E2E 검증을 뜻하지는 않는다. [회원·행원 이용 흐름](docs/CUSTOMER_STAFF_FRONTEND_FLOW.md).
 
 개발 브랜치와 커밋 규칙은 [`CONTRIBUTING.md`](./CONTRIBUTING.md)를 따른다.
 
 ## 현재 구현 상태
 
-- Spring Boot 3.5·Java 21·PostgreSQL/Flyway 기반 업무 API 카탈로그 283개를 관리하며, 코드 기준 operation은 239개다.
+- Spring Boot 3.5·Java 21·PostgreSQL/Flyway 기반 업무 API 명세 284개를 관리하며, 코드 기준 operation은 240개다.
 - 합성 데이터 적재, 변화 탐지, 고객 알림, 직원 사건 검토, 동의·신뢰연락인·감사·정책 관리가 구현돼 있다.
 - FastAPI는 승인 문서 ingestion·Arctic-ko 하이브리드 검색뿐 아니라 개인 기준선의 EWMA·CUSUM 장기변화 분석과 검증 가능한 쉬운 요약·고객 확인 질문·검토 체크리스트를 제공한다. Spring은 수치와 안내 문장을 다시 계산해 일치하지 않는 응답을 거부한다.
 - Arctic-ko는 `STAGED_APPROVED`이며 AWS staging에서 승인값·revision·artifact/golden-set hash가 모두 일치할 때만 로드한다. 기본 embedding은 계속 Hash다.
 - 최종 staging은 업무 EC2 + AI EC2 + Private RDS다. 로컬 개발은 단일 Docker Compose를 사용한다.
 - 공개 행원 시연은 현재 고객 capability로 같은 합성 세션을 먼저 검증한 후 단기 직원 capability를 발급한다. 사설 운영 모드는 서버가 서명·issuer·audience·만료·직원 역할을 검증한 RS256 IdP JWT만 신뢰한다.
-- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 239개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 홈의 조회·이체 사전확인·상품·자산관리 메뉴는 로그인 뒤 선택한 회원 화면으로 복귀한다. `/help`는 로그인 상태를 판별해 회원에게는 같은 customerId의 의향·알림·기준선·신호를 사용하는 `/banking/help`를, 비로그인 사용자에게는 `/demo` 공개 시나리오를 연결한다. 공개 금융서비스는 회원가입 없이 `demo001`~`demo300` 합성 회원만 로그인하며, 회원별 계좌·거래·정기납부·수취인·카드·예금·대출·투자·외환·연금·신탁 데이터를 분리한다. 합성 직원 5명과 관리자 2명은 고객과 다른 최소권한 역할로 운영 조회 화면에 로그인한다. Bearer token은 Vercel Secure·HttpOnly 쿠키로만 관리하고 고객 API는 customerId 소유권을 다시 검증한다.
+- Next.js 금융 포털은 고객·행원·관리자 채널을 분리하고, 구현 240개·계획 23개·외부 참고 22개 operation을 생성 카탈로그로 검증한다. 홈의 조회·이체 사전확인·상품·자산관리 메뉴는 로그인 뒤 선택한 회원 화면으로 복귀한다. `/help`는 로그인 상태를 판별해 회원에게는 같은 customerId의 의향·알림·기준선·신호를 사용하는 `/banking/help`를, 비로그인 사용자에게는 `/login?next=/banking/help`로 로그인을 안내한다. `/demo`는 별도의 공개 시나리오 경로로 유지한다. 공개 금융서비스는 회원가입 없이 `demo001`~`demo300` 합성 회원만 로그인하며, 회원별 계좌·거래·정기납부·수취인·카드·예금·대출·투자·외환·연금·신탁 데이터를 분리한다. 합성 직원 5명과 관리자 2명은 고객과 다른 최소권한 역할로 운영 조회 화면에 로그인한다. Bearer token은 Vercel Secure·HttpOnly 쿠키로만 관리하고 고객 API는 customerId 소유권을 다시 검증한다.
 
 ```bash
 cd backend && ./gradlew check
