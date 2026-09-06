@@ -1,57 +1,75 @@
 import Link from "next/link";
 
-const primaryNavigation = [
-  { label: "계좌·거래", href: "/login?next=/banking/accounts" },
-  { label: "송금 전 확인", href: "/login?next=/banking/transfer" },
-  { label: "금융상품", href: "/login?next=/banking/products" },
-  { label: "생활금융", href: "/login?next=/banking/life" },
-  { label: "안심관리", href: "/login?next=/banking/safety" },
-  { label: "이용안내", href: "#support" },
+const financeServices = [
+  { title: "금융 홈", description: "자산과 금융 일정을 한눈에 확인", href: "/login?next=/banking" },
+  { title: "계좌·거래", description: "잔액, 거래내역과 정기납부 확인", href: "/login?next=/banking/accounts" },
+  { title: "송금 전 확인", description: "실제 송금 없이 한도와 조건 점검", href: "/login?next=/banking/transfer" },
+  { title: "금융상품", description: "예금·대출·투자·연금 정보 조회", href: "/login?next=/banking/products" },
 ];
-const quickServices = [
-  { icon: "₩", title: "계좌조회", description: "내 계좌와 잔액을 한눈에", href: "/login?next=/banking/accounts" },
-  { icon: "↗", title: "송금 전 확인", description: "보내기 전 한도와 조건 확인", href: "/login?next=/banking/transfer" },
-  { icon: "▤", title: "거래내역", description: "입출금 내역을 빠르게 확인", href: "/login?next=/banking/accounts" },
-  { icon: "◇", title: "금융상품", description: "예금·대출·투자 상품 확인", href: "/login?next=/banking/products" },
-  { icon: "?", title: "금융생활 도움받기", description: "로그인 상태에 맞춰 도움 연결", href: "/help", featured: true },
-];
-const productCards = [
-  { eyebrow: "목돈 마련", title: "차곡차곡 안심적금", description: "생활 계획에 맞춰 부담 없이 시작하는 저축", rate: "최고 연 4.10%", tone: "mint" },
-  { eyebrow: "생활 안정", title: "든든 생활비 통장", description: "공과금과 정기지출을 한곳에서 편리하게 관리", rate: "수수료 우대", tone: "navy" },
-  { eyebrow: "노후 준비", title: "함께 보는 연금관리", description: "흩어진 노후자산을 보기 쉽게 모아 확인", rate: "맞춤형 조회", tone: "sand" },
-];
-const notices = [
-  ["안내", "금융생활 안심 서비스 이용 안내", "2026.09.01"],
-  ["보안", "전자금융 이용 시 안전수칙을 확인해 주세요", "2026.08.29"],
-  ["소식", "고령 고객을 위한 쉬운 금융 안내 확대", "2026.08.27"],
+
+const helpSteps = [
+  { step: "1", title: "도움 방식 정하기", description: "유지할 납부와 편한 설명 방식을 직접 정합니다." },
+  { step: "2", title: "최근 변화 살펴보기", description: "평소와 최근의 차이를 쉬운 말로 확인합니다." },
+  { step: "3", title: "직접 답하거나 도움 요청", description: "내 상황을 선택하고 필요할 때 행원과 이어집니다." },
 ];
 
 export default function Home() {
-  return <main className="bank-home">
+  return <div className="bank-home public-home">
     <a className="skip-link" href="#home-main">본문 바로가기</a>
-    <div className="bank-utility"><div><span>개인</span><span>기업</span></div><div><Link href="/staff/login">직원업무</Link><a href="#notices">새소식</a><a href="#support">고객센터</a><button type="button" aria-label="화면 언어 선택">한국어⌄</button></div></div>
-    <header className="bank-header">
-      <Link className="bank-brand" href="/" aria-label="ALZ's well 홈"><span aria-hidden="true">A</span><div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div></Link>
-      <nav aria-label="주요 금융 메뉴">{primaryNavigation.map((item) => <Link href={item.href} key={item.label}>{item.label}</Link>)}</nav>
-      <div className="bank-header-actions"><Link className="header-login" href="/login">로그인</Link><Link className="header-help" href="/help">도움받기</Link></div>
+
+    <div className="public-utility">
+      <span>모든 화면은 합성 데이터로 안전하게 체험합니다.</span>
+      <nav aria-label="보조 메뉴"><Link href="/staff/login">직원업무</Link><a href="#service-guide">이용안내</a></nav>
+    </div>
+
+    <header className="public-header">
+      <div className="public-header-inner">
+        <Link className="bank-brand" href="/" aria-label="ALZ's well 처음 화면">
+          <span aria-hidden="true">A</span>
+          <div><strong>ALZ&apos;s well</strong><small>금융생활 안심 동행</small></div>
+        </Link>
+        <nav className="public-primary-nav shared-customer-nav" aria-label="주요 서비스">
+          <Link href="/login?next=/banking">금융 홈</Link>
+          <Link href="/login?next=/banking/accounts">계좌·거래</Link>
+          <Link href="/login?next=/banking/transfer">송금 전 확인</Link>
+          <Link href="/login?next=/banking/products">금융상품</Link>
+          <Link className="feature-link" href="/help">금융생활 도움받기</Link>
+        </nav>
+        <Link className="public-login" href="/login">로그인</Link>
+      </div>
     </header>
 
-    <div id="home-main" tabIndex={-1}>
-    <section className="bank-hero">
-      <div className="bank-hero-copy"><p>처음이어도 쉽게 쓰는 금융서비스</p><h1>내 금융생활을 한눈에,<br/><em>필요한 도움까지 바로.</em></h1><span>계좌 확인, 송금 전 점검, 금융생활 도움을 원하는 곳에서 시작하세요.</span><div><Link className="bank-button primary" href="/login">금융서비스 시작</Link><a className="bank-button ghost" href="#quick">할 수 있는 일 보기</a></div></div>
-      <aside className="bank-login-card" id="login" aria-label="금융서비스 이용 안내"><div><span aria-hidden="true">◎</span><p><strong>안전한 금융서비스</strong><small>인증 후 내 합성 금융정보를 확인할 수 있어요.</small></p></div><Link href="/login">금융서비스 로그인</Link><p>회원가입 없이 제공된 합성 회원 계정으로 이용합니다.</p></aside>
-      <div className="bank-hero-shape" aria-hidden="true"><i/><i/><i/></div>
-    </section>
+    <main id="home-main" tabIndex={-1}>
+      <section className="public-hero" aria-labelledby="public-hero-title">
+        <div className="public-hero-copy">
+          <h1 id="public-hero-title"><span className="public-heading-lead">내 금융생활을 한눈에</span>,<br/><em>도움은 내 뜻대로.</em></h1>
+          <p className="public-hero-description">일반 금융업무는 편리하게 이용하고, 평소와 다른 변화가 보이면 자동 조치 없이 나에게 먼저 확인합니다.</p>
+          <div className="public-hero-actions">
+            <Link className="public-primary-action btn btn-primary" href="/login?next=/banking/help">내 금융생활 준비 시작</Link>
+            <Link className="public-secondary-action btn btn-outline" href="/login?next=/banking">금융 홈으로</Link>
+          </div>
+          <p className="public-action-note">도움 방식은 언제든 바꾸거나 철회할 수 있습니다.</p>
+        </div>
 
-    <section className="bank-quick" id="quick" aria-labelledby="quick-title"><div className="bank-section-heading"><div><p>바로가기</p><h2 id="quick-title">무엇을 하시겠어요?</h2></div><span>가장 자주 쓰는 일을 한 번에 시작하세요.</span></div><div className="bank-quick-grid">{quickServices.map((service) => <Link className={service.featured ? "featured" : ""} href={service.href} key={service.title}><span aria-hidden="true">{service.icon}</span><div><strong>{service.title}</strong><small>{service.description}</small></div>{service.featured && <b>처음이라면 여기</b>}</Link>)}</div></section>
+        <aside className="public-journey" aria-labelledby="journey-title">
+          <header><h2 id="journey-title">금융생활 도움은 세 단계예요</h2><b>ALZ&apos;s well 특화</b></header>
+          <ol>{helpSteps.map((item) => <li key={item.step}><span aria-hidden="true">{item.step}</span><div><strong>{item.title}</strong><p>{item.description}</p></div></li>)}</ol>
+          <p className="public-human-rule">AI는 설명을 돕고, 중요한 판단은 고객과 행원이 합니다.</p>
+        </aside>
+      </section>
 
-    <section className="bank-life" id="life"><div className="bank-life-copy"><p>생활금융 안심 서비스</p><h2>금융생활이 복잡하게 느껴질 때,<br/>쉽게 설명해 드릴게요.</h2><span>평소와 달라진 금융생활을 쉬운 말로 확인하고, 잘 모르겠을 때는 필요한 도움을 받을 수 있습니다.</span><ul><li>큰 글씨와 선명한 화면</li><li>평소와 달라진 점 설명</li><li>고객에게 먼저 확인</li></ul><Link href="/help">금융생활 도움받기 <b aria-hidden="true">→</b></Link></div><div className="bank-life-preview" aria-label="금융생활 도움 화면 미리보기"><div><small>오늘의 금융생활</small><strong>확인할 변화가 1개 있어요</strong></div><article><span>!</span><p><small>쉬운 설명</small><strong>최근 송금 결과를 다시 확인한 횟수가 늘었어요.</strong></p></article><div className="bank-life-actions"><span>알고 있어요</span><span>잘 모르겠어요</span></div><p>질병이나 사기로 단정하지 않고 고객에게 먼저 확인합니다.</p></div></section>
+      <section className="public-service-directory" id="service-guide" aria-labelledby="service-directory-title">
+        <header><div><h2 id="service-directory-title">무엇을 하시겠어요?</h2><p>메인 화면에서는 길을 찾고, 로그인 후 금융 홈에서 자세한 내용을 확인합니다.</p></div></header>
+        <div>{financeServices.map((service) => <Link href={service.href} key={service.title}><strong>{service.title}</strong><span>{service.description}</span><b>바로가기</b></Link>)}</div>
+      </section>
 
-    <section className="bank-products" id="products"><div className="bank-section-heading"><div><p>FINANCIAL PRODUCTS</p><h2>나에게 맞는 금융상품</h2></div><Link href="/login?next=/banking/products">상품 전체보기 →</Link></div><div className="bank-product-grid">{productCards.map((product) => <article className={product.tone} key={product.title}><p>{product.eyebrow}</p><h3>{product.title}</h3><span>{product.description}</span><strong>{product.rate}</strong><Link href="/login?next=/banking/products" aria-label={`${product.title} 상세보기`}>＋</Link></article>)}</div></section>
+      <section className="public-safety-boundary" aria-label="서비스 안전 범위">
+        <strong>고객에게 먼저 묻습니다.</strong>
+        <p>이 서비스는 질병이나 사기를 진단하지 않으며 실제 송금, 지급정지, 상품 가입 또는 가족 연락을 자동으로 실행하지 않습니다.</p>
+        <Link href="/help">대표 도움 흐름 체험</Link>
+      </section>
+    </main>
 
-    <section className="bank-info" id="notices"><div><div className="bank-section-heading compact"><h2>새소식</h2><a href="#notices">더보기 ＋</a></div><ul>{notices.map(([type,title,date]) => <li key={title}><span>{type}</span><strong>{title}</strong><time>{date}</time></li>)}</ul></div><aside id="support"><p>고객센터</p><strong>1588-0000</strong><span>평일 09:00~18:00</span><div><a href="#support">자주 묻는 질문</a><a href="#support">금융사고 신고</a><a href="#support">이용안내</a></div></aside></section>
-
-    </div>
-    <footer className="bank-footer"><div><Link className="bank-brand inverse" href="/"><span>A</span><strong>ALZ&apos;s well</strong></Link><p>고령 금융소비자의 자기결정권을 지키는 금융생활 안심 동행</p></div><nav aria-label="하단 서비스 메뉴"><a href="#support">개인정보처리방침</a><a href="#support">전자금융거래약관</a><a href="#support">보안센터</a><Link href="/staff/login">직원업무</Link></nav><p>합성데이터 전용 체험 서비스 · 실제 금융거래 및 외부 연락 없음</p></footer>
-  </main>;
+    <footer className="public-footer"><div><strong>ALZ&apos;s well</strong><span>금융생활 연속성 준비·조기알림 및 행원 보호업무 코파일럿</span></div><p>합성데이터 전용 체험 서비스 · 실제 금융거래 및 외부 연락 없음</p></footer>
+  </div>;
 }
