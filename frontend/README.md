@@ -26,7 +26,7 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 - `/demo/finance`: 통합자산, 계좌, 거래, 기준선, 동의, 보호 안내
 - `/demo/ai-assistant`: AI 금융생활 의향서 현재 상태·초안·승인, 장기 변화, 쉬운말·음성
 - `/demo/alerts`: 고객 변화 확인, 맥락 응답, 알림 감사이력
-- `/help`: 로그인 상태를 판별해 회원별 도움 허브 또는 비로그인 공개 시나리오로 연결
+- `/help`: 로그인 회원은 도움 허브, 비로그인 사용자는 `/login?next=/banking/help`로 연결. 공개 `/demo`로 자동 우회하지 않는다.
 - `/login`: `demo001`~`demo300` 합성 회원 전용 로그인. 회원가입은 없고 token은 Vercel Secure·HttpOnly 쿠키에만 저장
 - `/banking`: 로그인 회원의 통합자산·현금흐름·지출·금융일정 대시보드
 - `/banking/help`: 변화·근거 확인 → 본인 응답 → 은행 검토 연결 상태를 한 화면에서 확인. 의향은 최초 이용·선호 변경 시 별도 설정하며 알림 응답의 선행 조건으로 강제하지 않는다.
@@ -48,15 +48,19 @@ Vercel BFF의 호출량 제한은 Vercel이 위조 방지를 위해 덮어쓴 `x
 
 상단 로그인 메뉴는 개인·운영자 진입을 제공한다. 선택한 메뉴가 권한을 부여하지 않으며, 백엔드가 반환한 CUSTOMER / PROTECTION_STAFF / DETECTION_ADMIN 역할로 시작 화면과 허용 목적지를 결정한다. 동일 사건 전환은 본문 배너 대신 상단 로그인 메뉴가 목적지 식별자를 보존한다.
 
-`scripts/generate-api-catalog.mjs`는 최종 API 명세 283개와 Spring Controller 239개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 238개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 239개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
+`scripts/generate-api-catalog.mjs`는 최종 API 명세 284개와 Spring Controller 240개를 대조해 `lib/generated/api-operation-catalog.ts`를 만듭니다. 문서와 코드의 교집합 239개, 코드 전용 직원 bootstrap operation 1개, 미구현 계획 23개, 외부 참고 22개가 바뀌면 검증이 실패합니다. 카탈로그의 240개는 백엔드 구현 계약 수이지, 현재 모든 화면에서 실제 호출되는 API 수가 아닙니다.
 
 생성된 공통 클라이언트 계약은 method, path parameter, query, 인증 방식, 실행 경계를 일관되게 처리합니다. 브라우저는 Bearer token을 받지 않으며 같은 origin의 `/api/member-auth/*` BFF가 로그인·회전·로그아웃을 처리합니다. 나머지 고객·운영 API에는 BFF가 HttpOnly access token을 서버에서 주입하고, 직접 `/api/v1/auth/login`·`token/refresh`를 호출해 원문 token을 받는 경로는 차단합니다. 공개 계정은 성공한 `PUBLIC` fixture의 고객 300명·보호업무 직원 5명·탐지관리자 2명으로 제한합니다. 고객 API는 customerId 소유권을, 운영 API는 `PROTECTION_STAFF` 또는 `DETECTION_ADMIN` 권한을 다시 검증합니다. `PLANNED`와 `REFERENCE_ONLY`는 네트워크 요청 전에 차단됩니다.
 
-`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 2026-09-05 재집계는 239개 중 158개(66.1%)이며, 동적 데모 경로처럼 문자열을 조립하는 호출은 보수적으로 누락될 수 있습니다. API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않으며, 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하고 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다. 역할별 운영 원칙과 서버 전용·간접 연결 분류는 `../docs/FRONTEND_API_ROLE_MATRIX.md`를 따릅니다.
+`npm run catalog:ui-coverage`는 구현 operation 중 프론트 코드가 명시적으로 호출하는 계약을 역할·도메인별로 출력합니다. 2026-09-06 UX 통합 재집계는 240개 중 163개(67.9%)이며, 동적 데모 경로처럼 문자열을 조립하는 호출은 보수적으로 누락될 수 있습니다. API 구현 수와 화면 연결 수를 같은 의미로 발표하지 않으며, 고객·직원·관리자 API는 서로 다른 권한 화면에 배치하고 관리자 변경 API를 고객 token으로 우회 노출하지 않습니다. 역할별 운영 원칙과 서버 전용·간접 연결 분류는 `../docs/FRONTEND_API_ROLE_MATRIX.md`를 따릅니다.
 
-고객 알림의 `나중에 확인`은 `POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer`를 호출하며 `{ expectedVersion, deferredUntil }`, `Idempotency-Key`, 데모 capability/run ID를 전달합니다. 백엔드는 같은 세션·run·알림의 version을 검증하고 `DEFERRED` 상태 및 변경된 알림 데이터를 반환해야 합니다.
+공개 데모 알림의 `나중에 확인`은 `POST /api/v1/demo/sessions/{sessionId}/alerts/{alertId}/defer`를 호출하며 `{ expectedVersion, deferredUntil }`, `Idempotency-Key`, 데모 capability/run ID를 전달합니다. 백엔드는 같은 세션·run·알림의 version을 검증하고 `DEFERRED` 상태 및 변경된 알림 데이터를 반환해야 합니다.
 
 ## 로컬 실행
+
+회원 사건의 `검토·결정` 탭에는 기존 `OperationalCopilotDraft`를 연결한다. 사건 사유·고객 응답·승인 근거를 사용하는 선택형 Bedrock 초안과 기본 안내를 구분하며, 생성 결과는 자동 저장·승인하지 않는다. 사건 또는 사건 버전이 바뀌면 이전 초안을 폐기한다. [전송 범위와 실제 검증](../docs/BEDROCK_STAFF_DRAFT.md).
+
+2026-09-06 UX 통합은 develop 기준 변경이다. 기존 v0.1.5 운영 증적은 통합된 새 화면 전체의 배포·브라우저 E2E 증적이 아니다. Pretendard CDN은 현재 self-only CSP에서 차단되어 시스템 글꼴로 대체되며, 별도 자체 호스팅 전까지 해당 웹폰트 로드를 보장하지 않는다.
 
 ```bash
 npm ci

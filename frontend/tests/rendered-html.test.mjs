@@ -209,6 +209,12 @@ test("전역 오류와 잘못된 주소에서 사용자가 복구할 수 있다"
   assert.match(notFoundPage, /도움 안내 보기/);
 });
 
+test("회원 사건 검토 화면은 기존 생성형 초안을 사건 버전에 연결한다", async () => {
+  const source = await readFile(new URL("../components/OperationalCaseReview.tsx", import.meta.url), "utf8");
+  assert.match(source, /import \{ OperationalCopilotDraft \}/);
+  assert.ok(source.includes('<OperationalCopilotDraft key={`${item.caseId}:${item.version}`} session={session} caseId={item.caseId}'));
+});
+
 async function allFiles(directory) {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {

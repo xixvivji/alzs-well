@@ -7,6 +7,7 @@ import { addOperationalCaseNote, approveCaseGuidance, completeCaseReview, finish
 import { customerLabel, evidenceDescription } from "../lib/presentation-copy";
 import { alertStateLabel, caseStateLabel, changeLabel, dateTime, intentValueLabel, metric, responseLabel } from "../lib/continuity-labels";
 import { reviewEventLabel, reviewNextTask, reviewPrompt } from "../lib/staff-review-presentation";
+import { OperationalCopilotDraft } from "./OperationalCopilotDraft";
 
 type Props = { session: PrivateCustomerSession; bundle: OperationalCaseBundle; busy: boolean; runCommand: (command: () => Promise<unknown>, success: string) => Promise<boolean> };
 const workAreas = [["facts", "고객·근거 확인"], ["decision", "검토·결정"], ["followup", "후속관리·이력"]] as const;
@@ -109,6 +110,7 @@ export function OperationalCaseReview({ session, bundle, busy, runCommand }: Pro
     </div>
 
     <div className="case-work-area" id="case-area-decision" role="tabpanel" aria-labelledby="case-tab-decision" hidden={area !== "decision"} tabIndex={0}>
+      <OperationalCopilotDraft key={`${item.caseId}:${item.version}`} session={session} caseId={item.caseId} />
       <section className="case-section" aria-labelledby="case-consultation-title" data-origin="reference">
         <header className="case-section-heading"><h3 id="case-consultation-title">상담에서 확인할 내용</h3></header>
         
