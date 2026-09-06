@@ -1,0 +1,3 @@
+[profile bedrock-runtime]
+region = ap-northeast-2
+credential_process = /bin/cat /run/bedrock/credentials.json
