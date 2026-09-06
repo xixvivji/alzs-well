@@ -15,6 +15,23 @@ export type SystemVersions = {
 };
 export type SystemStatusSnapshot = { health: SystemHealth; readiness: SystemReadiness; coreReadiness: SystemReadiness; aiReadiness: SystemReadiness; config: PublicConfig; versions: SystemVersions; checkedAt: string };
 
+export type ServiceAvailability = Pick<SystemStatusSnapshot, "coreReadiness" | "aiReadiness" | "config" | "checkedAt">;
+export type ServiceMetadata = Pick<SystemStatusSnapshot, "health" | "versions" | "checkedAt">;
+
+// Task status uses the two dedicated readiness contracts, not the combined endpoint's tighter burst bucket.
+export async function loadServiceAvailability(): Promise<ServiceAvailability> {
+  const coreReadiness = await loadReadiness("GET /api/v1/system/core-readiness");
+  const aiReadiness = await loadReadiness("GET /api/v1/system/ai-readiness");
+  const config = await invokeApiOperation<PublicConfig>("GET /api/v1/system/public-config", { timeoutMs: 5000 });
+  return { coreReadiness, aiReadiness, config: required(config.body.data, "공개 설정"), checkedAt: new Date().toISOString() };
+}
+
+export async function loadServiceMetadata(): Promise<ServiceMetadata> {
+  const health = await invokeApiOperation<SystemHealth>("GET /api/v1/system/health", { timeoutMs: 5000 });
+  const versions = await invokeApiOperation<SystemVersions>("GET /api/v1/system/versions", { timeoutMs: 5000 });
+  return { health: required(health.body.data, "상태"), versions: required(versions.body.data, "버전"), checkedAt: new Date().toISOString() };
+}
+
 export async function loadSystemStatus(): Promise<SystemStatusSnapshot> {
   // 공개 배포의 IP 기반 burst 제한을 넘지 않도록 상태 API를 짧은 순차 요청으로 확인한다.
   const health = await invokeApiOperation<SystemHealth>("GET /api/v1/system/health", { timeoutMs: 5_000 });

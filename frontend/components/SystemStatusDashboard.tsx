@@ -1,48 +1,72 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { loadSystemStatus, type SystemStatusSnapshot } from "../lib/system-status";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { loadServiceAvailability, loadServiceMetadata, type ServiceAvailability, type ServiceMetadata } from "../lib/system-status";
+import { dateTime } from "../lib/continuity-labels";
+import { ApiClientError } from "../lib/api";
 
 const CHECK_LABELS: Record<string, string> = {
-  database: "Private RDS", flyway: "DB 스키마", syntheticFixtures: "합성 시나리오",
-  policyCatalog: "보호정책 카탈로그", detectionPolicy: "탐지 정책", safeGuardrails: "안전 가드레일",
-  aiRetrieval: "AI 승인 근거 검색",
+  database: "데이터베이스", flyway: "데이터 구조", syntheticFixtures: "시연 데이터",
+  policyCatalog: "안내 정책", detectionPolicy: "탐지 정책", safeGuardrails: "실행 제한",
+  aiRetrieval: "AI 근거 검색", aiRequiredForCore: "금융업무의 AI 의존 설정",
 };
+const checkLabel = (value: string) => ({ UP: "정상", DOWN: "점검 필요", REQUIRED: "필수", OPTIONAL: "선택" } as Record<string, string>)[value] ?? value;
 
 export function SystemStatusDashboard() {
-  const [snapshot, setSnapshot] = useState<SystemStatusSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<ServiceAvailability | null>(null);
+  const [metadata, setMetadata] = useState<ServiceMetadata | null>(null);
+  const [metadataBusy, setMetadataBusy] = useState(false);
+  const [metadataError, setMetadataError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const pending = useRef(false);
+  const mounted = useRef(false);
   const refresh = useCallback(async () => {
-    setLoading(true); setError("");
-    try { setSnapshot(await loadSystemStatus()); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "시스템 상태를 확인하지 못했습니다."); }
-    finally { setLoading(false); }
+    if (pending.current) return;
+    pending.current = true; setLoading(true); setError("");
+    try { const value = await loadServiceAvailability(); if (mounted.current) setSnapshot(value); }
+    catch (reason) { if (mounted.current) { if (reason instanceof ApiClientError && reason.status === 429) { setAutoRefresh(false); setError("요청이 많아 자동 확인을 멈췄습니다. 1분 후 다시 확인해 주세요."); } else setError("연결 상태를 확인하지 못했습니다. 잠시 후 다시 확인해 주세요."); } }
+    finally { pending.current = false; if (mounted.current) setLoading(false); }
   }, []);
+  useEffect(() => { mounted.current = true; void refresh(); return () => { mounted.current = false; }; }, [refresh]);
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 30000);
+    return () => window.clearInterval(timer);
+  }, [autoRefresh, refresh]);
 
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 30_000); return () => window.clearInterval(timer); }, [refresh]);
+  async function loadMetadata() {
+    if (metadataBusy) return;
+    setMetadataBusy(true); setMetadataError("");
+    try { const value = await loadServiceMetadata(); if (mounted.current) setMetadata(value); }
+    catch { if (mounted.current) setMetadataError("설정·버전 정보를 불러오지 못했습니다. 다시 확인해 주세요."); }
+    finally { if (mounted.current) setMetadataBusy(false); }
+  }
 
-  if (!snapshot) return <section className="panel system-status-empty"><div className={loading ? "bank-spinner" : "status-outage"}>{loading ? "" : "!"}</div><h2>{loading ? "서비스 준비상태를 확인하고 있습니다." : "상태 API에 연결할 수 없습니다."}</h2><p>{error || "잠시 기다려 주세요."}</p>{!loading && <button className="primary-button" onClick={() => void refresh()}>다시 확인</button>}</section>;
-
-  const { health, readiness, coreReadiness, aiReadiness, config, versions } = snapshot;
-  const aiReady = readiness.checks.aiRetrieval === "UP";
-  const fallbackReady = config.featureFlags.templateFallbackEnabled;
-  return <div className="system-status-dashboard">
-    <section className={`system-status-hero ${readiness.ready ? "ready" : "not-ready"}`}>
-      <div><p><span className="live-dot" /> 30초마다 자동 확인</p><h2>{readiness.ready ? "금융 AI 데모가 준비되었습니다." : "일부 구성요소를 확인해 주세요."}</h2><span>최근 확인 {dateTime(snapshot.checkedAt)}</span></div>
-      <div className="system-score"><strong>{Object.values(readiness.checks).filter((value) => value === "UP").length}/{Object.keys(readiness.checks).length}</strong><small>준비상태 통과</small></div>
-    </section>
-    <section className="status-check-grid">{Object.entries(readiness.checks).map(([key, value]) => <article className="panel" key={key}><span className={`check-indicator ${value === "UP" ? "up" : "down"}`}>{value === "UP" ? "✓" : "!"}</span><div><strong>{CHECK_LABELS[key] ?? key}</strong><small>{value === "UP" ? "정상 연결" : value}</small></div></article>)}</section>
-    <section className="panel readiness-boundary"><div><span>핵심 금융 API</span><strong>{coreReadiness.ready ? "READY" : coreReadiness.status}</strong></div><div><span>AI 보조 기능</span><strong>{aiReadiness.ready ? "READY" : aiReadiness.status}</strong></div><small>AI가 중단돼도 핵심 금융 조회와 사람 검토 흐름은 별도로 확인합니다.</small></section>
-    <div className="status-two-column">
-      <section className="panel fallback-status-card"><div className="section-heading"><div><p className="label">AI 장애 안전망</p><h2>검색 중단 시 템플릿 폴백</h2></div><span className={`status-pill ${fallbackReady ? "safe" : "warning"}`}>{fallbackReady ? "사용 가능" : "설정 확인"}</span></div><div className="fallback-flow"><span className={aiReady ? "active" : "disabled"}>승인 근거 검색<small>{aiReady ? "정상" : "중단"}</small></span><i>→</i><span className={!aiReady && fallbackReady ? "active" : ""}>안전 템플릿<small>추측 없음</small></span><i>→</i><span>행원 검토<small>최종 승인</small></span></div><ul><li>citation이 없으면 근거가 있다고 표현하지 않습니다.</li><li>모델·검색 장애가 금융 실행으로 이어지지 않습니다.</li><li>실제 폴백 결과는 사건 코파일럿 응답의 fallbackUsed로 확인합니다.</li></ul><Link className="plain-link" href="/staff/cases">사건 코파일럿에서 확인 →</Link></section>
-      <section className="panel guardrail-card"><p className="label">런타임 안전 경계</p><h2>{health.service}</h2><dl><div><dt>데이터 모드</dt><dd>{config.dataMode}</dd></div><div><dt>외부 금융 실행</dt><dd>{config.externalActionsEnabled ? "활성" : "비활성"}</dd></div><div><dt>외부 네트워크</dt><dd>{config.externalEgressEnabled ? "허용" : "차단"}</dd></div><div><dt>원격 모델</dt><dd>{config.remoteModelEnabled ? "활성" : "비활성"}</dd></div><div><dt>지원 시나리오</dt><dd>{config.supportedScenarioIds.join(", ")}</dd></div></dl></section>
-    </div>
-    <section className="panel version-board"><div className="section-heading"><div><p className="label">검증 기준 버전</p><h2>정책·데이터·알고리즘 일치 여부</h2></div><button className="secondary-button" disabled={loading} onClick={() => void refresh()}>{loading ? "확인 중…" : "지금 새로고침"}</button></div><div><span><small>API</small><strong>{versions.apiVersion}</strong></span><span><small>DB schema</small><strong>V{versions.schemaVersion}</strong></span><span><small>Fixture</small><strong>{versions.fixtureVersion}</strong></span><span><small>Algorithm</small><strong>{versions.algorithmVersion}</strong></span><span><small>Policy</small><strong>{versions.policyVersion}</strong></span></div></section>
-    {error && <p className="api-error" role="alert">{error}</p>}
+  return <div className="service-health-page">
+    <header className="portal-section-heading"><div><h2>금융업무와 AI 설명을 사용할 수 있나요?</h2><p>연결 문제가 있을 때 이곳에서 확인하세요.</p></div><button className="btn btn-outline" disabled={loading} onClick={() => void refresh()}>{loading ? "확인 중…" : "새로고침"}</button></header>
+    <div className="service-health-controls"><label><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />30초마다 확인</label><span>{snapshot ? `마지막 확인 ${dateTime(snapshot.checkedAt)}` : "연결 상태 확인 중"}</span></div>
+    {error && <p className="api-error" role="alert">{snapshot ? "최신 상태를 확인하지 못했습니다. 아래는 마지막으로 확인한 결과입니다. " : ""}{error}</p>}
+    {!snapshot ? <section className="panel" aria-busy={loading}><h3>{loading ? "서비스 연결을 확인하고 있습니다." : "연결 상태를 불러오지 못했습니다."}</h3>{!loading && <button className="btn btn-primary" onClick={() => void refresh()}>다시 확인</button>}</section> : <>
+      <div className="service-health-summary">
+        <section className="panel"><h3>금융업무 연결</h3><strong className={snapshot.coreReadiness.ready ? "health-ok" : "health-attention"}>{snapshot.coreReadiness.ready ? "정상" : "점검 필요"}</strong><p>{snapshot.coreReadiness.ready ? "데이터·정책 연결이 확인됐습니다." : "사건이나 금융정보를 불러오지 못한다면 아래 점검 항목을 확인해 주세요."}</p></section>
+        <section className="panel"><h3>AI 설명·근거 검색</h3><strong className={snapshot.aiReadiness.ready ? "health-ok" : "health-attention"}>{snapshot.aiReadiness.ready ? "정상" : "점검 필요"}</strong><p>{snapshot.aiReadiness.ready ? "AI 보조 기능의 연결이 확인됐습니다." : "새 설명이나 검색 결과를 받지 못할 수 있습니다. 기존 근거를 확인해 주세요."}</p></section>
+      </div>
+      <section className="service-health-guidance"><h3>AI 설명을 불러오지 못할 때</h3><p>{snapshot.config.featureFlags.templateFallbackEnabled ? "기본 안내문으로 대신 설명하도록 설정되어 있습니다. 개별 설명의 상태는 해당 화면에서 확인해 주세요." : "기본 안내문 대체가 꺼져 있습니다. 기존 기록과 근거를 확인해 주세요."}</p></section>
+      <details className="panel service-health-details"><summary>상세 점검 항목</summary><dl>{Object.entries({ ...snapshot.coreReadiness.checks, ...snapshot.aiReadiness.checks }).map(([key, value]) => <div key={key}><dt>{CHECK_LABELS[key] ?? key}</dt><dd>{checkLabel(value)}</dd></div>)}</dl></details>
+      <details className="panel service-health-details" onToggle={(event) => { if (event.currentTarget.open && !metadata && !metadataBusy) void loadMetadata(); }}><summary>설정·버전 정보</summary>{metadataError && <p role="alert">{metadataError}</p>}{!metadata ? <button className="btn btn-outline" disabled={metadataBusy} onClick={() => void loadMetadata()}>{metadataBusy ? "불러오는 중…" : "다시 확인"}</button> : <><p>{dateTime(metadata.checkedAt)} 확인</p><dl>
+        <div><dt>서비스</dt><dd>{metadata.health.service}</dd></div>
+        <div><dt>데이터 모드</dt><dd>{snapshot.config.dataMode === "SYNTHETIC_ONLY" ? "예시 데이터" : snapshot.config.dataMode}</dd></div>
+        <div><dt>금융 실행</dt><dd>{snapshot.config.externalActionsEnabled ? "활성" : "꺼짐"}</dd></div>
+        <div><dt>외부 네트워크</dt><dd>{snapshot.config.externalEgressEnabled ? "허용" : "차단"}</dd></div>
+        <div><dt>원격 모델</dt><dd>{snapshot.config.remoteModelEnabled ? "활성" : "꺼짐"}</dd></div>
+        <div><dt>API 버전</dt><dd>{metadata.versions.apiVersion}</dd></div>
+        <div><dt>데이터 구조 버전</dt><dd>{metadata.versions.schemaVersion}</dd></div>
+        <div><dt>예시 데이터 버전</dt><dd>{metadata.versions.fixtureVersion}</dd></div>
+        <div><dt>알고리즘 버전</dt><dd>{metadata.versions.algorithmVersion}</dd></div>
+        <div><dt>정책 버전</dt><dd>{metadata.versions.policyVersion}</dd></div>
+      </dl></>}</details>
+    </>}
   </div>;
 }
-
-function dateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value)); }
