@@ -15,6 +15,10 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SystemInformationService {
+    @Value("${app.copilot.generation-enabled:false}")
+    private boolean copilotGenerationEnabled;
+    @Value("${app.copilot.egress-document-ids:}")
+    private String copilotApprovedDocuments = "";
 
     private static final List<String> SUPPORTED_SCENARIO_IDS = List.of("FIN_MGMT_AB_001");
 
@@ -127,7 +131,7 @@ public class SystemInformationService {
         boolean detectionPolicyReady = false;
         boolean safeGuardrails = syntheticDataOnly
                 && !externalActionsEnabled
-                && "AIR_GAPPED_DEMO".equals(networkMode)
+                && com.alzswell.common.config.CopilotNetworkBoundary.valid(networkMode, copilotGenerationEnabled, copilotApprovedDocuments)
                 && !externalEgressEnabled
                 && !remoteModelEnabled
                 && syntheticProviderOnly;
@@ -182,13 +186,13 @@ public class SystemInformationService {
                 syntheticDataOnly,
                 externalActionsEnabled,
                 networkMode,
-                externalEgressEnabled,
-                remoteModelEnabled,
+                externalEgressEnabled || copilotGenerationEnabled,
+                remoteModelEnabled || copilotGenerationEnabled,
                 syntheticProviderOnly,
                 SUPPORTED_SCENARIO_IDS,
                 defaultLocale,
                 sessionTtlSeconds,
-                new PublicConfigResponse.FeatureFlags(false, true, false)
+                new PublicConfigResponse.FeatureFlags(copilotGenerationEnabled, true, false)
         );
     }
 
