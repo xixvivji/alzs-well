@@ -31,7 +31,7 @@ dev = [
 ]
 model-runtime = [
   "sentence-transformers==5.7.0",
-  "torch==2.13.0",
+  "torch==2.14.0",
   "transformers==5.15.1",
 ]
 
