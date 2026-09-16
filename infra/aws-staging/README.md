@@ -1,5 +1,7 @@
 # AWS staging IaC
 
+> **운영 상태 · 2026-09-16:** 기존 staging은 2026-09-14 철거되었습니다. 아래 내용은 당시 구성과 재배포 절차입니다. 현재 가동 중인 리소스 목록이 아닙니다. [포트폴리오 운영 종료 요약](../../docs/CLOUD_INFRA_PORTFOLIO.md#운영-종료와-비용-관리)을 참고하세요.
+
 `foundation.yaml`은 합성데이터 공모전 staging을 위한 비용절감형 CloudFormation
 기반이다. 프론트는 Vercel 기본 도메인을 사용하고, Vercel BFF가 CloudFront 기본
 HTTPS 도메인을 통해 AWS API를 호출한다. 2026-09-01 `alzs-well-staging` 스택에
@@ -16,7 +18,8 @@ HTTPS 도메인을 통해 AWS API를 호출한다. 2026-09-01 `alzs-well-staging
 - immutable ECR repository 2개·용도별 Secrets Manager 비밀
 
 NAT Gateway, ALB, WAF, EC2 2대, RDS, EBS, Secrets Manager는 현재 staging에서
-비용이 발생한다. 2026-09-11 23:59 KST까지 유지한 뒤 수동 철거하며, 재배포 때도
+운영 중 비용이 발생하는 항목이다. 당초 유지 기한은 2026-09-11 23:59 KST였으며,
+실제 철거 기록은 2026-09-14다. 재배포 때도
 AWS Pricing Calculator 결과와 삭제 순서를 별도 승인한다.
 
 ## 배포 게이트
