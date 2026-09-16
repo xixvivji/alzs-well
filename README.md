@@ -20,7 +20,7 @@
 | 접근통제 | Private EC2/RDS, SSM 접근, 역할별 IAM·DB 권한, 업무–AI mTLS, RDS 인증서 검증 | [인프라 운영 안내](./infra/aws-staging/README.md), [mTLS 런북](./docs/runbooks/AWS_AI_MTLS.md) |
 | 배포 재현성 | ECR 불변 이미지 digest, 용도별 Secrets 주입, Flyway, readiness 확인 | [업무 배포 스크립트](./infra/aws-staging/deploy-app-host.sh), [AI 배포 스크립트](./infra/aws-staging/deploy-ai-host.sh) |
 | CI·보안 검사 | 테스트·커버리지, CodeQL, Gitleaks, 의존성·컨테이너 취약점 검사, Compose 통합 검증 | [CI workflow](./.github/workflows/ci.yml), [보안 게이트](./docs/CI_SECURITY_GUIDE.md) |
-| 운영 수명주기 | CloudWatch 로그, 장애·롤백 런북, 비용 추정, 삭제 보호와 철거 후 잔여 리소스 확인 | [장애 대응](./docs/runbooks/AWS_FAILURE_RECOVERY.md), [비용 추정](./infra/aws-staging/COST_ESTIMATE.md), [운영 종료 요약](#운영-종료와-비용-관리) |
+| 운영 수명주기 | CloudWatch 로그, 장애·롤백 런북, staging 비용 추정 | [장애 대응](./docs/runbooks/AWS_FAILURE_RECOVERY.md), [비용 추정](./infra/aws-staging/COST_ESTIMATE.md) |
 
 ## 배포 아키텍처
 
@@ -125,16 +125,6 @@ GitHub Actions는 테스트뿐 아니라 배포 구성과 의존성을 함께 �
 `CI quality gate`는 필수 작업의 실패·취소·예상치 못한 건너뛰기를 실패로 처리합니다. **설정된 기준과 특정 커밋의 통과 결과는 구분**해야 합니다. PR #182의 검사 통과는 [릴리스 기록](./docs/RELEASE_V0_1_4.md)에 남아 있고, 현재 브랜치 결과는 해당 실행에서 확인해야 합니다.
 
 근거: [CI](./.github/workflows/ci.yml), [CodeQL](./.github/workflows/codeql.yml), [Gitleaks](./.github/workflows/gitleaks.yml), [보안 운영 안내](./docs/CI_SECURITY_GUIDE.md).
-
-## 운영 종료와 비용 관리
-
-staging은 상시 운영 서비스가 아닌 기한이 있는 시연 환경으로 설계했습니다. CloudWatch 로그 보존은 14일, RDS 자동 백업 보존은 1일입니다. [비용 문서](./infra/aws-staging/COST_ESTIMATE.md)는 당시 12일·288시간 가정의 사전 추정이며 실제 청구액이나 최신 가격표가 아닙니다.
-
-2026-09-14 운영 종료 기록에 따르면 Vercel 프로젝트 삭제와 CloudFormation 스택의 `DELETE_COMPLETE`, 잔여 EBS·RDS 스냅샷 점검이 완료되었습니다. 이 요약은 해당 기록을 바탕으로 하며 AWS 계정을 재조회한 결과는 아닙니다.
-
-철거 과정에서는 삭제 보호를 해제하고 보존 리소스 처리 방침을 변경했으며, 사설 DNS 삭제 실패에 필요한 조회 권한을 임시 추가한 뒤 회수했습니다. 스택 밖의 이전 DB 비밀은 복구 기간을 두고 삭제 예약되었습니다. 2026-09-16 기준 영구 삭제 완료로 표현하지 않습니다. 계정 전체의 모든 리소스가 제거되었거나 과금이 없다고 보장하는 기록도 아닙니다.
-
-이 사례에서 확인할 수 있는 운영 범위는 **생성 → 배포 → 검증 → 권한 회수 → 비용·보존 관리 → 철거 확인**입니다.
 
 ## 다음 단계
 
