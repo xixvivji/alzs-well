@@ -1,18 +1,18 @@
 # ALZ's well
 
-**금융생활 변화 확인 서비스를 AWS에 배포하고, 접근통제·배포 검증·장애 대응·운영 종료까지 다룬 프로젝트입니다.**
+**금융생활 변화 확인 서비스를 AWS에 배포하고, 인프라 설계·배포 자동화·접근통제·운영을 다룬 프로젝트입니다.**
 
 고객 개인의 평소 금융생활과 최근의 차이를 설명하고, 고객의 응답을 은행 직원의 검토로 연결합니다. 질병이나 사기를 판정하지 않으며, 합성 데이터만 사용합니다. 실제 송금·지급정지·상품 가입·가족 연락은 실행하지 않습니다.
 
-> **현재 상태 · 2026-09-16** — Vercel·AWS 시연 배포는 2026-09-14 철거되었습니다. 현재 접속 가능한 데모가 아닌 **소스 코드와 과거 배포·검증 기록을 제공하는 포트폴리오**입니다. 아래 아키텍처는 배포 당시 구성과 저장소의 IaC 기준입니다.
+> **운영 상태:** 시연 배포는 2026-09-14 종료되었습니다. 소스 코드와 배포·검증 기록을 공개합니다.
 
 [설계와 운영 사례](#설계와-운영-사례) · [배포 검증 기록](./docs/RELEASE_V0_1_4.md) · [인프라 코드](./infra/aws-staging/foundation.yaml)
 
 ## 담당 역할
 
-**전체 인프라 설계·구축·배포·운영을 담당했습니다.** AWS 네트워크와 컴퓨팅·DB 구성, IAM·비밀 관리, 컨테이너 배포 환경, 배포 검증 및 운영 종료까지 인프라 전반을 맡았습니다. 아래 링크에서 구성 코드와 실행 기록을 함께 확인할 수 있습니다.
+**전체 인프라 설계·구축·배포·운영을 담당했습니다.** AWS 네트워크와 컴퓨팅·DB 구성, IAM·비밀 관리, 컨테이너 배포 환경, 배포 검증과 운영 문서화를 맡았습니다.
 
-## 먼저 살펴볼 내용
+## 주요 구현
 
 | 검토 주제 | 구현 내용 | 코드·증적 |
 |---|---|---|
@@ -20,7 +20,7 @@
 | 접근통제 | Private EC2/RDS, SSM 접근, 역할별 IAM·DB 권한, 업무–AI mTLS, RDS 인증서 검증 | [인프라 운영 안내](./infra/aws-staging/README.md), [mTLS 런북](./docs/runbooks/AWS_AI_MTLS.md) |
 | 배포 재현성 | ECR 불변 이미지 digest, 용도별 Secrets 주입, Flyway, readiness 확인 | [업무 배포 스크립트](./infra/aws-staging/deploy-app-host.sh), [AI 배포 스크립트](./infra/aws-staging/deploy-ai-host.sh) |
 | CI·보안 검사 | 테스트·커버리지, CodeQL, Gitleaks, 의존성·컨테이너 취약점 검사, Compose 통합 검증 | [CI workflow](./.github/workflows/ci.yml), [보안 게이트](./docs/CI_SECURITY_GUIDE.md) |
-| 운영 수명주기 | CloudWatch 로그, 장애·롤백 런북, staging 비용 추정 | [장애 대응](./docs/runbooks/AWS_FAILURE_RECOVERY.md), [비용 추정](./infra/aws-staging/COST_ESTIMATE.md) |
+| 운영 관리 | CloudWatch 로그, 장애·롤백 런북, staging 비용 추정 | [장애 대응](./docs/runbooks/AWS_FAILURE_RECOVERY.md), [비용 추정](./infra/aws-staging/COST_ESTIMATE.md) |
 
 ## 배포 아키텍처
 
@@ -44,7 +44,7 @@ flowchart TB
     end
 ```
 
-운영자는 SSM을 사용하며 EC2에 SSH를 공개하지 않습니다. CloudFront→ALB 구간은 HTTP이고 업무→AI는 mTLS, DB 연결은 `verify-full`로 인증서를 검증합니다. NAT Gateway 1개와 S3 gateway endpoint를 사용합니다. **서브넷은 2개 AZ에 구성하지만 업무·AI EC2는 각 1대, RDS는 Single-AZ인 staging**입니다. 고가용성 운영 구성으로 표현하지 않습니다.
+운영자는 SSM을 사용하며 EC2에 SSH를 공개하지 않습니다. CloudFront→ALB 구간은 HTTP이고 업무→AI는 mTLS, DB 연결은 `verify-full`로 인증서를 검증합니다. NAT Gateway 1개와 S3 gateway endpoint를 사용합니다. **서브넷은 2개 AZ에 구성하지만 업무·AI EC2는 각 1대, RDS는 Single-AZ인 staging**입니다.
 
 ## 확인한 결과와 범위
 
@@ -53,36 +53,24 @@ flowchart TB
 - **배포 후 권한 회수:** DB bootstrap·migration·이미지 게시 임시 권한을 비활성화한 기록이 있습니다.
 - **2026-09-06 확장:** 승인된 합성 사건의 선택형 Bedrock 직원 초안을 검증했습니다. 기본값은 비활성화입니다. [검증 범위](./docs/BEDROCK_STAFF_DRAFT.md)
 
-상세 결과는 [v0.1.4 증적](./docs/RELEASE_V0_1_4.md)에서 확인할 수 있습니다. 해당 시점의 검증이 이후 모든 커밋·화면의 배포 검증을 의미하지는 않습니다. 다중 AZ 장애 전환, 복구 목표 시간·데이터 손실 목표(RTO·RPO), 실제 고객 운영은 별도 검증이 필요합니다.
+검증 환경과 실행 결과는 [배포 기록](./docs/RELEASE_V0_1_4.md)에 정리했습니다.
 
 ## 설계와 운영 사례
 
-## 지원 직무와 연결되는 경험
-
-뱅크웨어글로벌 [Cloud 인프라 및 DevOps 개발자 공식 공고](https://careers.bankwareglobal.com/jobs/75-26nyeon-habangi-daejolsinib-susichaeyong-cloud-inpeura-mich-devops-gaebalja-sabon)의 주요 업무를 기준으로 연결한 내용입니다. 확인일은 2026-09-16입니다.
-
-| 직무에서 다루는 영역 | 이 프로젝트에서 보여주는 경험 |
-|---|---|
-| Public Cloud 운영 | AWS IaC, private 네트워크, IAM, Secrets, 배포·운영 종료 |
-| Java 애플리케이션 빌드·배포와 CI/CD | Spring Boot·Gradle·Docker, GitHub Actions 품질 게이트, digest 기반 배포 스크립트 |
-| 시스템 인터페이스 연계 | 업무 API·AI 서비스·DB 사이의 인증·암호화·권한 경계 설계 |
-
-실제 고객사의 온프레미스 연계는 수행 범위에 포함하지 않습니다. 실행 환경은 EC2·Docker Compose이며 EKS/Kubernetes나 Jenkins 구축 경험으로 표현하지 않습니다.
-
-## 1. 서비스 특성에 맞춘 네트워크와 실행 환경
+### 1. 서비스 특성에 맞춘 네트워크와 실행 환경
 
 업무 API와 모델 실행 환경은 필요한 자원과 변경 주기가 다릅니다. 업무 EC2와 AI EC2를 분리하고, 데이터는 private RDS에 저장하는 구성을 사용했습니다. 외부 요청은 Vercel BFF → CloudFront/WAF → ALB → 업무 gateway를 거칩니다.
 
 - **네트워크 경계:** public·application·database subnet을 분리하고, ALB→업무 8080, 업무→AI 8443, 업무·AI→DB 5432를 보안 그룹 참조로 허용합니다.
 - **관리 경로:** EC2 public IP와 SSH 접근 대신 SSM을 사용하며 IMDSv2를 요구합니다.
-- **전송 구간:** 업무→AI mTLS와 DB TLS 인증서 검증을 적용합니다. CloudFront→ALB는 origin-facing prefix list로 제한한 HTTP이므로 전 구간 TLS라고 표현하지 않습니다.
+- **전송 구간:** 업무→AI mTLS와 DB TLS 인증서 검증을 적용합니다. CloudFront→ALB HTTP 접근은 origin-facing prefix list로 제한합니다.
 - **컨테이너 경계:** read-only filesystem, capability 제한, `no-new-privileges`, 쓰기가 필요한 경로의 tmpfs를 구성합니다.
 
 근거: [CloudFormation](./infra/aws-staging/foundation.yaml), [업무 Compose](./backend/compose.aws-app.yaml), [AI Compose](./backend/compose.aws-ai.yaml).
 
-**선택의 대가:** 업무·AI 각 1대와 Single-AZ RDS, NAT Gateway 1개로 staging 비용을 제한했습니다. 2개 AZ에 서브넷이 있어도 서비스 장애 자동 전환이 보장되지는 않습니다. 또한 EC2의 80/443 outbound를 허용하므로 private subnet 자체를 완전한 외부 통신 차단으로 해석하지 않습니다.
+**설계 판단:** 시연 규모와 비용을 고려해 업무·AI 각 1대, Single-AZ RDS, NAT Gateway 1개를 선택했습니다. 패키지 설치와 AWS API 접근을 위한 EC2의 80/443 outbound를 허용하고, 서비스 간 inbound는 보안 그룹으로 제한합니다.
 
-## 2. 배포할 때 필요한 권한과 실행 중 권한의 분리
+### 2. 배포할 때 필요한 권한과 실행 중 권한의 분리
 
 애플리케이션 실행에 필요한 권한과 DB 초기화·마이그레이션·이미지 게시 권한을 분리했습니다. 용도별 Secrets Manager 비밀과 DB 계정을 사용하고, App·AI의 mTLS 개인키도 서로 다른 비밀로 관리합니다.
 
@@ -92,7 +80,7 @@ DB도 migration, 업무 runtime, AI ingestion, AI runtime 역할을 구분합니
 
 근거: [인프라 운영 안내](./infra/aws-staging/README.md), [DB 역할 생성](./backend/docker/create-database-roles.sh), [권한 회수 기록](./docs/RELEASE_V0_1_4.md).
 
-## 3. 배포 재현성과 실패 시 복구
+### 3. 배포 재현성과 실패 시 복구
 
 이미지는 ECR digest로 지정하고 배포 스크립트가 비밀값과 인증서를 주입한 뒤 Compose 서비스를 시작합니다. 업무 배포는 readiness를 확인하고, AI는 승인된 모델 revision·artifact hash·golden-set hash 등 배포 계약을 확인합니다.
 
@@ -104,13 +92,13 @@ DB도 migration, 업무 runtime, AI ingestion, AI runtime 역할을 구분합니
 4. 배포·Flyway 실행 후 readiness·합성 업무 시나리오 검증.
 5. 임시 권한 회수와 배포 결과 기록.
 
-[장애 런북](./docs/runbooks/AWS_FAILURE_RECOVERY.md)은 AI·RDS·업무 EC2 장애별 점검과 직전 승인본 복구 절차를 제공합니다. 이미지 복구와 DB downgrade는 같은 작업이 아닙니다. [배포 기록](./docs/RELEASE_V0_1_4.md)도 V77 이후 구 이미지의 스키마 호환성 확인이 필요하다고 명시합니다.
+[장애 런북](./docs/runbooks/AWS_FAILURE_RECOVERY.md)은 AI·RDS·업무 EC2 장애별 점검과 직전 승인본 복구 절차를 제공합니다. 롤백 시에는 이전 이미지와 현재 DB 스키마의 호환성을 먼저 확인하도록 했습니다.
 
-**검증 범위:** 배포 스크립트와 런북이 존재하며 합성 시나리오 실행 기록이 있습니다. 무중단 배포, 자동 롤백, PITR 복구 훈련의 성공이나 RTO·RPO 달성은 이 자료만으로 주장하지 않습니다. CI 자동 검증과 AWS 배포 스크립트를 사용한 운영 절차를 구분하며, 완전 자동 CD로 표현하지 않습니다.
+CI는 GitHub Actions로 자동 실행하고, AWS 배포는 검토 후 배포 스크립트를 실행하는 방식입니다.
 
 근거: [업무 배포](./infra/aws-staging/deploy-app-host.sh), [AI 배포](./infra/aws-staging/deploy-ai-host.sh), [AWS 배포 기준](./docs/AWS_BACKEND_DEPLOYMENT.md).
 
-## 4. CI에서 기능·보안·배포 구성을 함께 검증
+### 4. CI에서 기능·보안·배포 구성을 함께 검증
 
 GitHub Actions는 테스트뿐 아니라 배포 구성과 의존성을 함께 검증합니다.
 
@@ -122,11 +110,11 @@ GitHub Actions는 테스트뿐 아니라 배포 구성과 의존성을 함께 �
 | 인프라·통합 | cfn-lint, IAM 정책 렌더링, Compose 구성 검사·기동·업무 smoke·AI 인용/폴백 검사 |
 | 저장소 | CodeQL, Gitleaks, 조건부 Dependency Review |
 
-`CI quality gate`는 필수 작업의 실패·취소·예상치 못한 건너뛰기를 실패로 처리합니다. **설정된 기준과 특정 커밋의 통과 결과는 구분**해야 합니다. PR #182의 검사 통과는 [릴리스 기록](./docs/RELEASE_V0_1_4.md)에 남아 있고, 현재 브랜치 결과는 해당 실행에서 확인해야 합니다.
+`CI quality gate`는 필수 작업의 실패·취소·예상치 못한 건너뛰기를 실패로 처리합니다. 검사 결과와 배포 증적은 [릴리스 기록](./docs/RELEASE_V0_1_4.md)으로 추적합니다.
 
 근거: [CI](./.github/workflows/ci.yml), [CodeQL](./.github/workflows/codeql.yml), [Gitleaks](./.github/workflows/gitleaks.yml), [보안 운영 안내](./docs/CI_SECURITY_GUIDE.md).
 
-## 다음 단계
+## 개선 계획
 
 | 현재 한계 | 실서비스 전 검증할 내용 |
 |---|---|
@@ -135,7 +123,7 @@ GitHub Actions는 테스트뿐 아니라 배포 구성과 의존성을 함께 �
 | 승인 기반 배포 스크립트 | OIDC와 환경 승인에 기반한 CD, 배포 후 자동 검증·롤백 조건 |
 | 합성 데이터와 합성 계정 검증 | 조직 IdP·MFA, 데이터 수명주기, 실제 업무·사용성 검증 |
 
-상세 승인 기준은 [실서비스 준비도](./docs/PRODUCTION_READINESS.md)를 따릅니다. 금융회사 운영환경의 규정 준수나 실고객 서비스 승인을 완료한 프로젝트로 표현하지 않습니다.
+세부 검증 항목은 [실서비스 준비도](./docs/PRODUCTION_READINESS.md)에 정리했습니다.
 
 ## 기술 구성과 저장소
 
