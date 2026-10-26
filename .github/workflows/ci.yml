@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Validate API catalog counts and uniqueness
@@ -86,7 +86,7 @@ jobs:
         working-directory: ai-service
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install uv
@@ -127,7 +127,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Install pinned uv
@@ -194,7 +194,7 @@ jobs:
       DEMO_STAFF_BOOTSTRAP_TOKEN: ci-only-demo-staff-bootstrap-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Validate AWS deployment Compose and role contracts
